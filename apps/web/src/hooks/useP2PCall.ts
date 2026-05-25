@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { SignalingClient } from "@/lib/webrtc/signalingClient";
 
-// TURN credentials — must match coturn service in docker-compose.yml
+// ── TURN credentials — must match coturn in docker-compose.yml ───
 const TURN_USER = "aprosop";
 const TURN_CRED = "aprosopsecretturn";
 
@@ -12,13 +12,33 @@ function getIceServers(): RTCIceServer[] {
   return [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
-    // coturn TURN relay — enables connection between different NATs
-    { urls: `turn:${host}:3478`, username: TURN_USER, credential: TURN_CRED },
-    { urls: `turn:${host}:3478?transport=tcp`, username: TURN_USER, credential: TURN_CRED },
+    { urls: `turn:${host}:3478`,               username: TURN_USER, credential: TURN_CRED },
+    { urls: `turn:${host}:3478?transport=tcp`,  username: TURN_USER, credential: TURN_CRED },
+    // TLS relay — пробивает корпоративные файрволы и VPN-окружения
+    { urls: `turns:${host}:5349`,              username: TURN_USER, credential: TURN_CRED },
   ];
 }
 
-export type P2PStatus = "idle" | "connecting" | "waiting" | "connected" | "disconnected" | "failed";
+// ── Таймауты для ICE recovery ─────────────────────────────────────
+// Сколько ждать самовосстановления перед попыткой ICE restart.
+// Браузер сам пробует обновить STUN consent — даём ему шанс.
+const ICE_DISCONNECT_GRACE_MS = 7_000;
+
+// Сколько ждать ICE restart перед принудительным полным реконнектом.
+const ICE_RESTART_TIMEOUT_MS  = 25_000;
+
+// Exponential backoff для полного пересборки PC.
+const RETRY_DELAYS = [2_000, 4_000, 8_000, 16_000, 30_000];
+const MAX_RETRIES  = RETRY_DELAYS.length;
+
+// ── Типы ─────────────────────────────────────────────────────────
+export type P2PStatus =
+  | "idle"
+  | "connecting"
+  | "waiting"
+  | "connected"
+  | "reconnecting"   // временный разрыв, идёт восстановление
+  | "failed";
 
 interface UseP2PCallOptions {
   roomId: string;
@@ -32,15 +52,16 @@ export function useP2PCall({ roomId, localStream, onEnd }: UseP2PCallOptions) {
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [hasRemote,   setHasRemote]   = useState(false);
   const [elapsed,     setElapsed]     = useState(0);
+  const [retryKey,    setRetryKey]    = useState(0);
 
-  const pcRef            = useRef<RTCPeerConnection | null>(null);
-  const sigRef           = useRef<SignalingClient | null>(null);
-  const remoteVideoRef   = useRef<HTMLVideoElement | null>(null);
-  const cancelRef        = useRef(false);
-  const offerMadeRef     = useRef(false);
-  const hasRemoteRef     = useRef(false);
-  const pendingIceRef    = useRef<RTCIceCandidateInit[]>([]); // queue before remoteDescription
-  const elapsedTimer     = useRef<ReturnType<typeof setInterval>>();
+  const pcRef          = useRef<RTCPeerConnection | null>(null);
+  const sigRef         = useRef<SignalingClient | null>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+  const cancelRef      = useRef(false);
+  const offerMadeRef   = useRef(false);
+  const hasRemoteRef   = useRef(false);
+  const pendingIceRef  = useRef<RTCIceCandidateInit[]>([]);
+  const elapsedTimer   = useRef<ReturnType<typeof setInterval>>();
 
   const stopElapsed = useCallback(() => {
     clearInterval(elapsedTimer.current);
@@ -52,134 +73,246 @@ export function useP2PCall({ roomId, localStream, onEnd }: UseP2PCallOptions) {
     elapsedTimer.current = setInterval(() => setElapsed(e => e + 1), 1000);
   }, [stopElapsed]);
 
-  const closePeer = useCallback(() => {
-    if (pcRef.current) {
-      pcRef.current.ontrack                   = null;
-      pcRef.current.onicecandidate            = null;
-      pcRef.current.oniceconnectionstatechange = null;
-      pcRef.current.close();
-      pcRef.current = null;
-    }
-    offerMadeRef.current  = false;
-    pendingIceRef.current = [];
-  }, []);
-
-  // Flush any ICE candidates that arrived before setRemoteDescription completed
-  const flushPendingIce = useCallback(async (pc: RTCPeerConnection) => {
-    const queue = pendingIceRef.current.splice(0);
-    for (const c of queue) {
-      try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch { /* ignore */ }
-    }
-  }, []);
-
-  const makeOffer = useCallback(async () => {
-    if (offerMadeRef.current || !pcRef.current || !sigRef.current) return;
-    offerMadeRef.current = true;
-    try {
-      const offer = await pcRef.current.createOffer({
-        offerToReceiveAudio: true,
-        offerToReceiveVideo: true,
-      });
-      await pcRef.current.setLocalDescription(offer);
-      sigRef.current.send({ type: "offer", sdp: offer });
-    } catch (e) {
-      console.error("[useP2PCall] createOffer failed:", e);
-    }
-  }, []);
-
+  // ── Main effect ───────────────────────────────────────────────
   useEffect(() => {
     if (!localStream) return;
+    const stream = localStream; // narrow: TypeScript не сужает через замыкания
+
     cancelRef.current     = false;
     hasRemoteRef.current  = false;
     pendingIceRef.current = [];
-    setStatus("connecting");
 
     const sig = new SignalingClient(roomId);
     sigRef.current = sig;
 
-    const pc = new RTCPeerConnection({ iceServers: getIceServers() });
-    pcRef.current = pc;
+    // Счётчик попыток реконнекта живёт внутри эффекта — сбрасывается
+    // при каждом новом вызове (смена комнаты / нового стрима).
+    let reconnectCount = 0;
+    let iceGraceTimer:   ReturnType<typeof setTimeout> | undefined;
+    let iceRestartTimer: ReturnType<typeof setTimeout> | undefined;
+    let reconnectTimer:  ReturnType<typeof setTimeout> | undefined;
 
-    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+    // ── Flush очереди ICE-кандидатов ──────────────────────────
+    async function flushPending(pc: RTCPeerConnection) {
+      const q = pendingIceRef.current.splice(0);
+      for (const c of q) {
+        try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch { /* ignore */ }
+      }
+    }
 
-    pc.onicecandidate = ({ candidate }) => {
-      if (candidate) sigRef.current?.send({ type: "ice-candidate", candidate: candidate.toJSON() });
-    };
-
-    pc.ontrack = ({ streams }) => {
-      const stream = streams[0];
-      if (stream && remoteVideoRef.current) {
-        // Set srcObject and call play() explicitly — autoPlay attribute alone
-        // is sometimes blocked by browser policy even after user interaction
-        const vid = remoteVideoRef.current;
-        vid.srcObject = stream;
-        vid.muted = false;
-        vid.play().catch(() => {
-          // If autoplay is blocked, unmute and retry on next user gesture
-          const resume = () => { vid.play().catch(() => {}); document.removeEventListener("click", resume); };
-          document.addEventListener("click", resume, { once: true });
+    // ── Создать offer (с опциональным ICE restart) ─────────────
+    async function doMakeOffer(pc: RTCPeerConnection, iceRestart = false) {
+      if (offerMadeRef.current) return;
+      offerMadeRef.current = true;
+      try {
+        const offer = await pc.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: true,
+          iceRestart,
         });
+        await pc.setLocalDescription(offer);
+        sig.send({ type: "offer", sdp: offer });
+      } catch (e) {
+        console.error("[P2P] createOffer failed:", e);
+        offerMadeRef.current = false;
       }
-      if (!hasRemoteRef.current) {
-        hasRemoteRef.current = true;
-        setHasRemote(true);
-        setStatus("connected");
-        startElapsed();
-      }
-    };
+    }
 
-    pc.oniceconnectionstatechange = () => {
-      const s = pc.iceConnectionState;
-      if (s === "disconnected" || s === "failed" || s === "closed") {
+    // ── ICE restart (мягкое восстановление, PC не пересоздаётся) ─
+    async function doIceRestart(pc: RTCPeerConnection) {
+      if (cancelRef.current) return;
+      offerMadeRef.current = false;
+
+      try {
+        // Современный API: браузер сам собирает новые кандидаты
+        // и триггерит onnegotiationneeded → doMakeOffer с iceRestart=true
+        pc.restartIce();
+      } catch {
+        // Fallback для старых браузеров: вручную пересоздаём offer
+        await doMakeOffer(pc, true);
+      }
+
+      // Страховочный таймер: если ICE restart не поможет — полный реконнект
+      iceRestartTimer = setTimeout(() => {
+        const s = pc.iceConnectionState;
+        if (s !== "connected" && s !== "completed") {
+          doFullReconnect();
+        }
+      }, ICE_RESTART_TIMEOUT_MS);
+    }
+
+    // ── Полный реконнект: пересобрать RTCPeerConnection ──────────
+    function doFullReconnect() {
+      if (cancelRef.current) return;
+
+      if (reconnectCount >= MAX_RETRIES) {
+        setStatus("failed");
+        return;
+      }
+
+      const delay = RETRY_DELAYS[reconnectCount++];
+      setStatus("reconnecting");
+
+      clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(async () => {
+        if (cancelRef.current) return;
+
+        // Сбросить состояние видео
         hasRemoteRef.current = false;
         setHasRemote(false);
-        setStatus(s === "failed" ? "failed" : "waiting");
         stopElapsed();
         if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
-      } else if (s === "connected" || s === "completed") {
-        setStatus("connected");
-      }
-    };
 
+        // Пересоздаём PC с новыми ICE credentials
+        setupPC();
+
+        // Сообщаем собеседнику что мы готовы к новому handshake
+        sig.send({ type: "ready" });
+      }, delay);
+    }
+
+    // ── Создать и настроить RTCPeerConnection ─────────────────────
+    function setupPC(): RTCPeerConnection {
+      // Закрываем старый PC если есть
+      if (pcRef.current) {
+        const old = pcRef.current;
+        old.ontrack                   = null;
+        old.onicecandidate            = null;
+        old.oniceconnectionstatechange = null;
+        old.onnegotiationneeded        = null;
+        old.close();
+        pcRef.current = null;
+      }
+
+      offerMadeRef.current  = false;
+      pendingIceRef.current = [];
+
+      const pc = new RTCPeerConnection({ iceServers: getIceServers() });
+      pcRef.current = pc;
+
+      stream.getTracks().forEach(t => pc.addTrack(t, stream));
+
+      // ICE кандидаты → сигналинг
+      pc.onicecandidate = ({ candidate }) => {
+        if (candidate) sig.send({ type: "ice-candidate", candidate: candidate.toJSON() });
+      };
+
+      // Удалённый трек появился
+      pc.ontrack = ({ streams }) => {
+        const stream = streams[0];
+        if (stream && remoteVideoRef.current) {
+          const vid = remoteVideoRef.current;
+          vid.srcObject = stream;
+          vid.muted = false;
+          vid.play().catch(() => {
+            const resume = () => { vid.play().catch(() => {}); document.removeEventListener("click", resume); };
+            document.addEventListener("click", resume, { once: true });
+          });
+        }
+        if (!hasRemoteRef.current) {
+          hasRemoteRef.current = true;
+          setHasRemote(true);
+          setStatus("connected");
+          startElapsed();
+        }
+      };
+
+      // onnegotiationneeded — срабатывает после pc.restartIce()
+      pc.onnegotiationneeded = async () => {
+        if (cancelRef.current) return;
+        offerMadeRef.current = false;
+        await doMakeOffer(pc, true);
+      };
+
+      // ICE state machine
+      pc.oniceconnectionstatechange = () => {
+        const s = pc.iceConnectionState;
+
+        if (s === "connected" || s === "completed") {
+          // Успешное (вос)соединение — сбрасываем все таймеры и счётчик
+          clearTimeout(iceGraceTimer);
+          clearTimeout(iceRestartTimer);
+          clearTimeout(reconnectTimer);
+          reconnectCount = 0;
+          if (hasRemoteRef.current) setStatus("connected");
+        }
+
+        else if (s === "disconnected") {
+          // Не паникуем сразу — браузер может сам восстановить путь
+          // (обновление STUN consent, временные потери пакетов).
+          // Ждём ICE_DISCONNECT_GRACE_MS, потом ICE restart.
+          setStatus("reconnecting");
+          clearTimeout(iceGraceTimer);
+          iceGraceTimer = setTimeout(() => {
+            const cur = pc.iceConnectionState;
+            if (cur !== "connected" && cur !== "completed") {
+              doIceRestart(pc);
+            }
+          }, ICE_DISCONNECT_GRACE_MS);
+        }
+
+        else if (s === "failed") {
+          // ICE упал окончательно — полный реконнект
+          clearTimeout(iceGraceTimer);
+          clearTimeout(iceRestartTimer);
+          doFullReconnect();
+        }
+      };
+
+      // connectionState fires faster than iceConnectionState === "failed" in Chrome
+      pc.onconnectionstatechange = () => {
+        if (pc.connectionState === "failed") {
+          clearTimeout(iceGraceTimer);
+          clearTimeout(iceRestartTimer);
+          doFullReconnect();
+        }
+      };
+
+      return pc;
+    }
+
+    setupPC();
+
+    // ── Обработка сигналинг-сообщений ────────────────────────────
     const unsubscribe = sig.onMessage(async (msg) => {
       if (cancelRef.current) return;
+      const currentPc = pcRef.current;
+      if (!currentPc) return;
+
       try {
         switch (msg.type) {
           case "peer-joined":
-            await makeOffer();
-            break;
-
           case "ready":
-            await makeOffer();
+            await doMakeOffer(currentPc);
             break;
 
           case "offer":
-            if (pc.signalingState === "have-local-offer") {
-              // Glare — both sent offers simultaneously. Roll back ours.
-              await (pc as any).setLocalDescription({ type: "rollback" });
+            // Glare resolution: оба одновременно послали offer — откатываем свой
+            if (currentPc.signalingState === "have-local-offer") {
+              await (currentPc as any).setLocalDescription({ type: "rollback" });
               offerMadeRef.current = false;
             }
-            await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
-            await flushPendingIce(pc); // drain any candidates that arrived early
+            await currentPc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+            await flushPending(currentPc);
             {
-              const answer = await pc.createAnswer();
-              await pc.setLocalDescription(answer);
+              const answer = await currentPc.createAnswer();
+              await currentPc.setLocalDescription(answer);
               sig.send({ type: "answer", sdp: answer });
             }
             break;
 
           case "answer":
-            if (pc.signalingState === "have-local-offer") {
-              await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
-              await flushPendingIce(pc); // drain candidates that arrived before answer
+            if (currentPc.signalingState === "have-local-offer") {
+              await currentPc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+              await flushPending(currentPc);
             }
             break;
 
           case "ice-candidate":
-            if (pc.remoteDescription) {
-              await pc.addIceCandidate(new RTCIceCandidate(msg.candidate));
+            if (currentPc.remoteDescription) {
+              await currentPc.addIceCandidate(new RTCIceCandidate(msg.candidate));
             } else {
-              // Queue — will be flushed after setRemoteDescription
+              // Кандидат пришёл раньше remoteDescription — ставим в очередь
               pendingIceRef.current.push(msg.candidate);
             }
             break;
@@ -196,36 +329,97 @@ export function useP2PCall({ roomId, localStream, onEnd }: UseP2PCallOptions) {
             break;
         }
       } catch (e) {
-        console.warn("[useP2PCall] signal handling error:", e);
+        console.warn("[P2P] signal handling error:", e);
       }
     });
 
-    const init = async () => {
-      try {
-        await sig.connect();
-      } catch {
-        if (!cancelRef.current) setStatus("failed");
-        return;
-      }
+    // Сигналинг переподключился после обрыва — заново анонсируемся
+    const unsubReconnect = sig.onReconnect(() => {
       if (cancelRef.current) return;
+      offerMadeRef.current  = false;
+      pendingIceRef.current = [];
       sig.send({ type: "ready" });
-      setStatus("waiting");
+    });
+
+    // ── Детекция смены сети (NetworkInformation API, Chrome/Edge) ─
+    // При смене сети IP меняется мгновенно — ICE grace period бессмысленен,
+    // форсируем ICE restart сразу.
+    const nav = navigator as any;
+    let lastNetType = nav.connection?.effectiveType as string | undefined;
+    const onNetChange = () => {
+      const newType = nav.connection?.effectiveType as string | undefined;
+      if (!newType || newType === lastNetType) return;
+      lastNetType = newType;
+      if (!hasRemoteRef.current || cancelRef.current) return;
+
+      // Адаптивный битрейт — снижаем качество видео на слабых сетях
+      // вместо отключения видео целиком.
+      const cur = pcRef.current;
+      if (cur) {
+        const videoSender = cur.getSenders().find(s => s.track?.kind === "video");
+        if (videoSender) {
+          const params = videoSender.getParameters();
+          const enc = params.encodings?.[0];
+          if (enc) {
+            if (newType === "slow-2g" || newType === "2g") {
+              enc.maxBitrate = 80_000;    // 80 kbps — только силуэт аватара
+            } else if (newType === "3g") {
+              enc.maxBitrate = 350_000;   // 350 kbps — приемлемое качество
+            } else {
+              delete enc.maxBitrate;      // WiFi / 4G — без ограничений
+            }
+            videoSender.setParameters(params).catch(() => {});
+          }
+        }
+      }
+
+      // Смена сети = смена IP → форсируем ICE restart сразу
+      clearTimeout(iceGraceTimer);
+      clearTimeout(iceRestartTimer);
+      if (cur) doIceRestart(cur);
     };
+    nav.connection?.addEventListener("change", onNetChange);
 
-    init().catch(() => !cancelRef.current && setStatus("failed"));
+    // ── Инициализация ─────────────────────────────────────────────
+    setStatus("connecting");
 
+    sig.connect()
+      .then(() => {
+        if (cancelRef.current) return;
+        sig.send({ type: "ready" });
+        setStatus("waiting");
+      })
+      .catch(() => {
+        if (!cancelRef.current) setStatus("failed");
+      });
+
+    // ── Cleanup ───────────────────────────────────────────────────
     return () => {
       cancelRef.current = true;
+      clearTimeout(iceGraceTimer);
+      clearTimeout(iceRestartTimer);
+      clearTimeout(reconnectTimer);
+      nav.connection?.removeEventListener("change", onNetChange);
       unsubscribe();
+      unsubReconnect();
       sig.disconnect();
-      closePeer();
+      const oldPc = pcRef.current;
+      if (oldPc) {
+        oldPc.ontrack                   = null;
+        oldPc.onicecandidate            = null;
+        oldPc.oniceconnectionstatechange = null;
+        oldPc.onnegotiationneeded        = null;
+        oldPc.close();
+        pcRef.current = null;
+      }
       stopElapsed();
       setStatus("idle");
       setHasRemote(false);
       hasRemoteRef.current = false;
     };
-  }, [roomId, localStream]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [roomId, localStream, retryKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Controls ──────────────────────────────────────────────────
   const toggleMute = useCallback(() => {
     const sender = pcRef.current?.getSenders().find(s => s.track?.kind === "audio");
     if (sender?.track) {
@@ -248,15 +442,26 @@ export function useP2PCall({ roomId, localStream, onEnd }: UseP2PCallOptions) {
     cancelRef.current = true;
     sigRef.current?.disconnect();
     sigRef.current = null;
-    closePeer();
+    const pc = pcRef.current;
+    if (pc) {
+      pc.ontrack = null;
+      pc.onicecandidate = null;
+      pc.oniceconnectionstatechange = null;
+      pc.onnegotiationneeded = null;
+      pc.close();
+      pcRef.current = null;
+    }
     stopElapsed();
     setStatus("idle");
     setHasRemote(false);
     onEnd?.();
-  }, [closePeer, stopElapsed, onEnd]);
+  }, [stopElapsed, onEnd]);
+
+  // Перезапускает соединение с нуля (сбрасывает счётчик попыток)
+  const retryNow = useCallback(() => setRetryKey(k => k + 1), []);
 
   return {
     status, isMuted, isCameraOff, hasRemote, elapsed,
-    remoteVideoRef, toggleMute, toggleCamera, hangUp,
+    remoteVideoRef, toggleMute, toggleCamera, hangUp, retryNow,
   };
 }

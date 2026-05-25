@@ -24,6 +24,8 @@ services:
     image: coturn/coturn:4.6
     network_mode: host
     restart: unless-stopped
+    volumes:
+      - certbot-conf:/etc/letsencrypt:ro
     command: >
       -n
       --realm=aprosop.ru
@@ -31,12 +33,20 @@ services:
       --lt-cred-mech
       --fingerprint
       --listening-port=3478
-      --min-port=49160
-      --max-port=49200
+      --tls-listening-port=5349
+      --cert=/etc/letsencrypt/live/aprosop.ru/fullchain.pem
+      --pkey=/etc/letsencrypt/live/aprosop.ru/privkey.pem
+      --min-port=49152
+      --max-port=65535
       --log-file=stdout
-      --no-tls
-      --no-dtls
       --verbose
+      --no-loopback-peers
+      --no-multicast-peers
+      --denied-peer-ip=0.0.0.0-0.255.255.255
+      --denied-peer-ip=10.0.0.0-10.255.255.255
+      --denied-peer-ip=127.0.0.0-127.255.255.255
+      --denied-peer-ip=172.16.0.0-172.31.255.255
+      --denied-peer-ip=192.168.0.0-192.168.255.255
 
   api:
     build:

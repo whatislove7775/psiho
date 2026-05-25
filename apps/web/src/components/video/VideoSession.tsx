@@ -113,7 +113,7 @@ export function VideoSession({ roomId, role, onEnd }: VideoSessionProps) {
 
   const {
     status, isMuted, isCameraOff, hasRemote, elapsed,
-    remoteVideoRef, toggleMute, toggleCamera, hangUp,
+    remoteVideoRef, toggleMute, toggleCamera, hangUp, retryNow,
   } = useP2PCall({ roomId, localStream: maskedStream ?? null, onEnd });
 
   // ── Auto-hide controls ───────────────────────────────────────────
@@ -131,14 +131,16 @@ export function VideoSession({ roomId, role, onEnd }: VideoSessionProps) {
   const handleHangUp = () => { ambient.setEnabled(false); hangUp(); };
 
   // ── Status labels ────────────────────────────────────────────────
-  const isConnected = status === "connected";
-  const isWaiting   = status === "waiting";
-  const isFailed    = status === "failed";
+  const isConnected    = status === "connected";
+  const isWaiting      = status === "waiting";
+  const isFailed       = status === "failed";
+  const isReconnecting = status === "reconnecting";
 
   const isMaskLoading = status === "idle" && !maskedStream;
 
   const stateLabel =
-    isFailed            ? "Соединение прервано"
+    isFailed            ? "Соединение потеряно"
+    : isReconnecting    ? "Восстановление связи…"
     : isMaskLoading     ? "Подготовка камеры..."
     : status === "connecting" ? "Подключение..."
     : isWaiting && role === "client" ? "Ожидание специалиста..."
@@ -149,6 +151,7 @@ export function VideoSession({ roomId, role, onEnd }: VideoSessionProps) {
   const dotColor =
     isConnected && hasRemote ? "#31D97B"
     : isFailed               ? "#FF4D4D"
+    : isReconnecting         ? "#F59E0B"
     : isWaiting || isMaskLoading ? "#F59E0B"
     : "#4A5A72";
 
@@ -186,6 +189,26 @@ export function VideoSession({ roomId, role, onEnd }: VideoSessionProps) {
         background: "linear-gradient(180deg, rgba(10,13,24,0.72) 0%, transparent 15%, transparent 72%, rgba(10,13,24,0.88) 100%)",
       }}/>
 
+      {/* ── RECONNECTING TOAST — ICE restart без потери видео ──── */}
+      {hasRemote && isReconnecting && (
+        <div style={{
+          position: "absolute", top: 64, left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 30, whiteSpace: "nowrap",
+          background: "rgba(10,13,24,0.88)", backdropFilter: "blur(12px)",
+          border: "1px solid rgba(245,158,11,0.35)", borderRadius: 9999,
+          padding: "6px 18px",
+          display: "flex", alignItems: "center", gap: 8,
+        }}>
+          <div style={{
+            width: 7, height: 7, borderRadius: "50%",
+            background: "#F59E0B",
+            animation: "pulseDot 1s ease-in-out infinite",
+          }}/>
+          <span style={{ fontSize: 12, color: "#F59E0B" }}>Восстановление связи…</span>
+        </div>
+      )}
+
       {/* ── WAITING / CONNECTING OVERLAY ──────────────────────── */}
       {(!hasRemote) && (
         <div style={{
@@ -213,16 +236,28 @@ export function VideoSession({ roomId, role, onEnd }: VideoSessionProps) {
           )}
 
           {isFailed && (
-            <button
-              onClick={() => window.location.reload()}
-              style={{
-                padding: "8px 22px", borderRadius: "8px", cursor: "pointer",
-                background: "rgba(77,166,255,0.15)", border: "1px solid rgba(77,166,255,0.3)",
-                color: "#4DA6FF", fontSize: "13px", fontFamily: "inherit",
-              }}
-            >
-              Переподключиться
-            </button>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={retryNow}
+                style={{
+                  padding: "8px 22px", borderRadius: "8px", cursor: "pointer",
+                  background: "rgba(77,166,255,0.15)", border: "1px solid rgba(77,166,255,0.3)",
+                  color: "#4DA6FF", fontSize: "13px", fontFamily: "inherit",
+                }}
+              >
+                Попробовать снова
+              </button>
+              <button
+                onClick={onEnd}
+                style={{
+                  padding: "8px 22px", borderRadius: "8px", cursor: "pointer",
+                  background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
+                  color: "#8A9BB8", fontSize: "13px", fontFamily: "inherit",
+                }}
+              >
+                Выйти
+              </button>
+            </div>
           )}
         </div>
       )}
