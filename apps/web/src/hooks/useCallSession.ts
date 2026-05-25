@@ -89,8 +89,9 @@ export function useCallSession({ roomId, displayName, onEnd }: UseCallSessionOpt
           startWithAudioMuted:    false,
           startWithVideoMuted:    false,
           enableWelcomePage:      false,
-          prejoinPageEnabled:     false,
           disableDeepLinking:     true,
+          prejoinPageEnabled:     false,
+          disableThirdPartyRequests: true,
         },
 
         interfaceConfigOverwrite: {
@@ -107,6 +108,19 @@ export function useCallSession({ roomId, displayName, onEnd }: UseCallSessionOpt
       });
 
       apiRef.current = api;
+
+      // Grant camera/microphone to the Jitsi iframe.
+      // JitsiMeetExternalAPI creates the iframe synchronously — the allow
+      // attribute must be set before the browser evaluates permissions.
+      try {
+        const iframe = api.getIFrame?.() ?? container.querySelector("iframe");
+        if (iframe) {
+          iframe.setAttribute(
+            "allow",
+            "camera *; microphone *; display-capture *; autoplay; clipboard-write"
+          );
+        }
+      } catch { /* non-critical */ }
 
       api.addEventListener("videoConferenceJoined", () => {
         retryCount.current = 0;
@@ -177,9 +191,15 @@ export function useCallSession({ roomId, displayName, onEnd }: UseCallSessionOpt
     }
   }, [roomId, displayName, dispose, startElapsed, stopElapsed]);
 
+  // Just saves the ref — call startCall() explicitly to connect.
   const initContainer = useCallback((el: HTMLDivElement | null) => {
     containerRef.current = el;
-    if (el && !cancelRef.current) connect(el);
+  }, []);
+
+  const startCall = useCallback(() => {
+    cancelRef.current  = false;
+    retryCount.current = 0;
+    if (containerRef.current) connect(containerRef.current);
   }, [connect]);
 
   const toggleMute   = useCallback(() => apiRef.current?.executeCommand("toggleAudio"), []);
@@ -210,6 +230,6 @@ export function useCallSession({ roomId, displayName, onEnd }: UseCallSessionOpt
 
   return {
     status, isMuted, isCameraOff, hasRemote, elapsed,
-    initContainer, toggleMute, toggleCamera, hangUp, retryNow,
+    initContainer, startCall, toggleMute, toggleCamera, hangUp, retryNow,
   };
 }
