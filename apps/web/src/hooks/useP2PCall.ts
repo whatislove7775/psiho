@@ -19,13 +19,8 @@ function getIceServers(): RTCIceServer[] {
   ];
 }
 
-// ── Таймауты для ICE recovery ─────────────────────────────────────
-// Сколько ждать самовосстановления перед попыткой ICE restart.
-// Браузер сам пробует обновить STUN consent — даём ему шанс.
-const ICE_DISCONNECT_GRACE_MS = 7_000;
-
-// Сколько ждать ICE restart перед принудительным полным реконнектом.
-const ICE_RESTART_TIMEOUT_MS  = 25_000;
+const ICE_DISCONNECT_GRACE_MS = 3_000;
+const ICE_RESTART_TIMEOUT_MS  = 10_000;
 
 // Exponential backoff для полного пересборки PC.
 const RETRY_DELAYS = [2_000, 4_000, 8_000, 16_000, 30_000];
@@ -118,21 +113,14 @@ export function useP2PCall({ roomId, localStream, onEnd }: UseP2PCallOptions) {
       }
     }
 
-    // ── ICE restart (мягкое восстановление, PC не пересоздаётся) ─
     async function doIceRestart(pc: RTCPeerConnection) {
       if (cancelRef.current) return;
       offerMadeRef.current = false;
 
-      try {
-        // Современный API: браузер сам собирает новые кандидаты
-        // и триггерит onnegotiationneeded → doMakeOffer с iceRestart=true
-        pc.restartIce();
-      } catch {
-        // Fallback для старых браузеров: вручную пересоздаём offer
-        await doMakeOffer(pc, true);
-      }
+      if (typeof pc.restartIce === "function") pc.restartIce();
+      await doMakeOffer(pc, true);
 
-      // Страховочный таймер: если ICE restart не поможет — полный реконнект
+      clearTimeout(iceRestartTimer);
       iceRestartTimer = setTimeout(() => {
         const s = pc.iceConnectionState;
         if (s !== "connected" && s !== "completed") {
@@ -176,10 +164,10 @@ export function useP2PCall({ roomId, localStream, onEnd }: UseP2PCallOptions) {
       // Закрываем старый PC если есть
       if (pcRef.current) {
         const old = pcRef.current;
-        old.ontrack                   = null;
-        old.onicecandidate            = null;
+        old.ontrack                    = null;
+        old.onicecandidate             = null;
         old.oniceconnectionstatechange = null;
-        old.onnegotiationneeded        = null;
+        old.onconnectionstatechange    = null;
         old.close();
         pcRef.current = null;
       }
@@ -187,7 +175,10 @@ export function useP2PCall({ roomId, localStream, onEnd }: UseP2PCallOptions) {
       offerMadeRef.current  = false;
       pendingIceRef.current = [];
 
-      const pc = new RTCPeerConnection({ iceServers: getIceServers() });
+      const pc = new RTCPeerConnection({
+        iceServers: getIceServers(),
+        iceCandidatePoolSize: 1,
+      });
       pcRef.current = pc;
 
       stream.getTracks().forEach(t => pc.addTrack(t, stream));
@@ -215,13 +206,6 @@ export function useP2PCall({ roomId, localStream, onEnd }: UseP2PCallOptions) {
           setStatus("connected");
           startElapsed();
         }
-      };
-
-      // onnegotiationneeded — срабатывает после pc.restartIce()
-      pc.onnegotiationneeded = async () => {
-        if (cancelRef.current) return;
-        offerMadeRef.current = false;
-        await doMakeOffer(pc, true);
       };
 
       // ICE state machine
@@ -341,44 +325,30 @@ export function useP2PCall({ roomId, localStream, onEnd }: UseP2PCallOptions) {
       sig.send({ type: "ready" });
     });
 
-    // ── Детекция смены сети (NetworkInformation API, Chrome/Edge) ─
-    // При смене сети IP меняется мгновенно — ICE grace period бессмысленен,
-    // форсируем ICE restart сразу.
     const nav = navigator as any;
-    let lastNetType = nav.connection?.effectiveType as string | undefined;
     const onNetChange = () => {
-      const newType = nav.connection?.effectiveType as string | undefined;
-      if (!newType || newType === lastNetType) return;
-      lastNetType = newType;
       if (!hasRemoteRef.current || cancelRef.current) return;
-
-      // Адаптивный битрейт — снижаем качество видео на слабых сетях
-      // вместо отключения видео целиком.
       const cur = pcRef.current;
-      if (cur) {
-        const videoSender = cur.getSenders().find(s => s.track?.kind === "video");
-        if (videoSender) {
-          const params = videoSender.getParameters();
-          const enc = params.encodings?.[0];
-          if (enc) {
-            if (newType === "slow-2g" || newType === "2g") {
-              enc.maxBitrate = 80_000;    // 80 kbps — только силуэт аватара
-            } else if (newType === "3g") {
-              enc.maxBitrate = 350_000;   // 350 kbps — приемлемое качество
-            } else {
-              delete enc.maxBitrate;      // WiFi / 4G — без ограничений
-            }
-            videoSender.setParameters(params).catch(() => {});
-          }
-        }
-      }
+      if (!cur) return;
 
-      // Смена сети = смена IP → форсируем ICE restart сразу
       clearTimeout(iceGraceTimer);
       clearTimeout(iceRestartTimer);
-      if (cur) doIceRestart(cur);
+      setStatus("reconnecting");
+      doIceRestart(cur);
     };
     nav.connection?.addEventListener("change", onNetChange);
+
+    const onOnline = () => {
+      if (!hasRemoteRef.current || cancelRef.current) return;
+      const cur = pcRef.current;
+      if (!cur) return;
+      const s = cur.iceConnectionState;
+      if (s === "connected" || s === "completed") return;
+      clearTimeout(iceGraceTimer);
+      clearTimeout(iceRestartTimer);
+      doIceRestart(cur);
+    };
+    window.addEventListener("online", onOnline);
 
     // ── Инициализация ─────────────────────────────────────────────
     setStatus("connecting");
@@ -400,15 +370,16 @@ export function useP2PCall({ roomId, localStream, onEnd }: UseP2PCallOptions) {
       clearTimeout(iceRestartTimer);
       clearTimeout(reconnectTimer);
       nav.connection?.removeEventListener("change", onNetChange);
+      window.removeEventListener("online", onOnline);
       unsubscribe();
       unsubReconnect();
       sig.disconnect();
       const oldPc = pcRef.current;
       if (oldPc) {
-        oldPc.ontrack                   = null;
-        oldPc.onicecandidate            = null;
+        oldPc.ontrack                    = null;
+        oldPc.onicecandidate             = null;
         oldPc.oniceconnectionstatechange = null;
-        oldPc.onnegotiationneeded        = null;
+        oldPc.onconnectionstatechange    = null;
         oldPc.close();
         pcRef.current = null;
       }
@@ -444,10 +415,10 @@ export function useP2PCall({ roomId, localStream, onEnd }: UseP2PCallOptions) {
     sigRef.current = null;
     const pc = pcRef.current;
     if (pc) {
-      pc.ontrack = null;
-      pc.onicecandidate = null;
+      pc.ontrack                    = null;
+      pc.onicecandidate             = null;
       pc.oniceconnectionstatechange = null;
-      pc.onnegotiationneeded = null;
+      pc.onconnectionstatechange    = null;
       pc.close();
       pcRef.current = null;
     }

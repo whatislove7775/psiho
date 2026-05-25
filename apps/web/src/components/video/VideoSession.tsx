@@ -1,12 +1,10 @@
 "use client";
 
 import { useCallback, useRef, useState, useEffect } from "react";
-import { useFaceMask } from "@/hooks/useFaceMask";
-import { useP2PCall }  from "@/hooks/useP2PCall";
+import { useCallSession } from "@/hooks/useCallSession";
 import { useAmbientSound, type AmbientPreset } from "@/hooks/useAmbientSound";
 import { SessionNotepad } from "@/components/session/SessionNotepad";
 import { BreathingSync }  from "@/components/session/BreathingSync";
-import { AVATARS } from "@/lib/mediapipe/faceRenderer";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface VideoSessionProps {
@@ -61,7 +59,7 @@ function PhoneOffIcon() {
   );
 }
 
-function MaskIcon({ size = 20 }: { size?: number }) {
+function LogoIcon({ size = 20 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 40 44" fill="none">
       <defs>
@@ -79,42 +77,23 @@ function MaskIcon({ size = 20 }: { size?: number }) {
   );
 }
 
-// ─── Avatar mini-previews for the picker ─────────────────────────────────────
-const AVATAR_COLORS = [
-  { bg: "#FDDBB4", accent: "#3A7BD5" }, // 1
-  { bg: "#8C5523", accent: "#6B3A1F" }, // 2
-  { bg: "#F5C499", accent: "#2E7D32" }, // 3
-  { bg: "#FAEBD7", accent: "#5D4037" }, // 4
-  { bg: "#C07840", accent: "#8D6E63" }, // 5
-  { bg: "#FFDAB9", accent: "#1C2B3A" }, // 6
-];
-
 // ─── Component ────────────────────────────────────────────────────────────────
 export function VideoSession({ roomId, role, onEnd }: VideoSessionProps) {
-  const [avatarId,     setAvatarId]     = useState(1);
-  const [showPicker,   setShowPicker]   = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [showNotepad,  setShowNotepad]  = useState(false);
   const [showBreath,   setShowBreath]   = useState(false);
 
-  const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
-  const hideTimerRef  = useRef<ReturnType<typeof setTimeout>>();
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
-  // ── Face mask (avatar rendering + masked stream) ─────────────────
-  const { maskedStream, isReady: maskReady } = useFaceMask({
-    enabled:      true,
-    avatarId,
-    outputCanvas: canvasEl,
-  });
+  const displayName = role === "psychologist" ? "Специалист" : "Клиент";
 
-  // ── P2P call (starts only when masked stream is ready) ────────────
   const ambient = useAmbientSound(null);
 
   const {
     status, isMuted, isCameraOff, hasRemote, elapsed,
-    remoteVideoRef, toggleMute, toggleCamera, hangUp, retryNow,
-  } = useP2PCall({ roomId, localStream: maskedStream ?? null, onEnd });
+    initContainer, toggleMute, toggleCamera, hangUp, retryNow,
+  } = useCallSession({ roomId, displayName, onEnd });
 
   // ── Auto-hide controls ───────────────────────────────────────────
   const resetHide = useCallback(() => {
@@ -124,25 +103,21 @@ export function VideoSession({ roomId, role, onEnd }: VideoSessionProps) {
   }, []);
 
   useEffect(() => { resetHide(); return () => clearTimeout(hideTimerRef.current); }, [resetHide]);
-
-  // Close picker/panels when controls hide
-  useEffect(() => { if (!showControls) { setShowPicker(false); setShowSettings(false); } }, [showControls]);
+  useEffect(() => { if (!showControls) { setShowSettings(false); } }, [showControls]);
 
   const handleHangUp = () => { ambient.setEnabled(false); hangUp(); };
 
   // ── Status labels ────────────────────────────────────────────────
   const isConnected    = status === "connected";
-  const isWaiting      = status === "waiting";
+  const isWaiting      = !hasRemote && isConnected;
   const isFailed       = status === "failed";
   const isReconnecting = status === "reconnecting";
-
-  const isMaskLoading = status === "idle" && !maskedStream;
+  const isLoading      = status === "loading";
 
   const stateLabel =
     isFailed            ? "Соединение потеряно"
     : isReconnecting    ? "Восстановление связи…"
-    : isMaskLoading     ? "Подготовка камеры..."
-    : status === "connecting" ? "Подключение..."
+    : isLoading         ? "Подключение..."
     : isWaiting && role === "client" ? "Ожидание специалиста..."
     : isWaiting         ? "Ожидание клиента..."
     : hasRemote         ? "Соединение активно"
@@ -152,7 +127,7 @@ export function VideoSession({ roomId, role, onEnd }: VideoSessionProps) {
     isConnected && hasRemote ? "#31D97B"
     : isFailed               ? "#FF4D4D"
     : isReconnecting         ? "#F59E0B"
-    : isWaiting || isMaskLoading ? "#F59E0B"
+    : isWaiting || isLoading ? "#F59E0B"
     : "#4A5A72";
 
   // ─────────────────────────────────────────────────────────────────
@@ -164,23 +139,25 @@ export function VideoSession({ roomId, role, onEnd }: VideoSessionProps) {
         fontFamily: "Inter, system-ui, sans-serif",
         cursor: showControls ? "default" : "none",
       }}
-      onMouseMove={resetHide}
-      onTouchStart={resetHide}
     >
 
-      {/* ── REMOTE VIDEO (fills screen) ───────────────────────── */}
-      <video
-        ref={remoteVideoRef}
-        autoPlay
-        playsInline
+      {/* ── JITSI VIDEO (fills screen via iframe) ────────────── */}
+      <div
+        ref={initContainer}
         style={{
           position: "absolute", inset: 0,
-          width: "100%", height: "100%",
-          objectFit: "cover",
           zIndex: 1,
           background: "#0A0D18",
-          // no mirror — remote video should look natural
+          overflow: "hidden",
         }}
+      />
+
+      {/* ── Mouse/touch detection layer over Jitsi iframe ─────── */}
+      <div
+        style={{ position: "absolute", inset: 0, zIndex: 3 }}
+        onMouseMove={resetHide}
+        onTouchStart={resetHide}
+        onClick={resetHide}
       />
 
       {/* ── Subtle dark vignette gradient overlay ─────────────── */}
@@ -189,8 +166,8 @@ export function VideoSession({ roomId, role, onEnd }: VideoSessionProps) {
         background: "linear-gradient(180deg, rgba(10,13,24,0.72) 0%, transparent 15%, transparent 72%, rgba(10,13,24,0.88) 100%)",
       }}/>
 
-      {/* ── RECONNECTING TOAST — ICE restart без потери видео ──── */}
-      {hasRemote && isReconnecting && (
+      {/* ── RECONNECTING TOAST ────────────────────────────────── */}
+      {isReconnecting && (
         <div style={{
           position: "absolute", top: 64, left: "50%",
           transform: "translateX(-50%)",
@@ -209,8 +186,8 @@ export function VideoSession({ roomId, role, onEnd }: VideoSessionProps) {
         </div>
       )}
 
-      {/* ── WAITING / CONNECTING OVERLAY ──────────────────────── */}
-      {(!hasRemote) && (
+      {/* ── WAITING / CONNECTING / FAILED OVERLAY ────────────── */}
+      {(!hasRemote && (isLoading || isWaiting || isFailed)) && (
         <div style={{
           position: "absolute", inset: 0, zIndex: 5,
           display: "flex", flexDirection: "column",
@@ -225,15 +202,9 @@ export function VideoSession({ roomId, role, onEnd }: VideoSessionProps) {
               borderTopColor: "#4DA6FF",
               animation: "spin 1.1s linear infinite",
             }}/>
-          ) : <MaskIcon size={48} />}
+          ) : <LogoIcon size={48} />}
 
           <p style={{ color: "#8A9BB8", fontSize: "15px", margin: 0 }}>{stateLabel}</p>
-
-          {!maskReady && !isFailed && (
-            <p style={{ color: "#4A5A72", fontSize: "12px", margin: 0 }}>
-              Загрузка AI‑маски…
-            </p>
-          )}
 
           {isFailed && (
             <div style={{ display: "flex", gap: 10 }}>
@@ -262,43 +233,6 @@ export function VideoSession({ roomId, role, onEnd }: VideoSessionProps) {
         </div>
       )}
 
-      {/* ── LOCAL PREVIEW (canvas = avatar face) ──────────────── */}
-      <div style={{
-        position: "absolute", bottom: 90, right: 16, zIndex: 10,
-        width: 120, height: 90, borderRadius: 12, overflow: "hidden",
-        border: "2px solid rgba(255,255,255,0.12)",
-        boxShadow: "0 4px 24px rgba(0,0,0,0.5)",
-        background: "#0A0D18",
-        transition: "opacity 0.3s ease",
-        opacity: showControls ? 1 : 0.3,
-      }}>
-        <canvas
-          ref={setCanvasEl}
-          style={{
-            width: "100%", height: "100%",
-            objectFit: "cover",
-            transform: "scaleX(-1)",
-          }}
-        />
-        {isCameraOff && (
-          <div style={{
-            position: "absolute", inset: 0,
-            background: "rgba(10,13,24,0.92)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <CamIcon off />
-          </div>
-        )}
-        {/* "Your avatar" label */}
-        <div style={{
-          position: "absolute", bottom: 4, left: 0, right: 0,
-          textAlign: "center", fontSize: "10px", color: "rgba(255,255,255,0.45)",
-          letterSpacing: "0.04em",
-        }}>
-          Вы (аватар)
-        </div>
-      </div>
-
       {/* ── TOP BAR ──────────────────────────────────────────────── */}
       <div style={{
         position: "absolute", top: 0, left: 0, right: 0, zIndex: 20,
@@ -311,7 +245,7 @@ export function VideoSession({ roomId, role, onEnd }: VideoSessionProps) {
         {/* Logo + status */}
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <MaskIcon size={16} />
+            <LogoIcon size={16} />
             <span style={{ fontSize: "14px", fontWeight: 600, color: "#F0F4FF", letterSpacing: "-0.01em" }}>
               aprosop
             </span>
@@ -340,7 +274,7 @@ export function VideoSession({ roomId, role, onEnd }: VideoSessionProps) {
           </div>
         </div>
 
-        {/* P2P privacy badge */}
+        {/* Encrypted badge */}
         <div style={{
           display: "flex", alignItems: "center", gap: 6,
           background: "rgba(10,13,24,0.7)", backdropFilter: "blur(16px)",
@@ -349,7 +283,7 @@ export function VideoSession({ roomId, role, onEnd }: VideoSessionProps) {
         }}>
           <span style={{ fontSize: 11, color: "#31D97B" }}>●</span>
           <span style={{ fontSize: 11, color: "#4A5A72", fontFamily: "JetBrains Mono, monospace", letterSpacing: "0.05em" }}>
-            P2P · AI‑MASK · ENCRYPTED
+            ENCRYPTED
           </span>
         </div>
       </div>
@@ -474,7 +408,7 @@ export function VideoSession({ roomId, role, onEnd }: VideoSessionProps) {
                       border: `1px solid ${ambient.preset === p ? "rgba(77,166,255,0.4)" : "rgba(255,255,255,0.06)"}`,
                       color: ambient.preset === p ? "#4DA6FF" : "#8A9BB8", fontFamily: "inherit",
                     }}>
-                    {p === "rain" ? "🌧 Дождь" : p === "forest" ? "🌲 Лес" : "🌊 Океан"}
+                    {p === "rain" ? "Дождь" : p === "forest" ? "Лес" : "Океан"}
                   </button>
                 ))}
               </div>
@@ -486,65 +420,6 @@ export function VideoSession({ roomId, role, onEnd }: VideoSessionProps) {
           )}
         </div>
       )}
-
-      {/* ── AVATAR PICKER PANEL (slides up from bottom) ───────────── */}
-      <div style={{
-        position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 25,
-        transform: showPicker ? "translateY(0)" : "translateY(100%)",
-        transition: "transform 0.32s cubic-bezier(0.32,0.72,0,1)",
-      }}>
-        <div style={{
-          background: "rgba(14,18,32,0.97)", backdropFilter: "blur(24px)",
-          borderTop: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: "20px 20px 0 0",
-          padding: "16px 20px 32px",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: "#F0F4FF" }}>Выберите аватар</span>
-            <button
-              onClick={() => setShowPicker(false)}
-              style={{ background: "none", border: "none", color: "#8A9BB8", fontSize: 18, cursor: "pointer", padding: "2px 6px", lineHeight: 1 }}
-            >✕</button>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10 }}>
-            {AVATARS.map((av, i) => (
-              <button
-                key={av.id}
-                onClick={() => { setAvatarId(av.id); setShowPicker(false); }}
-                style={{
-                  border: `2px solid ${avatarId === av.id ? "#4DA6FF" : "rgba(255,255,255,0.08)"}`,
-                  borderRadius: 12, cursor: "pointer", padding: 8,
-                  background: avatarId === av.id
-                    ? "rgba(77,166,255,0.1)"
-                    : "rgba(255,255,255,0.04)",
-                  display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-                  transition: "all 0.18s ease",
-                }}
-              >
-                {/* Simple color swatch representing the avatar */}
-                <div style={{
-                  width: 40, height: 40, borderRadius: "50%",
-                  background: AVATAR_COLORS[i].bg,
-                  border: `3px solid ${AVATAR_COLORS[i].accent}`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 16,
-                }}>
-                  {av.hairStyle === "bald" ? "👤"
-                    : av.hasGlasses ? "🤓"
-                    : av.hasBeard ? "🧔"
-                    : ["👦","👧","👩","🧑","🧔","👩"][i]}
-                </div>
-                <span style={{ fontSize: 10, color: avatarId === av.id ? "#4DA6FF" : "#8A9BB8" }}>
-                  {av.name}
-                </span>
-              </button>
-            ))}
-          </div>
-          <p style={{ fontSize: 11, color: "#4A5A72", marginTop: 12, marginBottom: 0, textAlign: "center" }}>
-            Специалист увидит аватар, а не ваше лицо
-          </p>
-        </div>
-      </div>
 
       {/* ── BOTTOM CONTROLS ───────────────────────────────────────── */}
       <div style={{
@@ -573,23 +448,6 @@ export function VideoSession({ roomId, role, onEnd }: VideoSessionProps) {
           title={isCameraOff ? "Включить камеру" : "Выключить камеру"}
         >
           <CamIcon off={isCameraOff} />
-        </CtrlBtn>
-
-        {/* Avatar / Mask picker */}
-        <CtrlBtn
-          active={showPicker}
-          activeColor="#4DA6FF"
-          onClick={() => setShowPicker(s => !s)}
-          title="Сменить аватар"
-        >
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-            <MaskIcon size={18} />
-            <div style={{
-              width: 8, height: 8, borderRadius: "50%",
-              background: AVATAR_COLORS[avatarId - 1]?.bg ?? "#4DA6FF",
-              border: "1.5px solid rgba(255,255,255,0.3)",
-            }}/>
-          </div>
         </CtrlBtn>
 
         {/* Hang up (red, slightly larger) */}

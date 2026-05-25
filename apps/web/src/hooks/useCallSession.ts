@@ -12,7 +12,6 @@ interface UseCallSessionOptions {
   onEnd?:      () => void;
 }
 
-// Singleton script loader — loads external_api.js once per page
 let _scriptPromise: Promise<void> | null = null;
 function loadJitsiScript(): Promise<void> {
   if (typeof (window as any).JitsiMeetExternalAPI !== "undefined") return Promise.resolve();
@@ -33,24 +32,39 @@ export function useCallSession({ roomId, displayName, onEnd }: UseCallSessionOpt
   const [isMuted,     setIsMuted]     = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [hasRemote,   setHasRemote]   = useState(false);
+  const [elapsed,     setElapsed]     = useState(0);
 
-  const apiRef        = useRef<any>(null);
-  const containerRef  = useRef<HTMLDivElement | null>(null);
-  const cancelRef     = useRef(false);
-  const retryCount    = useRef(0);
-  const retryTimer    = useRef<ReturnType<typeof setTimeout>>();
+  const apiRef           = useRef<any>(null);
+  const containerRef     = useRef<HTMLDivElement | null>(null);
+  const cancelRef        = useRef(false);
+  const retryCount       = useRef(0);
+  const retryTimer       = useRef<ReturnType<typeof setTimeout>>();
   const participantCount = useRef(0);
+  const elapsedTimer     = useRef<ReturnType<typeof setInterval>>();
+  const onEndRef         = useRef(onEnd);
 
-  // Dispose Jitsi instance and clear retry timer
+  useEffect(() => { onEndRef.current = onEnd; });
+
+  const stopElapsed = useCallback(() => {
+    clearInterval(elapsedTimer.current);
+    setElapsed(0);
+  }, []);
+
+  const startElapsed = useCallback(() => {
+    stopElapsed();
+    elapsedTimer.current = setInterval(() => setElapsed(e => e + 1), 1000);
+  }, [stopElapsed]);
+
   const dispose = useCallback(() => {
     clearTimeout(retryTimer.current);
+    stopElapsed();
     if (apiRef.current) {
+      if (apiRef.current._netCleanup) apiRef.current._netCleanup();
       try { apiRef.current.dispose(); } catch { /* ignore */ }
       apiRef.current = null;
     }
-  }, []);
+  }, [stopElapsed]);
 
-  // Core connect logic — called initially and on reconnect
   const connect = useCallback(async (container: HTMLDivElement) => {
     if (cancelRef.current) return;
     setStatus("loading");
@@ -61,7 +75,6 @@ export function useCallSession({ roomId, displayName, onEnd }: UseCallSessionOpt
 
       dispose();
 
-      // Room name is deterministic from our session ID
       const roomName = `aprosop-${roomId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 24)}`;
 
       const api = new (window as any).JitsiMeetExternalAPI(JITSI_DOMAIN, {
@@ -77,18 +90,27 @@ export function useCallSession({ roomId, displayName, onEnd }: UseCallSessionOpt
           enableWelcomePage:      false,
           prejoinPageEnabled:     false,
           disableDeepLinking:     true,
+          p2p:                    { enabled: false },
+          enableLayerSuspension:  true,
+          channelLastN:           2,
+          resolution:             720,
+          constraints: {
+            video: { height: { ideal: 720, max: 720, min: 180 } },
+          },
         },
 
         interfaceConfigOverwrite: {
-          TOOLBAR_BUTTONS:                [],   // hide Jitsi's toolbar — we use our own
-          HIDE_INVITE_MORE_HEADER:        true,
-          SHOW_JITSI_WATERMARK:           false,
-          SHOW_WATERMARK_FOR_GUESTS:      false,
-          SHOW_CHROME_EXTENSION_BANNER:   false,
-          MOBILE_APP_PROMO:               false,
-          DISABLE_JOIN_LEAVE_NOTIFICATIONS: true,
-          CLOSE_PAGE_GUEST_HINT:          false,
-          DEFAULT_REMOTE_DISPLAY_NAME:    "Участник",
+          TOOLBAR_BUTTONS:                    [],
+          HIDE_INVITE_MORE_HEADER:            true,
+          SHOW_JITSI_WATERMARK:               false,
+          SHOW_WATERMARK_FOR_GUESTS:          false,
+          SHOW_CHROME_EXTENSION_BANNER:       false,
+          MOBILE_APP_PROMO:                   false,
+          DISABLE_JOIN_LEAVE_NOTIFICATIONS:   true,
+          CLOSE_PAGE_GUEST_HINT:              false,
+          DEFAULT_REMOTE_DISPLAY_NAME:        "Участник",
+          DISABLE_VIDEO_BACKGROUND:           true,
+          DISABLE_FOCUS_INDICATOR:            true,
         },
       });
 
@@ -103,15 +125,20 @@ export function useCallSession({ roomId, displayName, onEnd }: UseCallSessionOpt
 
       api.addEventListener("participantJoined", () => {
         participantCount.current += 1;
-        setHasRemote(participantCount.current > 0);
+        setHasRemote(true);
+        startElapsed();
       });
+
       api.addEventListener("participantLeft", () => {
         participantCount.current = Math.max(0, participantCount.current - 1);
-        setHasRemote(participantCount.current > 0);
+        if (participantCount.current === 0) {
+          setHasRemote(false);
+          stopElapsed();
+        }
       });
 
       api.addEventListener("readyToClose", () => {
-        if (!cancelRef.current) onEnd?.();
+        if (!cancelRef.current) onEndRef.current?.();
       });
 
       api.addEventListener("audioMuteStatusChanged", ({ muted }: { muted: boolean }) => {
@@ -122,10 +149,9 @@ export function useCallSession({ roomId, displayName, onEnd }: UseCallSessionOpt
         setIsCameraOff(muted);
       });
 
-      // Reconnect with exponential backoff on connection failure
       api.addEventListener("connectionFailed", () => {
         if (cancelRef.current) return;
-        const delay = Math.min(1000 * 2 ** retryCount.current, 30_000); // max 30s
+        const delay = Math.min(1000 * 2 ** retryCount.current, 30_000);
         retryCount.current += 1;
         setStatus("reconnecting");
         dispose();
@@ -136,57 +162,43 @@ export function useCallSession({ roomId, displayName, onEnd }: UseCallSessionOpt
         }, delay);
       });
 
-      // Network quality monitoring — Jitsi handles adaptive bitrate internally,
-      // but we can trigger manual quality hints on slow connections
-      const nav = navigator as any;
-      if (nav.connection) {
-        const onNetworkChange = () => {
-          if (!apiRef.current) return;
-          const type = nav.connection.effectiveType;
-          // On very slow connections, disable video to keep audio stable
-          if (type === "2g" || type === "slow-2g") {
-            apiRef.current.executeCommand("toggleVideo");
-          }
-        };
-        nav.connection.addEventListener("change", onNetworkChange);
-        // Store cleanup fn on the api object for later removal
-        (api as any)._netCleanup = () =>
-          nav.connection.removeEventListener("change", onNetworkChange);
-      }
-
-    } catch (err: any) {
+    } catch {
       if (!cancelRef.current) setStatus("failed");
     }
-  }, [roomId, displayName, onEnd, dispose]);
+  }, [roomId, displayName, dispose, startElapsed, stopElapsed]);
 
-  // Initialize: attach container ref and start connection
   const initContainer = useCallback((el: HTMLDivElement | null) => {
     containerRef.current = el;
     if (el && !cancelRef.current) connect(el);
   }, [connect]);
 
-  // Controls — delegate to Jitsi API commands
   const toggleMute   = useCallback(() => apiRef.current?.executeCommand("toggleAudio"),    []);
   const toggleCamera = useCallback(() => apiRef.current?.executeCommand("toggleVideo"),    []);
   const hangUp       = useCallback(() => {
     cancelRef.current = true;
-    // Cleanup network listener if installed
-    if (apiRef.current?._netCleanup) apiRef.current._netCleanup();
     dispose();
-    onEnd?.();
-  }, [dispose, onEnd]);
+    onEndRef.current?.();
+  }, [dispose]);
 
-  // Component unmount cleanup
+  const retryNow = useCallback(() => {
+    cancelRef.current = false;
+    retryCount.current = 0;
+    dispose();
+    if (containerRef.current) connect(containerRef.current);
+  }, [connect, dispose]);
+
   useEffect(() => {
     cancelRef.current  = false;
     retryCount.current = 0;
     participantCount.current = 0;
     return () => {
       cancelRef.current = true;
-      if (apiRef.current?._netCleanup) apiRef.current._netCleanup();
       dispose();
     };
   }, [dispose]);
 
-  return { status, isMuted, isCameraOff, hasRemote, initContainer, toggleMute, toggleCamera, hangUp };
+  return {
+    status, isMuted, isCameraOff, hasRemote, elapsed,
+    initContainer, toggleMute, toggleCamera, hangUp, retryNow,
+  };
 }
