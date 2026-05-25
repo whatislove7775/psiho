@@ -139,6 +139,8 @@ export function VideoSession({ roomId, role, onEnd }: VideoSessionProps) {
         fontFamily: "Inter, system-ui, sans-serif",
         cursor: showControls ? "default" : "none",
       }}
+      onMouseMove={resetHide}
+      onTouchStart={resetHide}
     >
 
       {/* ── JITSI VIDEO (fills screen via iframe) ────────────── */}
@@ -152,12 +154,14 @@ export function VideoSession({ roomId, role, onEnd }: VideoSessionProps) {
         }}
       />
 
-      {/* ── Mouse/touch detection layer over Jitsi iframe ─────── */}
+      {/* ── Mouse detection layer — active only when controls hidden ── */}
       <div
-        style={{ position: "absolute", inset: 0, zIndex: 3 }}
+        style={{
+          position: "absolute", inset: 0, zIndex: 3,
+          pointerEvents: showControls ? "none" : "auto",
+        }}
         onMouseMove={resetHide}
         onTouchStart={resetHide}
-        onClick={resetHide}
       />
 
       {/* ── Subtle dark vignette gradient overlay ─────────────── */}

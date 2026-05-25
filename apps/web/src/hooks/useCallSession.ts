@@ -58,10 +58,11 @@ export function useCallSession({ roomId, displayName, onEnd }: UseCallSessionOpt
   const dispose = useCallback(() => {
     clearTimeout(retryTimer.current);
     stopElapsed();
-    if (apiRef.current) {
-      if (apiRef.current._netCleanup) apiRef.current._netCleanup();
-      try { apiRef.current.dispose(); } catch { /* ignore */ }
-      apiRef.current = null;
+    const api = apiRef.current;
+    apiRef.current = null;
+    if (api) {
+      if (api._netCleanup) api._netCleanup();
+      try { api.dispose(); } catch { /* ignore */ }
     }
   }, [stopElapsed]);
 
@@ -90,27 +91,18 @@ export function useCallSession({ roomId, displayName, onEnd }: UseCallSessionOpt
           enableWelcomePage:      false,
           prejoinPageEnabled:     false,
           disableDeepLinking:     true,
-          p2p:                    { enabled: false },
-          enableLayerSuspension:  true,
-          channelLastN:           2,
-          resolution:             720,
-          constraints: {
-            video: { height: { ideal: 720, max: 720, min: 180 } },
-          },
         },
 
         interfaceConfigOverwrite: {
-          TOOLBAR_BUTTONS:                    [],
-          HIDE_INVITE_MORE_HEADER:            true,
-          SHOW_JITSI_WATERMARK:               false,
-          SHOW_WATERMARK_FOR_GUESTS:          false,
-          SHOW_CHROME_EXTENSION_BANNER:       false,
-          MOBILE_APP_PROMO:                   false,
-          DISABLE_JOIN_LEAVE_NOTIFICATIONS:   true,
-          CLOSE_PAGE_GUEST_HINT:              false,
-          DEFAULT_REMOTE_DISPLAY_NAME:        "Участник",
-          DISABLE_VIDEO_BACKGROUND:           true,
-          DISABLE_FOCUS_INDICATOR:            true,
+          TOOLBAR_BUTTONS:                [],
+          HIDE_INVITE_MORE_HEADER:        true,
+          SHOW_JITSI_WATERMARK:           false,
+          SHOW_WATERMARK_FOR_GUESTS:      false,
+          SHOW_CHROME_EXTENSION_BANNER:   false,
+          MOBILE_APP_PROMO:               false,
+          DISABLE_JOIN_LEAVE_NOTIFICATIONS: true,
+          CLOSE_PAGE_GUEST_HINT:          false,
+          DEFAULT_REMOTE_DISPLAY_NAME:    "Участник",
         },
       });
 
@@ -125,20 +117,20 @@ export function useCallSession({ roomId, displayName, onEnd }: UseCallSessionOpt
 
       api.addEventListener("participantJoined", () => {
         participantCount.current += 1;
-        setHasRemote(true);
-        startElapsed();
+        setHasRemote(participantCount.current > 0);
+        if (participantCount.current === 1) startElapsed();
       });
 
       api.addEventListener("participantLeft", () => {
         participantCount.current = Math.max(0, participantCount.current - 1);
-        if (participantCount.current === 0) {
-          setHasRemote(false);
-          stopElapsed();
-        }
+        setHasRemote(participantCount.current > 0);
+        if (participantCount.current === 0) stopElapsed();
       });
 
       api.addEventListener("readyToClose", () => {
-        if (!cancelRef.current) onEndRef.current?.();
+        if (!cancelRef.current && apiRef.current === api) {
+          onEndRef.current?.();
+        }
       });
 
       api.addEventListener("audioMuteStatusChanged", ({ muted }: { muted: boolean }) => {
@@ -151,6 +143,10 @@ export function useCallSession({ roomId, displayName, onEnd }: UseCallSessionOpt
 
       api.addEventListener("connectionFailed", () => {
         if (cancelRef.current) return;
+        if (retryCount.current >= 5) {
+          setStatus("failed");
+          return;
+        }
         const delay = Math.min(1000 * 2 ** retryCount.current, 30_000);
         retryCount.current += 1;
         setStatus("reconnecting");
@@ -162,6 +158,20 @@ export function useCallSession({ roomId, displayName, onEnd }: UseCallSessionOpt
         }, delay);
       });
 
+      const nav = navigator as any;
+      if (nav.connection) {
+        const onNetworkChange = () => {
+          if (!apiRef.current) return;
+          const type = nav.connection.effectiveType;
+          if (type === "2g" || type === "slow-2g") {
+            apiRef.current.executeCommand("toggleVideo");
+          }
+        };
+        nav.connection.addEventListener("change", onNetworkChange);
+        (api as any)._netCleanup = () =>
+          nav.connection.removeEventListener("change", onNetworkChange);
+      }
+
     } catch {
       if (!cancelRef.current) setStatus("failed");
     }
@@ -172,24 +182,25 @@ export function useCallSession({ roomId, displayName, onEnd }: UseCallSessionOpt
     if (el && !cancelRef.current) connect(el);
   }, [connect]);
 
-  const toggleMute   = useCallback(() => apiRef.current?.executeCommand("toggleAudio"),    []);
-  const toggleCamera = useCallback(() => apiRef.current?.executeCommand("toggleVideo"),    []);
-  const hangUp       = useCallback(() => {
+  const toggleMute   = useCallback(() => apiRef.current?.executeCommand("toggleAudio"), []);
+  const toggleCamera = useCallback(() => apiRef.current?.executeCommand("toggleVideo"), []);
+
+  const hangUp = useCallback(() => {
     cancelRef.current = true;
     dispose();
     onEndRef.current?.();
   }, [dispose]);
 
   const retryNow = useCallback(() => {
-    cancelRef.current = false;
+    cancelRef.current  = false;
     retryCount.current = 0;
     dispose();
     if (containerRef.current) connect(containerRef.current);
   }, [connect, dispose]);
 
   useEffect(() => {
-    cancelRef.current  = false;
-    retryCount.current = 0;
+    cancelRef.current        = false;
+    retryCount.current       = 0;
     participantCount.current = 0;
     return () => {
       cancelRef.current = true;
