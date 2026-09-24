@@ -26,14 +26,18 @@ export class SignalingClient {
   private isClosed          = false;   // set by disconnect() — stops auto-reconnect
   private readonly maxReconnects = 7;
 
-  constructor(private readonly roomId: string) {}
+  constructor(private readonly roomId: string, private readonly token = "") {}
 
   private buildUrl(): string {
     // Always derive from window.location at runtime — never from a build-time env var
     // that gets baked as ws://localhost and breaks for every user's browser.
-    if (typeof window === "undefined") return `ws://localhost/ws/signaling/${this.roomId}/`;
+    const q = this.token ? `?token=${encodeURIComponent(this.token)}` : "";
+    if (typeof window === "undefined") return `ws://localhost/ws/signaling/${this.roomId}/${q}`;
+    // Local development only: Next's dev server can't proxy WebSocket upgrades.
+    const dev = process.env.NEXT_PUBLIC_WS_DEV_URL;
+    if (dev) return `${dev}/ws/signaling/${this.roomId}/${q}`;
     const proto = window.location.protocol === "https:" ? "wss" : "ws";
-    return `${proto}://${window.location.host}/ws/signaling/${this.roomId}/`;
+    return `${proto}://${window.location.host}/ws/signaling/${this.roomId}/${q}`;
   }
 
   connect(): Promise<void> {

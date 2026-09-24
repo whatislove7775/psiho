@@ -1,24 +1,11 @@
 User-agent: *
 Allow: /
 Disallow: /api/
-Disallow: /dashboard
-Disallow: /sessions
-Disallow: /(platform)/
-
-# Allow AI crawlers for AEO
-User-agent: GPTBot
-Allow: /
-Disallow: /dashboard
-Disallow: /sessions
-
-User-agent: Claude-Web
-Allow: /
-Disallow: /dashboard
-
-User-agent: PerplexityBot
-Allow: /
-
-User-agent: Bytespider
-Allow: /
+Disallow: /app
+Disallow: /pro
+Disallow: /admin
+Disallow: /room
+Disallow: /session/
+Disallow: /recover
 
 Sitemap: https://aprosop.ru/sitemap.xml

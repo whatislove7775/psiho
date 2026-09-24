@@ -1,0 +1,467 @@
+/* Auth pages: /start, /login, /recover, /join. Tokens only. */
+
+.shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 72px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 24px 24px 64px;
+}
+
+.column {
+  width: min(480px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.columnWide {
+  width: min(720px, 100%);
+}
+
+.card {
+  background: var(--c-panel);
+  border-radius: var(--r-panel);
+  padding: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.title {
+  font-size: var(--t-32);
+  font-weight: 680;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.sub {
+  color: var(--c-muted);
+  font-size: var(--t-15);
+  line-height: 1.55;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.formError {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: var(--r-control);
+  background: var(--c-danger-soft);
+  color: var(--c-danger);
+  font-size: var(--t-13);
+  line-height: 1.45;
+}
+
+.formError svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 20px;
+  color: var(--c-muted);
+  font-size: var(--t-13);
+  padding: 4px 8px;
+}
+
+.links a {
+  color: var(--c-text);
+  font-weight: 550;
+  border-radius: 6px;
+}
+
+.links a:hover {
+  color: var(--c-primary);
+}
+
+.inlineLink {
+  color: var(--c-primary);
+  font-weight: 550;
+  border-radius: 6px;
+}
+
+.note {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 16px 18px;
+  border-radius: var(--r-card);
+  background: var(--c-raised);
+  font-size: var(--t-13);
+  line-height: 1.55;
+  color: var(--c-muted);
+}
+
+.note strong {
+  display: block;
+  color: var(--c-text);
+  font-size: var(--t-15);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.noteIcon {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--c-primary-soft);
+  color: var(--c-primary);
+}
+
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--c-muted);
+  font-size: var(--t-13);
+  line-height: 1.5;
+}
+
+.steps li {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+}
+
+.steps b {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--c-raised);
+  color: var(--c-text);
+  font-size: var(--t-12);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Password field ─────────────────────────────────────────────────────── */
+
+.pwWrap {
+  position: relative;
+}
+
+.pwInput {
+  padding-right: 56px;
+}
+
+.pwToggle {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: none;
+  color: var(--c-muted);
+}
+
+.pwToggle:hover {
+  color: var(--c-text);
+  background: var(--c-raised-2);
+}
+
+/* ── Recovery key reveal ────────────────────────────────────────────────── */
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border-radius: var(--r-card);
+  background: var(--c-raised);
+}
+
+.identity small {
+  display: block;
+  color: var(--c-muted);
+  font-size: var(--t-12);
+}
+
+.alias {
+  font-size: var(--t-20);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.keyBox {
+  border-radius: var(--r-card);
+  padding: 22px 20px 18px;
+  background: var(--g-accent);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.keyLabel {
+  font-size: var(--t-13);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.key {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  justify-content: start;
+  gap: 4px 18px;
+  font-size: 28px;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings:
+    "tnum" on,
+    "lnum" on;
+  line-height: 1.2;
+  user-select: all;
+}
+
+.keyActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  font-size: var(--t-15);
+  line-height: 1.4;
+  padding: 4px 0;
+}
+
+.check input {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  border-radius: 7px;
+  border: 1.5px solid var(--c-line-strong);
+  background: var(--c-raised);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition:
+    background var(--dur),
+    border-color var(--dur);
+}
+
+.check input::after {
+  content: "";
+  width: 10px;
+  height: 6px;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: translateY(-1px) rotate(-45deg) scale(0);
+  transition: transform var(--dur) var(--ease);
+}
+
+.check input:checked {
+  background: var(--c-primary);
+  border-color: var(--c-primary);
+}
+
+.check input:checked::after {
+  transform: translateY(-1px) rotate(-45deg) scale(1);
+}
+
+.check input:focus-visible {
+  box-shadow: var(--focus);
+  border-radius: 7px;
+}
+
+/* ── Chips input ────────────────────────────────────────────────────────── */
+
+.chipsBox {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-height: 48px;
+  padding: 7px 8px;
+  border-radius: var(--r-control);
+  border: 1px solid transparent;
+  background: var(--c-raised);
+  cursor: text;
+}
+
+.chipsBox:focus-within {
+  border-color: var(--c-primary);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 32px;
+  padding: 0 4px 0 12px;
+  border-radius: var(--r-pill);
+  background: var(--c-primary-soft);
+  color: var(--c-primary);
+  font-size: var(--t-13);
+  font-weight: 600;
+}
+
+.chip button {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: none;
+  color: inherit;
+}
+
+.chip button:hover {
+  background: rgba(58, 109, 240, 0.2);
+}
+
+.chipsInput {
+  flex: 1 1 120px;
+  min-width: 120px;
+  height: 32px;
+  border: 0;
+  background: none;
+  padding: 0 8px;
+  font-size: var(--t-15);
+  outline: none;
+}
+
+.chipsInput:focus-visible {
+  box-shadow: none;
+}
+
+.chipsInput::placeholder {
+  color: var(--c-faint);
+}
+
+.suggest {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.suggestBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-pill);
+  background: none;
+  color: var(--c-muted);
+  font-size: var(--t-13);
+  font-weight: 550;
+  transition:
+    background var(--dur),
+    color var(--dur),
+    border-color var(--dur);
+}
+
+.suggestBtn:hover {
+  color: var(--c-text);
+  background: var(--c-raised);
+}
+
+.suggestBtn:focus-visible {
+  border-radius: var(--r-pill);
+}
+
+.sectionLabel {
+  font-size: var(--t-17);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  padding-top: 8px;
+}
+
+.divider {
+  height: 1px;
+  background: var(--c-line);
+  border: 0;
+  margin: 4px 0;
+}
+
+@media (max-width: 640px) {
+  .top {
+    height: 64px;
+    padding: 0 16px;
+  }
+  .main {
+    padding: 8px 16px 48px;
+  }
+  .card {
+    padding: 24px 20px;
+    gap: 20px;
+  }
+  .title {
+    font-size: var(--t-24);
+  }
+  .grid2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .key {
+    font-size: 22px;
+    gap: 4px 10px;
+  }
+  .keyActions > * {
+    flex: 1 1 auto;
+  }
+}

@@ -35,6 +35,9 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_TURN_PASSWORD=$NEXT_PUBLIC_TURN_PASSWORD \
     NEXT_TELEMETRY_DISABLED=1
 
+# Serve MediaPipe's WASM from our own origin (copied from node_modules)
+RUN node scripts/copy-mediapipe.mjs
+
 RUN --mount=type=cache,target=/app/.next/cache \
     npm run build
 

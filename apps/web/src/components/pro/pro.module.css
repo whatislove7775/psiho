@@ -1,0 +1,320 @@
+/* Shared pieces of the specialist and admin cabinets. Tokens only. */
+
+/* ── Accent card (right rail) ─────────────────────────────────────── */
+.accent {
+  background: var(--g-accent);
+  color: #fff;
+  border-radius: var(--r-card);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow: hidden;
+  position: relative;
+}
+.accentKicker {
+  font-size: var(--t-13);
+  color: rgba(255, 255, 255, 0.78);
+  font-weight: 500;
+}
+.accentTitle {
+  font-size: var(--t-24);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.accentBig {
+  font-size: var(--t-44);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.accentText {
+  font-size: var(--t-13);
+  color: rgba(255, 255, 255, 0.82);
+  line-height: 1.45;
+}
+.accentList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.accentRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.13);
+  font-size: var(--t-13);
+}
+.accentRow > span:first-child {
+  color: rgba(255, 255, 255, 0.8);
+}
+.accentRow > span:last-child {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.accentPerson {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.accentPerson strong {
+  display: block;
+  font-size: var(--t-17);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  word-break: break-word;
+}
+.accentPerson span {
+  font-size: var(--t-13);
+  color: rgba(255, 255, 255, 0.8);
+}
+.accentAvatar {
+  border-radius: 50%;
+  padding: 3px;
+  background: rgba(255, 255, 255, 0.22);
+  flex: none;
+}
+.accentLink {
+  color: #fff;
+  font-size: var(--t-13);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(255, 255, 255, 0.45);
+  align-self: center;
+}
+.accent :focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* ── Session rows ─────────────────────────────────────────────────── */
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px 12px 12px;
+  border-radius: 18px;
+  background: var(--c-raised);
+}
+.rowMain {
+  min-width: 0;
+}
+.rowTitle {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rowMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  color: var(--c-muted);
+  font-size: var(--t-13);
+  font-variant-numeric: tabular-nums;
+}
+.rowSide {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.amount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  min-width: 72px;
+  text-align: right;
+}
+.actions {
+  display: flex;
+  gap: 6px;
+}
+@media (max-width: 640px) {
+  .row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .rowSide {
+    grid-column: 1 / -1;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+  .amount {
+    text-align: left;
+    min-width: 0;
+  }
+}
+
+/* ── Compact list (bottom cards) ──────────────────────────────────── */
+.mini {
+  display: flex;
+  flex-direction: column;
+}
+.miniRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--c-line);
+}
+.miniRow:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.miniTime {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+.miniSub {
+  color: var(--c-muted);
+  font-size: var(--t-13);
+}
+
+/* ── Switch ───────────────────────────────────────────────────────── */
+.switch {
+  position: relative;
+  width: 46px;
+  height: 28px;
+  flex: none;
+  border-radius: var(--r-pill);
+  border: 0;
+  padding: 0;
+  background: var(--c-raised-2);
+  transition: background var(--dur) var(--ease);
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform var(--dur) var(--ease);
+}
+.switch[aria-checked="true"] {
+  background: var(--c-primary);
+}
+.switch[aria-checked="true"]::after {
+  transform: translateX(18px);
+}
+.switch:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+
+/* ── Chips ────────────────────────────────────────────────────────── */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 8px 0 14px;
+  border-radius: var(--r-pill);
+  background: var(--c-primary-soft);
+  color: var(--c-text);
+  font-size: var(--t-13);
+  font-weight: 550;
+  border: 0;
+}
+.chip button {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--c-muted);
+}
+.chip button:hover {
+  background: var(--c-raised-2);
+  color: var(--c-text);
+}
+.suggest {
+  height: 34px;
+  padding: 0 14px 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: var(--r-pill);
+  border: 1px dashed var(--c-line-strong);
+  background: transparent;
+  color: var(--c-muted);
+  font-size: var(--t-13);
+  font-weight: 500;
+  transition: background var(--dur), color var(--dur);
+}
+.suggest:hover {
+  background: var(--c-raised);
+  color: var(--c-text);
+}
+.chipInput {
+  display: flex;
+  gap: 8px;
+}
+.chipInput > input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Misc ─────────────────────────────────────────────────────────── */
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-4);
+}
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--s-3);
+}
+@media (max-width: 1320px) {
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 900px) {
+  .grid2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.muted {
+  color: var(--c-muted);
+}
+.errorBox {
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: var(--c-danger-soft);
+  color: var(--c-text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}

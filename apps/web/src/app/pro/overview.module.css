@@ -1,0 +1,165 @@
+.progress {
+  font-size: var(--t-24);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--c-warning);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--c-raised);
+  height: 100%;
+  transition: background var(--dur) var(--ease);
+}
+a.step:hover {
+  background: var(--c-raised-2);
+}
+.tick {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border-radius: 50%;
+  border: 2px solid var(--c-line-strong);
+  display: grid;
+  place-items: center;
+  color: var(--c-page);
+}
+.tick[data-done] {
+  border-color: var(--c-success);
+  background: var(--c-success);
+}
+.stepText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.stepLabel {
+  font-weight: 600;
+}
+.stepHint {
+  color: var(--c-muted);
+  font-size: var(--t-13);
+  line-height: 1.4;
+}
+li[data-done] .stepLabel {
+  color: var(--c-faint);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  font-weight: 500;
+}
+
+.quick {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.statsGap {
+  grid-column: 1 / -1;
+  padding: 20px 22px;
+  border-radius: var(--r-card);
+  background: var(--c-panel);
+  color: var(--c-muted);
+}
+
+/* ── Verification status ────────────────────────────────────────── */
+.status {
+  display: flex;
+  gap: 18px;
+  padding: 22px 24px;
+  border-radius: var(--r-card);
+  background: var(--c-panel);
+  border: 1px solid var(--status-line);
+}
+.statusPending {
+  --status-line: color-mix(in srgb, var(--c-warning) 45%, transparent);
+  --status-icon-bg: var(--p-butter);
+}
+.statusRejected {
+  --status-line: color-mix(in srgb, var(--c-danger) 45%, transparent);
+  --status-icon-bg: var(--p-peach);
+}
+.statusIcon {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--status-icon-bg);
+  color: var(--p-ink);
+}
+.statusBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.statusTitle {
+  font-size: var(--t-20);
+}
+.statusText {
+  color: var(--c-muted);
+  max-width: 62ch;
+}
+.statusActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .quick {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    row-gap: 14px;
+  }
+}
+@media (max-width: 560px) {
+  .steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .status {
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px;
+  }
+}
+
+/* The accent card is the main action: on narrow screens it goes first, not under everything. */
+.railMobile {
+  display: none;
+}
+@media (max-width: 1180px) {
+  .railMobile {
+    display: block;
+  }
+  .railDesktop {
+    display: none;
+  }
+}

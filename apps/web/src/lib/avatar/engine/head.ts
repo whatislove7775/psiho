@@ -38,16 +38,16 @@ export interface HeadParams {
 
 const SHAPES: Record<AvatarConfig["head"]["shape"], [number, number, number, number]> = {
   //          sx    sy    sz    taper
-  round: [1.0, 1.0, 0.97, 0.14],
-  oval: [0.94, 1.06, 0.96, 0.24],
-  square: [1.0, 1.0, 0.96, 0.06],
-  heart: [0.99, 1.04, 0.96, 0.34],
-  long: [0.9, 1.12, 0.95, 0.22],
-  wide: [1.08, 0.97, 0.97, 0.12],
+  round: [1.0, 0.98, 0.97, 0.04],
+  oval: [0.96, 1.02, 0.96, 0.09],
+  square: [1.0, 0.99, 0.96, 0.0],
+  heart: [0.99, 1.03, 0.96, 0.22],
+  long: [0.91, 1.1, 0.95, 0.12],
+  wide: [1.07, 0.96, 0.97, 0.04],
 };
 
 const NOSES: Record<NoseShape, Omit<NoseParams, "y"> & { y: number }> = {
-  button: { y: -0.2, h: 0.1, rx: 0.085, ry: 0.07, bridge: 0.018, bridgeW: 0.05, wing: 0.035, wingX: 0.075, hook: 0 },
+  button: { y: -0.22, h: 0.1, rx: 0.095, ry: 0.078, bridge: 0.018, bridgeW: 0.05, wing: 0.035, wingX: 0.075, hook: 0 },
   straight: { y: -0.21, h: 0.105, rx: 0.075, ry: 0.07, bridge: 0.05, bridgeW: 0.045, wing: 0.03, wingX: 0.075, hook: 0 },
   wide: { y: -0.21, h: 0.095, rx: 0.1, ry: 0.07, bridge: 0.03, bridgeW: 0.06, wing: 0.05, wingX: 0.1, hook: 0 },
   pointed: { y: -0.2, h: 0.13, rx: 0.06, ry: 0.065, bridge: 0.05, bridgeW: 0.04, wing: 0.025, wingX: 0.065, hook: 0 },
@@ -59,7 +59,7 @@ const NOSES: Record<NoseShape, Omit<NoseParams, "y"> & { y: number }> = {
 export function headParams(cfg: AvatarConfig): HeadParams {
   const [sx, sy, sz, taper] = SHAPES[cfg.head.shape];
   const n = NOSES[cfg.nose.shape];
-  const k = 0.72 + cfg.nose.size * 0.56;
+  const k = (0.72 + cfg.nose.size * 0.56) * 1.35;
   return {
     sx,
     sy,
@@ -73,10 +73,10 @@ export function headParams(cfg: AvatarConfig): HeadParams {
 }
 
 // Feature anchors in unit-sphere space (before sculpting).
-export const EYE_X = 0.335;
-export const EYE_Y = 0.02;
+export const EYE_X = 0.325;
+export const EYE_Y = -0.01;
 export const MOUTH_Y = -0.475;
-export const BROW_Y = 0.25;
+export const BROW_Y = 0.27;
 
 /** Radial feature relief (nose, cheeks, muzzle, brow ridge, sockets, chin). */
 function relief(P: HeadParams, x: number, y: number, z: number): number {
@@ -100,10 +100,9 @@ function relief(P: HeadParams, x: number, y: number, z: number): number {
 
   // Cheeks (fullness) and age sag
   const cy = -0.26 - P.sag * 0.06;
-  h += (0.018 + 0.055 * P.cheeks) * gauss(ax, y, 0.47, cy, 0.22, 0.2);
-  // Brow ridge and eye sockets
-  h += 0.022 * gauss(ax, y, EYE_X, BROW_Y - 0.02, 0.24, 0.07);
-  h -= 0.06 * gauss(ax, y, EYE_X, EYE_Y, 0.15, 0.12);
+  h += (0.03 + 0.06 * P.cheeks) * gauss(ax, y, 0.46, cy - 0.04, 0.26, 0.22);
+  // Soft brow ridge above the eyes
+  h += 0.015 * gauss(ax, y, EYE_X, BROW_Y + 0.02, 0.26, 0.08);
 
   // Chin
   if (P.chin === "pointed") h += 0.045 * gauss(x, y, 0, -0.84, 0.12, 0.12);
@@ -120,14 +119,18 @@ export function restPoint(P: HeadParams, x: number, y: number, z: number, out: n
   let Y = y * P.sy;
   let Z = z * P.sz;
 
-  // Memoji faces are flatter in front, fuller at the back of the skull.
+  // Memoji: large rounded cranium, short soft lower face (chin close to the mouth).
+  if (y < 0) Y *= 0.9 - 0.03 * smooth(-0.5, -1, y);
+  else Y *= 1.03;
   const faceBand = smooth(0.4, 0.95, z) * smooth(-0.95, -0.3, y) * (1 - smooth(0.45, 0.9, y));
-  Z -= 0.075 * faceBand;
+  Z -= 0.03 * faceBand;
 
   // Jaw taper towards the chin
   if (y < 0) {
-    const t = Math.pow(smooth(0.05, -1, y), 1.35);
-    X *= 1 - P.taper * t;
+    const t = Math.pow(smooth(-0.25, -1, y), 1.6);
+    X *= 1 - (P.taper + 0.1) * t;
+    // U-shaped jaw: keep the lower cheeks wide
+    X *= 1 + 0.035 * gauss(0, y, 0, -0.38, 1, 0.3);
     if (z > 0) Z *= 1 - P.taper * 0.25 * t;
     if (P.chin === "square") {
       const b = smooth(-0.7, -1, y);
@@ -137,7 +140,7 @@ export function restPoint(P: HeadParams, x: number, y: number, z: number, out: n
     }
   }
   // Slightly narrower temples, broader cheekbones
-  X *= 1 + 0.035 * gauss(0, y, 0, -0.15, 1, 0.35) - 0.03 * smooth(0.5, 0.95, y);
+  X *= 1 + 0.035 * gauss(0, y, 0, -0.15, 1, 0.35) - 0.07 * smooth(0.35, 0.95, y);
 
   const h = relief(P, x, y, z);
   out[0] = X + x * h;
@@ -332,7 +335,7 @@ export function totalDisplacement(
  * Sculpted head as a UV sphere (UVs are used by the skin-detail texture)
  * with HEAD_MORPHS baked as morph targets (positions + normals).
  */
-export function buildHeadGeometry(P: HeadParams, widthSeg = 200, heightSeg = 150): THREE.BufferGeometry {
+export function buildHeadGeometry(P: HeadParams, widthSeg = 176, heightSeg = 132): THREE.BufferGeometry {
   const geo = new THREE.SphereGeometry(1, widthSeg, heightSeg);
   const pos = geo.attributes.position as THREE.BufferAttribute;
   const count = pos.count;

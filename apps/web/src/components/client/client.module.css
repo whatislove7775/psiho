@@ -1,0 +1,207 @@
+/* Shared pieces of the client cabinet. Tokens only. */
+
+/* ── Error block ───────────────────────────────────────────────────── */
+.error {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-5) var(--s-6);
+  border-radius: var(--r-card);
+  background: var(--c-danger-soft);
+  color: var(--c-text);
+}
+.errorIcon {
+  color: var(--c-danger);
+  flex: none;
+}
+.errorText {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--t-15);
+  line-height: 1.45;
+}
+.errorText strong {
+  display: block;
+  font-weight: 600;
+}
+.errorText span {
+  color: var(--c-muted);
+  font-size: var(--t-13);
+}
+
+/* ── Session row ───────────────────────────────────────────────────── */
+.rows {
+  display: flex;
+  flex-direction: column;
+}
+.row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(150px, auto);
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-4) 0;
+  border-top: 1px solid var(--c-line);
+}
+.row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.row:last-child {
+  padding-bottom: 0;
+}
+.rowMain {
+  min-width: 0;
+}
+.rowName {
+  font-size: var(--t-17);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rowMeta {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  color: var(--c-muted);
+  font-size: var(--t-13);
+  font-variant-numeric: tabular-nums;
+}
+.rowMeta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.rowSide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.amount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--t-15);
+}
+.rowActions {
+  display: flex;
+  gap: var(--s-2);
+  justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .row {
+    grid-template-columns: auto minmax(0, 1fr);
+    row-gap: var(--s-3);
+  }
+  .rowSide {
+    grid-column: 2;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: -4px;
+  }
+  .rowActions {
+    grid-column: 1 / -1;
+    justify-content: stretch;
+  }
+  .rowActions > * {
+    flex: 1;
+  }
+}
+
+/* ── Modal body helpers ────────────────────────────────────────────── */
+.modalText {
+  color: var(--c-muted);
+  font-size: var(--t-15);
+  line-height: 1.5;
+}
+.modalActions {
+  display: flex;
+  gap: var(--s-3);
+  justify-content: flex-end;
+  margin-top: var(--s-6);
+  flex-wrap: wrap;
+}
+@media (max-width: 480px) {
+  .modalActions > * {
+    flex: 1;
+  }
+}
+
+/* ── Breathing guide ───────────────────────────────────────────────── */
+.breathe {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-5);
+  text-align: center;
+}
+.stage {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  display: grid;
+  place-items: center;
+}
+.halo {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px dashed var(--c-line-strong);
+}
+.orb {
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 40% 35%,
+    var(--p-sky),
+    var(--p-lilac) 70%
+  );
+  transform: scale(0.45);
+  transition-property: transform;
+  transition-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+}
+.orbText {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 2px;
+  color: var(--p-ink);
+}
+.phase {
+  font-size: var(--t-17);
+  font-weight: 650;
+}
+.count {
+  font-size: var(--t-32);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.idleText {
+  color: var(--c-muted);
+}
+.breatheNote {
+  color: var(--c-muted);
+  font-size: var(--t-13);
+  max-width: 38ch;
+  line-height: 1.5;
+}
+.rounds {
+  color: var(--c-muted);
+  font-size: var(--t-13);
+  font-variant-numeric: tabular-nums;
+}
+@media (prefers-reduced-motion: reduce) {
+  .orb {
+    transition: none !important;
+    transform: scale(0.8) !important;
+  }
+}

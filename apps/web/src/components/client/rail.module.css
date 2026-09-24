@@ -1,0 +1,200 @@
+/* Blue accent card of the right rail (reference: «Комплект за месяц»). */
+.accent {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+  padding: var(--s-6);
+  border-radius: var(--r-panel);
+  background: var(--g-accent);
+  color: #fff;
+  isolation: isolate;
+}
+/* one soft light in the corner, so the card has depth without decoration */
+.accent::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 280px;
+  height: 280px;
+  right: -120px;
+  top: -130px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.22),
+    transparent 70%
+  );
+}
+.skel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  opacity: 0.35;
+}
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2) var(--s-3);
+}
+.title {
+  white-space: nowrap;
+  font-size: var(--t-20);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.pill {
+  flex: none;
+  height: 28px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.18);
+  font-size: var(--t-12);
+  font-weight: 600;
+}
+.lead {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: var(--t-15);
+  line-height: 1.5;
+}
+.person {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+}
+.personText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.personText strong {
+  font-size: var(--t-20);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.personText span {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: var(--t-13);
+  font-variant-numeric: tabular-nums;
+}
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.13);
+}
+.rowIcon {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+}
+.rowText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.rowText strong {
+  font-weight: 600;
+  font-size: var(--t-15);
+  font-variant-numeric: tabular-nums;
+}
+.rowText span {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: var(--t-13);
+  line-height: 1.35;
+}
+.tips {
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.13);
+}
+.tips strong {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.tips ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tips li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: var(--t-13);
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.88);
+}
+.tips li svg {
+  flex: none;
+  margin-top: 1px;
+}
+.link {
+  align-self: center;
+  margin-top: calc(var(--s-2) * -1);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: var(--t-13);
+  font-weight: 550;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(255, 255, 255, 0.4);
+}
+.link:hover {
+  color: #fff;
+}
+
+/* ── Quiet support card under the accent ───────────────────────────── */
+.support {
+  display: flex;
+  gap: var(--s-3);
+  padding: var(--s-5);
+  border-radius: var(--r-card);
+  background: var(--c-panel);
+}
+.supportIcon {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--c-danger-soft);
+  color: var(--c-danger);
+}
+.support strong {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.support p {
+  color: var(--c-muted);
+  font-size: var(--t-13);
+  line-height: 1.5;
+}
+.support a {
+  color: var(--c-text);
+  font-weight: 650;
+}

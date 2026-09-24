@@ -21,11 +21,11 @@ function renderer(): AvatarRenderer {
 
 export function renderAvatarSnapshot(
   cfg: AvatarConfig,
-  opts: { size?: number; framing?: Framing; expression?: Record<string, number> } = {},
+  opts: { size?: number; framing?: Framing; expression?: Record<string, number>; yaw?: number } = {},
 ): Promise<string> {
   const size = opts.size ?? 256;
   const framing = opts.framing ?? "face";
-  const key = `${size}|${framing}|${JSON.stringify(opts.expression ?? {})}|${avatarKey(cfg)}`;
+  const key = `${size}|${framing}|${opts.yaw ?? 0}|${JSON.stringify(opts.expression ?? {})}|${avatarKey(cfg)}`;
   const hit = cache.get(key);
   if (hit) {
     cache.delete(key);
@@ -38,7 +38,7 @@ export function renderAvatarSnapshot(
     r.setFraming(framing);
     r.setConfig(cfg);
     r.setExpression(opts.expression ?? {});
-    r.renderOnce();
+    r.renderOnce(opts.yaw ?? 0);
     return r.canvas.toDataURL("image/png");
   });
   queue = job.catch(() => undefined);

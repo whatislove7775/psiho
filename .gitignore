@@ -23,3 +23,9 @@ Thumbs.db
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# per-agent Next dev build dirs
+.next-*/
+
+# MediaPipe wasm is copied from node_modules on install
+apps/web/public/mediapipe/wasm/

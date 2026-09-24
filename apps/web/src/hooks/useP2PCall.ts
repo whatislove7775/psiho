@@ -4,8 +4,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { SignalingClient } from "@/lib/webrtc/signalingClient";
 
 // ── TURN credentials — must match coturn in docker-compose.yml ───
-const TURN_USER = "aprosop";
-const TURN_CRED = "aprosopsecretturn";
+const TURN_USER = process.env.NEXT_PUBLIC_TURN_USER || "aprosop";
+const TURN_CRED = process.env.NEXT_PUBLIC_TURN_PASSWORD || "aprosopsecretturn";
 
 function getIceServers(): RTCIceServer[] {
   const host = typeof window !== "undefined" ? window.location.hostname : "localhost";
@@ -38,11 +38,13 @@ export type P2PStatus =
 
 interface UseP2PCallOptions {
   roomId: string;
+  /** signed token from POST /sessions/{id}/join/ — required by the signaling server */
+  wsToken: string;
   localStream: MediaStream | null;
   onEnd?: () => void;
 }
 
-export function useP2PCall({ roomId, localStream, onEnd }: UseP2PCallOptions) {
+export function useP2PCall({ roomId, wsToken, localStream, onEnd }: UseP2PCallOptions) {
   const [status,      setStatus]      = useState<P2PStatus>("idle");
   const [isMuted,     setIsMuted]     = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
@@ -71,14 +73,14 @@ export function useP2PCall({ roomId, localStream, onEnd }: UseP2PCallOptions) {
 
   // ── Main effect ───────────────────────────────────────────────
   useEffect(() => {
-    if (!localStream) return;
+    if (!localStream || !wsToken) return;
     const stream = localStream; // narrow: TypeScript не сужает через замыкания
 
     cancelRef.current     = false;
     hasRemoteRef.current  = false;
     pendingIceRef.current = [];
 
-    const sig = new SignalingClient(roomId);
+    const sig = new SignalingClient(roomId, wsToken);
     sigRef.current = sig;
 
     // Счётчик попыток реконнекта живёт внутри эффекта — сбрасывается
@@ -404,7 +406,7 @@ export function useP2PCall({ roomId, localStream, onEnd }: UseP2PCallOptions) {
       setHasRemote(false);
       hasRemoteRef.current = false;
     };
-  }, [roomId, localStream, retryKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [roomId, wsToken, localStream, retryKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Controls ──────────────────────────────────────────────────
   const toggleMute = useCallback(() => {

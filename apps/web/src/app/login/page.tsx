@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
-import LoginClient from "./LoginClient";
+import { Suspense } from "react";
+import { LoginForm } from "@/components/auth/LoginForm";
 
 export const metadata: Metadata = {
-  title: "Войти — анонимный вход в аккаунт",
-  description:
-    "Войдите в aprosop анонимно. Только хэш email — никаких имён и паролей в открытом виде.",
-  robots: { index: false, follow: false },
-  alternates: { canonical: "https://aprosop.ru/login" },
+  title: "Вход",
+  description: "Вход в aprosop по имени вроде «тихий-кит-4821» или по почте специалиста.",
+  alternates: { canonical: "/login" },
 };
 
 export default function LoginPage() {
-  return <LoginClient />;
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
 }

@@ -1,0 +1,28 @@
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s-3);
+  margin-bottom: var(--s-5);
+}
+.skel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+}
+.skelRow {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+}
+.err {
+  margin-top: var(--s-3);
+  color: var(--c-danger);
+  font-size: var(--t-13);
+}
+/* On narrow screens the list already leads with the nearest session */
+@media (max-width: 1180px) {
+  .wideOnly {
+    display: none;
+  }
+}
