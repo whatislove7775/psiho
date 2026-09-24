@@ -65,9 +65,10 @@ else
 fi
 
 # ── 3. Значения для GitHub ─────────────────────────────────────
-HOST="$(curl -s --max-time 10 https://ifconfig.me 2>/dev/null || true)"
-if ! [[ "$HOST" =~ ^[0-9a-fA-F.:]+$ ]]; then
-  HOST="$(hostname -I 2>/dev/null | awk '{print $1}')"
+# IPv4 обязательно: у GitHub Actions нет IPv6.
+HOST="$(curl -4 -s --max-time 10 https://api.ipify.org 2>/dev/null || true)"
+if ! [[ "$HOST" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  HOST="$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -m1 -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' || true)"
 fi
 PORT="22"
 if command -v sshd >/dev/null 2>&1; then
