@@ -4,14 +4,18 @@
  * Camera → on-device face tracking → live 3D avatar → MediaStream.
  *
  *   getUserMedia ─► hidden <video> ─► MediaPipe FaceLandmarker (52 ARKit
- *   blendshapes + head pose) ─► AvatarRenderer ─► canvas.captureStream()
+ *   blendshapes + 478 landmarks + head pose), run on EVERY camera frame
+ *   (requestVideoFrameCallback) ─► FaceTracker (neutral calibration,
+ *   landmark-refined expressions, One-Euro filtering) ─► KitRenderer
+ *   ─► canvas.captureStream()
  *
  * The real camera image never leaves this hook: only the rendered avatar
  * video and the microphone audio are exposed.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AvatarConfig } from "@/lib/avatar/schema";
-import type { AvatarRendererApi } from "@/lib/avatar/engine/types";
+import type { AvatarRendererApi } from "@/lib/avatar/kit/types";
+import { FaceTracker, type LandmarkerResult } from "@/lib/tracking/FaceTracker";
 
 const MP_VERSION = "0.10.14"; // must match package.json exactly
 // Served from our own origin first (see scripts/copy-mediapipe.mjs); CDN as a fallback.
@@ -37,6 +41,10 @@ export interface AvatarCamera {
   /** true while the face hasn't been detected for a few seconds */
   faceLost: boolean;
   tracking: boolean;
+  /** true while the user's neutral face is being captured (~1.5 s of a still face) */
+  calibrating: boolean;
+  /** capture the neutral face again (ask the user to relax and look at the camera) */
+  recalibrate: () => void;
   start: () => void;
   stop: () => void;
 }
@@ -49,9 +57,11 @@ export function useAvatarCamera(config: AvatarConfig): AvatarCamera {
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const [faceLost, setFaceLost] = useState(false);
   const [tracking, setTracking] = useState(false);
+  const [calibrating, setCalibrating] = useState(false);
   const [runId, setRunId] = useState(0);
 
   const rendererRef = useRef<AvatarRendererApi | null>(null);
+  const trackerRef = useRef<FaceTracker | null>(null);
   const cfgRef = useRef(config);
   cfgRef.current = config;
 
@@ -62,7 +72,7 @@ export function useAvatarCamera(config: AvatarConfig): AvatarCamera {
   useEffect(() => {
     if (runId === 0) return;
     let cancelled = false;
-    let raf = 0;
+    let stopLoop = () => {};
     let landmarker: { detectForVideo: (v: HTMLVideoElement, t: number) => unknown; close: () => void } | null = null;
     let cam: MediaStream | null = null;
     const video = document.createElement("video");
@@ -98,7 +108,7 @@ export function useAvatarCamera(config: AvatarConfig): AvatarCamera {
       video.srcObject = new MediaStream(cam.getVideoTracks());
       await video.play().catch(() => undefined);
 
-      const { AvatarRenderer } = await import("@/lib/avatar/engine/AvatarRenderer");
+      const { KitRenderer } = await import("@/lib/avatar/kit/KitRenderer");
       if (cancelled) return;
       const c = document.createElement("canvas");
       c.width = 540;
@@ -107,7 +117,7 @@ export function useAvatarCamera(config: AvatarConfig): AvatarCamera {
       c.style.height = "100%";
       c.style.display = "block";
       c.style.objectFit = "cover";
-      const r = new AvatarRenderer(c, { framing: "portrait", background: "#1d1d22", idle: true, preserveDrawingBuffer: true, maxPixelRatio: 1, fps: 30 });
+      const r = new KitRenderer(c, { framing: "portrait", background: "#1d1d22", idle: true, preserveDrawingBuffer: true, maxPixelRatio: 1, fps: 30 });
       r.resize(540, 720);
       r.setConfig(cfgRef.current);
       r.start();
@@ -140,6 +150,8 @@ export function useAvatarCamera(config: AvatarConfig): AvatarCamera {
             try {
               landmarker = (await FaceLandmarker.createFromOptions(fileset, {
                 baseOptions: { modelAssetPath: src.model, delegate },
+                // 478 landmarks (incl. irises) are always returned in 0.10.14 —
+                // there is no outputFaceLandmarks switch in this version.
                 outputFaceBlendshapes: true,
                 outputFacialTransformationMatrixes: true,
                 runningMode: "VIDEO",
@@ -157,25 +169,43 @@ export function useAvatarCamera(config: AvatarConfig): AvatarCamera {
       if (cancelled || !landmarker) return;
       setTracking(true);
 
-      let last = 0;
+      const tracker = new FaceTracker();
+      trackerRef.current = tracker;
+      setCalibrating(true);
+
+      let lastTs = -1;
+      let lastMediaTime = -1;
       let lastFace = performance.now();
       let lost = false;
-      const loop = () => {
-        if (cancelled) return;
-        raf = requestAnimationFrame(loop);
+      let calib = true;
+      let frames = 0;
+
+      /** Run detection on one camera frame. `mediaTime` is the frame's video time (s). */
+      const onFrame = (mediaTime: number) => {
+        if (cancelled || video.readyState < 2 || mediaTime === lastMediaTime) return;
+        lastMediaTime = mediaTime;
+        frames++;
+        if (process.env.NODE_ENV !== "production") {
+          (window as unknown as { __faceTrack?: object }).__faceTrack = { frames, loop: raf ? "raf" : "rvfc", mediaTime };
+        }
+        // MediaPipe VIDEO mode needs strictly increasing timestamps (ms)
+        const ts = Math.max(Math.round(mediaTime * 1000), lastTs + 1);
+        lastTs = ts;
         const now = performance.now();
-        if (video.readyState < 2 || now - last < 1000 / 30) return;
-        last = now;
         try {
-          const res = landmarker!.detectForVideo(video, now) as Parameters<AvatarRendererApi["applyFaceResult"]>[0] & {
-            faceBlendshapes?: unknown[];
-          };
-          if (res?.faceBlendshapes?.length) {
+          const raw = landmarker!.detectForVideo(video, ts) as LandmarkerResult;
+          const out = tracker.process(raw, ts, video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 4 / 3);
+          if (out) {
+            if (now - lastFace > 500) tracker.resetFilters(); // re-acquired: don't smear from stale state
             lastFace = now;
-            r.applyFaceResult(res);
+            r.applyFaceResult(out);
           }
         } catch {
           /* transient */
+        }
+        if (tracker.calibrating !== calib) {
+          calib = tracker.calibrating;
+          setCalibrating(calib);
         }
         const isLost = now - lastFace > 3000;
         if (isLost !== lost) {
@@ -183,12 +213,48 @@ export function useAvatarCamera(config: AvatarConfig): AvatarCamera {
           setFaceLost(isLost);
         }
       };
-      loop();
+
+      // Prefer requestVideoFrameCallback: exactly one callback per decoded
+      // camera frame, with the frame's own timestamp. Fall back to rAF (and
+      // to rAF as well if rVFC stays silent, e.g. for a detached <video> on
+      // some engines).
+      type RVFC = (cb: (now: number, meta: { mediaTime: number }) => void) => number;
+      const v = video as HTMLVideoElement & { requestVideoFrameCallback?: RVFC; cancelVideoFrameCallback?: (h: number) => void };
+      let handle = 0;
+      let raf = 0;
+      const rafLoop = () => {
+        if (cancelled) return;
+        raf = requestAnimationFrame(rafLoop);
+        onFrame(video.currentTime);
+      };
+      if (typeof v.requestVideoFrameCallback === "function") {
+        const vfc = (_now: number, meta: { mediaTime: number }) => {
+          if (cancelled) return;
+          handle = v.requestVideoFrameCallback!(vfc);
+          onFrame(meta.mediaTime);
+        };
+        handle = v.requestVideoFrameCallback(vfc);
+        const watchdog = window.setTimeout(() => {
+          if (!cancelled && frames === 0) {
+            v.cancelVideoFrameCallback?.(handle);
+            rafLoop();
+          }
+        }, 1500);
+        stopLoop = () => {
+          clearTimeout(watchdog);
+          v.cancelVideoFrameCallback?.(handle);
+          cancelAnimationFrame(raf);
+        };
+      } else {
+        rafLoop();
+        stopLoop = () => cancelAnimationFrame(raf);
+      }
     })();
 
     return () => {
       cancelled = true;
-      cancelAnimationFrame(raf);
+      stopLoop();
+      trackerRef.current = null;
       landmarker?.close();
       cam?.getTracks().forEach((t) => t.stop());
       rendererRef.current?.dispose();
@@ -197,6 +263,7 @@ export function useAvatarCamera(config: AvatarConfig): AvatarCamera {
       setVideoStream(null);
       setAudioStream(null);
       setTracking(false);
+      setCalibrating(false);
       setFaceLost(false);
     };
   }, [runId]);
@@ -207,5 +274,25 @@ export function useAvatarCamera(config: AvatarConfig): AvatarCamera {
     setState("idle");
   }, []);
 
-  return { state, error, videoStream, audioStream, canvas, renderer: rendererRef.current, faceLost, tracking, start, stop };
+  const recalibrate = useCallback(() => {
+    const t = trackerRef.current;
+    if (!t) return;
+    t.recalibrate();
+    setCalibrating(true);
+  }, []);
+
+  return {
+    state,
+    error,
+    videoStream,
+    audioStream,
+    canvas,
+    renderer: rendererRef.current,
+    faceLost,
+    tracking,
+    calibrating,
+    recalibrate,
+    start,
+    stop,
+  };
 }

@@ -2,7 +2,7 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import type { AvatarConfig } from "@/lib/avatar/schema";
-import type { AvatarRendererApi, Framing } from "@/lib/avatar/engine/types";
+import type { AvatarRendererApi, Framing } from "@/lib/avatar/kit/types";
 
 export interface AvatarViewHandle {
   renderer: AvatarRendererApi | null;

@@ -44,6 +44,30 @@ interface UseP2PCallOptions {
   onEnd?: () => void;
 }
 
+/** Random id for one RTCPeerConnection instance (tags every signal we send). */
+function newPcId(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
+/**
+ * P2P call over the Django signaling relay, using the W3C "perfect
+ * negotiation" pattern:
+ *
+ *  - Both peers may offer (on "ready" / "peer-joined"). When offers collide
+ *    (glare), the peer whose pcId sorts lower is *polite*: it rolls back and
+ *    answers; the other one ignores the incoming offer. Before this, both
+ *    sides rolled back and answered each other's offer, leaving two
+ *    half-negotiations with mismatched ICE credentials — ICE sat in
+ *    "checking" forever and the remote <video> never got a frame.
+ *  - Every message carries `from` (the sender's pcId). A "ready"/"offer" from
+ *    a pcId we have not negotiated with means the peer rebuilt its PC (full
+ *    reconnect, page reload, re-join) → we rebuild ours too instead of
+ *    renegotiating a dead session.
+ *  - Local track changes (voice filter on/off → new MediaStream) are applied
+ *    with RTCRtpSender.replaceTrack(): no teardown, no renegotiation.
+ */
 export function useP2PCall({ roomId, wsToken, localStream, onEnd }: UseP2PCallOptions) {
   const [status,      setStatus]      = useState<P2PStatus>("idle");
   const [isMuted,     setIsMuted]     = useState(false);
@@ -54,15 +78,17 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd }: UseP2PCallOp
 
   const pcRef          = useRef<RTCPeerConnection | null>(null);
   const sigRef         = useRef<SignalingClient | null>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+  const videoElRef     = useRef<HTMLVideoElement | null>(null);
+  const remoteStreamRef = useRef<MediaStream | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(localStream);
+  localStreamRef.current = localStream;
   const cancelRef      = useRef(false);
-  const offerMadeRef   = useRef(false);
   const hasRemoteRef   = useRef(false);
-  const pendingIceRef  = useRef<RTCIceCandidateInit[]>([]);
   const elapsedTimer   = useRef<ReturnType<typeof setInterval>>();
 
   const stopElapsed = useCallback(() => {
     clearInterval(elapsedTimer.current);
+    elapsedTimer.current = undefined;
     setElapsed(0);
   }, []);
 
@@ -71,112 +97,148 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd }: UseP2PCallOp
     elapsedTimer.current = setInterval(() => setElapsed(e => e + 1), 1000);
   }, [stopElapsed]);
 
+  /** Attach (or detach) the remote stream to the current <video>, if mounted. */
+  const attachRemote = useCallback((stream: MediaStream | null) => {
+    remoteStreamRef.current = stream;
+    const vid = videoElRef.current;
+    if (!vid) return;
+    if (vid.srcObject !== stream) vid.srcObject = stream;
+    if (!stream) return;
+    vid.muted = false;
+    vid.play().catch(() => {
+      const resume = () => { vid.play().catch(() => {}); };
+      document.addEventListener("click", resume, { once: true });
+    });
+  }, []);
+
+  /**
+   * Callback ref for the remote <video>. Works even if the element mounts
+   * (or remounts) after `ontrack` fired — the stream is kept and re-attached.
+   */
+  const remoteVideoRef = useCallback((el: HTMLVideoElement | null) => {
+    videoElRef.current = el;
+    if (el && remoteStreamRef.current) attachRemote(remoteStreamRef.current);
+  }, [attachRemote]);
+
+  const hasLocal = !!localStream;
+
   // ── Main effect ───────────────────────────────────────────────
   useEffect(() => {
-    if (!localStream || !wsToken) return;
-    const stream = localStream; // narrow: TypeScript не сужает через замыкания
+    if (!hasLocal || !wsToken) return;
 
-    cancelRef.current     = false;
-    hasRemoteRef.current  = false;
-    pendingIceRef.current = [];
+    cancelRef.current    = false;
+    hasRemoteRef.current = false;
 
     const sig = new SignalingClient(roomId, wsToken);
     sigRef.current = sig;
 
-    // Счётчик попыток реконнекта живёт внутри эффекта — сбрасывается
-    // при каждом новом вызове (смена комнаты / нового стрима).
+    // Per-PC negotiation state (reset by setupPC)
+    let myId = newPcId();
+    let remoteId: string | null = null;     // peer pcId we are negotiating with
+    let offeringPc: RTCPeerConnection | null = null; // PC with createOffer() in flight
+    let ignoreOffer = false;
+    let pendingIce: { from?: string; c: RTCIceCandidateInit }[] = [];
+
     let reconnectCount = 0;
     let iceGraceTimer:   ReturnType<typeof setTimeout> | undefined;
     let iceRestartTimer: ReturnType<typeof setTimeout> | undefined;
     let reconnectTimer:  ReturnType<typeof setTimeout> | undefined;
 
-    // ── Flush очереди ICE-кандидатов ──────────────────────────
+    const send = (msg: Parameters<SignalingClient["send"]>[0]) => sig.send({ ...msg, from: myId });
+
+    function markConnected() {
+      if (hasRemoteRef.current) {
+        setStatus("connected");
+        return;
+      }
+      hasRemoteRef.current = true;
+      setHasRemote(true);
+      setStatus("connected");
+      startElapsed();
+    }
+
+    function markDisconnected() {
+      hasRemoteRef.current = false;
+      setHasRemote(false);
+      stopElapsed();
+      attachRemote(null);
+    }
+
     async function flushPending(pc: RTCPeerConnection) {
-      const q = pendingIceRef.current.splice(0);
-      for (const c of q) {
-        try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch { /* ignore */ }
+      const q = pendingIce;
+      pendingIce = [];
+      for (const { from, c } of q) {
+        if (from && remoteId && from !== remoteId) continue; // stale peer
+        try { await pc.addIceCandidate(c); } catch { /* ignore */ }
       }
     }
 
-    // ── Создать offer (с опциональным ICE restart) ─────────────
-    async function doMakeOffer(pc: RTCPeerConnection, iceRestart = false) {
-      if (offerMadeRef.current) return;
-      offerMadeRef.current = true;
+    async function makeOffer(pc: RTCPeerConnection, iceRestart = false) {
+      if (offeringPc === pc || pc.signalingState !== "stable" || pc !== pcRef.current) return;
       try {
-        const offer = await pc.createOffer({
-          offerToReceiveAudio: true,
-          offerToReceiveVideo: true,
-          iceRestart,
-        });
+        offeringPc = pc;
+        const before = pc.remoteDescription?.sdp;
+        const offer = await pc.createOffer({ iceRestart });
+        // Lost a race: the peer's offer was accepted meanwhile, or the PC was replaced.
+        if (pc.signalingState !== "stable" || pc !== pcRef.current || pc.remoteDescription?.sdp !== before) return;
         await pc.setLocalDescription(offer);
-        sig.send({ type: "offer", sdp: offer });
+        send({ type: "offer", sdp: pc.localDescription!.toJSON() });
       } catch (e) {
         console.error("[P2P] createOffer failed:", e);
-        offerMadeRef.current = false;
+      } finally {
+        if (offeringPc === pc) offeringPc = null;
       }
     }
 
-    async function doIceRestart(pc: RTCPeerConnection) {
+    function doIceRestart(pc: RTCPeerConnection) {
       if (cancelRef.current) return;
-      offerMadeRef.current = false;
-
-      if (typeof pc.restartIce === "function") pc.restartIce();
-      await doMakeOffer(pc, true);
-
+      void makeOffer(pc, true);
       clearTimeout(iceRestartTimer);
       iceRestartTimer = setTimeout(() => {
         const s = pc.iceConnectionState;
-        if (s !== "connected" && s !== "completed") {
-          doFullReconnect();
-        }
+        if (s !== "connected" && s !== "completed") doFullReconnect();
       }, ICE_RESTART_TIMEOUT_MS);
     }
 
-    // ── Полный реконнект: пересобрать RTCPeerConnection ──────────
+    // ── Full reconnect: rebuild RTCPeerConnection ────────────────
     function doFullReconnect() {
       if (cancelRef.current) return;
-
       if (reconnectCount >= MAX_RETRIES) {
         setStatus("failed");
         return;
       }
-
       const delay = RETRY_DELAYS[reconnectCount++];
       setStatus("reconnecting");
-
       clearTimeout(reconnectTimer);
-      reconnectTimer = setTimeout(async () => {
+      reconnectTimer = setTimeout(() => {
         if (cancelRef.current) return;
-
-        // Сбросить состояние видео
-        hasRemoteRef.current = false;
-        setHasRemote(false);
-        stopElapsed();
-        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
-
-        // Пересоздаём PC с новыми ICE credentials
+        markDisconnected();
         setupPC();
-
-        // Сообщаем собеседнику что мы готовы к новому handshake
-        sig.send({ type: "ready" });
+        send({ type: "ready" }); // peer sees a new pcId → rebuilds and offers
       }, delay);
     }
 
-    // ── Создать и настроить RTCPeerConnection ─────────────────────
-    function setupPC(): RTCPeerConnection {
-      // Закрываем старый PC если есть
-      if (pcRef.current) {
-        const old = pcRef.current;
-        old.ontrack                    = null;
-        old.onicecandidate             = null;
-        old.oniceconnectionstatechange = null;
-        old.onconnectionstatechange    = null;
-        old.close();
-        pcRef.current = null;
-      }
+    function closePC() {
+      const old = pcRef.current;
+      if (!old) return;
+      old.ontrack                    = null;
+      old.onicecandidate             = null;
+      old.oniceconnectionstatechange = null;
+      old.onconnectionstatechange    = null;
+      old.close();
+      pcRef.current = null;
+    }
 
-      offerMadeRef.current  = false;
-      pendingIceRef.current = [];
+    // ── Create and configure an RTCPeerConnection ───────────────
+    function setupPC(): RTCPeerConnection {
+      closePC();
+      clearTimeout(iceGraceTimer);
+      clearTimeout(iceRestartTimer);
+      myId = newPcId();
+      remoteId = null;
+      offeringPc = null;
+      ignoreOffer = false;
+      pendingIce = [];
 
       const pc = new RTCPeerConnection({
         iceServers: getIceServers(),
@@ -184,86 +246,72 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd }: UseP2PCallOp
       });
       pcRef.current = pc;
 
-      stream.getTracks().forEach(t => pc.addTrack(t, stream));
+      // Always one audio + one video transceiver, even if a track is missing
+      // right now, so later replaceTrack() never needs renegotiation.
+      const stream = localStreamRef.current;
+      for (const kind of ["audio", "video"] as const) {
+        const track = stream?.getTracks().find(t => t.kind === kind);
+        if (track && stream) pc.addTrack(track, stream);
+        else pc.addTransceiver(kind, { direction: "sendrecv" });
+      }
 
       // ── Tune the video encoder for low latency ──────────────────
-      // The avatar is light, predictable motion at 384². Cap bitrate/fps and
-      // prefer keeping framerate (smooth) over resolution when CPU is tight —
-      // this is what keeps end-to-end latency low instead of letting the
-      // encoder build a big buffer.
+      // The avatar is light, predictable motion. Cap bitrate/fps and prefer
+      // keeping framerate over resolution when CPU is tight.
       const vSender = pc.getSenders().find(s => s.track?.kind === "video");
       if (vSender) {
         const params = vSender.getParameters();
         if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
-        params.encodings[0].maxBitrate   = 700_000; // 700 kbps is plenty for 384²
-        params.encodings[0].maxFramerate = 24;
-        (params as any).degradationPreference = "maintain-framerate";
+        params.encodings[0].maxBitrate   = 900_000;
+        params.encodings[0].maxFramerate = 30;
+        (params as RTCRtpSendParameters & { degradationPreference?: string }).degradationPreference = "maintain-framerate";
         vSender.setParameters(params).catch(() => { /* not all browsers allow this pre-negotiation */ });
       }
 
-      // ICE кандидаты → сигналинг
       pc.onicecandidate = ({ candidate }) => {
-        if (candidate) sig.send({ type: "ice-candidate", candidate: candidate.toJSON() });
+        if (candidate) send({ type: "ice-candidate", candidate: candidate.toJSON() });
       };
 
-      // Удалённый трек появился
-      pc.ontrack = ({ streams }) => {
-        const stream = streams[0];
-        if (stream && remoteVideoRef.current) {
-          const vid = remoteVideoRef.current;
-          vid.srcObject = stream;
-          vid.muted = false;
-          vid.play().catch(() => {
-            const resume = () => { vid.play().catch(() => {}); document.removeEventListener("click", resume); };
-            document.addEventListener("click", resume, { once: true });
-          });
-        }
-        if (!hasRemoteRef.current) {
-          hasRemoteRef.current = true;
-          setHasRemote(true);
-          setStatus("connected");
-          startElapsed();
-        }
+      pc.ontrack = ({ track, streams }) => {
+        // One MediaStream per remote peer; build our own if the sender didn't associate one.
+        let remote = streams[0] ?? remoteStreamRef.current;
+        if (!remote) remote = new MediaStream();
+        if (!remote.getTracks().includes(track)) remote.addTrack(track);
+        attachRemote(remote);
+        const s = pc.connectionState;
+        if (s === "connected") markConnected();
       };
 
-      // ICE state machine
       pc.oniceconnectionstatechange = () => {
         const s = pc.iceConnectionState;
-
         if (s === "connected" || s === "completed") {
-          // Успешное (вос)соединение — сбрасываем все таймеры и счётчик
           clearTimeout(iceGraceTimer);
           clearTimeout(iceRestartTimer);
           clearTimeout(reconnectTimer);
           reconnectCount = 0;
-          if (hasRemoteRef.current) setStatus("connected");
-        }
-
-        else if (s === "disconnected") {
-          // Не паникуем сразу — браузер может сам восстановить путь
-          // (обновление STUN consent, временные потери пакетов).
-          // Ждём ICE_DISCONNECT_GRACE_MS, потом ICE restart.
+        } else if (s === "disconnected") {
+          // Give the browser a moment to recover the path on its own.
           setStatus("reconnecting");
           clearTimeout(iceGraceTimer);
           iceGraceTimer = setTimeout(() => {
             const cur = pc.iceConnectionState;
-            if (cur !== "connected" && cur !== "completed") {
-              doIceRestart(pc);
-            }
+            if (cur !== "connected" && cur !== "completed") doIceRestart(pc);
           }, ICE_DISCONNECT_GRACE_MS);
-        }
-
-        else if (s === "failed") {
-          // ICE упал окончательно — полный реконнект
+        } else if (s === "failed") {
           clearTimeout(iceGraceTimer);
           clearTimeout(iceRestartTimer);
           doFullReconnect();
         }
       };
 
-      // connectionState fires faster than iceConnectionState === "failed" in Chrome
+      // Media is only flowing once DTLS is up — that (not ontrack, which
+      // fires at setRemoteDescription) is when the call counts as connected.
       pc.onconnectionstatechange = () => {
-        if (pc.connectionState === "failed") {
+        const s = pc.connectionState;
+        if (s === "connected") {
+          if (remoteStreamRef.current) attachRemote(remoteStreamRef.current);
+          markConnected();
+        } else if (s === "failed") {
           clearTimeout(iceGraceTimer);
           clearTimeout(iceRestartTimer);
           doFullReconnect();
@@ -273,61 +321,99 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd }: UseP2PCallOp
       return pc;
     }
 
+    /** The peer announced a (possibly new) PC; make sure ours is fresh for it. */
+    function pcFor(from: string | undefined): RTCPeerConnection {
+      let pc = pcRef.current!;
+      if (from && remoteId && from !== remoteId) {
+        // Peer rebuilt its RTCPeerConnection → ours is negotiated with a ghost.
+        markDisconnected();
+        pc = setupPC();
+      }
+      return pc;
+    }
+
     setupPC();
 
-    // ── Обработка сигналинг-сообщений ────────────────────────────
+    // ── Signaling messages ───────────────────────────────────────
     const unsubscribe = sig.onMessage(async (msg) => {
-      if (cancelRef.current) return;
-      const currentPc = pcRef.current;
-      if (!currentPc) return;
-
+      if (cancelRef.current || !pcRef.current) return;
+      const from = "from" in msg ? msg.from : undefined;
       try {
         switch (msg.type) {
           case "peer-joined":
-          case "ready":
-            await doMakeOffer(currentPc);
-            break;
-
-          case "offer":
-            // Glare resolution: оба одновременно послали offer — откатываем свой
-            if (currentPc.signalingState === "have-local-offer") {
-              await (currentPc as any).setLocalDescription({ type: "rollback" });
-              offerMadeRef.current = false;
-            }
-            await currentPc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
-            await flushPending(currentPc);
-            {
-              const answer = await currentPc.createAnswer();
-              await currentPc.setLocalDescription(answer);
-              sig.send({ type: "answer", sdp: answer });
+            // A new signaling connection of the peer. If our PC was negotiated
+            // with an earlier instance, drop it; the peer's "ready" (sent on
+            // open) then triggers the offer.
+            if (pcRef.current.remoteDescription) {
+              markDisconnected();
+              setupPC();
             }
             break;
 
-          case "answer":
-            if (currentPc.signalingState === "have-local-offer") {
-              await currentPc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
-              await flushPending(currentPc);
+          case "ready": {
+            if (from && from === remoteId) {
+              // Same peer PC, its signaling socket just reconnected: only
+              // kick ICE if media isn't flowing.
+              const cur = pcRef.current;
+              if (cur.iceConnectionState !== "connected" && cur.iceConnectionState !== "completed") doIceRestart(cur);
+              break;
             }
-            break;
-
-          case "ice-candidate":
-            if (currentPc.remoteDescription) {
-              await currentPc.addIceCandidate(new RTCIceCandidate(msg.candidate));
+            const pc = pcFor(from);
+            if (pc.signalingState === "have-local-offer" && offeringPc !== pc && pc.localDescription) {
+              // Our offer went out before this peer instance was listening — resend it.
+              send({ type: "offer", sdp: pc.localDescription.toJSON() });
             } else {
-              // Кандидат пришёл раньше remoteDescription — ставим в очередь
-              pendingIceRef.current.push(msg.candidate);
+              await makeOffer(pc);
             }
             break;
+          }
+
+          case "offer": {
+            const pc = pcFor(from);
+            const collision = offeringPc === pc || pc.signalingState !== "stable";
+            // Deterministic tie-break: lower pcId is polite (yields).
+            const polite = !from || myId < from;
+            ignoreOffer = !polite && collision;
+            if (ignoreOffer) break;
+            if (pc.signalingState === "have-local-offer") await pc.setLocalDescription({ type: "rollback" });
+            if (from) remoteId = from;
+            await pc.setRemoteDescription(msg.sdp);
+            await flushPending(pc);
+            await pc.setLocalDescription(await pc.createAnswer());
+            send({ type: "answer", sdp: pc.localDescription!.toJSON() });
+            break;
+          }
+
+          case "answer": {
+            const pc = pcRef.current;
+            if (pc.signalingState !== "have-local-offer") break;
+            if (from) remoteId = from;
+            await pc.setRemoteDescription(msg.sdp);
+            await flushPending(pc);
+            break;
+          }
+
+          case "ice-candidate": {
+            const pc = pcRef.current;
+            if (from && remoteId && from !== remoteId) break; // stale peer PC
+            if (pc.remoteDescription && (!from || from === remoteId)) {
+              try {
+                await pc.addIceCandidate(msg.candidate);
+              } catch (e) {
+                if (!ignoreOffer) throw e;
+              }
+            } else {
+              pendingIce.push({ from, c: msg.candidate });
+            }
+            break;
+          }
 
           case "peer-left":
           case "bye":
-            hasRemoteRef.current = false;
-            setHasRemote(false);
+            // Start over with a clean PC so the next join negotiates from scratch.
+            markDisconnected();
             setStatus("waiting");
-            stopElapsed();
-            if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
-            offerMadeRef.current  = false;
-            pendingIceRef.current = [];
+            setupPC();
             break;
         }
       } catch (e) {
@@ -335,31 +421,24 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd }: UseP2PCallOp
       }
     });
 
-    // Сигналинг переподключился после обрыва — заново анонсируемся
+    // Signaling socket came back after a drop — re-announce ourselves.
     const unsubReconnect = sig.onReconnect(() => {
-      if (cancelRef.current) return;
-      offerMadeRef.current  = false;
-      pendingIceRef.current = [];
-      sig.send({ type: "ready" });
+      if (!cancelRef.current) send({ type: "ready" });
     });
 
-    const nav = navigator as any;
+    const nav = navigator as Navigator & { connection?: EventTarget };
     const onNetChange = () => {
-      if (!hasRemoteRef.current || cancelRef.current) return;
-      const cur = pcRef.current;
-      if (!cur) return;
-
+      if (!hasRemoteRef.current || cancelRef.current || !pcRef.current) return;
       clearTimeout(iceGraceTimer);
       clearTimeout(iceRestartTimer);
       setStatus("reconnecting");
-      doIceRestart(cur);
+      doIceRestart(pcRef.current);
     };
     nav.connection?.addEventListener("change", onNetChange);
 
     const onOnline = () => {
-      if (!hasRemoteRef.current || cancelRef.current) return;
       const cur = pcRef.current;
-      if (!cur) return;
+      if (!hasRemoteRef.current || cancelRef.current || !cur) return;
       const s = cur.iceConnectionState;
       if (s === "connected" || s === "completed") return;
       clearTimeout(iceGraceTimer);
@@ -368,20 +447,19 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd }: UseP2PCallOp
     };
     window.addEventListener("online", onOnline);
 
-    // ── Инициализация ─────────────────────────────────────────────
+    // ── Init ─────────────────────────────────────────────────────
     setStatus("connecting");
-
     sig.connect()
       .then(() => {
         if (cancelRef.current) return;
-        sig.send({ type: "ready" });
-        setStatus("waiting");
+        send({ type: "ready" });
+        if (!hasRemoteRef.current) setStatus("waiting");
       })
       .catch(() => {
         if (!cancelRef.current) setStatus("failed");
       });
 
-    // ── Cleanup ───────────────────────────────────────────────────
+    // ── Cleanup ──────────────────────────────────────────────────
     return () => {
       cancelRef.current = true;
       clearTimeout(iceGraceTimer);
@@ -392,21 +470,29 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd }: UseP2PCallOp
       unsubscribe();
       unsubReconnect();
       sig.disconnect();
-      const oldPc = pcRef.current;
-      if (oldPc) {
-        oldPc.ontrack                    = null;
-        oldPc.onicecandidate             = null;
-        oldPc.oniceconnectionstatechange = null;
-        oldPc.onconnectionstatechange    = null;
-        oldPc.close();
-        pcRef.current = null;
-      }
+      closePC();
       stopElapsed();
+      attachRemote(null);
       setStatus("idle");
       setHasRemote(false);
       hasRemoteRef.current = false;
     };
-  }, [roomId, wsToken, localStream, retryKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [roomId, wsToken, hasLocal, retryKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Local tracks changed (voice filter toggled, camera restarted): swap them
+  // into the existing senders — no teardown, no renegotiation.
+  useEffect(() => {
+    const pc = pcRef.current;
+    if (!pc || !localStream) return;
+    for (const tr of pc.getTransceivers()) {
+      const kind = tr.receiver.track.kind;
+      const next = localStream.getTracks().find(t => t.kind === kind) ?? null;
+      if (tr.sender.track === next) continue;
+      if (next && tr.sender.track) next.enabled = tr.sender.track.enabled; // keep mute/camera-off
+      tr.sender.replaceTrack(next).catch(e => console.warn("[P2P] replaceTrack failed:", e));
+      try { tr.sender.setStreams?.(localStream); } catch { /* optional API */ }
+    }
+  }, [localStream]);
 
   // ── Controls ──────────────────────────────────────────────────
   const toggleMute = useCallback(() => {

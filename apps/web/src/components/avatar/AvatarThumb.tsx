@@ -32,7 +32,7 @@ export function AvatarThumb({
   useEffect(() => {
     let alive = true;
     // Engine is loaded lazily — three.js stays out of the first paint bundle.
-    import("@/lib/avatar/engine/snapshot")
+    import("@/lib/avatar/kit/snapshot")
       .then(({ renderAvatarSnapshot }) => renderAvatarSnapshot(cfg, { size: Math.min(512, Math.round(size * 2)), framing }))
       .then((url) => alive && setSrc(url))
       .catch(() => alive && setSrc(null));

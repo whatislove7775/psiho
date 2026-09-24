@@ -6,12 +6,18 @@
  * подписчиков (onReconnect) о восстановлении, чтобы хук пересобрал ICE.
  */
 
+/**
+ * `from` is the sender's per-RTCPeerConnection id (random, regenerated on
+ * every PC rebuild). It lets the receiver tell a fresh peer from a stale one
+ * and resolve offer glare deterministically. The server relays the payload
+ * verbatim, so it needs no changes.
+ */
 export type SignalMessage =
-  | { type: "offer"; sdp: RTCSessionDescriptionInit }
-  | { type: "answer"; sdp: RTCSessionDescriptionInit }
-  | { type: "ice-candidate"; candidate: RTCIceCandidateInit }
-  | { type: "ready" }
-  | { type: "bye" }
+  | { type: "offer"; sdp: RTCSessionDescriptionInit; from?: string }
+  | { type: "answer"; sdp: RTCSessionDescriptionInit; from?: string }
+  | { type: "ice-candidate"; candidate: RTCIceCandidateInit; from?: string }
+  | { type: "ready"; from?: string }
+  | { type: "bye"; from?: string }
   | { type: "peer-joined" }
   | { type: "peer-left" };
 

@@ -13,8 +13,8 @@ import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { normalizeAvatar, type AvatarConfig } from "../schema";
-import type { AvatarRendererApi, FaceResult, Framing, RendererOptions } from "../engine/types";
-import { irisTexture } from "../engine/textures";
+import type { AvatarRendererApi, FaceResult, Framing, RendererOptions } from "./types";
+import { irisTexture } from "./iris";
 import { identityWeights } from "./identity";
 
 export const KIT_BASE = "/avatar-kit";

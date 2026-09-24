@@ -241,7 +241,13 @@ export function Room({ sessionId }: { sessionId: string }) {
             {camReady && (
               <div className={s.stageTag}>
                 <span className={`${s.dot} ${cam.faceLost ? s.dotWarn : ""}`} />
-                {cam.faceLost ? "Лицо не видно — сядьте ближе к свету" : cam.tracking ? "Так вас увидит собеседник" : "Подключаем распознавание мимики"}
+                {cam.faceLost
+                  ? "Лицо не видно — сядьте ближе к свету"
+                  : !cam.tracking
+                    ? "Подключаем распознавание мимики"
+                    : cam.calibrating
+                      ? "Запоминаем ваше спокойное лицо — расслабьтесь и смотрите в камеру"
+                      : "Так вас увидит собеседник"}
               </div>
             )}
           </div>
@@ -281,6 +287,11 @@ export function Room({ sessionId }: { sessionId: string }) {
                   Видео идёт напрямую и зашифровано
                 </li>
               </ul>
+              {cam.tracking && (
+                <Button variant="ghost" size="sm" onClick={cam.recalibrate} disabled={cam.calibrating} icon={<RefreshCw size={16} />}>
+                  {cam.calibrating ? "Калибруем мимику…" : "Откалибровать мимику"}
+                </Button>
+              )}
             </Card>
 
             <Card>

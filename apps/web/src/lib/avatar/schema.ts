@@ -2,7 +2,7 @@
  * AvatarConfig — the serialisable description of a user's stylised 3D avatar.
  *
  * This file is the contract between:
- *   - the avatar engine  (src/lib/avatar/engine/*) which renders a config,
+ *   - the avatar engine  (src/lib/avatar/kit/*) which renders a config,
  *   - the avatar studio  (src/components/avatar-studio/*) which edits it,
  *   - the backend        (User.avatar_config JSON) which stores it as-is.
  *

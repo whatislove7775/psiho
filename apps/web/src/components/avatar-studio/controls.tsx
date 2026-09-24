@@ -4,7 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "rea
 import { Ban, Pipette } from "lucide-react";
 import { Skeleton } from "@/ui";
 import type { AvatarConfig } from "@/lib/avatar/schema";
-import type { Framing } from "@/lib/avatar/engine/types";
+import type { Framing } from "@/lib/avatar/kit/types";
 import { cachedThumb, requestThumb, thumbKey } from "./thumbQueue";
 import { curveGradient, findBase, locateOnCurve, sameColor, shadeAt, type CurveMode } from "./color";
 import s from "./AvatarStudio.module.css";

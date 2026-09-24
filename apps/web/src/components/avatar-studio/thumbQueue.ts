@@ -9,7 +9,7 @@
  * category paints instantly (no skeleton flash).
  */
 import { avatarKey, type AvatarConfig } from "@/lib/avatar/schema";
-import type { Framing } from "@/lib/avatar/engine/types";
+import type { Framing } from "@/lib/avatar/kit/types";
 
 export interface ThumbOpts {
   size: number;
@@ -36,7 +36,7 @@ let running = false;
 type SnapshotFn = (cfg: AvatarConfig, o: ThumbOpts) => Promise<string>;
 let snapshotFn: Promise<SnapshotFn> | null = null;
 const loadSnapshot = () =>
-  (snapshotFn ??= import("@/lib/avatar/engine/snapshot").then((m) => m.renderAvatarSnapshot as SnapshotFn));
+  (snapshotFn ??= import("@/lib/avatar/kit/snapshot").then((m) => m.renderAvatarSnapshot as SnapshotFn));
 
 export function thumbKey(cfg: AvatarConfig, o: ThumbOpts): string {
   return `${o.size}|${o.framing}|${o.yaw ?? 0}|${JSON.stringify(o.expression ?? {})}|${avatarKey(cfg)}`;
