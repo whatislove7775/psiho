@@ -36,7 +36,7 @@ export const AvatarView = forwardRef<AvatarViewHandle, {
     let disposed = false;
     let ro: ResizeObserver | null = null;
     const host = hostRef.current!;
-    import("@/lib/avatar/engine/AvatarRenderer").then(({ AvatarRenderer }) => {
+    import("@/lib/avatar/kit/KitRenderer").then(({ KitRenderer }) => {
       if (disposed) return;
       const canvas = document.createElement("canvas");
       canvas.style.width = "100%";
@@ -44,7 +44,7 @@ export const AvatarView = forwardRef<AvatarViewHandle, {
       canvas.style.display = "block";
       canvas.style.touchAction = "none";
       host.appendChild(canvas);
-      const r = new AvatarRenderer(canvas, { framing, idle: true, background: null });
+      const r = new KitRenderer(canvas, { framing, idle: true, background: null });
       r.setConfig(cfgRef.current);
       const fit = () => r.resize(host.clientWidth, host.clientHeight);
       fit();

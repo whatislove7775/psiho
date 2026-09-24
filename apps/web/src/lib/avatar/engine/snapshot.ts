@@ -4,17 +4,17 @@
  */
 import { avatarKey, type AvatarConfig } from "../schema";
 import type { Framing } from "./types";
-import { AvatarRenderer } from "./AvatarRenderer";
+import { KitRenderer } from "../kit/KitRenderer";
 
 const cache = new Map<string, Promise<string>>();
 const MAX = 160;
-let shared: AvatarRenderer | null = null;
+let shared: KitRenderer | null = null;
 let queue: Promise<unknown> = Promise.resolve();
 
-function renderer(): AvatarRenderer {
+function renderer(): KitRenderer {
   if (!shared) {
     const canvas = document.createElement("canvas");
-    shared = new AvatarRenderer(canvas, { background: null, idle: false, preserveDrawingBuffer: true, maxPixelRatio: 1 });
+    shared = new KitRenderer(canvas, { background: null, idle: false, preserveDrawingBuffer: true, maxPixelRatio: 1 });
   }
   return shared;
 }
@@ -32,13 +32,13 @@ export function renderAvatarSnapshot(
     cache.set(key, hit);
     return hit;
   }
-  const job = queue.then(() => {
+  const job = queue.then(async () => {
     const r = renderer();
     r.resize(size, size);
     r.setFraming(framing);
     r.setConfig(cfg);
     r.setExpression(opts.expression ?? {});
-    r.renderOnce(opts.yaw ?? 0);
+    await r.renderOnceAsync(opts.yaw ?? 0);
     return r.canvas.toDataURL("image/png");
   });
   queue = job.catch(() => undefined);

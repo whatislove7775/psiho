@@ -29,3 +29,7 @@ next-env.d.ts
 
 # MediaPipe wasm is copied from node_modules on install
 apps/web/public/mediapipe/wasm/
+
+# avatar kit build cache
+tools/avatar-kit/.cache/
+__pycache__/

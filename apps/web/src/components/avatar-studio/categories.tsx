@@ -308,14 +308,20 @@ function HeadwearCat(p: CategoryProps) {
   );
 }
 
-function OutfitCat(p: CategoryProps) {
+function MakeupCat(p: CategoryProps) {
   return (
     <>
-      <Section title="Цвет">
-        <ColorControl label="Цвет одежды" palette={ACCENT_COLORS} {...color(p, "outfit", "color")} />
+      <Section title="Помада">
+        <ColorControl label="Цвет губ" palette={LIP_COLORS} {...color(p, "mouth", "lipColor")} />
       </Section>
-      <Section title="Одежда">
-        <OptionGrid ariaLabel="Одежда" options={OUTFITS} labels={RU.OUTFIT_RU} render={PORTRAIT} {...tiles(p, "outfit", "style")} />
+      <Section title="Тени для век">
+        <ColorControl label="Тени для век" palette={SHADOW_COLORS} allowNone noneLabel="Без теней" {...color(p, "eyes", "shadow")} />
+      </Section>
+      <Section title="Румяна">
+        <RangeField label="Румяна" min="Нет" max="Ярко" {...unit(p, "skin", "blush")} />
+      </Section>
+      <Section title="Ресницы и подводка">
+        <OptionGrid ariaLabel="Ресницы и подводка" options={LASH_STYLES} labels={RU.LASH_RU} render={EYES_ZOOM} {...tiles(p, "eyes", "lashes")} />
       </Section>
     </>
   );
@@ -333,5 +339,5 @@ export const CATEGORIES: { id: string; label: string; Panel: (p: CategoryProps) 
   { id: "facial-hair", label: "Борода и усы", Panel: FacialHairCat },
   { id: "eyewear", label: "Очки", Panel: EyewearCat },
   { id: "headwear", label: "Головной убор", Panel: HeadwearCat },
-  { id: "outfit", label: "Одежда", Panel: OutfitCat },
+  { id: "makeup", label: "Макияж", Panel: MakeupCat },
 ];
