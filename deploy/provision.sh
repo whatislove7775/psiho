@@ -51,8 +51,10 @@ dummy_cert() {
 
 real_cert() {
   cd "$DIR"
+  exec 9>/run/aprosop-cert.lock
+  flock -n 9 || { info "Сертификат уже выпускается другим процессом"; return 1; }
   local d; d="$(certs_dir)"
-  if [[ -f "$d/live/$DOMAIN/fullchain.pem" && ! -f "$d/live/$DOMAIN/.dummy" ]]; then
+  if [[ -L "$d/live/$DOMAIN/fullchain.pem" && ! -f "$d/live/$DOMAIN/.dummy" ]]; then
     ok "HTTPS-сертификат уже есть"; systemctl disable --now aprosop-cert.timer >/dev/null 2>&1 || true; return 0
   fi
   if ! resolves_here "$DOMAIN"; then
@@ -60,18 +62,22 @@ real_cert() {
     return 1
   fi
   local names=(-d "$DOMAIN"); resolves_here "www.$DOMAIN" && names+=(-d "www.$DOMAIN")
-  rm -rf "$d/live/$DOMAIN"
-  if docker compose run --rm --entrypoint certbot certbot certonly --webroot -w /var/www/certbot \
-       "${names[@]}" --agree-tos --register-unsafely-without-email --non-interactive --cert-name "$DOMAIN"; then
-    docker compose exec -T nginx nginx -s reload || docker compose restart nginx
-    docker compose restart coturn
-    systemctl disable --now aprosop-cert.timer >/dev/null 2>&1 || true
-    ok "HTTPS-сертификат Let's Encrypt выпущен"
-  else
-    dummy_cert; docker compose restart nginx >/dev/null 2>&1 || true
-    warn "Let's Encrypt не выдал сертификат — повторю через 5 минут"
-    return 1
-  fi
+  local try
+  for try in 1 2 3; do
+    rm -rf "$d/live/$DOMAIN" "$d/archive/$DOMAIN" "$d/renewal/$DOMAIN.conf"
+    if docker compose run -T --rm --entrypoint certbot certbot certonly --webroot -w /var/www/certbot \
+         "${names[@]}" --agree-tos --register-unsafely-without-email --non-interactive --cert-name "$DOMAIN" </dev/null; then
+      docker compose exec -T nginx nginx -s reload </dev/null || docker compose restart nginx </dev/null
+      docker compose restart coturn </dev/null
+      systemctl disable --now aprosop-cert.timer >/dev/null 2>&1 || true
+      ok "HTTPS-сертификат Let's Encrypt выпущен"
+      return 0
+    fi
+    sleep 20
+  done
+  dummy_cert; docker compose restart nginx </dev/null >/dev/null 2>&1 || true
+  warn "Let's Encrypt не выдал сертификат — повторю через 5 минут"
+  return 1
 }
 
 cert_timer() {
@@ -86,7 +92,7 @@ EOF
 [Unit]
 Description=aprosop.ru: retry certificate every 5 minutes
 [Timer]
-OnBootSec=2min
+OnActiveSec=5min
 OnUnitActiveSec=5min
 [Install]
 WantedBy=timers.target
@@ -96,6 +102,9 @@ EOF
   ok "Таймер выпуска сертификата включён"
 }
 
+# Весь скрипт — одна группа: bash дочитывает её целиком до запуска,
+# поэтому команды не "съедают" остаток скрипта при запуске через curl | bash.
+{
 if [[ "${1:-}" == "--cert" ]]; then real_cert || true; exit 0; fi
 
 echo; echo "=== Установка aprosop.ru на новый сервер ==="; echo
@@ -165,20 +174,22 @@ dummy_cert
 
 # ── 5. Сборка и запуск ─────────────────────────────────────────
 info "Собираю и запускаю сайт (5–15 минут при первом запуске)"
-docker compose up -d --build
+docker compose up -d --build </dev/null
 ok "Контейнеры запущены"
 
 cert_timer
 real_cert || true
 
 # ── 6. Автодеплой ──────────────────────────────────────────────
-bash deploy/bootstrap-server.sh "$DIR" || true
+bash deploy/bootstrap-server.sh "$DIR" </dev/null || true
 
 echo
 echo "=== Готово ==="
 echo "  IP сервера: $(public_ip)"
-if [[ -n "$NEW_ADMIN_PASSWORD" ]]; then
-  echo "  Админка:    https://$DOMAIN/admin   логин: admin   пароль: $NEW_ADMIN_PASSWORD"
-  echo "  (сохраните пароль — он показывается один раз; также лежит в $DIR/.env)"
-fi
+ADMIN_PW="$(grep -m1 '^ADMIN_PASSWORD=' .env | cut -d= -f2-)"
+ADMIN_LG="$(grep -m1 '^ADMIN_LOGIN=' .env | cut -d= -f2-)"
+echo "  Админка:    https://$DOMAIN/admin   логин: ${ADMIN_LG:-admin}   пароль: $ADMIN_PW"
+echo "  (пароль хранится в $DIR/.env)"
 echo
+exit 0
+}
