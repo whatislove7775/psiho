@@ -1,43 +1,40 @@
-import hashlib
-
-from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.contrib.auth.forms import AuthenticationForm
-from .models import User, PsychologistProfile, PsychologistSchedule
+from django.contrib.auth.forms import UserChangeForm, UserCreationForm
+
+from .models import PsychologistProfile, PsychologistSchedule, User
+
+# Вход в /api/admin/ — по псевдониму или email (apps.users.backends.AliasOrEmailBackend)
 
 
-def _hash_email(email: str) -> str:
-    salt = "ANON_PSY_EMAIL_SALT_v1"
-    return hashlib.sha256(f"{salt}:{email.lower().strip()}".encode()).hexdigest()
+class AdminUserCreationForm(UserCreationForm):
+    class Meta:
+        model = User
+        fields = ("alias", "role")
 
 
-class EmailAuthForm(AuthenticationForm):
-    """Принимает обычный email, хеширует перед аутентификацией."""
-    username = forms.EmailField(label="Email", widget=forms.EmailInput(attrs={"autofocus": True}))
-
-    def clean_username(self):
-        return _hash_email(self.cleaned_data["username"])
-
-
-admin.site.login_form = EmailAuthForm
-admin.site.login_template = None
+class AdminUserChangeForm(UserChangeForm):
+    class Meta:
+        model = User
+        fields = "__all__"
 
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
+    form = AdminUserChangeForm
+    add_form = AdminUserCreationForm
     list_display = ("alias", "role", "is_staff", "is_active", "date_joined")
     list_filter = ("role", "is_staff", "is_active")
     search_fields = ("alias",)
     ordering = ("-date_joined",)
     fieldsets = (
-        (None, {"fields": ("email_hash", "password")}),
-        ("Профиль", {"fields": ("alias", "role")}),
+        (None, {"fields": ("alias", "password", "email_hash")}),
+        ("Профиль", {"fields": ("role", "avatar_config")}),
         ("Права", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
         ("Даты", {"fields": ("date_joined", "last_login")}),
     )
     add_fieldsets = (
-        (None, {"fields": ("email_hash", "alias", "role", "password1", "password2")}),
+        (None, {"fields": ("alias", "role", "password1", "password2")}),
     )
     readonly_fields = ("date_joined", "last_login", "email_hash")
 
@@ -50,7 +47,7 @@ class PsychologistProfileAdmin(admin.ModelAdmin):
     list_editable = ("verification_status",)
     readonly_fields = ("created_at", "updated_at")
     fieldsets = (
-        ("Публичная информация", {"fields": ("user", "display_name", "bio", "specializations", "languages", "session_rate_rub")}),
+        ("Публичная информация", {"fields": ("user", "display_name", "bio", "approach", "specializations", "languages", "experience_years", "session_rate_rub")}),
         ("Верификация", {"fields": ("verification_status", "verified_by", "verified_at", "rejection_reason")}),
         ("Платежи", {"fields": ("yookassa_account_id",)}),
         ("Даты", {"fields": ("created_at", "updated_at")}),

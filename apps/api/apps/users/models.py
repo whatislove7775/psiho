@@ -1,55 +1,61 @@
 """
 Zero-Knowledge User Architecture
 ---------------------------------
-Client:   хранит ТОЛЬКО хеш email (SHA-256 + соль). Никаких ФИО, телефонов,
-          адресов. Идентификация — анонимный UUID-псевдоним.
+Client:   регистрируется только с паролем. Никаких email, ФИО, телефонов.
+          Идентификация — псевдоним `тихий-кит-4821` + ключ восстановления.
 Psychologist: верифицированный специалист. ФИО и документы хранятся
               в зашифрованном виде, доступ — только администраторам.
 """
-import hashlib
-import secrets
+import json
 import uuid
 
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
+AVATAR_CONFIG_MAX_BYTES = 8 * 1024
+
+
+def validate_avatar_config(value):
+    if value is None:
+        return
+    if not isinstance(value, dict):
+        raise ValidationError("Конфигурация аватара должна быть объектом.")
+    size = len(json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+    if size > AVATAR_CONFIG_MAX_BYTES:
+        raise ValidationError("Конфигурация аватара слишком большая (максимум 8 КБ).")
+
 
 class UserManager(BaseUserManager):
-    def create_anonymous_client(self, email: str, password: str) -> "User":
-        email_hash = self._hash_email(email)
-        alias = f"anon_{secrets.token_hex(6)}"
-        user = self.model(
-            email_hash=email_hash,
-            alias=alias,
-            role=User.Role.CLIENT,
-        )
-        user.set_password(password)
-        user.save(using=self._db)
-        return user
+    use_in_migrations = True
 
-    def create_psychologist(self, email: str, password: str, **extra) -> "User":
-        email_hash = self._hash_email(email)
+    def _create(self, *, password, alias=None, email=None, **extra) -> "User":
+        from .aliases import generate_unique_alias
+        from .security import hash_email
+
         user = self.model(
-            email_hash=email_hash,
-            alias=extra.pop("alias", f"psy_{secrets.token_hex(6)}"),
-            role=User.Role.PSYCHOLOGIST,
+            alias=alias or generate_unique_alias(),
+            email_hash=hash_email(email) if email else None,
             **extra,
         )
         user.set_password(password)
         user.save(using=self._db)
         return user
 
-    @staticmethod
-    def _hash_email(email: str) -> str:
-        # HMAC-SHA256 с серверной солью — email восстанавливаемый только через reset-flow,
-        # прямой lookup по открытому тексту невозможен.
-        salt = "ANON_PSY_EMAIL_SALT_v1"
-        return hashlib.sha256(f"{salt}:{email.lower().strip()}".encode()).hexdigest()
+    def create_anonymous_client(self, password: str) -> "User":
+        return self._create(password=password, role=User.Role.CLIENT)
 
-    def get_by_natural_key(self, identifier: str):
-        # Поддержка логина по хешу email (передаётся с клиента уже хешированным)
-        return self.get(email_hash=identifier)
+    def create_psychologist(self, email: str, password: str, **extra) -> "User":
+        return self._create(password=password, email=email, role=User.Role.PSYCHOLOGIST, **extra)
+
+    def create_user(self, alias=None, password=None, **extra) -> "User":
+        extra.setdefault("role", User.Role.CLIENT)
+        return self._create(password=password, alias=alias, **extra)
+
+    def create_superuser(self, alias=None, password=None, **extra) -> "User":
+        extra.update(role=User.Role.ADMIN, is_staff=True, is_superuser=True)
+        return self._create(password=password, alias=alias, **extra)
 
 
 class User(AbstractBaseUser, PermissionsMixin):
@@ -59,10 +65,14 @@ class User(AbstractBaseUser, PermissionsMixin):
         ADMIN = "admin", "Администратор"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    # Единственный идентификатор клиента в БД — хеш email
-    email_hash = models.CharField(max_length=64, unique=True, db_index=True)
+    # Хеш email — только у тех, кто его указал (психологи). Клиенты анонимны.
+    email_hash = models.CharField(max_length=64, unique=True, null=True, blank=True)
+    # Публичный псевдоним и логин: `тихий-кит-4821`
     alias = models.CharField(max_length=40, unique=True)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.CLIENT)
+    avatar_config = models.JSONField(null=True, blank=True, validators=[validate_avatar_config])
+    # Хеш ключа восстановления (make_password); сам ключ показывается один раз
+    recovery_key_hash = models.CharField(max_length=128, blank=True, default="")
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
@@ -70,7 +80,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     objects = UserManager()
 
-    USERNAME_FIELD = "email_hash"
+    USERNAME_FIELD = "alias"
     REQUIRED_FIELDS = []
 
     class Meta:
@@ -79,6 +89,14 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return f"{self.role}:{self.alias}"
+
+    @property
+    def has_email(self) -> bool:
+        return bool(self.email_hash)
+
+    @property
+    def is_platform_admin(self) -> bool:
+        return self.role == self.Role.ADMIN or self.is_staff
 
 
 class PsychologistProfile(models.Model):
@@ -104,6 +122,8 @@ class PsychologistProfile(models.Model):
     bio = models.TextField(max_length=1200, blank=True)
     specializations = models.JSONField(default=list)
     languages = models.JSONField(default=list)
+    approach = models.TextField(max_length=2000, blank=True, default="")
+    experience_years = models.PositiveSmallIntegerField(default=0)
     session_rate_rub = models.DecimalField(max_digits=8, decimal_places=2)
 
     verification_status = models.CharField(

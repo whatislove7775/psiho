@@ -1,0 +1,108 @@
+/* aprosop design tokens — see /docs/DESIGN.md. Dark is the default theme. */
+
+:root {
+  color-scheme: dark;
+
+  --c-page: #09090b;
+  --c-panel: #18181b;
+  --c-raised: #222226;
+  --c-raised-2: #2b2b30;
+  --c-line: rgba(255, 255, 255, 0.07);
+  --c-line-strong: rgba(255, 255, 255, 0.13);
+
+  --c-text: #f4f4f6;
+  --c-muted: #9a9aa3;
+  --c-faint: #5e5e66;
+
+  --c-primary: #3a6df0;
+  --c-primary-2: #1c4fd6;
+  --c-primary-soft: rgba(58, 109, 240, 0.16);
+  --c-on-primary: #ffffff;
+
+  --c-danger: #ff5a4e;
+  --c-danger-soft: rgba(255, 90, 78, 0.14);
+  --c-warning: #f4c542;
+  --c-warning-soft: rgba(244, 197, 66, 0.14);
+  --c-success: #3dd68c;
+  --c-success-soft: rgba(61, 214, 140, 0.14);
+
+  --p-peach: #ffc8a6;
+  --p-butter: #ffe17c;
+  --p-lime: #dcf280;
+  --p-mint: #a0e6d8;
+  --p-lilac: #cbbeff;
+  --p-sky: #a8d4ff;
+  --p-ink: #111114;
+
+  --g-accent: linear-gradient(160deg, #2f80f7 0%, #1a55dc 100%);
+
+  --r-panel: 28px;
+  --r-card: 22px;
+  --r-control: 14px;
+  --r-pill: 999px;
+
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --s-16: 64px;
+
+  --t-12: 12px;
+  --t-13: 13px;
+  --t-15: 15px;
+  --t-17: 17px;
+  --t-20: 20px;
+  --t-24: 24px;
+  --t-32: 32px;
+  --t-44: 44px;
+  --t-60: 60px;
+
+  --font: "Onest Variable", "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --shadow-float: 0 18px 50px rgba(0, 0, 0, 0.45);
+  --focus: 0 0 0 3px rgba(58, 109, 240, 0.55);
+
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --dur: 180ms;
+
+  --sidebar-w: 280px;
+  --rail-w: 340px;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --c-page: #f2f2f5;
+  --c-panel: #ffffff;
+  --c-raised: #f6f6f9;
+  --c-raised-2: #ececf1;
+  --c-line: rgba(10, 10, 20, 0.08);
+  --c-line-strong: rgba(10, 10, 20, 0.14);
+
+  --c-text: #0e0e12;
+  --c-muted: #62626c;
+  --c-faint: #a3a3ad;
+
+  --c-primary: #2f62e6;
+  --c-primary-soft: rgba(47, 98, 230, 0.1);
+
+  --c-danger: #e5392d;
+  --c-danger-soft: rgba(229, 57, 45, 0.1);
+  --c-warning: #c99400;
+  --c-warning-soft: rgba(201, 148, 0, 0.12);
+  --c-success: #12a865;
+  --c-success-soft: rgba(18, 168, 101, 0.1);
+
+  --shadow-float: 0 18px 50px rgba(20, 20, 40, 0.14);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur: 0ms;
+  }
+}

@@ -1,3 +1,13 @@
+# ──────────────────────────────────────────────────────────────────
+# aprosop.ru — production stack
+#
+# Все значения берутся из файла .env рядом с этим файлом (см. .env.example).
+# ВАЖНО: имена сервисов и volumes (pgdata, certbot-conf, certbot-www)
+# менять нельзя — в них живут данные production.
+#
+# Переменные в виде "- NAME" (без значения) передаются в контейнер,
+# только если заданы в .env; иначе действует значение по умолчанию из кода.
+# ──────────────────────────────────────────────────────────────────
 services:
 
   db:
@@ -19,6 +29,11 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
   coturn:
     image: coturn/coturn:4.6
@@ -29,7 +44,7 @@ services:
     command: >
       -n
       --realm=aprosop.ru
-      --user=aprosop:aprosopsecretturn
+      --user=${TURN_USER:-aprosop}:${TURN_PASSWORD:-aprosopsecretturn}
       --lt-cred-mech
       --fingerprint
       --listening-port=3478
@@ -54,22 +69,60 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      SECRET_KEY: ${SECRET_KEY:-local-dev-secret-key-change-in-production-please}
-      DEBUG: ${DEBUG:-True}
-      USE_POSTGRES: "True"
-      DB_NAME: ${DB_NAME:-anonpsy}
-      DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-localdev}
-      DB_HOST: db
-      REDIS_URL: redis://redis:6379/0
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,arch}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost}
+      # ── Django ──
+      - SECRET_KEY=${SECRET_KEY:-local-dev-secret-key-change-in-production-please}
+      - DEBUG=${DEBUG:-False}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,aprosop.ru,www.aprosop.ru}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost,https://aprosop.ru,https://www.aprosop.ru}
+      - CSRF_TRUSTED_ORIGINS
+      # ── Database / Redis (внутри docker-сети) ──
+      - USE_POSTGRES=True
+      - DB_NAME=${DB_NAME:-anonpsy}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-localdev}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      # ── Auth / anonymity (optional: code defaults apply when unset) ──
+      - JWT_SECRET_KEY
+      - JWT_ACCESS_MINUTES
+      - JWT_REFRESH_DAYS
+      - EMAIL_HASH_SALT
+      - ADMIN_LOGIN
+      - ADMIN_PASSWORD
+      - AUTH_THROTTLE_RATE
+      - SCHEDULE_TIME_ZONE
+      # ── Payments ──
+      - YOOKASSA_SHOP_ID
+      - YOOKASSA_SECRET_KEY
+      - YOOKASSA_RETURN_URL
+      - YOOKASSA_WEBHOOK_SECRET
+      - PLATFORM_FEE_PERCENT
+      # ── TURN (for backend-issued ICE config, if used) ──
+      - TURN_USER=${TURN_USER:-aprosop}
+      - TURN_PASSWORD=${TURN_PASSWORD:-aprosopsecretturn}
+    # Migrations are committed to git — no makemigrations in production.
     command: >
-      sh -c "/app/.venv/bin/python manage.py makemigrations --noinput &&
-             /app/.venv/bin/python manage.py migrate --noinput &&
+      sh -c "/app/.venv/bin/python manage.py migrate --noinput &&
              /app/.venv/bin/python manage.py collectstatic --noinput &&
              /app/.venv/bin/python manage.py create_admin &&
-             /app/.venv/bin/daphne -b 0.0.0.0 -p 8000 config.asgi:application"
+             exec /app/.venv/bin/daphne -b 0.0.0.0 -p 8000 config.asgi:application"
+    healthcheck:
+      # Uses the first ALLOWED_HOSTS entry as Host header so Django never answers 400.
+      test:
+        - CMD
+        - /app/.venv/bin/python
+        - -c
+        - |
+          import os, sys, urllib.request
+          h = os.environ.get("ALLOWED_HOSTS", "localhost").split(",")[0].strip().lstrip(".")
+          h = "localhost" if h in ("", "*") else h
+          r = urllib.request.Request("http://127.0.0.1:8000/api/v1/health/", headers={"Host": h})
+          sys.exit(0 if urllib.request.urlopen(r, timeout=4).status == 200 else 1)
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
     depends_on:
       db:
         condition: service_healthy
@@ -83,7 +136,18 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api/v1}
         NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://localhost}
+        NEXT_PUBLIC_TURN_USER: ${NEXT_PUBLIC_TURN_USER:-${TURN_USER:-aprosop}}
+        NEXT_PUBLIC_TURN_PASSWORD: ${NEXT_PUBLIC_TURN_PASSWORD:-${TURN_PASSWORD:-aprosopsecretturn}}
     restart: unless-stopped
+    environment:
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     depends_on:
       - api
 

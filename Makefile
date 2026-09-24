@@ -1,4 +1,4 @@
-.PHONY: up down build logs shell-api migrate dev help
+.PHONY: up down build logs logs-api logs-web shell-api migrate deploy dev-api dev-web help
 
 # Определяем docker compose команду (новый плагин или старый через дефис)
 DOCKER_COMPOSE := $(shell docker compose version > /dev/null 2>&1 && echo "docker compose" || echo "docker-compose")
@@ -21,6 +21,9 @@ logs-api:   ## Логи только Django
 
 logs-web:   ## Логи только Next.js
 	$(DOCKER_COMPOSE) logs -f web
+
+deploy:     ## Обновить сайт: git pull + сборка + проверка + автооткат (deploy/deploy.sh)
+	bash deploy/deploy.sh "$(CURDIR)" $(BRANCH)
 
 migrate:    ## Применить миграции Django
 	$(DOCKER_COMPOSE) exec api /app/.venv/bin/python manage.py migrate

@@ -1,3 +1,4 @@
+# Requires BuildKit (default in `docker compose` v2; deploy/deploy.sh enables it explicitly).
 # ── Stage 1: зависимости через uv ───────────────────────────────
 FROM python:3.12-slim AS builder
 
@@ -10,7 +11,10 @@ WORKDIR /app
 COPY requirements.txt .
 
 # uv создаёт venv и ставит зависимости без лишнего шума
-RUN uv venv /app/.venv && \
+# Кэш uv переживает пересборки (BuildKit) — повторная установка почти мгновенная
+ENV UV_LINK_MODE=copy
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv venv /app/.venv && \
     uv pip install --python /app/.venv/bin/python -r requirements.txt
 
 # ── Stage 2: финальный образ ────────────────────────────────────

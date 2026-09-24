@@ -1,13 +1,23 @@
-import environ
+import logging
+from datetime import timedelta
 from pathlib import Path
+
+import environ
 
 env = environ.Env(DEBUG=(bool, False))
 BASE_DIR = Path(__file__).resolve().parent.parent
 environ.Env.read_env(BASE_DIR / ".env")
 
-SECRET_KEY = env("SECRET_KEY", default="django-insecure-set-SECRET_KEY-env-var-in-production")
+_INSECURE_KEY = "django-insecure-set-SECRET_KEY-env-var-in-production"
+SECRET_KEY = env("SECRET_KEY", default=_INSECURE_KEY)
 DEBUG = env("DEBUG")
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
+if SECRET_KEY == _INSECURE_KEY and not DEBUG:
+    logging.getLogger(__name__).warning("SECRET_KEY не задан — используется небезопасный ключ по умолчанию")
+
+ALLOWED_HOSTS = env.list(
+    "ALLOWED_HOSTS",
+    default=["localhost", "127.0.0.1", "aprosop.ru", "www.aprosop.ru"],
+)
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -18,6 +28,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "channels",
     "apps.users",
@@ -55,7 +66,10 @@ TEMPLATES = [
 
 STATIC_URL = "/api/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+}
 
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
@@ -100,19 +114,39 @@ else:
         }
     }
 
+if _redis_url:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": _redis_url,
+            "KEY_PREFIX": "aprosop",
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "aprosop",
+        }
+    }
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
+    "DEFAULT_THROTTLE_RATES": {
+        # Регистрация / вход / восстановление — защита от перебора
+        "auth": env("AUTH_THROTTLE_RATE", default="20/min"),
+    },
 }
 
-from datetime import timedelta
+AUTHENTICATION_BACKENDS = ["apps.users.backends.AliasOrEmailBackend"]
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=2),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "ALGORITHM": "HS256",
@@ -122,7 +156,11 @@ SIMPLE_JWT = {
 
 CORS_ALLOWED_ORIGINS = env.list(
     "CORS_ALLOWED_ORIGINS",
-    default=["http://localhost:3000"],
+    default=[
+        "https://aprosop.ru",
+        "https://www.aprosop.ru",
+        "http://localhost:3000",
+    ],
 )
 CORS_ALLOW_CREDENTIALS = True
 
@@ -142,7 +180,14 @@ CSRF_TRUSTED_ORIGINS = env.list(
 
 YOOKASSA_SHOP_ID = env("YOOKASSA_SHOP_ID", default="")
 YOOKASSA_SECRET_KEY = env("YOOKASSA_SECRET_KEY", default="")
-YOOKASSA_RETURN_URL = env("YOOKASSA_RETURN_URL", default="http://localhost:3000/session/payment-complete")
+YOOKASSA_RETURN_URL = env("YOOKASSA_RETURN_URL", default="https://aprosop.ru/sessions")
+
+# Соль для хеширования email. Старые аккаунты (legacy-константа) продолжают
+# входить: поиск идёт по обоим хешам, см. apps/users/security.py
+EMAIL_HASH_SALT = env("EMAIL_HASH_SALT", default="ANON_PSY_EMAIL_SALT_v1")
+
+# Расписание психологов задаётся в московском времени
+SCHEDULE_TIME_ZONE = env("SCHEDULE_TIME_ZONE", default="Europe/Moscow")
 
 # Процент комиссии платформы (20%)
 PLATFORM_FEE_PERCENT = env.float("PLATFORM_FEE_PERCENT", default=20.0)
@@ -153,3 +198,12 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LANGUAGE_CODE = "ru-ru"
 TIME_ZONE = "UTC"
 USE_TZ = True
+
+# За nginx с TLS-терминацией
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+X_FRAME_OPTIONS = "DENY"
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+TEST_RUNNER = "config.test_runner.PytestTestRunner"

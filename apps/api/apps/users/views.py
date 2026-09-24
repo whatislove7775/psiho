@@ -1,133 +1,319 @@
-import hashlib
+from datetime import date, timedelta
 
 from django.contrib.auth import authenticate
-from django.db import IntegrityError
-from rest_framework import generics, permissions, serializers
+from django.contrib.auth.models import update_last_login
+from django.db import IntegrityError, transaction
+from django.db.models import Count, Q
+from django.utils import timezone
+from rest_framework import generics, permissions, serializers, status
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import User, PsychologistProfile
+
+from .aliases import normalize_alias
+from .models import PsychologistProfile, PsychologistSchedule, User
+from .permissions import IsPsychologist
+from .security import (
+    check_recovery_key, email_hash_candidates, generate_recovery_key, hash_recovery_key,
+)
+from .serializers import (
+    AnonymousSignupSerializer, ChangePasswordSerializer, DeleteAccountSerializer,
+    LoginSerializer, PsychologistPrivateSerializer, PsychologistPublicSerializer,
+    PsychologistRegisterSerializer, RecoverSerializer, ScheduleRuleSerializer, UserSerializer,
+    schedule_overlap_error,
+)
+from .services import blacklist_user_tokens, delete_user_completely
 
 
-def _hash_email(email: str) -> str:
-    salt = "ANON_PSY_EMAIL_SALT_v1"
-    return hashlib.sha256(f"{salt}:{email.lower().strip()}".encode()).hexdigest()
+def auth_payload(user, request, **extra) -> dict:
+    refresh = RefreshToken.for_user(user)
+    update_last_login(None, user)
+    data = {
+        "access": str(refresh.access_token),
+        "refresh": str(refresh),
+        "user": UserSerializer(user, context={"request": request}).data,
+    }
+    data.update(extra)
+    return data
 
 
-class RegisterClientSerializer(serializers.Serializer):
-    email = serializers.EmailField(write_only=True)
-    password = serializers.CharField(write_only=True, min_length=8)
-
-    def create(self, validated_data):
-        return User.objects.create_anonymous_client(
-            email=validated_data["email"],
-            password=validated_data["password"],
-        )
-
-
-class RegisterPsychologistSerializer(serializers.Serializer):
-    email = serializers.EmailField(write_only=True)
-    password = serializers.CharField(write_only=True, min_length=8)
-    display_name = serializers.CharField(max_length=80)
-    bio = serializers.CharField(max_length=1200, required=False, allow_blank=True)
-    session_rate_rub = serializers.DecimalField(max_digits=8, decimal_places=2)
-
-    def create(self, validated_data):
-        user = User.objects.create_psychologist(
-            email=validated_data["email"],
-            password=validated_data["password"],
-        )
-        PsychologistProfile.objects.create(
-            user=user,
-            display_name=validated_data["display_name"],
-            bio=validated_data.get("bio", ""),
-            session_rate_rub=validated_data["session_rate_rub"],
-        )
-        return user
-
-
-class RegisterClientView(generics.CreateAPIView):
-    serializer_class = RegisterClientSerializer
+class AuthThrottleMixin:
     permission_classes = [permissions.AllowAny]
-
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        try:
-            serializer.save()
-        except IntegrityError:
-            return Response(
-                {"detail": "Пользователь с таким email уже существует."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        return Response(
-            {"detail": "Аккаунт создан. Email не сохранён в открытом виде."},
-            status=status.HTTP_201_CREATED,
-        )
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
 
 
-class RegisterPsychologistView(generics.CreateAPIView):
-    serializer_class = RegisterPsychologistSerializer
-    permission_classes = [permissions.AllowAny]
+# ── Авторизация ──────────────────────────────────────────────────
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        try:
-            serializer.save()
-        except IntegrityError:
-            return Response(
-                {"detail": "Пользователь с таким email уже существует."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        return Response(
-            {"detail": "Заявка отправлена. Аккаунт будет активирован после верификации."},
-            status=status.HTTP_201_CREATED,
-        )
-
-
-class EmailLoginView(generics.GenericAPIView):
-    """Принимает email + password, хеширует email на сервере, возвращает JWT."""
-    permission_classes = [permissions.AllowAny]
-
+class AnonymousSignupView(AuthThrottleMixin, APIView):
     def post(self, request):
-        email = request.data.get("email", "")
-        password = request.data.get("password", "")
-        if not email or not password:
-            return Response({"detail": "Укажите email и пароль."}, status=400)
-        email_hash = _hash_email(email)
-        user = authenticate(request, email_hash=email_hash, password=password)
+        serializer = AnonymousSignupSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        recovery_key = generate_recovery_key()
+        with transaction.atomic():
+            user = User.objects.create_anonymous_client(serializer.validated_data["password"])
+            user.recovery_key_hash = hash_recovery_key(recovery_key)
+            user.save(update_fields=["recovery_key_hash"])
+        return Response(
+            auth_payload(user, request, recovery_key=recovery_key),
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class PsychologistRegisterView(AuthThrottleMixin, APIView):
+    def post(self, request):
+        serializer = PsychologistRegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        duplicate = Response(
+            {"detail": "Пользователь с таким email уже существует."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+        if User.objects.filter(email_hash__in=email_hash_candidates(data["email"])).exists():
+            return duplicate
+        try:
+            with transaction.atomic():
+                user = User.objects.create_psychologist(email=data["email"], password=data["password"])
+                PsychologistProfile.objects.create(
+                    user=user,
+                    display_name=data["display_name"],
+                    bio=data.get("bio", ""),
+                    specializations=data.get("specializations", []),
+                    session_rate_rub=data["session_rate_rub"],
+                    experience_years=data.get("experience_years", 0),
+                )
+        except IntegrityError:
+            return duplicate
+        user.refresh_from_db()
+        return Response(auth_payload(user, request), status=status.HTTP_201_CREATED)
+
+
+class LoginView(AuthThrottleMixin, APIView):
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = authenticate(
+            request,
+            login=serializer.validated_data["login"],
+            password=serializer.validated_data["password"],
+        )
         if user is None:
-            return Response({"detail": "Неверный email или пароль."}, status=401)
-        refresh = RefreshToken.for_user(user)
-        return Response({
-            "access": str(refresh.access_token),
-            "refresh": str(refresh),
-            "role": user.role,
-            "alias": user.alias,
-        })
+            return Response(
+                {"detail": "Неверный логин или пароль."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(auth_payload(user, request))
 
 
-class PsychologistListSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PsychologistProfile
-        fields = [
-            "id", "display_name", "bio", "specializations",
-            "languages", "session_rate_rub",
-        ]
+class RecoverView(AuthThrottleMixin, APIView):
+    def post(self, request):
+        serializer = RecoverSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        user = User.objects.filter(alias=normalize_alias(data["alias"]), is_active=True).first()
+        if user is None or not check_recovery_key(data["recovery_key"], user.recovery_key_hash):
+            return Response(
+                {"detail": "Неверный псевдоним или ключ восстановления."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        new_key = generate_recovery_key()
+        user.set_password(data["new_password"])
+        user.recovery_key_hash = hash_recovery_key(new_key)
+        user.save(update_fields=["password", "recovery_key_hash"])
+        blacklist_user_tokens(user)
+        return Response(auth_payload(user, request, recovery_key=new_key))
 
 
-class PsychologistListView(generics.ListAPIView):
-    serializer_class = PsychologistListSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    queryset = PsychologistProfile.objects.filter(
-        verification_status=PsychologistProfile.VerificationStatus.APPROVED
-    ).select_related("user")
+class MeView(generics.RetrieveUpdateAPIView):
+    serializer_class = UserSerializer
+    http_method_names = ["get", "patch", "options"]
+
+    def get_object(self):
+        return self.request.user
+
+
+class ChangePasswordView(APIView):
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+        if not user.check_password(serializer.validated_data["old_password"]):
+            return Response({"detail": "Текущий пароль указан неверно."}, status=400)
+        user.set_password(serializer.validated_data["new_password"])
+        user.save(update_fields=["password"])
+        blacklist_user_tokens(user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class DeleteAccountView(APIView):
+    def post(self, request):
+        serializer = DeleteAccountSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+        if not user.check_password(serializer.validated_data["password"]):
+            return Response({"detail": "Неверный пароль."}, status=400)
+        delete_user_completely(user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ── Публичный каталог специалистов ───────────────────────────────
+
+def approved_psychologists():
+    from apps.sessions.models import ConsultationSession
+
+    return (
+        PsychologistProfile.objects.filter(
+            verification_status=PsychologistProfile.VerificationStatus.APPROVED,
+            user__is_active=True,
+        )
+        .select_related("user")
+        .annotate(
+            completed_sessions_count=Count(
+                "psychologist_sessions",
+                filter=Q(psychologist_sessions__status=ConsultationSession.Status.COMPLETED),
+            )
+        )
+        .order_by("-completed_sessions_count", "id")
+    )
+
+
+class PsychologistListView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        qs = approved_psychologists()
+        max_rate = request.query_params.get("max_rate")
+        if max_rate:
+            try:
+                qs = qs.filter(session_rate_rub__lte=int(max_rate))
+            except ValueError:
+                return Response({"detail": "max_rate должен быть числом."}, status=400)
+        profiles = list(qs)
+
+        q = (request.query_params.get("q") or "").strip().casefold()
+        if q:
+            profiles = [
+                p for p in profiles
+                if q in p.display_name.casefold()
+                or q in (p.bio or "").casefold()
+                or any(q in str(s).casefold() for s in p.specializations or [])
+            ]
+        spec = (request.query_params.get("specialization") or "").strip().casefold()
+        if spec:
+            profiles = [
+                p for p in profiles
+                if any(spec == str(s).casefold() for s in p.specializations or [])
+            ]
+        return Response(PsychologistPublicSerializer(profiles, many=True).data)
 
 
 class PsychologistDetailView(generics.RetrieveAPIView):
-    serializer_class = PsychologistListSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    queryset = PsychologistProfile.objects.filter(
-        verification_status=PsychologistProfile.VerificationStatus.APPROVED
-    )
+    permission_classes = [permissions.AllowAny]
+    serializer_class = PsychologistPublicSerializer
+
+    def get_queryset(self):
+        return approved_psychologists()
+
+
+class PsychologistSlotsView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, pk):
+        from apps.sessions.scheduling import compute_slots, local_today
+
+        profile = approved_psychologists().filter(pk=pk).first()
+        if profile is None:
+            return Response({"detail": "Специалист не найден."}, status=404)
+        try:
+            raw_from = request.query_params.get("from")
+            from_date = date.fromisoformat(raw_from) if raw_from else local_today()
+            days = int(request.query_params.get("days", 14))
+        except ValueError:
+            return Response({"detail": "Неверные параметры: from=YYYY-MM-DD, days — число."}, status=400)
+        days = max(1, min(days, 60))
+        from_date = max(from_date, local_today())
+        slots = compute_slots(profile, from_date=from_date, days=days)
+        return Response([
+            {"start": _iso(start), "end": _iso(end)} for start, end in slots
+        ])
+
+
+def _iso(dt) -> str:
+    return serializers.DateTimeField().to_representation(dt)
+
+
+# ── Кабинет психолога ────────────────────────────────────────────
+
+class PsychologistProfileView(generics.RetrieveUpdateAPIView):
+    permission_classes = [IsPsychologist]
+    serializer_class = PsychologistPrivateSerializer
+    http_method_names = ["get", "patch", "options"]
+
+    def get_object(self):
+        return self.request.user.psychologist_profile
+
+
+class PsychologistScheduleView(APIView):
+    permission_classes = [IsPsychologist]
+
+    def _rules(self, profile):
+        rules = profile.schedule_slots.filter(is_active=True).order_by("weekday", "start_time")
+        return ScheduleRuleSerializer(rules, many=True).data
+
+    def get(self, request):
+        return Response(self._rules(request.user.psychologist_profile))
+
+    def put(self, request):
+        if not isinstance(request.data, list):
+            return Response({"detail": "Ожидается массив правил расписания."}, status=400)
+        serializer = ScheduleRuleSerializer(data=request.data, many=True)
+        serializer.is_valid(raise_exception=True)
+        rules = serializer.validated_data
+        error = schedule_overlap_error(rules)
+        if error:
+            return Response({"detail": error}, status=400)
+        profile = request.user.psychologist_profile
+        with transaction.atomic():
+            profile.schedule_slots.all().delete()
+            PsychologistSchedule.objects.bulk_create([
+                PsychologistSchedule(psychologist=profile, **rule) for rule in rules
+            ])
+        return Response(self._rules(profile))
+
+
+class PsychologistStatsView(APIView):
+    permission_classes = [IsPsychologist]
+
+    def get(self, request):
+        from apps.sessions.models import ConsultationSession
+        from apps.sessions.stats import month_start_utc
+
+        profile = request.user.psychologist_profile
+        now = timezone.now()
+        sessions = ConsultationSession.objects.filter(psychologist_profile=profile)
+        S = ConsultationSession.Status
+        completed = sessions.filter(status=S.COMPLETED)
+        completed_month = completed.filter(scheduled_at__gte=month_start_utc(now))
+
+        def earnings(qs):
+            total = sum(qs.values_list("psychologist_payout_kopecks", flat=True))
+            return total // 100
+
+        upcoming = sum(
+            1 for scheduled_at, duration in sessions.filter(
+                status__in=[S.PAID, S.IN_PROGRESS, S.AWAITING_PAYMENT],
+                scheduled_at__gte=now - timedelta(hours=3),
+            ).values_list("scheduled_at", "duration_minutes")
+            if scheduled_at + timedelta(minutes=duration) > now
+        )
+        return Response({
+            "upcoming": upcoming,
+            "sessions_month": completed_month.count(),
+            "sessions_total": completed.count(),
+            "earnings_month_rub": earnings(completed_month),
+            "earnings_total_rub": earnings(completed),
+            "clients_total": sessions.filter(
+                status__in=[S.PAID, S.IN_PROGRESS, S.COMPLETED]
+            ).values("client").distinct().count(),
+        })

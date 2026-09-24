@@ -11,7 +11,7 @@ if [ -f "$CERT" ] && [ -f "$PKEY" ]; then
   exec turnserver \
     -n \
     --realm=aprosop.ru \
-    --user=aprosop:aprosopsecretturn \
+    --user="${TURN_USER:-aprosop}:${TURN_PASSWORD:-aprosopsecretturn}" \
     --lt-cred-mech \
     --fingerprint \
     --listening-port=3478 \
@@ -37,7 +37,7 @@ else
   exec turnserver \
     -n \
     --realm=aprosop.ru \
-    --user=aprosop:aprosopsecretturn \
+    --user="${TURN_USER:-aprosop}:${TURN_PASSWORD:-aprosopsecretturn}" \
     --lt-cred-mech \
     --fingerprint \
     --listening-port=3478 \
