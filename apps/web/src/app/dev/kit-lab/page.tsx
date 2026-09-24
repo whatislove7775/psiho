@@ -42,7 +42,7 @@ function Lab() {
         const noses = ["button", "straight", "wide", "pointed", "round", "long", "hooked"] as const;
         for (const n of noses) jobs.push({ label: `nose ${n}`, cfg: normalizeAvatar({ ...DEFAULT_AVATAR, nose: { ...DEFAULT_AVATAR.nose, shape: n } }), expr: {} });
       } else if (mode === "random") {
-        for (let i = 1; i <= 12; i++) jobs.push({ label: `seed ${i}`, cfg: randomAvatar(i * 7919), expr: {} });
+        for (let i = 1; i <= 12; i++) { const cfg = randomAvatar(i * 7919); jobs.push({ label: `${i} ${cfg.hair.style}`, cfg, expr: {} }); }
       } else {
         const base = normalizeAvatar({ ...DEFAULT_AVATAR, hair: { ...DEFAULT_AVATAR.hair, style: (sp.get("hair") as never) ?? "bob" } });
         for (const [l, e] of EXPR) jobs.push({ label: l, cfg: base, expr: e });

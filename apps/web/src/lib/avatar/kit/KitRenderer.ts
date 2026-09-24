@@ -44,8 +44,8 @@ function loadMeta(): Promise<HeadMeta> {
 }
 
 const FRAMING: Record<Framing, { top: number; bottom: number; fov: number; width: number }> = {
-  face: { top: 1.3, bottom: -1.08, fov: 22, width: 2.55 },
-  portrait: { top: 1.42, bottom: -1.4, fov: 24, width: 2.9 },
+  face: { top: 1.6, bottom: -1.1, fov: 22, width: 2.9 },
+  portrait: { top: 1.8, bottom: -1.35, fov: 24, width: 3.3 },
 };
 
 const SHAPES = [

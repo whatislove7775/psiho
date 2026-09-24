@@ -402,12 +402,12 @@ def st_box_braids(p):
     d = cap(p, thick=0.05, hairline=0.52, ears=False)
     locks = []
     for i in range(34):
-        ph = -2.3 + 4.6 * (i + rng.uniform(0, 0.5)) / 34
+        ph = 1.0 + (2 * PI - 2.0) * (i + rng.uniform(0, 0.5)) / 34  # sides + back, face stays clear
         th = 1.1 + 0.3 * rng.uniform(0, 1)
         base = scalp(th, ph, 0.05)
         out = sdir(PI / 2, ph)
         end = base + out * 0.25 + np.array([0, -1.8 - rng.uniform(0, 0.3), 0], np.float32)
-        locks.append(([(0.3, ph * 0.5, 0.05), P(*base), P(*(base + out * 0.12 + np.array([0, -0.5, 0], np.float32))), P(*end)], [0.05, 0.05, 0.045, 0.035]))
+        locks.append(([(0.3, ph, 0.05), P(*base), P(*(base + out * 0.12 + np.array([0, -0.5, 0], np.float32))), P(*end)], [0.05, 0.05, 0.045, 0.035]))
     return S.smin(d, locks_sdf(p, locks, k=0.015), 0.03)
 
 
@@ -416,11 +416,11 @@ def st_dreads(p):
     d = cap(p, thick=0.06, hairline=0.5, ears=False)
     locks = []
     for i in range(24):
-        ph = -2.3 + 4.6 * (i + rng.uniform(0, 0.5)) / 24
+        ph = 1.0 + (2 * PI - 2.0) * (i + rng.uniform(0, 0.5)) / 24
         base = scalp(1.1 + 0.3 * rng.uniform(0, 1), ph, 0.06)
         out = sdir(PI / 2, ph)
         end = base + out * 0.3 + np.array([0, -1.45 - rng.uniform(0, 0.3), 0], np.float32)
-        locks.append(([(0.3, ph * 0.5, 0.06), P(*base), P(*(base + out * 0.15 + np.array([0, -0.6, 0], np.float32))), P(*end)], [0.07, 0.075, 0.07, 0.05]))
+        locks.append(([(0.3, ph, 0.06), P(*base), P(*(base + out * 0.15 + np.array([0, -0.6, 0], np.float32))), P(*end)], [0.07, 0.075, 0.07, 0.05]))
     return S.smin(d, locks_sdf(p, locks, k=0.02), 0.03)
 
 

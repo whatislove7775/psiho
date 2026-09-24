@@ -56,7 +56,7 @@ def beard_sdf(style: str):
                     d = S.smin(d, curl, 0.02)
             return d
         if style == "goatee":
-            chin = S.smax(_layer(p, 0.07), S.ellipsoid(p, (0, -0.8, 0.6), (0.22, 0.2, 0.35)), 0.02)
+            chin = S.smax(_layer(p, 0.07), S.ellipsoid(p, (0, -0.74, 0.62), (0.21, 0.27, 0.35)), 0.02)
             chin = S.ssub(chin, _mouth_hole(p), 0.02)
             must = S.smax(_layer(p, 0.035), _mustache_region(p, 0.85), 0.015)
             return S.smin(chin, must, 0.02) + grooves * 0.5
