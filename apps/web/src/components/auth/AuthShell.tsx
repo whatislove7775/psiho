@@ -2,10 +2,12 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Brand } from "@/components/landing/SiteHeader";
 import { ThemeToggle } from "@/components/shell/ThemeToggle";
+import a from "./art.module.css";
 import s from "./auth.module.css";
 
 /** Quiet frame for sign-in pages: logo, theme switch, one centered column. */
-export function AuthShell({ children, wide }: { children: ReactNode; wide?: boolean }) {
+export function AuthShell({ children, wide, art }: { children: ReactNode; wide?: boolean; art?: ReactNode }) {
+  const column = <div className={`${s.column} ${wide ? s.columnWide : ""}`}>{children}</div>;
   return (
     <div className={s.shell}>
       <header className={s.top}>
@@ -13,7 +15,14 @@ export function AuthShell({ children, wide }: { children: ReactNode; wide?: bool
         <ThemeToggle />
       </header>
       <main className={s.main}>
-        <div className={`${s.column} ${wide ? s.columnWide : ""}`}>{children}</div>
+        {art ? (
+          <div className={a.withArt}>
+            <div className={a.art}>{art}</div>
+            {column}
+          </div>
+        ) : (
+          column
+        )}
       </main>
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { EyeOff, Lock, MessageCirclePlus, Mic, PencilLine, Search, ShieldCheck, Timer } from "lucide-react";
+import { EyeOff, Lock, MessageCirclePlus, Mic, PencilLine, Search, Timer } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, EmptyState, Modal, Skeleton, useToast } from "@/ui";
@@ -12,6 +12,8 @@ import { ConvAvatar } from "./ConvAvatar";
 import { ConversationView } from "./ConversationView";
 import { fmtTime } from "./MessageItem";
 import s from "./chat.module.css";
+import { ChatBubbles, EmptyArt } from "@/components/illustrations";
+import art from "./art.module.css";
 
 export type MessengerMode = "client" | "specialist" | "support";
 
@@ -260,7 +262,7 @@ export function Messenger({ mode }: { mode: MessengerMode }) {
               </div>
             ))
           ) : entries.length === 0 ? (
-            <EmptyState
+            <EmptyState art={<EmptyArt scene="chats" />}
               title={mode === "support" ? "Обращений пока нет" : "Чатов пока нет"}
               text={mode === "support" ? "Когда клиент или специалист напишет в поддержку, разговор появится здесь." : undefined}
             />
@@ -326,7 +328,7 @@ export function Messenger({ mode }: { mode: MessengerMode }) {
         ) : selected && convs ? (
           <div className={s.placeholder}>
             {opening ? <Skeleton width={220} height={18} /> : (
-              <EmptyState
+              <EmptyState art={<EmptyArt scene="search" />}
                 title="Чат не найден"
                 text="Возможно, он был удалён или у вас нет к нему доступа."
                 action={<Button variant="secondary" onClick={() => select(null)}>К списку чатов</Button>}
@@ -335,9 +337,7 @@ export function Messenger({ mode }: { mode: MessengerMode }) {
           </div>
         ) : (
           <div className={s.placeholder}>
-            <div className={s.placeholderIcon}>
-              <ShieldCheck size={30} />
-            </div>
+            <ChatBubbles className={art.placeholderArt} />
             <h2 className={s.placeholderTitle}>Спокойное место для разговора</h2>
             <p className={s.placeholderText}>Выберите чат слева. Вот что защищает вашу переписку:</p>
             <ul className={s.features}>

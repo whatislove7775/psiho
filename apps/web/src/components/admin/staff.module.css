@@ -125,7 +125,7 @@
   margin-top: 0;
 }
 .link {
-  color: var(--c-primary);
+  color: var(--c-primary-ink);
   font-size: var(--t-13);
   font-weight: 550;
 }
@@ -651,7 +651,7 @@
 .bar {
   display: block;
   width: min(100%, 28px);
-  background: var(--c-primary);
+  background: linear-gradient(180deg, #7aa5ff, var(--c-primary) 55%, #6a4fe8);
   border-radius: 4px 4px 0 0;
   transition: opacity var(--dur);
 }

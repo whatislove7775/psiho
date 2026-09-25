@@ -51,8 +51,8 @@ export function BreathingSync() {
             width: 110,
             height: 110,
             borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(58,109,240,0.55), rgba(58,109,240,0.12) 70%)",
-            boxShadow: "0 0 0 1px rgba(58,109,240,0.5)",
+            background: "radial-gradient(circle, rgba(122,140,255,0.6), rgba(106,79,232,0.14) 70%)",
+            boxShadow: "0 0 0 1px rgba(122,140,255,0.5)",
             transform: `scale(${scale})`,
           }}
         />

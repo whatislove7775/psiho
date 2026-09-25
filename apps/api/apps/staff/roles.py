@@ -71,6 +71,8 @@ PERMISSIONS: dict[str, frozenset[str]] = {
     # Журнал и система
     "audit.view": frozenset({OWNER, ADMIN, DEVELOPER}),
     "system.view": frozenset({OWNER, ADMIN, DEVELOPER}),
+    # Лаборатория: тестовые звонки, песочница аватаров, проверка устройств и TURN
+    "lab.use": frozenset({OWNER, ADMIN, DEVELOPER}),
     # Персонал
     "staff.view": frozenset({OWNER, ADMIN}),
     "staff.manage": frozenset({OWNER, ADMIN}),
@@ -98,6 +100,7 @@ PERMISSION_LABELS = {
     "support.reply": "Ответы в поддержке",
     "audit.view": "Журнал действий",
     "system.view": "Состояние системы",
+    "lab.use": "Лаборатория: тестовые звонки и аватары",
     "staff.view": "Список сотрудников",
     "staff.manage": "Управление сотрудниками",
 }

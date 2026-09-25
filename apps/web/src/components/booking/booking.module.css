@@ -78,7 +78,7 @@
   border-style: dashed;
 }
 .day[aria-pressed="true"] {
-  background: var(--c-primary);
+  background: var(--g-primary);
   border-color: var(--c-primary);
   color: var(--c-on-primary);
 }
@@ -162,7 +162,7 @@
   border: 0;
   background: none;
   padding: 0;
-  color: var(--c-primary);
+  color: var(--c-primary-ink);
   font-weight: 600;
   font-size: inherit;
 }
@@ -313,7 +313,7 @@
   background: var(--c-raised);
 }
 .durOpt[aria-pressed="true"] {
-  background: var(--c-primary);
+  background: var(--g-primary);
   border-color: var(--c-primary);
   color: var(--c-on-primary);
 }

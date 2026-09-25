@@ -25,6 +25,7 @@ import {
 } from "@/components/client/ClientBits";
 import { NextSessionCard } from "@/components/client/NextSessionCard";
 import s from "./sessions.module.css";
+import { EmptyArt } from "@/components/illustrations";
 
 type Tab = "upcoming" | "past";
 
@@ -174,7 +175,7 @@ export default function SessionsPage() {
             </div>
           ) : list.length === 0 ? (
             tab === "upcoming" ? (
-              <EmptyState
+              <EmptyState art={<EmptyArt scene="calendar" />}
                 icon={<CalendarPlus size={24} strokeWidth={1.8} />}
                 title="Пока ничего не запланировано"
                 text="Выберите специалиста и свободное время. Для первой встречи обычно хватает 50 минут."
@@ -185,7 +186,7 @@ export default function SessionsPage() {
                 }
               />
             ) : (
-              <EmptyState
+              <EmptyState art={<EmptyArt scene="cozy" />}
                 icon={<History size={24} strokeWidth={1.8} />}
                 title="Здесь появятся прошедшие встречи"
                 text="После первой сессии вы сможете быстро записаться к тому же специалисту снова."

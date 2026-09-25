@@ -11,6 +11,7 @@ import { LoadError } from "@/components/pro/controls";
 import { staffApi, type Page, type ReportAction, type ReportStatus, type StaffReport } from "@/lib/api/staff";
 import { SESSION_STATUS } from "@/lib/format";
 import s from "@/components/admin/staff.module.css";
+import { EmptyArt } from "@/components/illustrations";
 
 type Tab = "active" | "resolved" | "dismissed";
 
@@ -179,7 +180,7 @@ function ModerationPage() {
         </div>
       ) : (
         <Card>
-          <EmptyState
+          <EmptyState art={<EmptyArt scene="moon" />}
             icon={<Flag size={22} />}
             title={tab === "active" ? "Открытых жалоб нет" : "Здесь пока пусто"}
             text={tab === "active" ? "Когда кто-то нажмёт «Пожаловаться», жалоба появится здесь." : undefined}

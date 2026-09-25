@@ -6,6 +6,7 @@ import { ApiError } from "@/lib/api/client";
 import { loginWithOtp, OtpRequiredError } from "@/lib/api/staff";
 import { homeFor, useAuth } from "@/lib/auth/store";
 import { Button, Input } from "@/ui";
+import { DoorWelcome } from "@/components/illustrations";
 import { AuthCard, AuthLinks, AuthShell, safeNext } from "./AuthShell";
 import { FormError } from "./FormError";
 import { PasswordInput } from "./PasswordInput";
@@ -60,7 +61,7 @@ export function LoginForm() {
   };
 
   return (
-    <AuthShell>
+    <AuthShell art={<DoorWelcome />}>
       <AuthCard
         title="Вход"
         sub={

@@ -13,6 +13,7 @@ import { ErrorBlock } from "@/components/client/ClientBits";
 import { BookingPanel } from "@/components/booking/BookingPanel";
 import { durationLabel } from "@/lib/api/availability";
 import s from "./profile.module.css";
+import { EmptyArt } from "@/components/illustrations";
 
 export default function SpecialistProfile() {
   const params = useParams<{ id: string }>();
@@ -40,7 +41,7 @@ export default function SpecialistProfile() {
         {back}
         {/404|not found|не найден/i.test(psy.error) ? (
           <Card>
-            <EmptyState
+            <EmptyState art={<EmptyArt scene="cozy" />}
               icon={<UserX size={24} strokeWidth={1.8} />}
               title="Специалист сейчас не принимает"
               text="Возможно, профиль скрыт или ссылка устарела. Выберите другого психолога из списка."

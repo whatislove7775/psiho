@@ -25,8 +25,9 @@
   background: var(--c-raised);
 }
 .chip[aria-pressed="true"] {
-  background: var(--c-text);
-  color: var(--c-page);
+  background: var(--g-primary);
+  color: #fff;
+  box-shadow: var(--shadow-primary);
 }
 .chip:focus-visible {
   outline: none;
@@ -80,7 +81,7 @@
   font-weight: 550;
 }
 .kicker a {
-  color: var(--c-primary);
+  color: var(--c-primary-ink);
 }
 .title {
   font-size: var(--t-44);

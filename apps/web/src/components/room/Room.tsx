@@ -7,6 +7,7 @@ import {
   Camera,
   CameraOff,
   Check,
+  FlaskConical,
   Lock,
   Mic,
   MicOff,
@@ -20,6 +21,7 @@ import {
 import { Badge, Button, Card, Segmented, Spinner } from "@/ui";
 import { ApiError } from "@/lib/api/client";
 import { sessionsApi } from "@/lib/api/endpoints";
+import { labApi, type LabJoinResponse } from "@/lib/api/lab";
 import type { JoinResponse, Session } from "@/lib/api/types";
 import { useAuth, homeFor } from "@/lib/auth/store";
 import { normalizeAvatar, randomAvatar } from "@/lib/avatar/schema";
@@ -34,6 +36,8 @@ import { useP2PCall } from "@/hooks/useP2PCall";
 import { useVoiceTransform, type VoicePreset } from "@/hooks/useVoiceTransform";
 import { SessionNotepad } from "@/components/session/SessionNotepad";
 import { BreathingSync } from "@/components/session/BreathingSync";
+import { TeaWait } from "@/components/illustrations";
+import art from "./art.module.css";
 import s from "./Room.module.css";
 
 const VOICES: { value: VoicePreset; label: string }[] = [
@@ -73,9 +77,37 @@ function SelfVideo({ stream }: { stream: MediaStream | null }) {
   return <video ref={ref} className={s.selfVideo} muted playsInline autoPlay aria-label="Ваша камера" />;
 }
 
-export function Room({ sessionId }: { sessionId: string }) {
+/** A test room from the staff lab, shaped like a Session so the normal room UI works unchanged. */
+function labSession(res: LabJoinResponse): Session {
+  const t = res.test_room;
+  return {
+    id: t.id,
+    status: "in_progress",
+    scheduled_at: t.created_at,
+    duration_minutes: Math.max(1, Math.round((Date.parse(t.expires_at) - Date.parse(t.created_at)) / 60000)),
+    amount_rub: 0,
+    room_id: res.room_id,
+    can_join: true,
+    psychologist: { id: 0, display_name: res.role === "client" ? res.peer.name : "Тестовый специалист", avatar_config: null, photo_url: null },
+    // no avatar chosen in the lab → the same seeded random avatar on both sides
+    client: { alias: res.role === "psychologist" ? res.peer.name : "Тестовый клиент", avatar_config: t.client_avatar ?? randomAvatar(t.id) },
+    payment_url: null,
+  };
+}
+
+function clock(iso: string) {
+  return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+}
+
+/**
+ * The session room. With `labToken` (a signed invite from /admin/lab) it opens a
+ * staff test room instead: no login, no booking, the side comes from the token.
+ */
+export function Room({ sessionId, labToken }: { sessionId: string; labToken?: string }) {
   const router = useRouter();
   const { user, status: authStatus, bootstrap } = useAuth();
+  const isLab = !!labToken;
+  const [labJoin, setLabJoin] = useState<LabJoinResponse | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [phase, setPhase] = useState<"lobby" | "call" | "ended">("lobby");
@@ -91,25 +123,46 @@ export function Room({ sessionId }: { sessionId: string }) {
     bootstrap();
   }, [bootstrap]);
   useEffect(() => {
-    if (authStatus === "guest") router.replace(`/login?next=${encodeURIComponent(`/room/${sessionId}`)}`);
-  }, [authStatus, router, sessionId]);
+    if (authStatus === "guest" && !isLab) router.replace(`/login?next=${encodeURIComponent(`/room/${sessionId}`)}`);
+  }, [authStatus, router, sessionId, isLab]);
+
+  // Lab test room: the invite token is the credential (works on a phone that isn't logged in).
+  useEffect(() => {
+    if (!labToken) return;
+    labApi
+      .join(labToken)
+      .then((res) => {
+        setLabJoin(res);
+        setSession(labSession(res));
+      })
+      .catch((e) => setLoadError(e instanceof ApiError ? e.message : "Не получилось открыть тестовую комнату."));
+  }, [labToken]);
 
   useEffect(() => {
-    if (authStatus !== "authed") return;
+    if (authStatus !== "authed" || isLab) return;
     sessionsApi
       .get(sessionId)
       .then(setSession)
       .catch((e) => setLoadError(e instanceof ApiError ? e.message : "Не получилось загрузить сессию."));
-  }, [authStatus, sessionId]);
+  }, [authStatus, sessionId, isLab]);
 
   // Clients are only ever seen as their avatar; specialists use their real camera.
-  const role = user?.role === "psychologist" ? "psychologist" : "client";
+  const role = isLab ? (labJoin?.role ?? "client") : user?.role === "psychologist" ? "psychologist" : "client";
   const isPro = role === "psychologist";
 
+  const labAvatar = labJoin?.test_room.client_avatar ?? null;
   const myAvatar = useMemo(
-    () => (user?.avatar_config ? normalizeAvatar(user.avatar_config) : randomAvatar(user?.id ?? "me")),
-    [user],
+    () =>
+      labAvatar
+        ? normalizeAvatar(labAvatar)
+        : isLab
+          ? randomAvatar(labJoin?.test_room.id ?? "lab")
+          : user?.avatar_config
+          ? normalizeAvatar(user.avatar_config)
+          : randomAvatar(user?.id ?? labJoin?.test_room.id ?? "me"),
+    [user, labAvatar, labJoin?.test_room.id, isLab],
   );
+  const backHref = isLab ? "/admin/lab" : homeFor(user?.role);
   const [backdrop, setBackdropState] = useState<BackdropId>("dusk");
   useEffect(() => setBackdropState(loadBackdrop()), []);
   const setBackdrop = (id: BackdropId) => {
@@ -142,10 +195,10 @@ export function Room({ sessionId }: { sessionId: string }) {
 
   // Keep the session's can_join fresh while waiting in the lobby
   useEffect(() => {
-    if (phase !== "lobby" || !session || session.can_join) return;
+    if (isLab || phase !== "lobby" || !session || session.can_join) return;
     const t = setInterval(() => sessionsApi.get(sessionId).then(setSession).catch(() => undefined), 30000);
     return () => clearInterval(t);
-  }, [phase, session, sessionId]);
+  }, [phase, session, sessionId, isLab]);
 
   const peer = session
     ? role === "psychologist"
@@ -167,7 +220,7 @@ export function Room({ sessionId }: { sessionId: string }) {
     setJoining(true);
     setJoinError(null);
     try {
-      const res = await sessionsApi.join(sessionId);
+      const res = labToken ? await labApi.join(labToken) : await sessionsApi.join(sessionId);
       setJoin(res);
       setPhase("call");
     } catch (e) {
@@ -210,8 +263,8 @@ export function Room({ sessionId }: { sessionId: string }) {
           <div className={s.endedCard}>
             <h2>Сессия недоступна</h2>
             <p className={s.note}>{loadError}</p>
-            <Button variant="primary" href={homeFor(user?.role)}>
-              Вернуться в кабинет
+            <Button variant="primary" href={backHref}>
+              {isLab ? "В лабораторию" : "Вернуться в кабинет"}
             </Button>
           </div>
         </div>
@@ -219,7 +272,7 @@ export function Room({ sessionId }: { sessionId: string }) {
     );
   }
 
-  if (!session || !user) {
+  if (!session || (!user && !isLab)) {
     return (
       <div className={s.room}>
         <div className={s.ended}>
@@ -239,7 +292,7 @@ export function Room({ sessionId }: { sessionId: string }) {
             <p className={s.note}>
               Видео и звук не записывались. Заметки остались только в этом браузере и удалятся сами через 24 часа.
             </p>
-            {role === "psychologist" && !completed && (
+            {role === "psychologist" && !completed && !isLab && (
               <Button variant="soft" loading={completing} onClick={complete} icon={<Check size={18} />}>
                 Отметить сессию проведённой
               </Button>
@@ -249,8 +302,8 @@ export function Room({ sessionId }: { sessionId: string }) {
               <Button variant="secondary" onClick={() => setPhase("lobby")} icon={<RefreshCw size={18} />}>
                 Вернуться в комнату
               </Button>
-              <Button variant="primary" href={role === "psychologist" ? "/pro/sessions" : "/app/sessions"}>
-                В кабинет
+              <Button variant="primary" href={isLab ? "/admin/lab" : role === "psychologist" ? "/pro/sessions" : "/app/sessions"}>
+                {isLab ? "В лабораторию" : "В кабинет"}
               </Button>
             </div>
           </div>
@@ -313,7 +366,9 @@ export function Room({ sessionId }: { sessionId: string }) {
                 <div style={{ minWidth: 0 }}>
                   <div className={s.peerName}>{peerName}</div>
                   <div className={s.meta}>
-                    {when(session.scheduled_at)}, {session.duration_minutes} минут
+                    {isLab
+                      ? `Тестовый звонок, ссылка действует до ${clock(labJoin?.test_room.expires_at ?? session.scheduled_at)}`
+                      : `${when(session.scheduled_at)}, ${session.duration_minutes} минут`}
                   </div>
                 </div>
               </div>
@@ -373,9 +428,16 @@ export function Room({ sessionId }: { sessionId: string }) {
             )}
             {!canJoin && <p className={s.note}>Вход откроется за 10 минут до начала. Сессия начнётся {untilLabel(session.scheduled_at)}.</p>}
             {joinError && <p className={s.errorText}>{joinError}</p>}
-            <Button variant="ghost" href={homeFor(user.role)}>
-              Вернуться в кабинет
-            </Button>
+            {isLab ? (
+              <p className={s.note} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                <FlaskConical size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+                Тестовая комната из лаборатории: без записи, оплаты и статистики. Вы входите как {role === "psychologist" ? "специалист (настоящая камера)" : "клиент (аватар и фильтр голоса)"}.
+              </p>
+            ) : (
+              <Button variant="ghost" href={homeFor(user?.role)}>
+                Вернуться в кабинет
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -399,9 +461,13 @@ export function Room({ sessionId }: { sessionId: string }) {
         <video ref={call.remoteVideoRef} className={s.remote} autoPlay playsInline />
         {!call.hasRemote && (
           <div className={s.waiting}>
-            <div className={s.waitingAvatar}>
-              {peerPic(148)}
-            </div>
+            {!isPro && call.status !== "failed" ? (
+              <TeaWait className={art.waitArt} />
+            ) : (
+              <div className={s.waitingAvatar}>
+                {peerPic(148)}
+              </div>
+            )}
             <h3>{call.status === "failed" ? "Не удалось соединиться" : `Ждём, когда ${role === "client" ? "специалист" : "клиент"} войдёт`}</h3>
             <p className={s.note} style={{ maxWidth: 380 }}>
               {call.status === "failed"
@@ -426,7 +492,13 @@ export function Room({ sessionId }: { sessionId: string }) {
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <SessionTimer className={s.pill} start={session.scheduled_at} minutes={session.duration_minutes} />
+            {isLab ? (
+              <span className={s.pill}>
+                <FlaskConical size={14} /> Тест
+              </span>
+            ) : (
+              <SessionTimer className={s.pill} start={session.scheduled_at} minutes={session.duration_minutes} />
+            )}
             <span className={s.pill}>
               <span className={`${s.dot} ${call.status === "connected" && call.hasRemote ? "" : s.dotWarn}`} />
               <span className="num">{statusText}</span>

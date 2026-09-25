@@ -9,6 +9,7 @@ import {
   CalendarDays,
   Flag,
   FileText,
+  FlaskConical,
   Headset,
   KeyRound,
   LayoutGrid,
@@ -30,6 +31,7 @@ import { LogoMark } from "@/components/shell/Logo";
 import { StaffGate } from "./StaffGate";
 import sh from "@/components/shell/AppShell.module.css";
 import s from "./staff.module.css";
+import { EmptyArt } from "@/components/illustrations";
 
 type Badges = Partial<Record<"reports" | "specialists" | "support", number>>;
 type Me = StaffMe & { badges?: Badges };
@@ -70,6 +72,7 @@ const ITEMS: Item[] = [
   { href: "/admin/staff", label: "Сотрудники", icon: UserCog, perm: "staff.view", group: "Команда" },
   { href: "/admin/audit", label: "Журнал действий", short: "Журнал", icon: ScrollText, perm: "audit.view", group: "Команда" },
   { href: "/admin/system", label: "Система", icon: Activity, perm: "system.view", group: "Команда" },
+  { href: "/admin/lab", label: "Лаборатория", icon: FlaskConical, perm: "lab.use", group: "Команда" },
 ];
 
 const ACCOUNT: Item = { href: "/admin/account", label: "Мой доступ", icon: KeyRound, perm: "dashboard.view" };
@@ -138,7 +141,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   if (status === "authed" && user && user.role !== "admin") {
     return (
       <div className={sh.guard}>
-        <EmptyState
+        <EmptyState art={<EmptyArt scene="shield" />}
           icon={<ShieldAlert size={22} />}
           title="Это вход для команды сервиса"
           text={`Сейчас вы вошли как ${user.role === "psychologist" ? "специалист" : "клиент"}. Чтобы открыть админку, войдите под аккаунтом сотрудника (например, admin).`}
@@ -174,7 +177,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   if (!ctx || !me) {
     return (
       <div className={sh.guard}>
-        <EmptyState
+        <EmptyState art={<EmptyArt scene="shield" />}
           icon={<ShieldAlert size={22} />}
           title="Нет доступа к консоли"
           text={meError}
@@ -307,7 +310,7 @@ export function RequirePerm({ perm, children }: { perm: StaffPermission; childre
   const { can, me } = useStaff();
   if (can(perm)) return <>{children}</>;
   return (
-    <EmptyState
+    <EmptyState art={<EmptyArt scene="shield" />}
       icon={<ShieldAlert size={22} />}
       title="Раздел недоступен для вашей роли"
       text={`Ваша роль: ${me.role_label.toLowerCase()}. Если доступ нужен для работы, попросите владельца или администратора изменить роль.`}

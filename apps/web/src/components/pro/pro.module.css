@@ -2,7 +2,7 @@
 
 /* ── Accent card (right rail) ─────────────────────────────────────── */
 .accent {
-  background: var(--g-accent);
+  background: var(--tex-grain), var(--g-accent);
   color: #fff;
   border-radius: var(--r-card);
   padding: 24px;

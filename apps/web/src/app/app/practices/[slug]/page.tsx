@@ -12,6 +12,9 @@ import { PracticeCard } from "@/components/content/Cards";
 import { BreathingCircle, StepPlayer } from "@/components/content/PracticePlayer";
 import c from "@/components/content/content.module.css";
 import s from "../../articles/articles.module.css";
+import { EmptyArt } from "@/components/illustrations";
+import { TopicArt } from "@/components/illustrations/topics";
+import art from "@/components/content/art.module.css";
 
 export default function PracticePage() {
   const params = useParams<{ slug: string }>();
@@ -30,7 +33,7 @@ export default function PracticePage() {
       <>
         {back}
         {/не найден|not found|No .* matches/i.test(practice.error) ? (
-          <EmptyState
+          <EmptyState art={<EmptyArt scene="lost" />}
             icon={<Leaf size={28} strokeWidth={1.8} />}
             title="Практика не найдена"
             text="Возможно, её убрали или ссылка неполная."
@@ -76,7 +79,7 @@ export default function PracticePage() {
               <header className={s.head}>
                 <div className={s.kicker}>
                   <span className={c.tone} data-tone={p.cover} style={{ width: 36, height: 36, borderRadius: "50%", display: "grid", placeItems: "center", fontSize: 18 }} aria-hidden>
-                    {p.emoji || "🌿"}
+                    <TopicArt topic={p.kind} className={art.kickerArt} />
                   </span>
                   <span>{p.kind_label}</span>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>

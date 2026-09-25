@@ -11,6 +11,7 @@ import { LoadError } from "@/components/pro/controls";
 import { staffApi, type Page, type StaffSessionDetail, type StaffSessionRow } from "@/lib/api/staff";
 import { dayShort, rub, SESSION_STATUS, time } from "@/lib/format";
 import s from "@/components/admin/staff.module.css";
+import { EmptyArt } from "@/components/illustrations";
 
 type Filter = "all" | "upcoming" | "completed" | "cancelled";
 const STATUS_Q: Record<Filter, string> = {
@@ -119,7 +120,7 @@ function SessionsPage() {
             <Pager page={data.page} pages={data.pages} count={data.count} onPage={setPage} noun={["сессия", "сессии", "сессий"]} />
           </>
         ) : (
-          <EmptyState icon={<CalendarDays size={22} />} title="Сессий не нашли" text="Измените фильтры или период." />
+          <EmptyState art={<EmptyArt scene="search" />} icon={<CalendarDays size={22} />} title="Сессий не нашли" text="Измените фильтры или период." />
         )}
       </Card>
       <SessionModal id={openId} onClose={() => setOpenId(null)} onChanged={load} />

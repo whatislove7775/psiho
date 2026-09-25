@@ -135,7 +135,7 @@
   color: var(--c-text);
 }
 .tab[aria-selected="true"] {
-  color: var(--c-primary);
+  color: var(--c-primary-ink);
   font-weight: 650;
 }
 .tab[aria-selected="true"]::after {

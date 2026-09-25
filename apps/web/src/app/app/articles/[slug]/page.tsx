@@ -13,6 +13,9 @@ import { ArticleCard } from "@/components/content/Cards";
 import { Markdown } from "@/components/content/Markdown";
 import c from "@/components/content/content.module.css";
 import s from "../articles.module.css";
+import { EmptyArt } from "@/components/illustrations";
+import { TopicArt } from "@/components/illustrations/topics";
+import art from "@/components/content/art.module.css";
 
 export default function ArticlePage() {
   const params = useParams<{ slug: string }>();
@@ -35,7 +38,7 @@ export default function ArticlePage() {
       <>
         {back}
         {/не найден|not found|No .* matches/i.test(article.error) ? (
-          <EmptyState
+          <EmptyState art={<EmptyArt scene="lost" />}
             icon={<BookOpen size={28} strokeWidth={1.8} />}
             title="Статья не найдена"
             text="Возможно, её убрали или ссылка неполная."
@@ -93,7 +96,7 @@ export default function ArticlePage() {
             <>
               <header className={s.head}>
                 <div className={`${s.banner} ${c.tone}`} data-tone={a.cover} aria-hidden>
-                  <span>{a.emoji || "📖"}</span>
+                  <TopicArt topic={a.topic} className={art.bannerArt} />
                 </div>
                 <div className={s.kicker}>
                   <Link href={`/app/articles?topic=${a.topic}`}>{a.topic_label}</Link>

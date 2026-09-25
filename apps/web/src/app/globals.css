@@ -30,6 +30,32 @@ body {
   font-feature-settings: "ss01" on;
 }
 
+/* Soft brand glow behind everything (logo periwinkle / violet + a hint of peach). Panels stay opaque. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--g-glow);
+}
+
+/* Opt-in crayon grain for any surface: add class "grain" (keeps its own background). */
+.grain {
+  position: relative;
+  isolation: isolate;
+}
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--tex-grain);
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  z-index: 1;
+}
+
 h1,
 h2,
 h3,

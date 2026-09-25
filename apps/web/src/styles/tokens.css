@@ -3,38 +3,79 @@
 :root {
   color-scheme: dark;
 
-  --c-page: #09090b;
-  --c-panel: #18181b;
-  --c-raised: #222226;
-  --c-raised-2: #2b2b30;
+  /* Neutrals carry a faint indigo tint so they sit well next to the logo gradient. */
+  --c-page: #0a0a10;
+  --c-panel: #17171f;
+  --c-raised: #21212b;
+  --c-raised-2: #2b2b37;
   --c-line: rgba(255, 255, 255, 0.07);
   --c-line-strong: rgba(255, 255, 255, 0.13);
 
-  --c-text: #f4f4f6;
-  --c-muted: #9a9aa3;
-  --c-faint: #5e5e66;
+  --c-text: #f4f4f8;
+  --c-muted: #9c9cab;
+  --c-faint: #5f5f6e;
 
-  --c-primary: #3a6df0;
-  --c-primary-2: #1c4fd6;
-  --c-primary-soft: rgba(58, 109, 240, 0.16);
+  /* Brand: the logo tile gradient #7AA5FF → #3A6DF0 → #6A4FE8 (periwinkle blue → violet).
+     --c-primary is the solid mid-tone for fills with white text (AA 5:1 with #fff);
+     --c-primary-ink is the same hue tuned for text, links and icons on panels (AA in each theme). */
+  --c-primary: #525eec;
+  --c-primary-2: #4450de;
+  --c-primary-ink: #9aa5ff;
+  --c-primary-soft: rgba(116, 128, 255, 0.17);
+  --c-primary-glow: rgba(106, 110, 255, 0.45);
   --c-on-primary: #ffffff;
 
   --c-danger: #ff5a4e;
   --c-danger-soft: rgba(255, 90, 78, 0.14);
-  --c-warning: #f4c542;
-  --c-warning-soft: rgba(244, 197, 66, 0.14);
+  --c-warning: #ffb547;
+  --c-warning-soft: rgba(255, 181, 71, 0.14);
   --c-success: #3dd68c;
   --c-success-soft: rgba(61, 214, 140, 0.14);
 
-  --p-peach: #ffc8a6;
+  /* Playful secondary accents, drawn from the logo and the reference art.
+     --a-*: vivid fill (dark #111 ink on top), --a-*-soft: tint for chips/covers/empty states,
+     --a-*-ink: readable text/icon colour on panels and on the matching soft tint. */
+  --a-sun: #ffdb6e; /* logo sparkle */
+  --a-sun-soft: rgba(255, 219, 110, 0.14);
+  --a-sun-ink: #ffe28a;
+  --a-coral: #ff9f85; /* cheeks, coral hair */
+  --a-coral-soft: rgba(255, 159, 133, 0.15);
+  --a-coral-ink: #ffb09b;
+  --a-cyan: #6fd8f2; /* speech bubble "Hello!" */
+  --a-cyan-soft: rgba(111, 216, 242, 0.14);
+  --a-cyan-ink: #86e2f7;
+  --a-lilac: #b9a6ff; /* gradient's violet end, softened */
+  --a-lilac-soft: rgba(185, 166, 255, 0.16);
+  --a-lilac-ink: #c6b8ff;
+  --a-mint: #8fe6c9;
+  --a-mint-soft: rgba(143, 230, 201, 0.14);
+  --a-mint-ink: #9debd2;
+
+  /* Pastel circles for quick actions (dark icon on top). */
+  --p-peach: #ffc2a8;
   --p-butter: #ffe17c;
-  --p-lime: #dcf280;
-  --p-mint: #a0e6d8;
-  --p-lilac: #cbbeff;
-  --p-sky: #a8d4ff;
+  --p-lime: #d8f28a;
+  --p-mint: #9fe8d4;
+  --p-lilac: #c9b9ff;
+  --p-sky: #a6dcff;
+  --p-periwinkle: #b4c4ff;
+  --p-coral: #ffab96;
+  --p-cyan: #9be6f6;
   --p-ink: #111114;
 
-  --g-accent: linear-gradient(160deg, #2f80f7 0%, #1a55dc 100%);
+  /* Large brand surfaces (hero, next-session, accent cards): the logo gradient itself.
+     Light corner sits top-right so white text at the left stays on the mid/violet part. */
+  --g-accent: linear-gradient(215deg, #7aa5ff 0%, #3a6df0 46%, #6a4fe8 100%);
+  /* Primary buttons: the same hues a notch deeper so white 15px text passes AA everywhere. */
+  --g-primary: linear-gradient(120deg, #4a6df0 0%, #525eec 50%, #6a4fe8 100%);
+  --g-primary-hover: linear-gradient(120deg, #5a7bf6 0%, #5f68f2 50%, #7657f0 100%);
+  /* Soft glow blobs behind hero areas and page backgrounds. */
+  --g-glow:
+    radial-gradient(38% 42% at 12% 8%, rgba(122, 165, 255, 0.16), transparent 70%),
+    radial-gradient(34% 40% at 92% 14%, rgba(106, 79, 232, 0.16), transparent 70%),
+    radial-gradient(30% 34% at 70% 96%, rgba(111, 216, 242, 0.06), transparent 70%);
+  /* Crayon-like grain, layer it on top of gradients: background: var(--tex-grain), var(--g-accent). */
+  --tex-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 
   --r-panel: 28px;
   --r-card: 22px;
@@ -65,9 +106,11 @@
   --font: "Onest Variable", "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
 
   --shadow-float: 0 18px 50px rgba(0, 0, 0, 0.45);
-  --focus: 0 0 0 3px rgba(58, 109, 240, 0.55);
+  --shadow-primary: 0 10px 26px -10px rgba(98, 96, 255, 0.75);
+  --focus: 0 0 0 3px rgba(132, 142, 255, 0.6);
 
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
   --dur: 180ms;
 
   --sidebar-w: 280px;
@@ -77,28 +120,49 @@
 [data-theme="light"] {
   color-scheme: light;
 
-  --c-page: #f2f2f5;
+  --c-page: #f3f3f9;
   --c-panel: #ffffff;
-  --c-raised: #f6f6f9;
-  --c-raised-2: #ececf1;
-  --c-line: rgba(10, 10, 20, 0.08);
-  --c-line-strong: rgba(10, 10, 20, 0.14);
+  --c-raised: #f5f5fb;
+  --c-raised-2: #ebebf5;
+  --c-line: rgba(20, 20, 60, 0.08);
+  --c-line-strong: rgba(20, 20, 60, 0.14);
 
-  --c-text: #0e0e12;
-  --c-muted: #62626c;
-  --c-faint: #a3a3ad;
+  --c-text: #0e0e16;
+  --c-muted: #5f5f70;
+  --c-faint: #a3a3b3;
 
-  --c-primary: #2f62e6;
-  --c-primary-soft: rgba(47, 98, 230, 0.1);
+  --c-primary: #525eec;
+  --c-primary-2: #4450de;
+  --c-primary-ink: #4652e0;
+  --c-primary-soft: rgba(82, 94, 236, 0.11);
+  --c-primary-glow: rgba(98, 104, 255, 0.28);
 
   --c-danger: #e5392d;
   --c-danger-soft: rgba(229, 57, 45, 0.1);
-  --c-warning: #c99400;
-  --c-warning-soft: rgba(201, 148, 0, 0.12);
+  --c-warning: #a86400;
+  --c-warning-soft: rgba(230, 150, 20, 0.14);
   --c-success: #12a865;
   --c-success-soft: rgba(18, 168, 101, 0.1);
 
-  --shadow-float: 0 18px 50px rgba(20, 20, 40, 0.14);
+  --a-sun-soft: rgba(255, 205, 60, 0.22);
+  --a-sun-ink: #8a6400;
+  --a-coral-soft: rgba(255, 140, 110, 0.16);
+  --a-coral-ink: #bf4b2b;
+  --a-cyan-soft: rgba(60, 200, 235, 0.15);
+  --a-cyan-ink: #0a7a93;
+  --a-lilac-soft: rgba(140, 115, 255, 0.13);
+  --a-lilac-ink: #6b4fd8;
+  --a-mint-soft: rgba(40, 200, 150, 0.13);
+  --a-mint-ink: #0b7d60;
+
+  --g-glow:
+    radial-gradient(38% 42% at 12% 8%, rgba(122, 165, 255, 0.22), transparent 70%),
+    radial-gradient(34% 40% at 92% 14%, rgba(106, 79, 232, 0.14), transparent 70%),
+    radial-gradient(30% 34% at 70% 96%, rgba(255, 159, 133, 0.12), transparent 70%);
+
+  --shadow-float: 0 18px 50px rgba(30, 30, 80, 0.14);
+  --shadow-primary: 0 10px 24px -10px rgba(82, 94, 236, 0.6);
+  --focus: 0 0 0 3px rgba(82, 94, 236, 0.45);
 }
 
 @media (prefers-reduced-motion: reduce) {

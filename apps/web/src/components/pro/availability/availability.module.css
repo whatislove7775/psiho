@@ -153,7 +153,7 @@
   justify-content: center;
   min-width: 6px;
   border-radius: 8px;
-  background: linear-gradient(160deg, #2f80f7, #1a55dc);
+  background: var(--g-primary);
   color: #fff;
   cursor: grab;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);

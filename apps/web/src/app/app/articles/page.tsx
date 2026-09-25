@@ -11,6 +11,7 @@ import { ErrorBlock } from "@/components/client/ClientBits";
 import { ArticleCard, ArticleCardSkeleton } from "@/components/content/Cards";
 import c from "@/components/content/content.module.css";
 import s from "./articles.module.css";
+import { EmptyArt } from "@/components/illustrations";
 
 function Articles() {
   const params = useSearchParams();
@@ -47,7 +48,7 @@ function Articles() {
           ))}
         </div>
       ) : articles.data && articles.data.length === 0 ? (
-        <EmptyState
+        <EmptyState art={<EmptyArt scene="moon" />}
           icon={<BookOpen size={28} strokeWidth={1.8} />}
           title="Здесь пока пусто"
           text="Статьи на эту тему скоро появятся. Загляните в другие разделы."

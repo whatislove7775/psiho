@@ -16,7 +16,8 @@
   font-weight: 600;
   white-space: nowrap;
   text-decoration: none;
-  transition: background var(--dur) var(--ease), transform var(--dur) var(--ease), opacity var(--dur);
+  transition: background var(--dur) var(--ease), transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease),
+    opacity var(--dur);
   -webkit-tap-highlight-color: transparent;
 }
 .btn:hover:not(:disabled) {
@@ -63,9 +64,23 @@
   padding: 0;
 }
 .primary {
-  --btn-bg: var(--c-primary);
+  --btn-bg: var(--g-primary);
   --btn-fg: var(--c-on-primary);
-  --btn-bg-hover: var(--c-primary-2);
+  --btn-bg-hover: var(--g-primary-hover);
+  box-shadow: var(--shadow-primary);
+}
+.primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-primary), 0 0 0 4px var(--c-primary-soft);
+}
+.primary:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+.primary:disabled {
+  box-shadow: none;
+}
+.primary:focus-visible {
+  box-shadow: var(--focus), var(--shadow-primary);
 }
 .secondary {
   --btn-bg: var(--c-raised);
@@ -88,7 +103,7 @@
 .soft {
   --btn-bg: var(--c-primary-soft);
   --btn-fg: var(--c-primary);
-  --btn-bg-hover: rgba(58, 109, 240, 0.24);
+  --btn-bg-hover: color-mix(in srgb, var(--c-primary) 26%, transparent);
 }
 
 /* ── Panel / Card ───────────────────────────────────────────────────────── */
@@ -105,7 +120,7 @@
   background: var(--c-raised);
 }
 .cardAccent {
-  background: var(--g-accent);
+  background: var(--tex-grain), var(--g-accent);
   color: #fff;
 }
 .cardInteractive {
@@ -159,10 +174,16 @@
   display: grid;
   place-items: center;
   color: var(--p-ink);
-  transition: transform var(--dur) var(--ease);
+  box-shadow: inset 0 -6px 12px rgba(0, 0, 0, 0.06), inset 0 4px 10px rgba(255, 255, 255, 0.45);
+  transition: transform 260ms var(--ease-bounce), box-shadow var(--dur) var(--ease);
 }
 .quick:hover .quickCircle {
-  transform: translateY(-2px);
+  transform: translateY(-3px) rotate(-6deg) scale(1.04);
+}
+@media (prefers-reduced-motion: reduce) {
+  .quick:hover .quickCircle {
+    transform: none;
+  }
 }
 .peach {
   background: var(--p-peach);
@@ -181,6 +202,15 @@
 }
 .sky {
   background: var(--p-sky);
+}
+.periwinkle {
+  background: var(--p-periwinkle);
+}
+.coral {
+  background: var(--p-coral);
+}
+.cyan {
+  background: var(--p-cyan);
 }
 
 /* ── Form ───────────────────────────────────────────────────────────────── */
@@ -222,7 +252,7 @@
 .input:focus {
   outline: none;
   border-color: var(--c-primary);
-  box-shadow: none;
+  box-shadow: 0 0 0 4px var(--c-primary-soft);
 }
 .inputInvalid {
   border-color: var(--c-danger);
@@ -296,11 +326,36 @@ textarea.input {
 }
 .tone-primary {
   background: var(--c-primary-soft);
-  color: var(--c-primary);
+  color: var(--c-primary-ink);
+}
+.tone-sun {
+  background: var(--a-sun-soft);
+  color: var(--a-sun-ink);
+}
+.tone-coral {
+  background: var(--a-coral-soft);
+  color: var(--a-coral-ink);
+}
+.tone-cyan {
+  background: var(--a-cyan-soft);
+  color: var(--a-cyan-ink);
+}
+.tone-lilac {
+  background: var(--a-lilac-soft);
+  color: var(--a-lilac-ink);
+}
+.tone-mint {
+  background: var(--a-mint-soft);
+  color: var(--a-mint-ink);
 }
 
 /* ── Stat ───────────────────────────────────────────────────────────────── */
 .stat {
+  --stat-tint: var(--a-lilac);
+  --stat-mix: 30%;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
   background: var(--c-panel);
   border-radius: var(--r-card);
   padding: 20px 22px;
@@ -308,6 +363,39 @@ textarea.input {
   flex-direction: column;
   gap: 10px;
   min-width: 0;
+}
+/* a soft coloured "bubble" in the corner, cycling through the playful accents */
+.stat::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: -60px;
+  right: -60px;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--stat-tint) var(--stat-mix), transparent), transparent);
+  transition: transform 320ms var(--ease-bounce);
+}
+.stat:hover::after {
+  transform: scale(1.15);
+}
+.stat:nth-child(4n + 2) {
+  --stat-tint: var(--a-cyan);
+}
+.stat:nth-child(4n + 3) {
+  --stat-tint: var(--a-coral);
+}
+.stat:nth-child(4n + 4) {
+  --stat-tint: var(--a-sun);
+}
+[data-theme="light"] .stat {
+  --stat-mix: 45%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .stat:hover::after {
+    transform: none;
+  }
 }
 .statLabel {
   color: var(--c-muted);
@@ -346,13 +434,18 @@ textarea.input {
   color: var(--c-muted);
 }
 .emptyIcon {
-  width: 56px;
-  height: 56px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--c-raised);
-  color: var(--c-text);
+  background: var(--c-primary-soft);
+  color: var(--c-primary-ink);
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--c-primary-soft) 45%, transparent);
+}
+.emptyArt {
+  width: min(200px, 56vw);
+  margin-bottom: 2px;
 }
 .emptyTitle {
   color: var(--c-text);

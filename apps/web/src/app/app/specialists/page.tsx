@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { CalendarClock, Search, SearchX, X } from "lucide-react";
+import { topicTone } from "@/lib/topicTone";
 import { Badge, Button, Card, EmptyState, Segmented, Skeleton } from "@/ui";
 import { PageHeader } from "@/components/shell/AppShell";
 import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
@@ -11,6 +12,7 @@ import { plural, rub, when } from "@/lib/format";
 import { useLoad } from "@/components/client/useLoad";
 import { ErrorBlock } from "@/components/client/ClientBits";
 import s from "./specialists.module.css";
+import { EmptyArt } from "@/components/illustrations";
 
 type Price = "any" | "3000" | "4000" | "5000";
 
@@ -114,6 +116,7 @@ export default function SpecialistsPage() {
                 key={x}
                 type="button"
                 className={s.chip}
+                data-tone={topicTone(x)}
                 aria-pressed={spec === x}
                 onClick={() => setSpec(spec === x ? null : x)}
               >
@@ -153,7 +156,7 @@ export default function SpecialistsPage() {
         </div>
       ) : list.length === 0 ? (
         <Card>
-          <EmptyState
+          <EmptyState art={<EmptyArt scene="search" />}
             icon={<SearchX size={24} strokeWidth={1.8} />}
             title="Никого не нашли"
             text="Попробуйте другое слово, уберите тему или поднимите верхнюю границу цены."
@@ -180,7 +183,7 @@ export default function SpecialistsPage() {
                 <p className={s.bio}>{p.bio}</p>
                 <div className={s.badges}>
                   {p.specializations.map((x) => (
-                    <Badge key={x} tone={x === spec ? "primary" : "neutral"}>
+                    <Badge key={x} tone={x === spec ? "primary" : topicTone(x)}>
                       {x}
                     </Badge>
                   ))}

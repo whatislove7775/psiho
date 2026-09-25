@@ -180,7 +180,7 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
           </button>
         </nav>
 
-        <Button variant="secondary" size="lg" block href={nav.cta.href} className={s.cta}>
+        <Button variant="primary" size="lg" block href={nav.cta.href} className={s.cta}>
           {nav.cta.label}
         </Button>
       </aside>

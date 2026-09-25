@@ -135,7 +135,7 @@
   margin: 0;
 }
 .link {
-  color: var(--c-primary);
+  color: var(--c-primary-ink);
   font-size: var(--t-13);
   font-weight: 600;
   text-decoration: none;

@@ -6,7 +6,10 @@ import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import { psychologistsApi } from "@/lib/api/endpoints";
 import type { PsychologistPublic } from "@/lib/api/types";
 import { plural, rub } from "@/lib/format";
+import { topicTone } from "@/lib/topicTone";
 import { Badge, Button, Skeleton } from "@/ui";
+import { SpecialistFriend } from "@/components/illustrations";
+import a from "./art.module.css";
 import s from "./landing.module.css";
 
 type State = { kind: "loading" } | { kind: "ready"; items: PsychologistPublic[] } | { kind: "hidden" };
@@ -52,6 +55,7 @@ export function Specialists() {
               Цена сессии известна заранее
             </li>
           </ul>
+          <SpecialistFriend className={a.verifyArt} />
           <Button href="/join" variant="white" className={s.verifyAction}>
             Подать анкету специалиста
           </Button>
@@ -86,7 +90,9 @@ export function Specialists() {
                       {p.specializations.length > 0 && (
                         <div className={s.specTags}>
                           {p.specializations.slice(0, 3).map((t) => (
-                            <Badge key={t}>{t}</Badge>
+                            <Badge key={t} tone={topicTone(t)}>
+                              {t}
+                            </Badge>
                           ))}
                         </div>
                       )}

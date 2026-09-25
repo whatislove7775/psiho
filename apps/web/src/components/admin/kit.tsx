@@ -237,6 +237,8 @@ export const ACTION_LABEL: Record<string, string> = {
   "staff.me.totp_disabled": "Выключил 2FA",
   "auth.staff_login": "Вошёл в консоль",
   "auth.staff_login_failed": "Неверный код 2FA при входе",
+  "lab.room.create": "Создал тестовую комнату",
+  "lab.room.close": "Закрыл тестовую комнату",
 };
 
 export const actionLabel = (a: string) => ACTION_LABEL[a] ?? a;

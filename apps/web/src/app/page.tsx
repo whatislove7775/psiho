@@ -7,6 +7,8 @@ import { SiteFooter } from "@/components/landing/SiteFooter";
 import { SiteHeader } from "@/components/landing/SiteHeader";
 import { Specialists } from "@/components/landing/Specialists";
 import { Button } from "@/ui";
+import { Hello } from "@/components/illustrations";
+import a from "@/components/landing/art.module.css";
 import s from "@/components/landing/landing.module.css";
 
 export const metadata: Metadata = {
@@ -28,9 +30,12 @@ export default function LandingPage() {
         <Faq />
         <section className={`${s.wrap} ${s.section}`} aria-labelledby="closing-title">
           <div className={s.closing}>
-            <div>
-              <h2 id="closing-title">Начать можно за минуту</h2>
-              <p>Понадобится только пароль. Аватар соберёте следом, специалиста выберете, когда будете готовы.</p>
+            <div className={a.closingMain}>
+              <Hello className={a.closingArt} />
+              <div>
+                <h2 id="closing-title">Начать можно за минуту</h2>
+                <p>Понадобится только пароль. Аватар соберёте следом, специалиста выберете, когда будете готовы.</p>
+              </div>
             </div>
             <div className={s.closingActions}>
               <Button href="/start" variant="primary" size="lg">

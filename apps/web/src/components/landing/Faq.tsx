@@ -3,6 +3,8 @@
 import { useId, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
+import { Together } from "@/components/illustrations";
+import a from "./art.module.css";
 import s from "./landing.module.css";
 
 const ITEMS: { q: string; a: ReactNode }[] = [
@@ -61,6 +63,7 @@ export function Faq() {
             Не нашли ответ? Напишите на <a href="mailto:support@aprosop.ru">support@aprosop.ru</a>. Представляться не
             нужно.
           </p>
+          <Together className={a.faqArt} />
         </div>
         <div className={s.faqList}>
           {ITEMS.map((item, i) => {

@@ -220,7 +220,7 @@
   text-overflow: ellipsis;
 }
 .viewSubTyping {
-  color: var(--c-primary);
+  color: var(--c-primary-ink);
 }
 .headMenuWrap {
   position: relative;
@@ -350,7 +350,7 @@
   color: var(--c-text);
 }
 .mine {
-  background: var(--c-primary);
+  background: var(--g-primary);
   color: var(--c-on-primary);
 }
 .tail.theirs,
@@ -575,7 +575,7 @@
 }
 .voice_mine .voicePlay {
   background: var(--c-on-primary);
-  color: var(--c-primary);
+  color: var(--c-primary-ink);
 }
 .voicePlay:focus-visible {
   outline: none;
@@ -744,7 +744,7 @@
 .recBtn {
   width: 44px;
   height: 44px;
-  background: var(--c-primary);
+  background: var(--g-primary);
   color: var(--c-on-primary);
 }
 .micBtn {
@@ -934,7 +934,7 @@
 }
 .features svg {
   flex: none;
-  color: var(--c-primary);
+  color: var(--c-primary-ink);
   margin-top: 1px;
 }
 

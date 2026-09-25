@@ -13,6 +13,7 @@ import { plural, rub } from "@/lib/format";
 import pro from "@/components/pro/pro.module.css";
 import ad from "@/components/admin/admin.module.css";
 import s from "@/components/admin/staff.module.css";
+import { EmptyArt } from "@/components/illustrations";
 
 export default function AdminDashboard() {
   const { me, can } = useStaff();
@@ -126,7 +127,7 @@ export default function AdminDashboard() {
                 ))}
               </ul>
             ) : (
-              <EmptyState title="Журнал пуст" text="Здесь появятся блокировки, решения по заявкам и другие действия сотрудников." />
+              <EmptyState art={<EmptyArt scene="moon" />} title="Журнал пуст" text="Здесь появятся блокировки, решения по заявкам и другие действия сотрудников." />
             )}
           </Card>
         )}
@@ -172,7 +173,7 @@ function AttentionCard({ data, can }: { data: Dashboard; can: ReturnType<typeof 
 function SessionsChart({ series }: { series: Dashboard["series"] }) {
   const max = Math.max(1, ...series.map((d) => d.sessions));
   const total = series.reduce((a, d) => a + d.sessions, 0);
-  if (!total) return <EmptyState title="Сессий не было" text="Как только клиенты начнут записываться, здесь появится динамика." />;
+  if (!total) return <EmptyState art={<EmptyArt scene="calendar" />} title="Сессий не было" text="Как только клиенты начнут записываться, здесь появится динамика." />;
   const label = (iso: string) => new Date(iso + "T12:00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
   return (
     <figure className={s.chart} aria-label={`Сессии по дням, всего ${total}`}>

@@ -13,6 +13,7 @@ import { LoadError } from "@/components/pro/controls";
 import { staffApi, type Page, type StaffUserDetail, type StaffUserRow } from "@/lib/api/staff";
 import { plural, SESSION_STATUS } from "@/lib/format";
 import s from "@/components/admin/staff.module.css";
+import { EmptyArt } from "@/components/illustrations";
 
 type RoleFilter = "" | "client" | "psychologist" | "admin";
 type StatusFilter = "" | "active" | "blocked";
@@ -111,7 +112,7 @@ function UsersPage() {
             <Pager page={data.page} pages={data.pages} count={data.count} onPage={setPage} noun={["аккаунт", "аккаунта", "аккаунтов"]} />
           </>
         ) : (
-          <EmptyState
+          <EmptyState art={<EmptyArt scene="search" />}
             icon={<Users size={22} />}
             title="Никого не нашли"
             text="Проверьте псевдоним: он выглядит как «тихий-кит-4821». Можно искать и по полному ID аккаунта."

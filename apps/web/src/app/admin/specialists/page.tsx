@@ -14,6 +14,7 @@ import type { VerificationStatus } from "@/lib/api/types";
 import { plural, rub } from "@/lib/format";
 import a from "@/components/admin/admin.module.css";
 import s from "@/components/admin/staff.module.css";
+import { EmptyArt } from "@/components/illustrations";
 
 const TABS: { value: VerificationStatus; label: string; empty: string }[] = [
   { value: "pending", label: "На проверке", empty: "Новых заявок нет. Когда специалист зарегистрируется, его анкета появится здесь." },
@@ -282,7 +283,7 @@ function SpecialistsPage() {
             <Pager page={data.page} pages={data.pages} count={data.count} onPage={setPage} noun={["специалист", "специалиста", "специалистов"]} />
           </>
         ) : (
-          <EmptyState icon={<BadgeCheck size={22} />} title={tab === "pending" ? "Очередь пуста" : "Здесь пока никого"} text={q ? "По этому запросу никого нет." : current.empty} />
+          <EmptyState art={<EmptyArt scene="specialist" />} icon={<BadgeCheck size={22} />} title={tab === "pending" ? "Очередь пуста" : "Здесь пока никого"} text={q ? "По этому запросу никого нет." : current.empty} />
         )}
       </Card>
 

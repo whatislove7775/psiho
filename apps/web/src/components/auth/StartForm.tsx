@@ -8,6 +8,7 @@ import { authApi } from "@/lib/api/endpoints";
 import type { AuthResponse } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/store";
 import { Button } from "@/ui";
+import { Hello, KeyFriend } from "@/components/illustrations";
 import { AuthCard, AuthLinks, AuthShell } from "./AuthShell";
 import { FormError } from "./FormError";
 import { PasswordInput } from "./PasswordInput";
@@ -47,7 +48,7 @@ export function StartForm() {
 
   if (result) {
     return (
-      <AuthShell>
+      <AuthShell art={<KeyFriend />}>
         <RecoveryKeyReveal
           alias={result.user.alias}
           recoveryKey={result.recovery_key ?? ""}
@@ -62,7 +63,7 @@ export function StartForm() {
   }
 
   return (
-    <AuthShell>
+    <AuthShell art={<Hello />}>
       <AuthCard
         title="Начать анонимно"
         sub="Почта и телефон не нужны. Придумайте пароль, а имя для входа мы создадим сами."

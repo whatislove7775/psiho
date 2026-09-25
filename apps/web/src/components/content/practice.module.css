@@ -145,7 +145,7 @@
   transition: background var(--dur) var(--ease);
 }
 .progress span[data-state="done"] {
-  background: var(--c-primary);
+  background: var(--g-primary);
 }
 .progress span[data-state="current"] {
   background: color-mix(in srgb, var(--c-primary) 55%, var(--c-raised));

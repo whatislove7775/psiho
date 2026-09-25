@@ -12,6 +12,7 @@ import { errorText } from "@/components/client/useLoad";
 import { AliasCard } from "@/components/client/AliasCard";
 import { clientStyles as cs } from "@/components/client/ClientBits";
 import s from "./privacy.module.css";
+import { illSize, ShieldFriend } from "@/components/illustrations";
 
 const STORED = [
   { title: "Псевдоним", text: "Случайное имя, по нему вы входите" },
@@ -142,6 +143,7 @@ export default function PrivacyPage() {
           <CardHead
             title="Что мы храним"
             sub="Ровно столько, чтобы сервис работал"
+            action={<ShieldFriend className={illSize.xs} />}
           />
           <div className={s.columns}>
             <div className={s.col}>

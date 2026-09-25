@@ -15,6 +15,7 @@ import { splitSessions } from "@/components/client/sessions";
 import { ErrorBlock } from "@/components/client/ClientBits";
 import { NextSessionCard, SupportCard } from "@/components/client/NextSessionCard";
 import s from "./profile.module.css";
+import { illSize, SpecialistFriend } from "@/components/illustrations";
 
 export default function ClientProfile() {
   const user = useAuth((st) => st.user);
@@ -120,6 +121,7 @@ export default function ClientProfile() {
           <Skeleton height={64} radius={18} />
         ) : people.length === 0 ? (
           <div className={s.empty}>
+            <SpecialistFriend className={illSize.xs} />
             <p>Здесь появятся специалисты, с которыми у вас будут сессии.</p>
             <Button variant="primary" size="sm" href="/app/specialists">
               Выбрать специалиста

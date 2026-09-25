@@ -7,6 +7,7 @@ import { authApi } from "@/lib/api/endpoints";
 import type { AuthResponse } from "@/lib/api/types";
 import { homeFor, useAuth } from "@/lib/auth/store";
 import { Button, Input } from "@/ui";
+import { KeyFriend } from "@/components/illustrations";
 import { AuthCard, AuthLinks, AuthShell } from "./AuthShell";
 import { FormError } from "./FormError";
 import { PasswordInput } from "./PasswordInput";
@@ -58,7 +59,7 @@ export function RecoverForm() {
 
   if (result) {
     return (
-      <AuthShell>
+      <AuthShell art={<KeyFriend />}>
         <RecoveryKeyReveal
           title="Пароль изменён. Сохраните новый ключ"
           intro="Старый ключ больше не работает. Новый понадобится, если вы снова забудете пароль. Показать его ещё раз мы не сможем."
@@ -75,7 +76,7 @@ export function RecoverForm() {
   }
 
   return (
-    <AuthShell>
+    <AuthShell art={<KeyFriend />}>
       <AuthCard
         title="Восстановить доступ"
         sub="Введите имя и ключ восстановления, который вы сохранили при регистрации, и придумайте новый пароль."

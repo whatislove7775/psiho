@@ -11,6 +11,7 @@ import { sessionsApi } from "@/lib/api/endpoints";
 import type { Session } from "@/lib/api/types";
 import { plural, rub } from "@/lib/format";
 import s from "@/components/pro/pro.module.css";
+import { EmptyArt } from "@/components/illustrations";
 
 type Tab = "today" | "upcoming" | "past";
 const TABS: Tab[] = ["today", "upcoming", "past"];
@@ -128,7 +129,7 @@ function SessionsPage() {
             ))}
           </div>
         ) : tab === "today" ? (
-          <EmptyState
+          <EmptyState art={<EmptyArt scene="cozy" />}
             icon={<Video size={22} />}
             title="Сегодня сессий нет"
             text={
@@ -149,7 +150,7 @@ function SessionsPage() {
             }
           />
         ) : tab === "upcoming" ? (
-          <EmptyState
+          <EmptyState art={<EmptyArt scene="calendar" />}
             icon={<CalendarClock size={22} />}
             title="Новых записей пока нет"
             text="Клиенты записываются в свободные часы из вашего расписания. Чем больше открытых часов, тем проще найти время."
@@ -160,7 +161,7 @@ function SessionsPage() {
             }
           />
         ) : (
-          <EmptyState icon={<History size={22} />} title="Прошедших сессий нет" text="После первой проведённой сессии здесь появится история и доход." />
+          <EmptyState art={<EmptyArt scene="moon" />} icon={<History size={22} />} title="Прошедших сессий нет" text="После первой проведённой сессии здесь появится история и доход." />
         )}
       </Card>
     </>

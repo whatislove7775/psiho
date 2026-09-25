@@ -7,6 +7,7 @@ import { ApiError } from "@/lib/api/client";
 import { authApi } from "@/lib/api/endpoints";
 import { useAuth } from "@/lib/auth/store";
 import { Button, Input, Textarea } from "@/ui";
+import { SpecialistFriend } from "@/components/illustrations";
 import { AuthCard, AuthLinks, AuthShell } from "./AuthShell";
 import { ChipsInput } from "./ChipsInput";
 import { FormError } from "./FormError";
@@ -101,7 +102,7 @@ export function JoinForm() {
   };
 
   return (
-    <AuthShell wide>
+    <AuthShell wide art={<SpecialistFriend />}>
       <AuthCard
         title="Анкета специалиста"
         sub="Клиенты приходят к вам анонимно: вы увидите их аватар и имя вроде «тихий-кит-4821». Сессии идут по видео прямо в браузере."

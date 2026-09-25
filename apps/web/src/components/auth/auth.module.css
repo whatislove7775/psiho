@@ -111,11 +111,11 @@
 }
 
 .links a:hover {
-  color: var(--c-primary);
+  color: var(--c-primary-ink);
 }
 
 .inlineLink {
-  color: var(--c-primary);
+  color: var(--c-primary-ink);
   font-weight: 550;
   border-radius: 6px;
 }
@@ -148,7 +148,7 @@
   display: grid;
   place-items: center;
   background: var(--c-primary-soft);
-  color: var(--c-primary);
+  color: var(--c-primary-ink);
 }
 
 .steps {
@@ -240,7 +240,7 @@
 .keyBox {
   border-radius: var(--r-card);
   padding: 22px 20px 18px;
-  background: var(--g-accent);
+  background: var(--tex-grain), var(--g-accent);
   color: #fff;
   display: flex;
   flex-direction: column;
@@ -353,7 +353,7 @@
   padding: 0 4px 0 12px;
   border-radius: var(--r-pill);
   background: var(--c-primary-soft);
-  color: var(--c-primary);
+  color: var(--c-primary-ink);
   font-size: var(--t-13);
   font-weight: 600;
 }
@@ -370,7 +370,7 @@
 }
 
 .chip button:hover {
-  background: rgba(58, 109, 240, 0.2);
+  background: color-mix(in srgb, var(--c-primary) 22%, transparent);
 }
 
 .chipsInput {

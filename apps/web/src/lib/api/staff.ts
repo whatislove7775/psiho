@@ -27,6 +27,7 @@ export type StaffPermission =
   | "support.reply"
   | "audit.view"
   | "system.view"
+  | "lab.use"
   | "staff.view"
   | "staff.manage";
 

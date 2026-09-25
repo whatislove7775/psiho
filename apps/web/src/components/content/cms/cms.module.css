@@ -245,7 +245,7 @@
   border: 0;
   background: none;
   padding: 0;
-  color: var(--c-primary);
+  color: var(--c-primary-ink);
   font: inherit;
   font-size: var(--t-13);
   font-weight: 550;

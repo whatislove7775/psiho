@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MousePointer2, Shuffle } from "lucide-react";
+import { Shuffle } from "lucide-react";
 import { AvatarThumb } from "@/components/avatar/AvatarThumb";
 import { AvatarView, type AvatarViewHandle } from "@/components/avatar/AvatarView";
 import { randomAvatar } from "@/lib/avatar/schema";
@@ -109,10 +109,6 @@ export function Hero() {
           <span className={s.nameTag} aria-live="polite">
             <span className={s.liveDot} aria-hidden />
             {current.alias}
-          </span>
-          <span className={s.stageHint} aria-hidden>
-            <MousePointer2 size={14} strokeWidth={1.8} />
-            Аватар следит за курсором
           </span>
         </div>
         <figcaption className={s.picker}>

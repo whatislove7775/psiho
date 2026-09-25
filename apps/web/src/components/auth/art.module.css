@@ -1,0 +1,36 @@
+/* Side illustration for sign-in pages. */
+.withArt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 56px;
+  width: 100%;
+}
+
+.art {
+  width: 340px;
+  flex: none;
+  position: sticky;
+  top: 120px;
+  align-self: flex-start;
+  margin-top: 24px;
+}
+
+@media (max-width: 980px) {
+  .withArt {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .art {
+    position: static;
+    width: 150px;
+    margin-top: -8px;
+    align-self: center;
+  }
+}
+
+@media (max-height: 700px) and (max-width: 980px) {
+  .art {
+    width: 110px;
+  }
+}

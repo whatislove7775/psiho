@@ -1,0 +1,5 @@
+/* Illustration on the "waiting for the specialist" screen. */
+.waitArt {
+  width: min(240px, 60vw);
+  margin-bottom: 4px;
+}

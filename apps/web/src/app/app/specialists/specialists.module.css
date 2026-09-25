@@ -87,10 +87,45 @@
 .chip:hover {
   background: var(--c-raised);
 }
+.chip[data-tone] {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.chip[data-tone]::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--chip-dot);
+  transition: transform 260ms var(--ease-bounce);
+}
+.chip[data-tone]:hover::before {
+  transform: scale(1.4);
+}
+.chip[data-tone="lilac"] {
+  --chip-dot: var(--a-lilac);
+}
+.chip[data-tone="cyan"] {
+  --chip-dot: var(--a-cyan);
+}
+.chip[data-tone="coral"] {
+  --chip-dot: var(--a-coral);
+}
+.chip[data-tone="sun"] {
+  --chip-dot: var(--a-sun);
+}
+.chip[data-tone="mint"] {
+  --chip-dot: var(--a-mint);
+}
 .chip[aria-pressed="true"] {
-  background: var(--c-text);
-  border-color: var(--c-text);
-  color: var(--c-page);
+  background: var(--g-primary);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: var(--shadow-primary);
+}
+.chip[aria-pressed="true"]::before {
+  background: #fff;
 }
 
 .meta {
@@ -105,7 +140,7 @@
 .resetLink {
   border: 0;
   background: none;
-  color: var(--c-primary);
+  color: var(--c-primary-ink);
   font-weight: 600;
   font-size: var(--t-13);
   padding: 4px;

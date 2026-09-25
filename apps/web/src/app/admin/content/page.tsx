@@ -13,6 +13,7 @@ import { ArticleEditor } from "@/components/content/cms/ArticleEditor";
 import { PracticeEditor } from "@/components/content/cms/PracticeEditor";
 import c from "@/components/content/content.module.css";
 import s from "@/components/content/cms/cms.module.css";
+import { EmptyArt } from "@/components/illustrations";
 
 type Tab = "articles" | "practices";
 
@@ -88,7 +89,7 @@ function ContentCms() {
         {loading && !isNew ? (
           <Skeleton height={420} radius={22} />
         ) : missing ? (
-          <EmptyState title="Материал не найден" text="Возможно, его уже удалили." action={<Button onClick={() => go({ edit: null })}>К списку</Button>} />
+          <EmptyState art={<EmptyArt scene="lost" />} title="Материал не найден" text="Возможно, его уже удалили." action={<Button onClick={() => go({ edit: null })}>К списку</Button>} />
         ) : tab === "articles" ? (
           <ArticleEditor key={edit} article={article} onSaved={onSavedA} onDeleted={onDeleted} />
         ) : (
@@ -141,7 +142,7 @@ function ContentCms() {
             ))}
           </div>
         ) : (tab === "articles" ? filteredA : filteredP).length === 0 ? (
-          <EmptyState
+          <EmptyState art={<EmptyArt scene={q ? "search" : "plane"} />}
             icon={q ? <Search size={28} strokeWidth={1.8} /> : <FileText size={28} strokeWidth={1.8} />}
             title={q ? "Ничего не нашлось" : "Пока пусто"}
             text={q ? "Попробуйте другое слово." : "Создайте первый материал: он появится у клиентов после публикации."}

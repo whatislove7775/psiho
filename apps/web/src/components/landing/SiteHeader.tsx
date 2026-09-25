@@ -49,11 +49,11 @@ export function SiteHeader({ links = true }: { links?: boolean }) {
         <div className={s.headerActions}>
           <ThemeToggle />
           {status === "authed" && user ? (
-            <Button href={homeFor(user.role)} variant="secondary">
+            <Button href={homeFor(user.role)} variant="primary">
               Открыть кабинет
             </Button>
           ) : (
-            <Button href="/login" variant="secondary">
+            <Button href="/login" variant="soft">
               Войти
             </Button>
           )}

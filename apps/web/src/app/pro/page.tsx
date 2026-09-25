@@ -15,6 +15,7 @@ import {
   CircleAlert,
 } from "lucide-react";
 import { Button, Card, CardHead, EmptyState, QuickAction, Skeleton, Stat } from "@/ui";
+import { InlineEmpty } from "@/components/illustrations";
 import { PageHeader, WithRail } from "@/components/shell/AppShell";
 import { AvatarThumb } from "@/components/avatar/AvatarThumb";
 import { LoadError } from "@/components/pro/controls";
@@ -221,7 +222,7 @@ export default function ProOverview() {
             ) : today.length ? (
               <MiniList sessions={today} showDay={false} />
             ) : (
-              <p className={s.muted}>Сегодня свободный день. Если хотите принять клиентов, добавьте часы в расписание.</p>
+              <InlineEmpty scene="cozy">Сегодня свободный день. Если хотите принять клиентов, добавьте часы в расписание.</InlineEmpty>
             )}
           </Card>
           <Card as="section">
@@ -241,11 +242,11 @@ export default function ProOverview() {
             ) : upcoming.length ? (
               <MiniList sessions={upcoming} showDay />
             ) : (
-              <p className={s.muted}>
+              <InlineEmpty scene="calendar">
                 {weekSlots > 0
                   ? "Новых записей пока нет. Клиенты видят ваши свободные часы в каталоге."
                   : "Записей нет: в расписании не отмечено ни одного часа."}
-              </p>
+              </InlineEmpty>
             )}
           </Card>
         </div>

@@ -20,7 +20,7 @@
   gap: var(--s-6);
   padding: var(--s-8);
   border-radius: var(--r-panel);
-  background: var(--g-accent);
+  background: var(--tex-grain), var(--g-accent);
   color: #fff;
 }
 .hero::before,
@@ -176,7 +176,7 @@
   align-items: center;
   gap: 2px;
   flex: none;
-  color: var(--c-primary);
+  color: var(--c-primary-ink);
   font-weight: 600;
   font-size: var(--t-15);
   white-space: nowrap;

@@ -5,7 +5,7 @@
   margin-bottom: var(--s-5);
   padding: var(--s-5) var(--s-6);
   border-radius: var(--r-card);
-  background: var(--g-accent);
+  background: var(--tex-grain), var(--g-accent);
   color: #fff;
 }
 .welcomeIcon {

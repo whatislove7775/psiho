@@ -15,6 +15,8 @@ import { NextSessionCard, SupportCard } from "@/components/client/NextSessionCar
 import { SpecialistMini, SpecialistMiniSkeleton } from "@/components/client/SpecialistMini";
 import { AvatarThumb } from "@/components/avatar/AvatarThumb";
 import { ArticleCard, ArticleCardSkeleton, PracticeCard, PracticeCardSkeleton } from "@/components/content/Cards";
+import { Celestial } from "@/components/illustrations";
+import h from "./homeArt.module.css";
 import s from "./home.module.css";
 
 function greeting(d = new Date()) {
@@ -34,10 +36,13 @@ export default function ClientHome() {
   const topics = useLoad(() => contentApi.topics());
   const [checked, setChecked] = useState(false);
   const [hello, setHello] = useState("Здравствуйте");
+  const [night, setNight] = useState(false);
 
   useEffect(() => {
     setChecked(checkDone.get());
     setHello(greeting());
+    const hour = new Date().getHours();
+    setNight(hour < 5 || hour >= 18);
   }, []);
 
   const list = sessions.data ?? [];
@@ -85,9 +90,12 @@ export default function ClientHome() {
             </Link>
           </div>
         </div>
-        <Link href="/app/avatar" className={s.heroAvatar} aria-label="Мой аватар">
-          <AvatarThumb config={user?.avatar_config} seed={user?.id} size={132} />
-        </Link>
+        <div className={h.avatarWrap}>
+          <Link href="/app/avatar" className={s.heroAvatar} aria-label="Мой аватар">
+            <AvatarThumb config={user?.avatar_config} seed={user?.id} size={132} />
+          </Link>
+          <Celestial night={night} className={h.sky} />
+        </div>
       </section>
 
       {sessions.error && <ErrorBlock message={sessions.error} onRetry={sessions.reload} />}

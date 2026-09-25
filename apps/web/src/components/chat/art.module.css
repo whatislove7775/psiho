@@ -1,0 +1,10 @@
+/* Illustration in the "select a chat" placeholder. */
+.placeholderArt {
+  width: 200px;
+  margin-bottom: 4px;
+}
+@media (max-height: 760px) {
+  .placeholderArt {
+    width: 150px;
+  }
+}

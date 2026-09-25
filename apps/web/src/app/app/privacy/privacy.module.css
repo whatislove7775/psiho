@@ -53,7 +53,7 @@
 }
 .markYes {
   background: var(--c-primary-soft);
-  color: var(--c-primary);
+  color: var(--c-primary-ink);
 }
 .markNo {
   background: var(--c-success-soft);

@@ -159,6 +159,24 @@ TimeOff { id; start_date; end_date; note }
 
 Версия в `system/`: env `GIT_COMMIT`, `APP_VERSION`, `BUILD_TIME` или файл `apps/api/BUILD_INFO(.json)`.
 
+## Лаборатория — `/lab/`
+
+Тестовые звонки без записи и оплаты (страница `/admin/lab`). Отдельная модель `lab.TestRoom`, не `ConsultationSession`,
+поэтому комнаты не попадают в статистику, выручку, выплаты, списки сессий и специалистов. Комната живёт 2 часа
+(или до закрытия), не больше 5 активных на сотрудника (старые закрываются сами), истёкшие больше суток назад удаляются.
+
+| Метод | Путь | Право | Ответ / тело |
+|---|---|---|---|
+| GET | `rooms/` | `lab.use` | `{ results: TestRoom[], ttl_minutes }` — только свои активные |
+| POST | `rooms/` | `lab.use` | `{ label?, client_avatar? }` → `201 TestRoom` (в журнал: `lab.room.create`) |
+| POST | `rooms/{uuid}/close/` | `lab.use` | `TestRoom` (только своя; `lab.room.close`) |
+| POST | `join/` | без входа | `{ token }` → `{ room_id, ws_token, role, peer, test_room{ id, label, created_at, expires_at, client_avatar } }`; 403 плохой токен, 410 комната закрыта/истекла; 60/мин с IP |
+
+`TestRoom`: `{ id, label, created_at, expires_at, is_active, has_client_avatar, tokens{ client, psychologist } }`.
+Ссылка входа: `/room/{id}?lab=<token>` — обычная страница комнаты в тестовом режиме. Токен подписан отдельной солью
+(`aprosop-lab-join`), живёт ≤ 2 часов и открывает только эту тестовую комнату; `ws_token` выдаётся на её собственный
+канал сигналинга (`user_id = "lab:<room>:<role>"`), к настоящим сессиям доступа не даёт.
+
 ## Жалобы — `/reports/`
 
 | Метод | Путь | Тело | Ответ |

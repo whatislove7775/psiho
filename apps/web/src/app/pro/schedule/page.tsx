@@ -25,6 +25,7 @@ import { availabilityApi, durationLabel, type AvailabilitySettings } from "@/lib
 import { plural, WEEKDAYS, WEEKDAYS_SHORT } from "@/lib/format";
 import s from "@/components/pro/pro.module.css";
 import c from "./schedule.module.css";
+import { CalendarSparkle, illSize } from "@/components/illustrations";
 
 interface TemplateDraft {
   valid_from: string | null;
@@ -473,6 +474,7 @@ function WeekRail({
             : "Клиенты не смогут записаться, пока в неделе нет ни одного рабочего часа"}
         </div>
       </div>
+      {!minutes && <CalendarSparkle className={illSize.sm} />}
       <div className={c.chart} aria-hidden>
         {week.map((d, i) => (
           <div key={i} className={c.chartRow}>

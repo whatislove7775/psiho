@@ -31,6 +31,7 @@ urlpatterns = [
     path("api/v1/payments/", include("apps.payments.urls")),
     path("api/v1/content/", include("apps.content.urls")),
     path("api/v1/chat/", include("apps.chat.urls")),
+    path("api/v1/lab/", include("apps.lab.urls")),
 ]
 
 if settings.DEBUG:  # production: nginx serves /media/ from the "media" volume

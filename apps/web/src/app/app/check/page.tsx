@@ -14,6 +14,7 @@ import { getBackdrop, loadBackdrop, saveBackdrop, type BackdropId } from "@/lib/
 import { useAvatarCamera } from "@/hooks/useAvatarCamera";
 import { useVoiceTransform, type VoicePreset } from "@/hooks/useVoiceTransform";
 import s from "./check.module.css";
+import { illSize, MirrorAvatar } from "@/components/illustrations";
 
 const VOICES: { value: VoicePreset; label: string }[] = [
   { value: "off", label: "Мой голос" },
@@ -223,6 +224,7 @@ export default function CheckPage() {
               })}
             </ul>
             <p className={s.tipHint}>Свет и лицо мы проверим сами, остальное отметьте, когда будет готово.</p>
+            <MirrorAvatar className={illSize.md} />
           </Card>
         }
       >

@@ -9,6 +9,7 @@ import { actionLabel, dateTime, Pager, RoleBadge, SearchBox, SelectBox, Toolbar,
 import { LoadError } from "@/components/pro/controls";
 import { staffApi, type AuditEntry, type Page, type StaffRole } from "@/lib/api/staff";
 import s from "@/components/admin/staff.module.css";
+import { EmptyArt } from "@/components/illustrations";
 
 type Cat = "" | "user" | "specialist" | "session" | "report" | "staff" | "auth" | "content" | "support";
 const CATS: { value: Cat; label: string }[] = [
@@ -159,7 +160,7 @@ function AuditPage() {
             <Pager page={data.page} pages={data.pages} count={data.count} onPage={setPage} noun={["запись", "записи", "записей"]} />
           </>
         ) : (
-          <EmptyState icon={<ScrollText size={22} />} title="Записей нет" text="Здесь появятся действия сотрудников: блокировки, решения по заявкам, возвраты." />
+          <EmptyState art={<EmptyArt scene="moon" />} icon={<ScrollText size={22} />} title="Записей нет" text="Здесь появятся действия сотрудников: блокировки, решения по заявкам, возвраты." />
         )}
       </Card>
     </>

@@ -1,17 +1,27 @@
 /* The session room is always dark: video UIs read best on black. */
 .room {
-  --c-page: #09090b;
-  --c-panel: #18181b;
-  --c-raised: #222226;
-  --c-raised-2: #2b2b30;
+  --c-page: #0a0a10;
+  --c-panel: #17171f;
+  --c-raised: #21212b;
+  --c-raised-2: #2b2b37;
   --c-line: rgba(255, 255, 255, 0.07);
-  --c-text: #f4f4f6;
-  --c-muted: #9a9aa3;
-  --c-faint: #5e5e66;
+  --c-text: #f4f4f8;
+  --c-muted: #9c9cab;
+  --c-faint: #5f5f6e;
+  /* dark-theme accent inks even when the site is in light theme */
+  --c-primary-ink: #9aa5ff;
+  --c-primary-soft: rgba(116, 128, 255, 0.17);
+  --c-success: #3dd68c;
+  --c-success-soft: rgba(61, 214, 140, 0.14);
+  --c-warning: #ffb547;
+  --c-warning-soft: rgba(255, 181, 71, 0.14);
   color-scheme: dark;
   position: fixed;
   inset: 0;
-  background: var(--c-page);
+  background:
+    radial-gradient(40% 50% at 10% 0%, rgba(122, 165, 255, 0.1), transparent 70%),
+    radial-gradient(40% 50% at 100% 100%, rgba(106, 79, 232, 0.1), transparent 70%),
+    var(--c-page);
   color: var(--c-text);
   overflow: hidden;
 }
@@ -36,7 +46,9 @@
   justify-self: center;
   border-radius: var(--r-panel);
   overflow: hidden;
-  background: #1d1d22;
+  background:
+    radial-gradient(55% 45% at 50% 42%, rgba(122, 140, 255, 0.16), transparent 70%),
+    #1d1d27;
 }
 .stageInner {
   position: absolute;
@@ -164,12 +176,12 @@
 .waitingAvatar {
   border-radius: 50%;
   overflow: hidden;
-  box-shadow: 0 0 0 6px rgba(58, 109, 240, 0.16), 0 0 0 14px rgba(58, 109, 240, 0.07);
+  box-shadow: 0 0 0 6px rgba(106, 110, 255, 0.18), 0 0 0 14px rgba(122, 165, 255, 0.08);
   animation: breathe 3.2s ease-in-out infinite;
 }
 @keyframes breathe {
   50% {
-    box-shadow: 0 0 0 10px rgba(58, 109, 240, 0.2), 0 0 0 24px rgba(58, 109, 240, 0.06);
+    box-shadow: 0 0 0 10px rgba(106, 110, 255, 0.22), 0 0 0 24px rgba(122, 165, 255, 0.07);
   }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -2,13 +2,15 @@ import Link from "next/link";
 import { Clock } from "lucide-react";
 import type { ArticleCard as TArticle, PracticeCard as TPractice } from "@/lib/api/content";
 import { Skeleton } from "@/ui";
+import { TopicArt } from "@/components/illustrations/topics";
+import art from "./art.module.css";
 import s from "./content.module.css";
 
 export function ArticleCard({ a, base = "/app", compact }: { a: TArticle; base?: string; compact?: boolean }) {
   return (
     <Link href={`${base}/articles/${a.slug}`} className={s.article} data-compact={compact || undefined}>
       <span className={`${s.cover} ${s.tone}`} data-tone={a.cover} aria-hidden>
-        <span className={s.coverEmoji}>{a.emoji || "📖"}</span>
+        <TopicArt topic={a.topic} className={art.coverArt} />
       </span>
       <span className={s.articleBody}>
         <span className={s.kicker}>{a.topic_label}</span>
@@ -40,7 +42,7 @@ export function PracticeCard({ p, base = "/app" }: { p: TPractice; base?: string
   return (
     <Link href={`${base}/practices/${p.slug}`} className={s.practice}>
       <span className={`${s.practiceIcon} ${s.tone}`} data-tone={p.cover} aria-hidden>
-        {p.emoji || "🌿"}
+        <TopicArt topic={p.kind} className={art.practiceArt} />
       </span>
       <span className={s.practiceText}>
         <span className={s.practiceTitle}>{p.title}</span>

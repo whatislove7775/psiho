@@ -115,9 +115,24 @@
   background: var(--c-raised);
   color: var(--c-text);
 }
+.navItem svg {
+  transition: transform 260ms var(--ease-bounce), color var(--dur);
+}
+.navItem:hover svg {
+  transform: scale(1.1) rotate(-4deg);
+}
 .navItem[aria-current="page"] {
-  background: var(--c-raised);
+  background: var(--c-primary-soft);
   color: var(--c-text);
+  font-weight: 600;
+}
+.navItem[aria-current="page"] svg {
+  color: var(--c-primary-ink);
+}
+@media (prefers-reduced-motion: reduce) {
+  .navItem:hover svg {
+    transform: none;
+  }
 }
 .navCount {
   margin-left: auto;
@@ -125,7 +140,7 @@
   height: 22px;
   padding: 0 7px;
   border-radius: 11px;
-  background: var(--c-primary);
+  background: var(--g-primary);
   color: #fff;
   font-size: var(--t-12);
   font-weight: 650;
@@ -262,7 +277,7 @@
     font-weight: 550;
   }
   .tab[aria-current="page"] {
-    color: var(--c-text);
+    color: var(--c-primary-ink);
   }
 }
 

@@ -1,0 +1,33 @@
+/* Illustrated covers (components/illustrations/topics.tsx) inside the content cards. */
+.coverArt.coverArt {
+  position: relative;
+  z-index: 1;
+  width: auto;
+  height: 104px;
+  aspect-ratio: 4 / 3;
+  padding-top: 4px;
+}
+:global([data-compact]) .coverArt.coverArt {
+  height: 82px;
+}
+.practiceArt.practiceArt {
+  width: 88%;
+  height: auto;
+}
+.bannerArt.bannerArt {
+  position: relative;
+  z-index: 1;
+  width: auto;
+  height: 166px;
+  aspect-ratio: 4 / 3;
+  padding-top: 6px;
+}
+.kickerArt.kickerArt {
+  width: 34px;
+  height: auto;
+}
+@media (max-width: 760px) {
+  .bannerArt.bannerArt {
+    height: 124px;
+  }
+}

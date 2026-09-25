@@ -7,7 +7,8 @@ import { SignalingClient } from "@/lib/webrtc/signalingClient";
 const TURN_USER = process.env.NEXT_PUBLIC_TURN_USER || "aprosop";
 const TURN_CRED = process.env.NEXT_PUBLIC_TURN_PASSWORD || "aprosopsecretturn";
 
-function getIceServers(): RTCIceServer[] {
+/** ICE servers every call uses (public STUN + our coturn). Also used by the staff lab network check. */
+export function getIceServers(): RTCIceServer[] {
   const host = typeof window !== "undefined" ? window.location.hostname : "localhost";
   return [
     // Public STUN — несколько провайдеров для надёжности

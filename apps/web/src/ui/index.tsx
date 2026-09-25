@@ -117,7 +117,7 @@ export function Panel({ children, className }: { children: ReactNode; className?
 
 // ── Quick action (pastel circle) ──────────────────────────────────────────────
 
-export type Pastel = "peach" | "butter" | "lime" | "mint" | "lilac" | "sky";
+export type Pastel = "peach" | "butter" | "lime" | "mint" | "lilac" | "sky" | "periwinkle" | "coral" | "cyan";
 
 export function QuickAction({
   icon,
@@ -250,7 +250,8 @@ export function Badge({
   dot,
 }: {
   children: ReactNode;
-  tone?: "neutral" | "success" | "warning" | "danger" | "primary";
+  /** sun / coral / cyan / lilac / mint: playful non-semantic accents (topics, tags, categories). */
+  tone?: "neutral" | "success" | "warning" | "danger" | "primary" | "sun" | "coral" | "cyan" | "lilac" | "mint";
   dot?: boolean;
 }) {
   return <span className={cx(s.badge, tone !== "neutral" && s[`tone-${tone}`], dot && s.badgeDot)}>{children}</span>;
@@ -289,10 +290,23 @@ export function Stat({
 
 // ── Empty state ───────────────────────────────────────────────────────────────
 
-export function EmptyState({ icon, title, text, action }: { icon?: ReactNode; title: ReactNode; text?: ReactNode; action?: ReactNode }) {
+export function EmptyState({
+  icon,
+  art,
+  title,
+  text,
+  action,
+}: {
+  icon?: ReactNode;
+  /** An illustration (components/illustrations); shown instead of the icon circle. */
+  art?: ReactNode;
+  title: ReactNode;
+  text?: ReactNode;
+  action?: ReactNode;
+}) {
   return (
     <div className={s.empty}>
-      {icon && <div className={s.emptyIcon}>{icon}</div>}
+      {art ? <div className={s.emptyArt}>{art}</div> : icon && <div className={s.emptyIcon}>{icon}</div>}
       <div className={s.emptyTitle}>{title}</div>
       {text && <p style={{ maxWidth: 420 }}>{text}</p>}
       {action}
