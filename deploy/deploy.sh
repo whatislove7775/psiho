@@ -60,6 +60,19 @@ main() {
   [[ -f .env ]] || die "Файл $deploy_path/.env не найден. Скопируйте .env.example в .env и заполните значения (см. deploy/SETUP.md)."
   grep -q '^NEXT_PUBLIC_API_URL=' .env \
     || warn "В .env нет NEXT_PUBLIC_API_URL — фронтенд соберётся с адресом http://localhost/api/v1."
+  # Внешний IP для TURN (coturn): без него при NAT у хостера relay-кандидаты
+  # получают внутренний адрес, и звонки между разными сетями не соединяются.
+  if ! grep -q '^TURN_EXTERNAL_IP=.' .env; then
+    local pub priv
+    pub="$(curl -4 -fsS --max-time 8 https://api.ipify.org 2>/dev/null || true)"
+    priv="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}')"
+    if [[ "$pub" =~ ^[0-9.]+$ ]]; then
+      if [[ -n "$priv" && "$priv" != "$pub" ]]; then pub="$pub/$priv"; fi
+      printf '\n# Внешний IP сервера для TURN (определён автоматически)\nTURN_EXTERNAL_IP=%s\n' "$pub" >> .env
+      log "В .env добавлен TURN_EXTERNAL_IP=$pub"
+    fi
+  fi
+
   # Ключ шифрования чатов: создаётся один раз и больше никогда не меняется.
   if ! grep -q '^CHAT_ENCRYPTION_KEY=.' .env; then
     printf '\n# Ключ шифрования чатов. НЕ МЕНЯТЬ и не терять — иначе переписка станет нечитаемой.\nCHAT_ENCRYPTION_KEY=%s\n' \

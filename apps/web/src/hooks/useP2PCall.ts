@@ -18,6 +18,8 @@ export function getIceServers(): RTCIceServer[] {
     // Own TURN — UDP быстрее, TCP пробивает NAT
     { urls: `turn:${host}:3478`,               username: TURN_USER, credential: TURN_CRED },
     { urls: `turn:${host}:3478?transport=tcp`,  username: TURN_USER, credential: TURN_CRED },
+    // TURN поверх TLS — проходит через сети, где режут UDP и нестандартные порты (мобильные операторы, офисы)
+    { urls: `turns:${host}:5349?transport=tcp`, username: TURN_USER, credential: TURN_CRED },
   ];
 }
 

@@ -47,6 +47,7 @@ services:
       --user=${TURN_USER:-aprosop}:${TURN_PASSWORD:-aprosopsecretturn}
       --lt-cred-mech
       --fingerprint
+      ${TURN_EXTERNAL_IP:+--external-ip=${TURN_EXTERNAL_IP}}
       --listening-port=3478
       --tls-listening-port=5349
       --cert=/etc/letsencrypt/live/aprosop.ru/fullchain.pem
