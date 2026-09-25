@@ -142,7 +142,7 @@ export function OverridesCalendar({
                   disabled={past}
                   onClick={() => setOpen(d)}
                   aria-label={`${dayTitle(d.date)}: ${summary}${d.has_override ? ", изменён вручную" : ""}${
-                    d.sessions.length ? `, ${d.sessions.length} ${plural(d.sessions.length, "сессия", "сессии", "сессий")}` : ""
+                    d.sessions.length ? `, ${d.sessions.length} ${plural(d.sessions.length, "созвон", "созвона", "созвонов")}` : ""
                   }`}
                 >
                   <span className={c.calNum}>{date.getDate()}</span>
@@ -291,7 +291,7 @@ function DayModal({
                     </Badge>
                   ))}
                 </div>
-                <small>Изменение часов не отменяет эти сессии.</small>
+                <small>Изменение часов не отменяет эти созвоны.</small>
               </div>
             )}
             <div className={c.modalActions}>
@@ -360,7 +360,7 @@ function TimeOffList({ items, today, onChanged }: { items: TimeOff[] | null; tod
       <div className={c.vacHead}>
         <div>
           <h3>Отпуск и перерывы</h3>
-          <p>Целые дни без приёма. Уже оплаченные сессии в эти дни остаются в силе</p>
+          <p>Целые дни без приёма. Уже оплаченные созвоны в эти дни остаются в силе</p>
         </div>
         {!adding && (
           <Button size="sm" variant="secondary" icon={<Plus size={16} />} onClick={() => setAdding(true)}>

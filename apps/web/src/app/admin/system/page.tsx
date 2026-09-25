@@ -84,7 +84,7 @@ function SystemPage() {
               tone={data.migrations.pending_count ? "danger" : "success"}
               note={data.migrations.applied_count ? `${data.migrations.applied_count} в базе` : undefined}
             />
-            <Stat label="Записей в журнале" value={data.counts.audit_entries} note={`${data.counts.users} аккаунтов, ${data.counts.sessions} сессий`} />
+            <Stat label="Записей в журнале" value={data.counts.audit_entries} note={`${data.counts.users} аккаунтов, ${data.counts.sessions} созвонов`} />
           </div>
 
           <div className={s.grid2}>

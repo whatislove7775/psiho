@@ -203,12 +203,12 @@ def check_bookable(profile, start: datetime, duration: int, client=None, now: da
     s = get_settings(profile)
     durations = allowed_durations(s)
     if duration not in durations:
-        return f"Специалист проводит сессии длительностью {human_list(durations)} минут."
+        return f"Специалист проводит созвоны длительностью {human_list(durations)} минут."
     if timezone.is_naive(start):
         start = timezone.make_aware(start, dt_timezone.utc)
     start = start.astimezone(dt_timezone.utc)
     if start < now + timedelta(minutes=s.min_notice_minutes):
-        return f"Записаться можно не позднее чем за {human_notice(s.min_notice_minutes)} до начала сессии."
+        return f"Записаться можно не позднее чем за {human_notice(s.min_notice_minutes)} до начала созвона."
     tz = safe_zone(s.time_zone)
     local_date = start.astimezone(tz).date()
     if local_date > local_today(profile, now) + timedelta(days=s.horizon_days):
@@ -227,7 +227,7 @@ def check_bookable(profile, start: datetime, duration: int, client=None, now: da
             ConsultationSession.objects.filter(client=client), start, start + timedelta(minutes=duration)
         )
         if own:
-            return "У вас уже есть сессия в это время."
+            return "У вас уже есть созвон в это время."
     return None
 
 

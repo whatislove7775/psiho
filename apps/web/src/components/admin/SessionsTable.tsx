@@ -10,7 +10,7 @@ import s from "./admin.module.css";
 /** Table on wide screens, stacked rows on phones. */
 export function SessionsTable({ sessions, compact }: { sessions: Session[]; compact?: boolean }) {
   return (
-    <div className={s.table} role="table" aria-label="Сессии" data-compact={compact || undefined}>
+    <div className={s.table} role="table" aria-label="Созвоны" data-compact={compact || undefined}>
       <div className={s.thead} role="row">
         <span role="columnheader">Дата</span>
         <span role="columnheader">Специалист</span>

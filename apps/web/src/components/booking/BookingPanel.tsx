@@ -13,7 +13,7 @@ import {
 import { Button, Modal, Skeleton, useToast } from "@/ui";
 import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import { ApiError } from "@/lib/api/client";
-import { sessionsApi } from "@/lib/api/endpoints";
+import { dialogsApi } from "@/lib/api/dialogs";
 import { availabilityApi, durationLabel } from "@/lib/api/availability";
 import type { PsychologistPublic, Slot } from "@/lib/api/types";
 import {
@@ -102,13 +102,14 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
     if (!chosen) return;
     setBusy(true);
     try {
-      const r = await sessionsApi.book(psy.id, chosen.start, minutes);
+      // The call lives inside the dialogue with this specialist
+      const r = await dialogsApi.bookWith(psy.id, chosen.start, minutes);
       if (r.payment_url) {
         window.location.href = r.payment_url;
         return;
       }
-      toast("Сессия запланирована");
-      router.push("/app/sessions");
+      toast(r.status === "awaiting_payment" ? "Время за вами — осталось оплатить созвон" : "Созвон назначен");
+      router.push(`/app/dialogs?d=${encodeURIComponent(r.dialogue_id)}`);
     } catch (e) {
       setConfirm(false);
       setSlot(null);
@@ -127,7 +128,7 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
     <section className={s.panel} id="booking" aria-labelledby="booking-title">
       <div className={s.head}>
         <h2 id="booking-title" className={s.title}>
-          Запись на сессию
+          Назначить созвон
         </h2>
         <p className={s.sub}>
           Время по вашему часовому поясу, {offsetLabel()}{TZ_LOCAL && TZ_LOCAL.includes("/") ? ` (${TZ_LOCAL.split("/").pop()?.replace(/_/g, " ")})` : ""}
@@ -136,7 +137,7 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
 
       <div className={s.block}>
         <div className={s.label}>Длительность</div>
-        <div className={s.durs} role="group" aria-label="Длительность сессии">
+        <div className={s.durs} role="group" aria-label="Длительность созвона">
           {options.map((o) => (
             <button
               key={o.minutes}
@@ -188,7 +189,7 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
           <strong>Нет свободного времени</strong>
           <span>
             {options.length > 1 && minutes !== options[0].minutes
-              ? `Для ${durationLabel(minutes)} окон не нашлось. Попробуйте сессию короче или другого специалиста.`
+              ? `Для ${durationLabel(minutes)} окон не нашлось. Попробуйте созвон короче или другого специалиста.`
               : "Загляните через пару дней или выберите другого специалиста."}
           </span>
           <Button size="sm" variant="secondary" href="/app/specialists">
@@ -266,7 +267,7 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
           disabled={!chosen}
           onClick={() => setConfirm(true)}
         >
-          Записаться
+          Назначить созвон
         </Button>
       </div>
 
@@ -282,7 +283,7 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
               <SpecialistPhoto url={psy.photo_url} name={psy.display_name} size={56} />
               <div>
                 <strong>{psy.display_name}</strong>
-                <span>Видеосессия с аватаром</span>
+                <span>Видеосозвон с аватаром</span>
               </div>
             </div>
             <dl className={s.summary}>
@@ -318,8 +319,8 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
               </div>
             </dl>
             <p className={s.note}>
-              Деньги спишутся только после подтверждения записи. Отменить сессию
-              можно до её начала.
+              Созвон появится в вашем диалоге со специалистом. Бесплатно отменить или
+              перенести его можно за 24 часа до начала.
             </p>
             <div className={s.need}>
               <span>
@@ -340,7 +341,7 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
                 Изменить
               </Button>
               <Button variant="primary" onClick={book} loading={busy}>
-                Записаться за {rub(price)}
+                Назначить за {rub(price)}
               </Button>
             </div>
           </div>

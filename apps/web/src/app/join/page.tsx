@@ -4,7 +4,7 @@ import { JoinForm } from "@/components/auth/JoinForm";
 export const metadata: Metadata = {
   title: "Для специалистов",
   description:
-    "Анкета психолога для aprosop: анонимные видеосессии с клиентами. Профиль появляется в каталоге после ручной проверки.",
+    "Анкета психолога для aprosop: анонимные диалоги и видеосозвоны с клиентами. Профиль появляется в каталоге после ручной проверки.",
   alternates: { canonical: "/join" },
 };
 

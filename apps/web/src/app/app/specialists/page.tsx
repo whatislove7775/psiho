@@ -86,10 +86,10 @@ export default function SpecialistsPage() {
           </label>
           <div className={s.price}>
             <span className={s.priceLabel} id="price-label">
-              Цена сессии
+              Цена созвона
             </span>
             <Segmented<Price>
-              ariaLabel="Цена самой короткой сессии"
+              ariaLabel="Цена самого короткого созвона"
               value={price}
               onChange={setPrice}
               options={[

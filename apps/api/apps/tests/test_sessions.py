@@ -108,7 +108,8 @@ def test_booking_flow_and_conflicts(psychologist, client_user, day):
     resp = c.post("/api/v1/sessions/book/", payload, format="json")
     assert resp.status_code == 201, resp.content
     s = resp.json()
-    assert s["status"] == "paid" and s["payment_url"] is None  # dev mode: no YooKassa
+    # оплата с анонимного баланса: денег нет → запись ждёт оплаты на /app/balance/pay/<id>
+    assert s["status"] == "awaiting_payment" and s["payment_url"] == f"/app/balance/pay/{s['id']}"
     assert s["amount_rub"] == 3000 and s["duration_minutes"] == 50
     assert s["psychologist"] == {
         "id": psychologist.id, "display_name": "Анна", "avatar_config": None, "photo_url": None,
@@ -151,22 +152,27 @@ def test_booking_flow_and_conflicts(psychologist, client_user, day):
 
 
 @pytest.mark.django_db
-def test_booking_with_yookassa_returns_payment_url(psychologist, client_user, day, settings):
+def test_legacy_yookassa_session_payment_webhook(psychologist, client_user, day, settings):
+    """Старые платежи ЮKassa «на сессию» (до баланса) доводятся вебхуком до конца."""
+    from apps.payments.models import Payment
+
     settings.YOOKASSA_SHOP_ID = "shop"
     settings.YOOKASSA_SECRET_KEY = "key"
-    fake = mock.Mock(id="yk-123")
-    fake.confirmation.confirmation_url = "https://yoomoney.ru/checkout/xyz"
-    with mock.patch("apps.payments.services.YKPayment") as yk:
-        yk.create.return_value = fake
-        resp = auth_client(client_user).post("/api/v1/sessions/book/", {
-            "psychologist_id": psychologist.id, "scheduled_at": iso(msk(day, 10)), "duration_minutes": 50,
-        }, format="json")
-    assert resp.status_code == 201, resp.content
-    assert resp.json()["status"] == "awaiting_payment"
-    assert resp.json()["payment_url"] == "https://yoomoney.ru/checkout/xyz"
+    session = ConsultationSession(
+        client=client_user, psychologist_profile=psychologist, scheduled_at=msk(day, 10),
+        amount_kopecks=300000, status="awaiting_payment",
+    )
+    session.compute_split(20.0)
+    session.save()
+    Payment.objects.create(
+        session=session, yookassa_payment_id="yk-123", amount_rub=3000, psychologist_payout_rub=2400,
+        platform_fee_rub=600, confirmation_url="https://yoomoney.ru/checkout/xyz",
+    )
+    got = auth_client(client_user).get(f"/api/v1/sessions/{session.id}/").json()
+    assert got["payment_url"] == "https://yoomoney.ru/checkout/xyz"
 
     # webhook body says succeeded, but API says canceled → API wins
-    remote = mock.Mock(status="canceled", metadata={"session_id": resp.json()["id"]})
+    remote = mock.Mock(status="canceled", metadata={"session_id": str(session.id)})
     remote.amount.value = "3000.00"
     with mock.patch("apps.payments.services.YKPayment") as yk:
         yk.find_one.return_value = remote
@@ -174,7 +180,7 @@ def test_booking_with_yookassa_returns_payment_url(psychologist, client_user, da
             "event": "payment.succeeded", "object": {"id": "yk-123", "status": "succeeded"},
         }, format="json")
     assert hook.status_code == 200
-    session = ConsultationSession.objects.get(pk=resp.json()["id"])
+    session.refresh_from_db()
     assert session.status == "cancelled"
 
 

@@ -52,7 +52,7 @@ export function Specialists() {
             </li>
             <li>
               <Check size={18} strokeWidth={2} aria-hidden />
-              Цена сессии известна заранее
+              Цена созвона известна заранее
             </li>
           </ul>
           <SpecialistFriend className={a.verifyArt} />
@@ -65,7 +65,7 @@ export function Specialists() {
           <div className={s.specList}>
             <div className={s.specListHead}>
               <h3>Сейчас принимают</h3>
-              <span>цена самой короткой сессии</span>
+              <span>цена самого короткого созвона</span>
             </div>
             {state.kind === "loading"
               ? [0, 1, 2].map((i) => (
@@ -99,7 +99,7 @@ export function Specialists() {
                     </div>
                     <div className={s.specRate}>
                       {rub(p.session_rate_rub)}
-                      <small>за сессию</small>
+                      <small>за созвон</small>
                     </div>
                   </article>
                 ))}

@@ -64,7 +64,7 @@ export function JoinForm() {
     if (years === "" || !Number.isInteger(y) || y < 0 || y > 80) e.experience_years = "Укажите опыт целым числом лет.";
     const r = Number(rate);
     if (rate === "" || !Number.isFinite(r) || r <= 0 || r > 1_000_000)
-      e.session_rate_rub = "Укажите стоимость сессии в рублях.";
+      e.session_rate_rub = "Укажите стоимость созвона в рублях.";
     return e;
   };
 
@@ -199,7 +199,7 @@ export function JoinForm() {
               error={errors.experience_years}
             />
             <Input
-              label="Стоимость сессии, ₽"
+              label="Стоимость созвона, ₽"
               type="number"
               inputMode="numeric"
               min={0}

@@ -747,6 +747,19 @@
   background: var(--g-primary);
   color: var(--c-on-primary);
 }
+.morphBtn {
+  transition: background var(--dur) ease, color var(--dur) ease, transform 0.15s ease;
+}
+.morphBtn[data-mode="mic"] {
+  background: var(--c-raised);
+  color: var(--c-text);
+}
+.morphBtn[data-mode="mic"]:hover:not(:disabled) {
+  background: var(--c-raised-2);
+}
+.morphBtn:active:not(:disabled) {
+  transform: scale(0.94);
+}
 .micBtn {
   width: 44px;
   height: 44px;

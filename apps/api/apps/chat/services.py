@@ -167,9 +167,12 @@ def counterpart(conv: Conversation, role: str) -> dict:
     if role in ("client", "specialist") and conv.is_support:
         return {"type": "support", "name": SUPPORT_NAME, "avatar_config": None}
     if role == "client":
+        from apps.photos.utils import photo_url
+
         sp = conv.specialist
+        # Специалисты работают открыто: клиент видит настоящее фото из профиля
         return {"type": "specialist", "name": sp.display_name, "avatar_config": sp.user.avatar_config,
-                "psychologist_id": sp.id}
+                "psychologist_id": sp.id, "photo_url": photo_url(sp)}
     if role == "support" and conv.kind == Kind.SPECIALIST_SUPPORT:
         sp = conv.specialist
         return {"type": "specialist", "name": sp.display_name, "avatar_config": sp.user.avatar_config,
@@ -188,7 +191,11 @@ def preview(msg: Message | None) -> dict | None:
     elif msg.kind == Message.Kind.FILE:
         text = "Файл"
     elif msg.kind == Message.Kind.SYSTEM:
-        text = system_text(decrypt_text(msg.text_enc))
+        code = decrypt_text(msg.text_enc)
+        text = system_text(code)
+        # Карточки созвонов: клиент форматирует время в своём часовом поясе
+        return {"text": text, "created_at": msg.created_at.isoformat(), "sender_role": msg.sender_role,
+                "kind": msg.kind, "card": system_card(code)}
     else:
         text = decrypt_text(msg.text_enc)[:120]
     return {"text": text, "created_at": msg.created_at.isoformat(), "sender_role": msg.sender_role,
@@ -224,7 +231,19 @@ SYSTEM_TEXTS = {
 
 
 def system_text(code: str) -> str:
+    if code and code.startswith("call:"):
+        from apps.dialogs.cards import card_text  # карточки созвонов диалога
+
+        return card_text(code)
     return SYSTEM_TEXTS.get(code, "")
+
+
+def system_card(code: str) -> dict | None:
+    if code and code.startswith("call:"):
+        from apps.dialogs.cards import card_for
+
+        return card_for(code)
+    return None
 
 
 def serialize_message(msg: Message, viewer_id=None) -> dict:
@@ -249,6 +268,7 @@ def serialize_message(msg: Message, viewer_id=None) -> dict:
         "sender_role": msg.sender_role,
         "text": system_text(raw) if msg.kind == Message.Kind.SYSTEM else raw,
         "system_code": raw if msg.kind == Message.Kind.SYSTEM else None,
+        "card": system_card(raw) if msg.kind == Message.Kind.SYSTEM else None,
         "attachment": att,
         "created_at": msg.created_at.isoformat(),
         "edited_at": msg.edited_at.isoformat() if msg.edited_at else None,

@@ -85,7 +85,7 @@ export function NextSessionCard({
           <Row
             icon={<ShieldCheck size={18} strokeWidth={1.8} />}
             title="Оплата после подтверждения"
-            sub="Отменить можно до начала сессии"
+            sub="Отменить можно до начала созвона"
           />
         </div>
         <Button variant="white" size="lg" block href="/app/specialists">
@@ -102,7 +102,7 @@ export function NextSessionCard({
     <section className={s.accent} aria-labelledby={titleId}>
       <div className={s.head}>
         <h2 id={titleId} className={s.title}>
-          Ближайшая сессия
+          Ближайший созвон
         </h2>
         <span className={s.pill}>
           {session.can_join ? "Можно входить" : untilLabel(starts)}
@@ -164,7 +164,7 @@ export function NextSessionCard({
           href={`/room/${session.id}`}
           icon={<Video size={20} strokeWidth={1.8} />}
         >
-          Войти в сессию
+          Присоединиться
         </Button>
       ) : (
         <Button variant="white" size="lg" block href="/app/check">
@@ -173,7 +173,7 @@ export function NextSessionCard({
       )}
       {showAllLink && (
         <Link href="/app/sessions" className={s.link}>
-          Все мои сессии
+          Все диалоги
         </Link>
       )}
     </section>
@@ -190,7 +190,7 @@ export function SupportCard() {
       <div>
         <strong>Если сейчас очень тяжело</strong>
         <p>
-          Онлайн-сессия не заменяет экстренную помощь. Если есть угроза жизни,
+          Онлайн-созвон не заменяет экстренную помощь. Если есть угроза жизни,
           позвоните <a href="tel:112">112</a>, это бесплатно и круглосуточно.
         </p>
       </div>

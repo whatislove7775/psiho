@@ -31,8 +31,8 @@ const EXPRESSIONS: Record<string, number>[] = [
 ];
 
 const CAPTION = {
-  client: "Таким вас увидит специалист на сессии",
-  pro: "Таким вас увидят клиенты в каталоге и на сессиях",
+  client: "Таким вас увидит специалист на созвоне",
+  pro: "Таким вас увидят клиенты в каталоге и на созвонах",
 };
 
 function useDebounced<T>(value: T, ms: number): T {

@@ -37,7 +37,10 @@
     ".next-lead/types/**/*.ts",
     ".next-6/types/**/*.ts",
     ".next-7/types/**/*.ts",
-    ".next-8/types/**/*.ts"
+    ".next-8/types/**/*.ts",
+    ".next-10/types/**/*.ts",
+    ".next-9/types/**/*.ts",
+    ".next-11/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

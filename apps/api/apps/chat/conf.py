@@ -25,8 +25,9 @@ def encryption_keys() -> str:
 
 
 def allow_without_booking() -> bool:
-    """Разрешить клиенту писать специалисту без записи (по умолчанию — только после записи)."""
-    return _get("CHAT_ALLOW_WITHOUT_BOOKING", False)
+    """Клиент может начать диалог со специалистом без записи (с антиспам-лимитами apps.dialogs.policy).
+    False — прежнее правило «писать только после записи»."""
+    return _get("CHAT_ALLOW_WITHOUT_BOOKING", True)
 
 
 def max_file_bytes() -> int:

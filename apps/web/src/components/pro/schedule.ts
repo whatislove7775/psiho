@@ -89,7 +89,7 @@ export function dayErrors(d: DayPlan, minDuration = 50): (string | null)[] {
         return `Пересекается с интервалом ${o.from}–${o.to}. Сдвиньте время или удалите один из них`;
       }
     }
-    if (toMin(r.to) - toMin(r.from) < minDuration) return `Короче самой короткой сессии (${minDuration} мин), запись сюда не попадёт`;
+    if (toMin(r.to) - toMin(r.from) < minDuration) return `Короче самого короткого созвона (${minDuration} мин), запись сюда не попадёт`;
     return null;
   });
 }

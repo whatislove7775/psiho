@@ -208,7 +208,7 @@ function UserModal({ id, onClose, onChanged }: { id: string | null; onClose: () 
             />
             {u.sessions && (
               <div>
-                <h4 className={s.subhead}>Последние сессии</h4>
+                <h4 className={s.subhead}>Последние созвоны</h4>
                 {u.sessions.length ? (
                   <ul className={s.miniList}>
                     {u.sessions.map((x) => (
@@ -220,7 +220,7 @@ function UserModal({ id, onClose, onChanged }: { id: string | null; onClose: () 
                     ))}
                   </ul>
                 ) : (
-                  <p className={s.muted}>Сессий не было.</p>
+                  <p className={s.muted}>Созвонов не было.</p>
                 )}
               </div>
             )}
@@ -263,7 +263,7 @@ function UserModal({ id, onClose, onChanged }: { id: string | null; onClose: () 
       <ReasonModal
         open={dialog === "block"}
         title={`Заблокировать ${u?.alias ?? ""}?`}
-        text="Человек сразу выйдет со всех устройств и не сможет войти. Оплаченные сессии не отменяются автоматически."
+        text="Человек сразу выйдет со всех устройств и не сможет войти. Оплаченные созвоны не отменяются автоматически."
         confirm="Заблокировать"
         variant="danger"
         busy={busy}
@@ -273,7 +273,7 @@ function UserModal({ id, onClose, onChanged }: { id: string | null; onClose: () 
       <ReasonModal
         open={dialog === "unblock"}
         title={`Разблокировать ${u?.alias ?? ""}?`}
-        text="Аккаунт снова сможет входить и записываться на сессии."
+        text="Аккаунт снова сможет входить и назначать созвоны."
         confirm="Разблокировать"
         requireReason={false}
         busy={busy}

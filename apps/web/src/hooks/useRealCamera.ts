@@ -5,8 +5,8 @@
  * clients see their real face, so no avatar and no voice filter here.
  * Never use this hook for a client — clients only ever send useAvatarCamera().
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { CameraState } from "./useAvatarCamera";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { MIC_CONSTRAINTS, type CameraState } from "./useAvatarCamera";
 
 export interface RealCamera {
   state: CameraState;
@@ -15,9 +15,15 @@ export interface RealCamera {
   stream: MediaStream | null;
   videoStream: MediaStream | null;
   audioStream: MediaStream | null;
+  /** switch camera or microphone while running */
+  switchDevice: (kind: "videoinput" | "audioinput", deviceId: string) => Promise<void>;
+  devices: { videoinput: string | null; audioinput: string | null };
   start: () => void;
   stop: () => void;
 }
+
+/** Specialist camera: 720p30, the call encodes it at up to 1.5 Mbps. */
+const VIDEO_720: MediaTrackConstraints = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } };
 
 export function explainMediaError(e: unknown): { state: CameraState; message: string } {
   const name = (e as DOMException)?.name;
@@ -55,8 +61,8 @@ export function useRealCamera(): RealCamera {
       try {
         if (!navigator.mediaDevices?.getUserMedia) throw new Error("unsupported");
         ms = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
-          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+          video: { facingMode: "user", ...VIDEO_720 },
+          audio: MIC_CONSTRAINTS,
         });
       } catch (e) {
         if (cancelled) return;
@@ -82,6 +88,7 @@ export function useRealCamera(): RealCamera {
     return () => {
       cancelled = true;
       ms?.getTracks().forEach((t) => t.stop());
+      streamRef.current?.getTracks().forEach((t) => t.stop()); // incl. switched devices
       setStream(null);
     };
   }, [runId]);
@@ -92,8 +99,40 @@ export function useRealCamera(): RealCamera {
     setState("idle");
   }, []);
 
+  const streamRef = useRef<MediaStream | null>(null);
+  streamRef.current = stream;
+  const switchDevice = useCallback(async (kind: "videoinput" | "audioinput", deviceId: string) => {
+    const cur = streamRef.current;
+    if (!cur) return;
+    const ms = await navigator.mediaDevices.getUserMedia(
+      kind === "videoinput"
+        ? { video: { deviceId: { exact: deviceId }, ...VIDEO_720 } }
+        : { audio: { ...MIC_CONSTRAINTS, deviceId: { exact: deviceId } } },
+    );
+    const next = ms.getTracks()[0];
+    const trackKind = kind === "videoinput" ? "video" : "audio";
+    const old = cur.getTracks().filter((t) => t.kind === trackKind);
+    next.enabled = old[0]?.enabled ?? true;
+    if (trackKind === "video") {
+      try {
+        (next as MediaStreamTrack & { contentHint: string }).contentHint = "motion";
+      } catch {
+        /* ignore */
+      }
+    }
+    old.forEach((t) => t.stop());
+    setStream(new MediaStream([...cur.getTracks().filter((t) => t.kind !== trackKind), next]));
+  }, []);
+  const devices = useMemo(
+    () => ({
+      videoinput: stream?.getVideoTracks()[0]?.getSettings().deviceId ?? null,
+      audioinput: stream?.getAudioTracks()[0]?.getSettings().deviceId ?? null,
+    }),
+    [stream],
+  );
+
   const videoStream = useMemo(() => (stream?.getVideoTracks().length ? new MediaStream(stream.getVideoTracks()) : null), [stream]);
   const audioStream = useMemo(() => (stream?.getAudioTracks().length ? new MediaStream(stream.getAudioTracks()) : null), [stream]);
 
-  return { state, error, stream, videoStream, audioStream, start, stop };
+  return { state, error, stream, videoStream, audioStream, switchDevice, devices, start, stop };
 }

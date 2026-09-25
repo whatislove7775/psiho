@@ -28,6 +28,86 @@ const ICE_RESTART_TIMEOUT_MS  = 10_000;
 const RETRY_DELAYS = [2_000, 4_000, 8_000, 16_000, 30_000];
 const MAX_RETRIES  = RETRY_DELAYS.length;
 
+// ── Media quality ────────────────────────────────────────────────
+/** Opus for speech: mono, 40 kbps, in-band FEC for lossy links, no DTX (keeps quiet speech crisp). */
+const OPUS_FMTP: Record<string, string> = {
+  minptime: "10",
+  useinbandfec: "1",
+  usedtx: "0",
+  stereo: "0",
+  "sprop-stereo": "0",
+  maxaveragebitrate: "40000",
+  maxplaybackrate: "48000",
+};
+const AUDIO_MAX_BITRATE = 48_000;
+const VIDEO_MIN_BITRATE = 150_000;
+const STATS_INTERVAL_MS = 2_000;
+
+/**
+ * Our Opus preferences go into the SDP we SEND: fmtp parameters describe what
+ * the receiver wants, so the peer's encoder is configured from them (the peer
+ * does the same for us). The local description itself stays untouched.
+ */
+export function tuneSdp(sdp: string): string {
+  const m = sdp.match(/a=rtpmap:(\d+) opus\/48000\/2/i);
+  if (!m) return sdp;
+  const pt = m[1];
+  const re = new RegExp(`a=fmtp:${pt} ([^\\r\\n]*)`);
+  const cur = sdp.match(re);
+  const params = new Map<string, string>();
+  if (cur) for (const kv of cur[1].split(";")) {
+    const [k, v] = kv.split("=").map((x) => x.trim());
+    if (k) params.set(k, v ?? "");
+  }
+  for (const [k, v] of Object.entries(OPUS_FMTP)) params.set(k, v);
+  const line = `a=fmtp:${pt} ${[...params].map(([k, v]) => `${k}=${v}`).join(";")}`;
+  if (cur) return sdp.replace(re, line);
+  return sdp.replace(new RegExp(`(a=rtpmap:${pt} opus\\/48000\\/2[^\\r\\n]*)(\\r?\\n)`, "i"), `$1$2${line}$2`);
+}
+
+/** Video codec order: hardware H.264 first on Safari/iOS/mobile, VP9 → VP8 elsewhere. */
+function preferCodecs(tr: RTCRtpTransceiver) {
+  const caps = typeof RTCRtpReceiver !== "undefined" && RTCRtpReceiver.getCapabilities?.("video");
+  if (!caps || typeof tr.setCodecPreferences !== "function") return;
+  const ua = navigator.userAgent;
+  const safari = /^((?!chrome|chromium|android|crios|fxios|edg).)*safari/i.test(ua);
+  const mobile = /android|iphone|ipad|mobile/i.test(ua);
+  const order = safari || mobile ? ["video/H264", "video/VP8", "video/VP9"] : ["video/VP9", "video/VP8", "video/H264"];
+  const rank = (c: RTCRtpCodec) => {
+    const i = order.indexOf(c.mimeType);
+    if (i < 0) return 10; // rtx / red / ulpfec / AV1… keep, after the main codecs
+    // VP9 profile 0 only (profile 2 = 10-bit, rarely hardware-friendly)
+    if (c.mimeType === "video/VP9" && /profile-id=2/.test(c.sdpFmtpLine ?? "")) return 9;
+    return i;
+  };
+  const sorted = [...caps.codecs].sort((a, b) => rank(a) - rank(b));
+  try {
+    tr.setCodecPreferences(sorted);
+  } catch {
+    /* some browsers reject certain entries — default order is fine */
+  }
+}
+
+export type CallQuality = "good" | "fair" | "poor" | "unknown";
+
+export interface CallStats {
+  rttMs: number | null;
+  /** fraction 0…1 of our packets the peer did not get */
+  lossOut: number | null;
+  /** fraction 0…1 of the peer's packets we did not get */
+  lossIn: number | null;
+  sendKbps: number;
+  recvKbps: number;
+  /** current encoder cap (adapts to the network) */
+  capKbps: number;
+  codec: string | null;
+  recvFps: number | null;
+  recvSize: string | null;
+  sendFps: number | null;
+  limitation: string | null;
+  relay: boolean;
+}
+
 // ── Типы ─────────────────────────────────────────────────────────
 export type P2PStatus =
   | "idle"
@@ -78,6 +158,8 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
   const [hasRemote,   setHasRemote]   = useState(false);
   const [elapsed,     setElapsed]     = useState(0);
   const [retryKey,    setRetryKey]    = useState(0);
+  const [quality,     setQuality]     = useState<CallQuality>("unknown");
+  const [stats,       setStats]       = useState<CallStats | null>(null);
 
   const pcRef          = useRef<RTCPeerConnection | null>(null);
   const sigRef         = useRef<SignalingClient | null>(null);
@@ -87,6 +169,8 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
   localStreamRef.current = localStream;
   const maxBitrateRef  = useRef(videoMaxBitrate);
   maxBitrateRef.current = videoMaxBitrate;
+  /** current adaptive video cap, bps (starts at the maximum) */
+  const capRef         = useRef(videoMaxBitrate);
   const cancelRef      = useRef(false);
   const hasRemoteRef   = useRef(false);
   const elapsedTimer   = useRef<ReturnType<typeof setInterval>>();
@@ -133,6 +217,7 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
 
     cancelRef.current    = false;
     hasRemoteRef.current = false;
+    capRef.current       = maxBitrateRef.current; // before setupPC() applies it
 
     const sig = new SignalingClient(roomId, wsToken);
     sigRef.current = sig;
@@ -150,6 +235,8 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
     let reconnectTimer:  ReturnType<typeof setTimeout> | undefined;
 
     const send = (msg: Parameters<SignalingClient["send"]>[0]) => sig.send({ ...msg, from: myId });
+    const sendDesc = (type: "offer" | "answer", d: RTCSessionDescription) =>
+      send({ type, sdp: { type: d.type, sdp: tuneSdp(d.sdp) } });
 
     function markConnected() {
       if (hasRemoteRef.current) {
@@ -160,6 +247,19 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
       setHasRemote(true);
       setStatus("connected");
       startElapsed();
+    }
+
+    /**
+     * An ICE restart (network change, signaling reconnect) can succeed without
+     * ICE ever leaving "connected" — then no state event fires. Clear the
+     * "reconnecting" banner as soon as media is known to flow.
+     */
+    function settleIfFlowing(pc: RTCPeerConnection) {
+      const ice = pc.iceConnectionState;
+      if (pc === pcRef.current && pc.connectionState === "connected" && (ice === "connected" || ice === "completed") && hasRemoteRef.current) {
+        clearTimeout(iceRestartTimer);
+        setStatus("connected");
+      }
     }
 
     function markDisconnected() {
@@ -187,7 +287,7 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
         // Lost a race: the peer's offer was accepted meanwhile, or the PC was replaced.
         if (pc.signalingState !== "stable" || pc !== pcRef.current || pc.remoteDescription?.sdp !== before) return;
         await pc.setLocalDescription(offer);
-        send({ type: "offer", sdp: pc.localDescription!.toJSON() });
+        sendDesc("offer", pc.localDescription!);
       } catch (e) {
         console.error("[P2P] createOffer failed:", e);
       } finally {
@@ -260,18 +360,27 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
         else pc.addTransceiver(kind, { direction: "sendrecv" });
       }
 
-      // ── Tune the video encoder for low latency ──────────────────
-      // The avatar is light, predictable motion (a specialist's real camera
-      // gets a higher cap). Cap bitrate/fps and prefer keeping framerate over
-      // resolution when CPU is tight.
-      const vSender = pc.getSenders().find(s => s.track?.kind === "video");
-      if (vSender) {
-        const params = vSender.getParameters();
+      // ── Encoder setup ───────────────────────────────────────────
+      // Video: bitrate cap (adapted to the network by the stats loop below),
+      // 30 fps, keep framerate over resolution (a smooth face reads better
+      // than a sharp stutter). Audio: high priority, Opus ≤ 48 kbps.
+      for (const tr of pc.getTransceivers()) {
+        const kind = tr.receiver.track.kind;
+        if (kind === "video") preferCodecs(tr);
+        const sender = tr.sender;
+        const params = sender.getParameters();
         if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
-        params.encodings[0].maxBitrate   = maxBitrateRef.current;
-        params.encodings[0].maxFramerate = 30;
-        (params as RTCRtpSendParameters & { degradationPreference?: string }).degradationPreference = "maintain-framerate";
-        vSender.setParameters(params).catch(() => { /* not all browsers allow this pre-negotiation */ });
+        const enc = params.encodings[0] as RTCRtpEncodingParameters & { priority?: string; networkPriority?: string };
+        if (kind === "video") {
+          enc.maxBitrate = capRef.current;
+          enc.maxFramerate = 30;
+          (params as RTCRtpSendParameters & { degradationPreference?: string }).degradationPreference = "maintain-framerate";
+        } else {
+          enc.maxBitrate = AUDIO_MAX_BITRATE;
+          enc.priority = "high";
+          enc.networkPriority = "high";
+        }
+        sender.setParameters(params).catch(() => { /* not all browsers allow this pre-negotiation */ });
       }
 
       pc.onicecandidate = ({ candidate }) => {
@@ -295,6 +404,7 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
           clearTimeout(iceRestartTimer);
           clearTimeout(reconnectTimer);
           reconnectCount = 0;
+          settleIfFlowing(pc);
         } else if (s === "disconnected") {
           // Give the browser a moment to recover the path on its own.
           setStatus("reconnecting");
@@ -367,7 +477,7 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
             const pc = pcFor(from);
             if (pc.signalingState === "have-local-offer" && offeringPc !== pc && pc.localDescription) {
               // Our offer went out before this peer instance was listening — resend it.
-              send({ type: "offer", sdp: pc.localDescription.toJSON() });
+              sendDesc("offer", pc.localDescription);
             } else {
               await makeOffer(pc);
             }
@@ -386,7 +496,7 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
             await pc.setRemoteDescription(msg.sdp);
             await flushPending(pc);
             await pc.setLocalDescription(await pc.createAnswer());
-            send({ type: "answer", sdp: pc.localDescription!.toJSON() });
+            sendDesc("answer", pc.localDescription!);
             break;
           }
 
@@ -396,6 +506,7 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
             if (from) remoteId = from;
             await pc.setRemoteDescription(msg.sdp);
             await flushPending(pc);
+            settleIfFlowing(pc);
             break;
           }
 
@@ -453,6 +564,93 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
     };
     window.addEventListener("online", onOnline);
 
+    // ── Stats: connection quality + bitrate adaptation ─────────────
+    // Every 2 s: loss/RTT from RTCP. Heavy loss or a long RTT steps the video
+    // cap down (×0.7, ≥150 kbps); three clean intervals step it back up
+    // (×1.15, ≤ max). The encoder's own congestion control still runs below it.
+    let prev: { t: number; sent: number; recv: number; lostIn: number; gotIn: number } | null = null;
+    let clean = 0;
+    const statsTimer = setInterval(async () => {
+      const pc = pcRef.current;
+      if (!pc || cancelRef.current || pc.connectionState !== "connected") return;
+      settleIfFlowing(pc);
+      let report: RTCStatsReport;
+      try { report = await pc.getStats(); } catch { return; }
+      let rtt: number | null = null, lossOut: number | null = null, codecId: string | null = null;
+      let sentBytes = 0, recvBytes = 0, lostIn = 0, gotIn = 0, recvFps: number | null = null, recvSize: string | null = null;
+      let sendFps: number | null = null, limitation: string | null = null, relay = false;
+      const byId = new Map<string, Record<string, unknown>>();
+      report.forEach((st) => byId.set(st.id, st as Record<string, unknown>));
+      report.forEach((raw) => {
+        const st = raw as Record<string, unknown> & { type: string; kind?: string };
+        if (st.type === "remote-inbound-rtp") {
+          const f = st.fractionLost as number | undefined;
+          if (typeof f === "number") lossOut = Math.max(lossOut ?? 0, f);
+          const r = st.roundTripTime as number | undefined;
+          if (typeof r === "number") rtt = Math.max(rtt ?? 0, r * 1000);
+        } else if (st.type === "outbound-rtp") {
+          sentBytes += (st.bytesSent as number) ?? 0;
+          if (st.kind === "video") {
+            codecId = (st.codecId as string) ?? codecId;
+            sendFps = (st.framesPerSecond as number) ?? sendFps;
+            limitation = (st.qualityLimitationReason as string) ?? limitation;
+          }
+        } else if (st.type === "inbound-rtp") {
+          recvBytes += (st.bytesReceived as number) ?? 0;
+          lostIn += Math.max(0, (st.packetsLost as number) ?? 0);
+          gotIn += (st.packetsReceived as number) ?? 0;
+          if (st.kind === "video") {
+            recvFps = (st.framesPerSecond as number) ?? recvFps;
+            if (st.frameWidth) recvSize = `${st.frameWidth}×${st.frameHeight}`;
+          }
+        } else if (st.type === "candidate-pair" && (st.nominated || st.selected) && st.state === "succeeded") {
+          const r = st.currentRoundTripTime as number | undefined;
+          if (typeof r === "number" && rtt === null) rtt = r * 1000;
+          const local = byId.get(st.localCandidateId as string);
+          const remote = byId.get(st.remoteCandidateId as string);
+          relay = local?.candidateType === "relay" || remote?.candidateType === "relay";
+        }
+      });
+      const now = performance.now();
+      let sendKbps = 0, recvKbps = 0, lossIn: number | null = null;
+      if (prev) {
+        const dt = (now - prev.t) / 1000;
+        sendKbps = Math.max(0, ((sentBytes - prev.sent) * 8) / dt / 1000);
+        recvKbps = Math.max(0, ((recvBytes - prev.recv) * 8) / dt / 1000);
+        const lost = lostIn - prev.lostIn, got = gotIn - prev.gotIn;
+        lossIn = lost + got > 0 ? Math.max(0, lost) / (lost + got) : 0;
+      }
+      prev = { t: now, sent: sentBytes, recv: recvBytes, lostIn, gotIn };
+
+      // adapt our video cap
+      const lo = lossOut ?? 0, r = rtt ?? 0;
+      const vSender = pc.getSenders().find((x) => x.track?.kind === "video");
+      let nextCap = capRef.current;
+      if (lo > 0.08 || r > 500) { nextCap = Math.max(VIDEO_MIN_BITRATE, capRef.current * 0.7); clean = 0; }
+      else if (lo < 0.02 && r < 300) { if (++clean >= 3) { nextCap = Math.min(maxBitrateRef.current, capRef.current * 1.15); clean = 0; } }
+      else clean = 0;
+      if (vSender && Math.abs(nextCap - capRef.current) > 1000) {
+        capRef.current = Math.round(nextCap);
+        const params = vSender.getParameters();
+        if (params.encodings?.[0]) {
+          params.encodings[0].maxBitrate = capRef.current;
+          vSender.setParameters(params).catch(() => undefined);
+        }
+      }
+
+      const worstLoss = Math.max(lo, lossIn ?? 0);
+      setQuality(worstLoss > 0.1 || r > 600 ? "poor" : worstLoss > 0.03 || r > 300 ? "fair" : "good");
+      const codec = codecId ? ((byId.get(codecId)?.mimeType as string | undefined) ?? null) : null;
+      setStats({
+        rttMs: rtt === null ? null : Math.round(rtt),
+        lossOut, lossIn,
+        sendKbps: Math.round(sendKbps), recvKbps: Math.round(recvKbps),
+        capKbps: Math.round(capRef.current / 1000),
+        codec: codec ? codec.replace(/^video\//, "") : null,
+        recvFps, recvSize, sendFps, limitation, relay,
+      });
+    }, STATS_INTERVAL_MS);
+
     // ── Init ─────────────────────────────────────────────────────
     setStatus("connecting");
     sig.connect()
@@ -468,6 +666,7 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
     // ── Cleanup ──────────────────────────────────────────────────
     return () => {
       cancelRef.current = true;
+      clearInterval(statsTimer);
       clearTimeout(iceGraceTimer);
       clearTimeout(iceRestartTimer);
       clearTimeout(reconnectTimer);
@@ -542,7 +741,7 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
   const retryNow = useCallback(() => setRetryKey(k => k + 1), []);
 
   return {
-    status, isMuted, isCameraOff, hasRemote, elapsed,
+    status, isMuted, isCameraOff, hasRemote, elapsed, quality, stats,
     remoteVideoRef, toggleMute, toggleCamera, hangUp, retryNow,
   };
 }

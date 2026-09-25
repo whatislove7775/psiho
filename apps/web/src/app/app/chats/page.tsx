@@ -1,12 +1,7 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { Suspense } from "react";
-import { Messenger } from "@/components/chat/Messenger";
-
-export default function Page() {
-  return (
-    <Suspense fallback={null}>
-      <Messenger mode="client" />
-    </Suspense>
-  );
+// Чаты стали диалогами: переписка и созвоны пары живут в одном месте.
+export default function Page({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+  const d = searchParams?.c;
+  redirect(typeof d === "string" && d ? `/app/dialogs?d=${encodeURIComponent(d)}` : "/app/dialogs");
 }

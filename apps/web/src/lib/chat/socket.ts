@@ -12,6 +12,7 @@ export type ChatEvent =
   | { type: "message.hidden"; conversation: string; id: string }
   | { type: "conversation.updated"; conversation: string; retention: string }
   | { type: "conversation.cleared"; conversation: string }
+  | { type: "dialog.updated"; conversation: string }
   | { type: "typing"; conversation: string; role: string }
   | { type: "read"; conversation: string; role: string; at: string };
 

@@ -41,6 +41,9 @@ INSTALLED_APPS = [
     "apps.chat",
     "apps.staff",
     "apps.lab",
+    "apps.billing",
+    "apps.dialogs",
+    "apps.calls",
 ]
 
 MIDDLEWARE = [

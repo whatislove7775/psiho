@@ -1,14 +1,15 @@
 """
-Сервис безопасной сделки — создание сессии и платежа YooKassa.
+Создание записи и её оплата.
 
-Схема работы:
+Схема работы (с сентября 2026 — анонимный баланс, apps.billing):
 1. Клиент выбирает психолога и слот → POST /api/v1/sessions/book/
 2. Сервер создаёт ConsultationSession (сумма = цена часа × длительность, до 10 ₽)
-3. Если YooKassa настроена — создаётся платёж, клиент уходит на confirmation_url,
-   сессия в статусе awaiting_payment. Иначе (dev) — сессия сразу paid.
-4. YooKassa → вебхук POST /api/v1/payments/webhook/. Статус платежа
-   ПЕРЕЗАПРАШИВАЕТСЯ у API YooKassa — телу вебхука не доверяем.
-5. succeeded → сессия paid; canceled → сессия cancelled (слот освобождается).
+3. initiate_payment → apps.billing: цена замораживается на балансе (сессия paid)
+   или запись ждёт оплаты (awaiting_payment, payment_url → /app/balance/pay/<id>).
+
+Наследие: платежи ЮKassa «на каждую сессию» (модель Payment) больше не создаются,
+но вебхук POST /api/v1/payments/webhook/ доводит до конца старые платежи.
+Статус платежа ПЕРЕЗАПРАШИВАЕТСЯ у API YooKassa — телу вебхука не доверяем.
 """
 import decimal
 import logging
@@ -90,63 +91,20 @@ def mark_session_paid(session: ConsultationSession, metadata: dict | None = None
 
 def initiate_payment(session: ConsultationSession, return_url: str | None = None) -> Payment | None:
     """
-    С YooKassa: создаёт платёж и переводит сессию в awaiting_payment.
-    Без YooKassa (dev): сразу помечает сессию оплаченной, возвращает None.
+    Оплата с анонимного баланса (apps.billing): запись переходит в awaiting_payment, и цена
+    сразу замораживается на балансе клиента (он подтвердил её в окне записи). Если денег
+    не хватает, запись ждёт оплаты BILLING_UNPAID_TTL_MINUTES: клиент пополняет баланс и
+    платит на странице /app/balance/pay/<id> (компонент PayForCall).
+
+    Прежняя схема «платёж ЮKassa на каждую сессию» больше не создаётся; вебхук ниже
+    продолжает обслуживать старые платежи, если они есть.
     """
     if session.status != ConsultationSession.Status.DRAFT:
         raise ValueError(f"Неверный статус сессии для оплаты: {session.status}")
+    from apps.billing.services import start_call_payment
 
-    if not yookassa_configured():
-        mark_session_paid(session, {"mode": "dev"})
-        return None
-
-    amount_rub = decimal.Decimal(session.amount_kopecks) / 100
-    payout_rub = decimal.Decimal(session.psychologist_payout_kopecks) / 100
-    fee_rub = decimal.Decimal(session.platform_fee_kopecks) / 100
-    idempotency_key = uuid.uuid4()
-    profile = session.psychologist_profile
-
-    request = {
-        "amount": {"value": f"{amount_rub:.2f}", "currency": "RUB"},
-        "confirmation": {
-            "type": "redirect",
-            "return_url": return_url or settings.YOOKASSA_RETURN_URL,
-        },
-        "capture": False,  # двухстадийный платёж, захват по вебхуку
-        "description": f"Консультация #{session.id}",
-        "metadata": {"session_id": str(session.id)},
-    }
-    if profile.yookassa_account_id:
-        request["transfers"] = [{
-            "account_id": profile.yookassa_account_id,
-            "amount": {"value": f"{payout_rub:.2f}", "currency": "RUB"},
-        }]
-
-    try:
-        _configure_yookassa()
-        yk_payment = YKPayment.create(request, idempotency_key=str(idempotency_key))
-    except Exception as exc:
-        logger.exception("YooKassa: не удалось создать платёж для сессии %s", session.id)
-        raise PaymentProviderError(str(exc)) from exc
-
-    payment = Payment.objects.create(
-        session=session,
-        yookassa_payment_id=yk_payment.id,
-        status=Payment.Status.PENDING,
-        amount_rub=amount_rub,
-        psychologist_payout_rub=payout_rub,
-        platform_fee_rub=fee_rub,
-        confirmation_url=yk_payment.confirmation.confirmation_url,
-        idempotency_key=idempotency_key,
-    )
-    session.status = ConsultationSession.Status.AWAITING_PAYMENT
-    session.save(update_fields=["status", "updated_at"])
-    SessionEvent.objects.create(
-        session=session,
-        event_type=SessionEvent.EventType.PAYMENT_INITIATED,
-        metadata={"yookassa_payment_id": yk_payment.id},
-    )
-    return payment
+    start_call_payment(session)
+    return None
 
 
 def _fetch_remote_status(payment: Payment, payload_object: dict) -> str | None:

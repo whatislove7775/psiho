@@ -16,7 +16,7 @@ const CATS: { value: Cat; label: string }[] = [
   { value: "", label: "Все действия" },
   { value: "user", label: "Пользователи" },
   { value: "specialist", label: "Специалисты" },
-  { value: "session", label: "Сессии" },
+  { value: "session", label: "Созвоны" },
   { value: "report", label: "Жалобы" },
   { value: "content", label: "Материалы" },
   { value: "support", label: "Поддержка" },

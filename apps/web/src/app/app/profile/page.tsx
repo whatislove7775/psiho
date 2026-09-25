@@ -64,7 +64,7 @@ export default function ClientProfile() {
             <Button variant="secondary" size="sm" href="/app/avatar" icon={<Smile size={16} strokeWidth={1.8} />}>
               Изменить аватар
             </Button>
-            <Button variant="ghost" size="sm" href="/app/privacy" icon={<ShieldCheck size={16} strokeWidth={1.8} />}>
+            <Button variant="ghost" size="sm" href="/app/avatar/privacy" icon={<ShieldCheck size={16} strokeWidth={1.8} />}>
               Приватность
             </Button>
           </div>
@@ -85,13 +85,13 @@ export default function ClientProfile() {
         ) : (
           <>
             <Stat
-              label="Ближайшая сессия"
+              label="Ближайший созвон"
               value={next ? time(next.scheduled_at) : "Нет"}
               note={next ? `${dayLabel(next.scheduled_at)}, ${untilLabel(next.scheduled_at)}` : "Запишитесь, когда будете готовы"}
               tone={next?.can_join ? "success" : undefined}
             />
             <Stat
-              label="Всего сессий"
+              label="Всего созвонов"
               value={held}
               note={
                 upcoming.length
@@ -122,7 +122,7 @@ export default function ClientProfile() {
         ) : people.length === 0 ? (
           <div className={s.empty}>
             <SpecialistFriend className={illSize.xs} />
-            <p>Здесь появятся специалисты, с которыми у вас будут сессии.</p>
+            <p>Здесь появятся специалисты, с которыми у вас будут диалоги.</p>
             <Button variant="primary" size="sm" href="/app/specialists">
               Выбрать специалиста
             </Button>
@@ -136,7 +136,7 @@ export default function ClientProfile() {
                   <span className={s.personText}>
                     <strong>{p.name}</strong>
                     <span>
-                      {p.count} {plural(p.count, "сессия", "сессии", "сессий")}
+                      {p.count} {plural(p.count, "созвон", "созвона", "созвонов")}
                     </span>
                   </span>
                   <ChevronRight size={18} strokeWidth={1.8} className={s.go} aria-hidden />
@@ -151,9 +151,9 @@ export default function ClientProfile() {
         <CardHead title="Настройки" />
         <ul className={s.people}>
           {[
-            { href: "/app/privacy", icon: ShieldCheck, title: "Приватность и безопасность", text: "Пароль, ключ восстановления, удаление аккаунта" },
+            { href: "/app/avatar/privacy", icon: ShieldCheck, title: "Приватность и безопасность", text: "Пароль, ключ восстановления, удаление аккаунта" },
             { href: "/app/avatar", icon: Smile, title: "Мой аватар", text: "Как вас видит специалист" },
-            { href: "/app/check", icon: Camera, title: "Проверка камеры", text: "Свет и мимика перед сессией" },
+            { href: "/app/avatar/mirror", icon: Camera, title: "Проверка камеры", text: "Свет и мимика перед созвоном" },
           ].map((row) => (
             <li key={row.href}>
               <Link href={row.href} className={s.person}>

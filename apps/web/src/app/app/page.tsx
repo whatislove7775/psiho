@@ -6,12 +6,13 @@ import { Check, ChevronRight, Search, Wind } from "lucide-react";
 import { Badge, Button, Card, CardHead } from "@/ui";
 import { WithRail } from "@/components/shell/AppShell";
 import { useAuth } from "@/lib/auth/store";
-import { psychologistsApi, sessionsApi } from "@/lib/api/endpoints";
+import { psychologistsApi } from "@/lib/api/endpoints";
 import { contentApi } from "@/lib/api/content";
 import { useLoad } from "@/components/client/useLoad";
-import { checkDone, splitSessions } from "@/components/client/sessions";
+import { checkDone } from "@/components/client/sessions";
 import { ErrorBlock } from "@/components/client/ClientBits";
-import { NextSessionCard, SupportCard } from "@/components/client/NextSessionCard";
+import { SupportCard } from "@/components/client/NextSessionCard";
+import { NextCallCard, RecentDialogs, useDialogsSummary } from "@/components/dialogs/HomeWidgets";
 import { SpecialistMini, SpecialistMiniSkeleton } from "@/components/client/SpecialistMini";
 import { AvatarThumb } from "@/components/avatar/AvatarThumb";
 import { ArticleCard, ArticleCardSkeleton, PracticeCard, PracticeCardSkeleton } from "@/components/content/Cards";
@@ -29,7 +30,7 @@ function greeting(d = new Date()) {
 
 export default function ClientHome() {
   const user = useAuth((st) => st.user);
-  const sessions = useLoad(() => sessionsApi.list());
+  const dialogs = useDialogsSummary();
   const specialists = useLoad(() => psychologistsApi.list());
   const articles = useLoad(() => contentApi.articles({ limit: 6 }));
   const practices = useLoad(() => contentApi.practices({ limit: 6 }));
@@ -45,18 +46,16 @@ export default function ClientHome() {
     setNight(hour < 5 || hour >= 18);
   }, []);
 
-  const list = sessions.data ?? [];
-  const { upcoming } = useMemo(() => splitSessions(list), [list]);
-  const next = upcoming[0] ?? null;
-  const hasAny = list.length > 0;
+  const next = dialogs.next;
+  const hasAny = useMemo(() => (dialogs.items ?? []).some((d) => d.kind === "specialist"), [dialogs.items]);
 
   const steps = [
-    { done: !!user?.avatar_config, title: "Создать аватар", text: "Им вы будете в видеосессии вместо лица", href: "/app/avatar" },
-    { done: hasAny, title: "Записаться на первую сессию", text: "Выберите специалиста и удобное время", href: "/app/specialists" },
-    { done: checked, title: "Проверить камеру и свет", text: "Минута, чтобы аватар точно повторял мимику", href: "/app/check" },
+    { done: !!user?.avatar_config, title: "Создать аватар", text: "Им вы будете на созвоне вместо лица", href: "/app/avatar" },
+    { done: hasAny, title: "Начать диалог со специалистом", text: "Напишите или сразу назначьте созвон", href: "/app/specialists" },
+    { done: checked, title: "Проверить камеру и свет", text: "Минута, чтобы аватар точно повторял мимику", href: "/app/avatar/mirror" },
   ];
   const doneCount = steps.filter((x) => x.done).length;
-  const showSteps = !sessions.loading && doneCount < steps.length;
+  const showSteps = !dialogs.loading && doneCount < steps.length;
 
   const featured = (specialists.data ?? []).slice(0, 8);
 
@@ -65,7 +64,7 @@ export default function ClientHome() {
       rail={
         <>
           <div className={s.wideOnly}>
-            <NextSessionCard session={next} loading={sessions.loading && !sessions.data} />
+            <NextCallCard item={next} loading={dialogs.loading} role="client" />
           </div>
           <SupportCard />
         </>
@@ -98,11 +97,11 @@ export default function ClientHome() {
         </div>
       </section>
 
-      {sessions.error && <ErrorBlock message={sessions.error} onRetry={sessions.reload} />}
+      {dialogs.error && <ErrorBlock message={dialogs.error} onRetry={dialogs.reload} />}
 
-      {/* On narrow screens the nearest session comes right after the greeting */}
+      {/* On narrow screens the nearest call comes right after the greeting */}
       <div className={s.narrowOnly}>
-        <NextSessionCard session={next} loading={sessions.loading && !sessions.data} />
+        <NextCallCard item={next} loading={dialogs.loading} role="client" />
       </div>
 
       {showSteps && (
@@ -129,6 +128,8 @@ export default function ClientHome() {
           </ul>
         </Card>
       )}
+
+      {hasAny && <RecentDialogs items={dialogs.recent} role="client" />}
 
       <Card as="section">
         <CardHead

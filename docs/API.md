@@ -22,7 +22,7 @@ PsychologistPublic {
   session_rate_rub: number; avatar_config: AvatarConfig | null;
   photo_url: string | null;   // настоящее фото специалиста, "/media/specialists/<random>.webp" (512×512), null если не загружено
   sessions_count: number; next_slot: string | null;
-  // session_rate_rub = цена самой короткой сессии специалиста («от …»), синхронизируется с ценой часа
+  // session_rate_rub = цена самого короткого созвона специалиста («от …»), синхронизируется с ценой часа
   booking: { hourly_rate_rub: number; min_duration: number; max_duration: number;
              durations: { minutes: number; price_rub: number }[] }
 }
@@ -36,7 +36,7 @@ ScheduleRule { weekday: 0..6 /* 0 = понедельник */; start_time: "HH:M
 Session {
   id: uuid; status: "awaiting_payment" | "paid" | "in_progress" | "completed" | "cancelled" | "refunded";
   scheduled_at: string; duration_minutes: number /* 50…180 */; amount_rub: number;
-  room_id: uuid; can_join: boolean;          // true за 10 мин до начала и до конца сессии
+  room_id: uuid; can_join: boolean;          // true за 10 мин до начала и до конца созвона
   psychologist: { id: number; display_name: string; avatar_config: AvatarConfig | null; photo_url: string | null };
   client: { alias: string; avatar_config: AvatarConfig | null };
   payment_url: string | null
@@ -55,7 +55,7 @@ Session {
 | GET | `me/` | — | `User` |
 | PATCH | `me/` | `{ avatar_config? }` | `User` |
 | POST | `me/password/` | `{ old_password, new_password }` | `204` |
-| POST | `me/delete/` | `{ password }` | `204` — полное удаление аккаунта и сессий |
+| POST | `me/delete/` | `{ password }` | `204` — полное удаление аккаунта, диалогов и созвонов |
 
 ## Специалисты
 
@@ -86,11 +86,11 @@ AvailabilitySettings {
   time_zone: string;                 // IANA, по умолчанию SCHEDULE_TIME_ZONE (Europe/Moscow)
   min_duration: number; max_duration: number; durations: number[];   // из 50,60,80,90,120,150,180
   allowed_durations: number[];       // durations в пределах [min, max] — их видит клиент
-  buffer_minutes: number;            // перерыв между сессиями
+  buffer_minutes: number;            // перерыв между созвонами
   min_notice_minutes: number;        // запись не позднее чем за … до начала
   horizon_days: number;              // насколько вперёд открыта запись
-  start_step_minutes: 15 | 30 | 60;  // сетка начал (+ «сразу после сессии и перерыва»)
-  hourly_rate_rub: number;           // цена часа; цена сессии = час × мин/60, округление до 10 ₽
+  start_step_minutes: 15 | 30 | 60;  // сетка начал (+ «сразу после созвона и перерыва»)
+  hourly_rate_rub: number;           // цена часа; цена созвона = час × мин/60, округление до 10 ₽
   prices: { minutes, price_rub }[]; platform_fee_percent: number;
   templates: { id, valid_from: date|null, valid_until: date|null, days: Range[][7] /* 0 = пн */ }[];
   options: { durations, buffer_minutes, min_notice_minutes, horizon_days, start_step_minutes }
@@ -100,15 +100,17 @@ TimeOff { id; start_date; end_date; note }
 Правило дня: отпуск → ничего; особый день → его интервалы; иначе шаблон, покрывающий дату, с самой поздней `valid_from`.
 | GET | `stats/` | `{ upcoming: number; sessions_month: number; sessions_total: number; earnings_month_rub: number; earnings_total_rub: number; clients_total: number }` |
 
-## Сессии — `/sessions/`
+## Созвоны — `/sessions/`
+
+Созвон (бывшая «сессия», модель `ConsultationSession`) всегда живёт внутри диалога пары — новые записи создавайте через `/dialogues/`. `Session` дополнительно содержит `dialogue_id` и `conversation_id` (это один и тот же id: диалог = чат пары).
 
 | Метод | Путь | Тело / Ответ |
 |---|---|---|
 | GET | `` | `Session[]` своей роли, новые сверху |
 | POST | `book/` | `{ psychologist_id, scheduled_at, duration_minutes? }` → `Session` (`payment_url` если нужна оплата; без YooKassa в настройках — сразу `paid`). `scheduled_at` должен быть из `available-starts`; сумма = цена часа × длительность, до 10 ₽. Двойная запись на одно начало невозможна (уникальный индекс + блокировка профиля) → 400 |
 | GET | `{id}/` | `Session` |
-| POST | `{id}/cancel/` | `Session` |
-| POST | `{id}/join/` | `{ room_id, ws_token, role: "client"\|"psychologist", peer: { name, avatar_config, photo_url? } }` (`photo_url` — только когда собеседник специалист); 403 если `can_join=false` |
+| POST | `{id}/cancel/` | `Session` — по правилам отмены диалогов (см. ниже), в ленту диалога уходит карточка |
+| POST | `{id}/join/` | `{ room_id, ws_token, role: "client"\|"psychologist", peer: { name, avatar_config, photo_url? }, conversation_id, dialogue_id }` (`conversation_id` — чат диалога для панели чата в звонке) (`photo_url` — только когда собеседник специалист); 403 если `can_join=false` |
 | POST | `{id}/complete/` | `Session` |
 
 ## Админ — `/admin-panel/`
@@ -222,7 +224,7 @@ TimeOff { id; start_date; end_date; note }
 
 ## Чаты — `/chat/`
 
-Виды разговоров: `specialist` (клиент↔специалист, после любой записи на сессию или при `CHAT_ALLOW_WITHOUT_BOOKING=True`),
+Виды разговоров: `specialist` (клиент↔специалист — это и есть диалог, см. «Диалоги»; без записи — при `CHAT_ALLOW_WITHOUT_BOOKING=True`, по умолчанию, с антиспам-лимитами),
 `client_support`, `specialist_support`, `ai` (клиент↔Тиша). Персонал с правом `support.inbox` видит только разговоры с поддержкой.
 Текст, имена файлов и файлы шифруются (Fernet, `CHAT_ENCRYPTION_KEY`); файлы лежат в БД и отдаются только через API.
 
@@ -245,11 +247,100 @@ TimeOff { id; start_date; end_date; note }
 
 `Conversation`: `{id, kind, my_role, counterpart{type,name,avatar_config,psychologist_id?}, retention, retention_changed_at,
 can_change_retention, can_send_files, unread, last_message{text,created_at,sender_role,kind}, last_message_at, peer_read_at}`.
-`Message`: `{id, conversation, kind: text|voice|file|system, sender_role, text, system_code, attachment{name,mime,size,duration_ms,peaks}, created_at, edited_at, deleted, expires_at, mine}`.
+`Message`: `{id, conversation, kind: text|voice|file|system, sender_role, text, system_code, card (карточка созвона для system «call:*», иначе null), attachment{name,mime,size,duration_ms,peaks}, created_at, edited_at, deleted, expires_at, mine}`.
 
 WebSocket `/ws/chat/?token=…`: сервер шлёт `ready`, `message.new`, `message.updated`, `message.hidden`, `conversation.updated`,
-`conversation.cleared`, `typing`, `read`; клиент — `{type:"typing"|"read", conversation}`, `{type:"ping"}`.
+`conversation.cleared`, `typing`, `read`, `dialog.updated` (изменились созвоны диалога — перезапросите `/dialogues/{id}/`); клиент — `{type:"typing"|"read", conversation}`, `{type:"ping"}`.
 Истёкшие сообщения (режим 24 ч) удаляет `manage.py purge_chats` (сервис `scheduler`, каждые 5 минут).
+
+## Диалоги — `/dialogues/`
+
+Диалог — единое пространство пары «клиент — специалист»: чат (`Conversation kind=specialist`, id диалога = id разговора)
++ созвоны этой пары (`/sessions/`), предложения времени, файлы, личные заметки специалиста. Видят только двое участников:
+сотрудникам и посторонним — 404 (не раскрываем существование). Сообщения отправляются через `/chat/`.
+
+| Метод | Путь | Тело / Ответ |
+|---|---|---|
+| GET | `` | `DialogItem[]`: диалоги со специалистами/клиентами + закреплённые «Поддержка» и «Тиша» (клиенту). Пока разговора нет, у них `id: "support"\|"ai"`, `conversation_id: null` |
+| POST | `` | клиент `{psychologist_id}` — начать диалог без записи (лимит `DIALOG_NEW_PER_DAY`=5 новых за сутки → 429); специалист `{client_alias}` — только со своим клиентом → `DialogDetail` (201/200) |
+| POST | `book/` | клиент `{psychologist_id, scheduled_at, duration_minutes?}` — запись из профиля: диалог создаётся вместе с созвоном → `CallInfo + dialogue_id` |
+| GET | `{id}/` | `DialogDetail` |
+| GET | `{id}/starts/?duration=` | свободные начала специалиста диалога: `{duration_minutes, price_rub, durations, horizon_until, starts}` |
+| POST | `{id}/calls/` | клиент `{scheduled_at, duration_minutes?}` → `CallInfo` (201). С `apps.billing` — сразу заморозка с баланса (`paid`), не хватает денег → `awaiting_payment`, `pay_mode:"balance"` (оплата `PayForCall`); без него — прежняя оплата по ссылке (`payment_url`) |
+| POST | `{id}/calls/{call_id}/reschedule/` | `{scheduled_at}` → `CallInfo`. Клиент — не позднее чем за `free_cancel_hours` до начала, специалист — до начала |
+| POST | `{id}/calls/{call_id}/cancel/` | `{call, refund: "full"\|"partial"\|"none", late}`. Клиент позже `free_cancel_hours` — штраф по правилам `apps.billing`; отмена специалистом — полный возврат |
+| POST | `{id}/proposals/` | специалист `{scheduled_at, duration_minutes?}` → `Proposal` (карточка в ленте) |
+| POST | `{id}/proposals/{pid}/accept/` | клиент → `CallInfo` (созвон назначен и оплачивается как при записи) |
+| POST | `{id}/proposals/{pid}/close/` | клиент отклоняет / специалист отзывает → `Proposal` |
+| GET/PUT | `{id}/note/` | только специалист: `{text}` ≤ 10 000 символов, хранится зашифрованным → `{text, updated_at}` |
+
+```ts
+DialogItem {
+  id; conversation_id; kind: "specialist" | "support" | "ai"; pinned; my_role: "client" | "specialist";
+  counterpart { type, name, avatar_config, psychologist_id?, photo_url? };   // клиента — только псевдоним и аватар
+  last_message { text, created_at, sender_role, kind, card? } | null; last_message_at; unread; retention;
+  next_call: CallInfo | null; calls_count; status: "live" | "scheduled" | "awaiting_payment" | "proposal" | "open";
+}
+DialogDetail = DialogItem & { conversation: Conversation; calls: CallInfo[]; proposals: Proposal[];
+  files: {message_id, name, mime, size, created_at, mine}[]; booking {hourly_rate_rub, min_duration, max_duration, durations};
+  rules {free_cancel_hours, late_penalty_percent, first_messages}; pay_mode; can_book; can_propose;
+  first_messages_left: number | null }   // сколько сообщений клиент может отправить до ответа специалиста
+CallInfo { id, status, scheduled_at, duration_minutes, amount_rub, can_join, ends_at, free_until, completed_at,
+  actual_minutes?, can_cancel, can_reschedule, late_cancel, payment_url?, pay_mode? }
+Proposal { id, status: "pending" | "accepted" | "declined" | "withdrawn" | "expired", scheduled_at, duration_minutes, price_rub, session_id }
+```
+
+Карточки в ленте (системные сообщения `call:*`, поле `card`): `booked`, `rescheduled` (+`by`), `cancelled` (+`by`, `late`),
+`started`, `ended` (+`minutes`), `proposed` (+`proposal`). Данные карточки — актуальный статус созвона на момент запроса.
+
+Антиспам: пока специалист не ответил и созвона нет, клиент может отправить `DIALOG_FIRST_MESSAGES` (3) сообщения → 403.
+`CHAT_ALLOW_WITHOUT_BOOKING=False` возвращает правило «писать только после записи».
+
+## Баланс и выплаты — `/billing/`
+
+Анонимный баланс (apps.billing, подробно для владельца — docs/PAYMENTS.md). Все суммы — целые
+копейки (`*_kopecks`). Ошибки: `{detail, code}`; нехватка денег — **402** `{code: "insufficient_funds", shortfall_kopecks, balance_kopecks}`.
+
+Клиент:
+- `GET summary/` → `{balance_kopecks, held_kopecks, topup: {providers, test_mode, min_kopecks, max_kopecks, presets_rub, methods, receipts, confirmation}, cancel_rules}`
+- `GET history/?limit=` → `{items: [{id, kind, label, amount_kopecks, created_at, test, call}], holds, pending_topups}`
+- `POST topups/` `{amount_rub, method?: any|bank_card|sbp|sberbank|tinkoff_bank, receipt_email?, receipt_phone?, return_to?: "/app/…"}` → 201 `{id, status, confirmation: {type: redirect|embedded, url, token}}`. Контакт для чека уходит только в ЮKassa и не сохраняется. 10/мин.
+- `GET topups/<id>/` → статус (перезапрашивается у провайдера) + `balance_kopecks`
+- `POST topups/<id>/mock/` `{outcome: succeeded|canceled}` — только тестовая касса
+- `POST redeem/` `{code}` → `{amount_kopecks, balance_kopecks}`. 5/мин + блок после 10 неверных кодов в час.
+- `GET quote/?psychologist=&minutes=` → `{amount_kopecks, balance_kopecks, enough, shortfall_kopecks}`
+- `GET calls/<session_id>/` → `{status, amount_kopecks, specialist, hold, paid, payable, balance_kopecks, shortfall_kopecks}`
+- `POST calls/<session_id>/pay/` → оплатить с баланса (заморозка) или 402
+
+Запись `POST /sessions/book/` сразу пытается оплатить с баланса: хватает — `status: "paid"`, нет — `awaiting_payment`
+и `payment_url: "/app/balance/pay/<id>"` (запись держится `BILLING_UNPAID_TTL_MINUTES`).
+
+Специалист:
+- `GET earnings/` → `{pending_kopecks, available_kopecks, in_payout_kopecks, paid_kopecks, upcoming_kopecks, fee_percent, hold_hours, payout_min_kopecks, payout_rail, method, calls[], payouts[]}`
+- `PUT earnings/method/` `{kind: sbp|bank_account, tax_status: self_employed|ip, phone, bank_name | account, bik, recipient, inn?}` → `{kind, masked, tax_status}` (реквизиты шифруются)
+- `POST earnings/payouts/` `{amount_rub?}` (без суммы — всё доступное) → 201
+
+Провайдер: `POST webhook/yookassa/` — только с IP ЮKassa; объект перезапрашивается у API ЮKassa; идемпотентно.
+
+Персонал (`finance.view` — чтение, `finance.manage` — действия; всё пишется в журнал):
+`GET staff/overview/`, `GET staff/balances/?q=` (только псевдонимы), `GET staff/holds/?status=`,
+`POST staff/holds/<id>/settle/` `{action: capture|release|penalty|refund, percent?, reason}`,
+`GET staff/payouts/?status=open|paid|all`, `POST staff/payouts/<id>/approve|paid|reject/` `{note}`,
+`POST staff/payouts/<id>/details/` (расшифрованные реквизиты для ручной выплаты),
+`GET staff/topups/`, `POST staff/topups/<id>/refund|sync/`, `POST staff/adjust/` `{alias, amount_rub, reason, key}`,
+`GET|POST staff/gifts/` `{amount_rub, count, label?, expires_at?}` → коды показываются один раз, `POST staff/gifts/<id>/revoke/`,
+`GET staff/journal/`, `GET staff/reconcile/`, `POST staff/sweep/`, `GET staff/export/?days=` (CSV).
+
+## Звонки — `/calls/`
+
+Только участники звонка (клиент или специалист этой сессии), иначе 403.
+
+- `POST calls/{session_id}/feedback/` — оценка связи или жалоба.
+  Тело: `{ kind: "rating" | "problem", rating?: 1…5, issues?: [...], comment?: string ≤1000, tech?: {...} }`.
+  `issues` из: `no_audio, echo, voice_breaks, no_video, video_freezes, avatar_lags, avatar_wrong, voice_filter, disconnects, other`.
+  `rating` — одна на автора (повторная перезаписывает), `problem` — каждая новая запись; для `problem` нужны `issues` или `comment`.
+  `tech` — только цифры о связи по белому списку (`rttMs, lossIn, lossOut, sendKbps, recvKbps, capKbps, codec, recvFps, recvSize, sendFps, limitation, relay, status, backend, detectFps, detectMs, latencyMs, browser, voice, durationSec, reconnects`), остальное отбрасывается. → 201 `{ id, kind, rating }`. Просмотр — Django admin (CallFeedback). Лимит 30/час.
+- `GET calls/{session_id}/presence/` → `{ peer_in_room: bool }` — подключён ли собеседник к сигналингу комнаты (лобби: «Специалист уже в звонке»).
 
 ## Здоровье
 

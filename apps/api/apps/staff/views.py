@@ -821,9 +821,9 @@ class ReportResolveView(StaffView):
             return apply_specialist_decision(request, profile, "suspend", f"Жалоба №{report.pk}: {note}")
         if action == A.CANCEL_SESSION:
             if not has_staff_perm(request.user, "sessions.cancel"):
-                return _bad("У вашей роли нет права отменять сессии.", status.HTTP_403_FORBIDDEN)
+                return _bad("У вашей роли нет права отменять созвоны.", status.HTTP_403_FORBIDDEN)
             if report.target_session is None:
-                return _bad("Жалоба не относится к сессии.")
+                return _bad("Жалоба не относится к созвону.")
             try:
                 cancel_session(report.target_session, refund=False, reason=note, by_role=get_staff_role(request.user))
             except ActionError as exc:

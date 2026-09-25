@@ -82,6 +82,9 @@ export interface Session {
   psychologist: { id: number; display_name: string; avatar_config: AvatarConfig | null; photo_url?: string | null };
   client: { alias: string; avatar_config: AvatarConfig | null };
   payment_url: string | null;
+  /** dialogue of the pair (= chat conversation id); the call lives inside it */
+  dialogue_id?: string | null;
+  conversation_id?: string | null;
 }
 
 export interface JoinResponse {
@@ -89,6 +92,9 @@ export interface JoinResponse {
   ws_token: string;
   role: "client" | "psychologist";
   peer: { name: string; avatar_config: AvatarConfig | null; photo_url?: string | null };
+  /** chat of the dialogue for the in-call panel (<DialogThread conversationId compact />) */
+  conversation_id?: string;
+  dialogue_id?: string;
 }
 
 export interface PsychologistStats {

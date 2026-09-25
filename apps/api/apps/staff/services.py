@@ -79,7 +79,7 @@ def refund_payment(session) -> dict:
     if payment is None:
         return {"mode": "no_payment"}
     if payment.refunded_at:
-        raise ActionError("Деньги по этой сессии уже возвращены.")
+        raise ActionError("Деньги за этот созвон уже возвращены.")
     if not yookassa_configured():
         payment.refunded_at = timezone.now()
         payment.save(update_fields=["refunded_at"])
@@ -120,14 +120,14 @@ def cancel_session(session, *, refund: bool, reason: str, by_role: str) -> dict:
     result: dict = {}
     if refund:
         if session.status not in REFUNDABLE + (S.AWAITING_PAYMENT,):
-            raise ActionError("Для этой сессии возврат невозможен.")
+            raise ActionError("Для этого созвона возврат невозможен.")
         if session.status == S.REFUNDED:
-            raise ActionError("Деньги по этой сессии уже возвращены.")
+            raise ActionError("Деньги за этот созвон уже возвращены.")
         result = refund_payment(session)
         session.status = S.REFUNDED
     else:
         if session.status not in CANCELLABLE:
-            raise ActionError("Эту сессию уже нельзя отменить.")
+            raise ActionError("Этот созвон уже нельзя отменить.")
         session.status = S.CANCELLED
     session.save(update_fields=["status", "updated_at"])
     SessionEvent.objects.create(

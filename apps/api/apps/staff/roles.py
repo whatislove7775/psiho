@@ -73,6 +73,9 @@ PERMISSIONS: dict[str, frozenset[str]] = {
     "system.view": frozenset({OWNER, ADMIN, DEVELOPER}),
     # Лаборатория: тестовые звонки, песочница аватаров, проверка устройств и TURN
     "lab.use": frozenset({OWNER, ADMIN, DEVELOPER}),
+    # Финансы: балансы (только псевдонимы), выплаты, возвраты, подарочные коды, сверка
+    "finance.view": frozenset({OWNER, ADMIN}),
+    "finance.manage": frozenset({OWNER, ADMIN}),
     # Персонал
     "staff.view": frozenset({OWNER, ADMIN}),
     "staff.manage": frozenset({OWNER, ADMIN}),
@@ -89,8 +92,8 @@ PERMISSION_LABELS = {
     "specialists.verify": "Проверка заявок специалистов",
     "specialists.edit": "Редактирование профилей специалистов",
     "specialists.suspend": "Приостановка специалистов",
-    "sessions.view": "Просмотр сессий",
-    "sessions.cancel": "Отмена сессий",
+    "sessions.view": "Просмотр созвонов",
+    "sessions.cancel": "Отмена созвонов",
     "sessions.refund": "Возвраты",
     "reports.view": "Просмотр жалоб",
     "reports.resolve": "Решения по жалобам",
@@ -101,6 +104,8 @@ PERMISSION_LABELS = {
     "audit.view": "Журнал действий",
     "system.view": "Состояние системы",
     "lab.use": "Лаборатория: тестовые звонки и аватары",
+    "finance.view": "Финансы: просмотр",
+    "finance.manage": "Финансы: выплаты, возвраты, коды",
     "staff.view": "Список сотрудников",
     "staff.manage": "Управление сотрудниками",
 }

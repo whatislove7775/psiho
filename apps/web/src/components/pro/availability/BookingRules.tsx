@@ -90,7 +90,7 @@ export function SessionRules({
       <div className={c.rules}>
         <div className={c.rule}>
           <div className={c.ruleText}>
-            <strong>Длительность сессии</strong>
+            <strong>Длительность созвона</strong>
             <span>
               {chosen.length === 1
                 ? `Только ${durationLabel(chosen[0])}`
@@ -147,11 +147,11 @@ export function SessionRules({
 
         <div className={c.rule}>
           <div className={c.ruleText}>
-            <strong>Перерыв между сессиями</strong>
+            <strong>Перерыв между созвонами</strong>
             <span>Время на отдых и заметки. Следующую запись система поставит не раньше</span>
           </div>
           <Segmented<string>
-            ariaLabel="Перерыв между сессиями"
+            ariaLabel="Перерыв между созвонами"
             value={String(draft.buffer_minutes)}
             onChange={(v) => onChange({ buffer_minutes: Number(v) })}
             options={buffers.map((b) => ({ value: String(b), label: b ? `${b} мин` : "Без перерыва" }))}
@@ -159,7 +159,7 @@ export function SessionRules({
         </div>
 
         <div className={c.ruleGrid}>
-          <Field label="Запись не позднее чем" htmlFor="rule-notice" hint="Чтобы не было неожиданных сессий через полчаса">
+          <Field label="Запись не позднее чем" htmlFor="rule-notice" hint="Чтобы не было неожиданных созвонов через полчаса">
             <select
               id="rule-notice"
               className={c.selectBox}
@@ -187,7 +187,7 @@ export function SessionRules({
               ))}
             </select>
           </Field>
-          <Field label="Сессии начинаются" htmlFor="rule-step" hint="А ещё сразу после другой сессии и перерыва">
+          <Field label="Созвоны начинаются" htmlFor="rule-step" hint="А ещё сразу после другого созвона и перерыва">
             <select
               id="rule-step"
               className={c.selectBox}

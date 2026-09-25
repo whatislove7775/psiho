@@ -136,8 +136,13 @@ class ConversationListView(APIView):
             ).first()
             if profile is None:
                 raise ValidationError({"psychologist_id": "Специалист не найден."})
-            if not conf.allow_without_booking() and not has_booking(user, profile):
-                raise PermissionDenied("Написать специалисту можно после записи на сессию.")
+            exists = Conversation.objects.filter(kind=Kind.SPECIALIST, client=user, specialist=profile).exists()
+            if not exists and not has_booking(user, profile):
+                if not conf.allow_without_booking():
+                    raise PermissionDenied("Написать специалисту можно после записи на созвон.")
+                from apps.dialogs.policy import check_new_dialogue
+
+                check_new_dialogue(user)
             return Conversation.objects.get_or_create(kind=Kind.SPECIALIST, client=user, specialist=profile)
         if target == "client":
             if not services.is_specialist(user):
@@ -269,6 +274,10 @@ class MessageListView(APIView):
         kind = request.data.get("kind") or Message.Kind.TEXT
         user = request.user
         sender_role = services.sender_role_for(role)
+        # Антиспам диалогов: до ответа специалиста или записи — несколько сообщений
+        from apps.dialogs.policy import check_send
+
+        check_send(conv, role)
 
         if kind == Message.Kind.TEXT:
             text = (request.data.get("text") or "").strip()

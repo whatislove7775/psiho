@@ -10,7 +10,7 @@ import s from "./landing.module.css";
 
 const LINKS = [
   { href: "/#privacy", label: "Анонимность" },
-  { href: "/#how", label: "Как проходит сессия" },
+  { href: "/#how", label: "Как проходит созвон" },
   { href: "/#specialists", label: "Специалисты" },
   { href: "/#faq", label: "Вопросы" },
 ];

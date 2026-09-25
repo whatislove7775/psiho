@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Moon, Sun } from "lucide-react";
 import { Button } from "@/ui";
+import { MI, Morph } from "@/components/ui/Morph";
 
 const KEY = "aprosop.theme";
 
@@ -10,14 +10,15 @@ const KEY = "aprosop.theme";
 export const THEME_SCRIPT = `try{var t=localStorage.getItem("${KEY}");if(t==="light")document.documentElement.dataset.theme="light"}catch(e){}`;
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  // null until mounted: the morph icon then paints the real theme without animating
+  const [theme, setTheme] = useState<"dark" | "light" | null>(null);
 
   useEffect(() => {
     setTheme(document.documentElement.dataset.theme === "light" ? "light" : "dark");
   }, []);
 
   const toggle = () => {
-    const next = theme === "dark" ? "light" : "dark";
+    const next = theme === "light" ? "dark" : "light";
     setTheme(next);
     if (next === "light") document.documentElement.dataset.theme = "light";
     else delete document.documentElement.dataset.theme;
@@ -33,9 +34,9 @@ export function ThemeToggle() {
       variant="ghost"
       size="md"
       iconOnly
-      aria-label={theme === "dark" ? "Светлая тема" : "Тёмная тема"}
+      aria-label={theme === "light" ? "Тёмная тема" : "Светлая тема"}
       onClick={toggle}
-      icon={theme === "dark" ? <Sun size={20} strokeWidth={1.8} /> : <Moon size={20} strokeWidth={1.8} />}
+      icon={<Morph icon={theme ? (theme === "dark" ? MI.Sun : MI.Moon) : undefined} size={20} spring="bouncy" />}
     />
   );
 }

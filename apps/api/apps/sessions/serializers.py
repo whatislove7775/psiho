@@ -28,12 +28,15 @@ class SessionSerializer(serializers.ModelSerializer):
     psychologist = serializers.SerializerMethodField()
     client = serializers.SerializerMethodField()
     payment_url = serializers.SerializerMethodField()
+    dialogue_id = serializers.SerializerMethodField()
+    # Диалог пары = чат (chat.Conversation): id совпадают; conversation_id — для встроенного чата звонка
+    conversation_id = serializers.SerializerMethodField()
 
     class Meta:
         model = ConsultationSession
         fields = [
             "id", "status", "scheduled_at", "duration_minutes", "amount_rub", "room_id",
-            "can_join", "psychologist", "client", "payment_url",
+            "can_join", "psychologist", "client", "payment_url", "dialogue_id", "conversation_id",
         ]
         read_only_fields = fields
 
@@ -55,12 +58,26 @@ class SessionSerializer(serializers.ModelSerializer):
     def get_client(self, obj):
         return {"alias": obj.client.alias, "avatar_config": obj.client.avatar_config}
 
+    def get_dialogue_id(self, obj):
+        """Диалог пары, внутри которого живёт созвон (ссылка «назад к диалогу» из /room/[id])."""
+        from apps.dialogs.services import dialogue_id_for
+
+        return dialogue_id_for(obj)
+
+    def get_conversation_id(self, obj):
+        from apps.dialogs.services import ensure_dialogue
+
+        # Участник созвона всегда получает чат пары (создаётся при необходимости)
+        return str(ensure_dialogue(obj.client, obj.psychologist_profile).id)
+
     def get_payment_url(self, obj):
         if obj.status != ConsultationSession.Status.AWAITING_PAYMENT:
             return None
         # RelatedObjectDoesNotExist — подкласс AttributeError
         payment = getattr(obj, "payment", None)
-        return (payment.confirmation_url or None) if payment else None
+        if payment is not None:
+            return payment.confirmation_url or None  # старый платёж ЮKassa «на сессию»
+        return f"/app/balance/pay/{obj.pk}"  # оплата с баланса (apps.billing, PayForCall)
 
 
 class BookSessionSerializer(serializers.Serializer):

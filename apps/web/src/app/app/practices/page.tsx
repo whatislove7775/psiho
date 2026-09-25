@@ -19,7 +19,7 @@ export default function PracticesPage() {
     <>
       <PageHeader
         title="Практики"
-        sub="Короткие упражнения на каждый день. Их можно делать между сессиями, перед сном или когда накрывает тревога."
+        sub="Короткие упражнения на каждый день. Их можно делать между созвонами, перед сном или когда накрывает тревога."
       />
       {practices.error ? (
         <ErrorBlock message={practices.error} onRetry={practices.reload} />

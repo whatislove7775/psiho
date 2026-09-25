@@ -7,15 +7,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Ear, Mic, Play, Square, Waves } from "lucide-react";
 import { Badge, Button, Card, CardHead, Segmented } from "@/ui";
-import { useVoiceTransform, type VoicePreset } from "@/hooks/useVoiceTransform";
+import { useVoiceTransform, VOICE_PRESETS, type VoicePreset } from "@/hooks/useVoiceTransform";
 import { Meter, Switch } from "./shared";
 import s from "./lab.module.css";
 
-const PRESETS: { value: VoicePreset; label: string; text: string }[] = [
-  { value: "off", label: "Без фильтра", text: "Как в жизни" },
-  { value: "lower", label: "Ниже", text: "Глубже и глуше" },
-  { value: "higher", label: "Выше", text: "Светлее и звонче" },
-];
+const PRESETS: { value: VoicePreset; label: string; text: string }[] = VOICE_PRESETS.map(({ value, label, hint }) => ({ value, label, text: hint }));
 
 const REC_SECONDS = 6;
 

@@ -230,7 +230,7 @@ export default function SchedulePage() {
     <>
       <PageHeader
         title="Расписание"
-        sub="Задайте постоянные часы приёма, меняйте отдельные дни вручную и выбирайте, сколько может длиться сессия. Клиенты увидят только то время, куда помещается выбранная длительность."
+        sub="Задайте постоянные часы приёма, меняйте отдельные дни вручную и выбирайте, сколько может длиться созвон. Клиенты увидят только то время, куда помещается выбранная длительность."
         action={dirty || saving ? saveButton("primary", false, c.headSave) : undefined}
       />
       <WithRail
@@ -263,7 +263,7 @@ export default function SchedulePage() {
           <Card as="section">
             <CardHead
               title="Недельное расписание"
-              sub="Повторяется каждую неделю. Уже оплаченные сессии остаются в силе"
+              sub="Повторяется каждую неделю. Уже оплаченные созвоны остаются в силе"
             />
             {!draft || !week || !template ? (
               <div className={c.days}>
@@ -376,7 +376,7 @@ export default function SchedulePage() {
                             <span className={c.short}>{WEEKDAYS_SHORT[i]}</span>
                             <span className={c.daySlots}>
                               {d.on
-                                ? `${hoursLabel(mins)}, до ${n} ${plural(n, "сессии", "сессий", "сессий")}`
+                                ? `${hoursLabel(mins)}, до ${n} ${plural(n, "созвона", "созвонов", "созвонов")}`
                                 : "Выходной"}
                             </span>
                           </div>
@@ -468,7 +468,7 @@ function WeekRail({
         <div className={s.accentBig}>{hoursLabel(minutes).split(" ")[0]}</div>
         <div className={s.accentText} style={{ marginTop: 6 }}>
           {minutes
-            ? `До ${sessions} ${plural(sessions, "сессии", "сессий", "сессий")} по ${durationLabel(minDuration)}${
+            ? `До ${sessions} ${plural(sessions, "созвона", "созвонов", "созвонов")} по ${durationLabel(minDuration)}${
                 r.buffer_minutes ? ` с перерывом ${r.buffer_minutes} мин` : ""
               }, если всё займут`
             : "Клиенты не смогут записаться, пока в неделе нет ни одного рабочего часа"}

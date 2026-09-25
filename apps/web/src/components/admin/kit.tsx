@@ -221,7 +221,7 @@ export const ACTION_LABEL: Record<string, string> = {
   "specialist.reinstate": "Вернул специалиста в каталог",
   "specialist.edit": "Изменил профиль специалиста",
   "specialist.verify_legacy": "Сменил статус специалиста",
-  "session.cancel": "Отменил сессию",
+  "session.cancel": "Отменил созвон",
   "session.refund": "Оформил возврат",
   "report.assign": "Взял жалобу в работу",
   "report.resolved": "Решил жалобу",

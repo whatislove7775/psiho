@@ -69,7 +69,7 @@ export function SessionRow({ session, onChange }: { session: Session; onChange: 
         </div>
       </div>
 
-      <Modal open={confirm} onClose={() => setConfirm(false)} title="Отменить сессию?">
+      <Modal open={confirm} onClose={() => setConfirm(false)} title="Отменить созвон?">
         <p className={s.muted} style={{ marginBottom: 20 }}>
           {session.client.alias}, {when(session.scheduled_at).toLowerCase()}. Клиент увидит отмену в своём кабинете, а
           время снова станет свободным для записи.
@@ -79,7 +79,7 @@ export function SessionRow({ session, onChange }: { session: Session; onChange: 
             Оставить
           </Button>
           <Button variant="danger" loading={busy === "cancel"} onClick={() => run("cancel")}>
-            Отменить сессию
+            Отменить созвон
           </Button>
         </div>
       </Modal>

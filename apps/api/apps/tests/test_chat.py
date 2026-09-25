@@ -52,12 +52,15 @@ def pair(client_user, psychologist):
 
 @pytest.mark.django_db
 def test_client_needs_booking_to_chat_specialist(client_user, psychologist, settings):
+    # Прежнее правило «только после записи» включается CHAT_ALLOW_WITHOUT_BOOKING=False
+    settings.CHAT_ALLOW_WITHOUT_BOOKING = False
     c = auth_client(client_user)
     resp = c.post("/api/v1/chat/conversations/", {"with": "specialist", "psychologist_id": psychologist.id},
                   format="json")
     assert resp.status_code == 403
     assert c.get("/api/v1/chat/contacts/").json() == []
 
+    # По умолчанию (диалоги) клиент может начать разговор без записи — с антиспам-лимитами
     settings.CHAT_ALLOW_WITHOUT_BOOKING = True
     assert len(c.get("/api/v1/chat/contacts/").json()) == 1
     assert open_chat(c, psychologist)["counterpart"]["name"] == "Анна"

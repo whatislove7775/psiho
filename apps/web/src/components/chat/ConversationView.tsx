@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowLeft, Eraser, LifeBuoy, MoreVertical, ShieldOff, Timer, Infinity as InfinityIcon } from "lucide-react";
-import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Button, Modal, Spinner, useToast } from "@/ui";
 import { ApiError } from "@/lib/api/client";
 import {
@@ -60,12 +60,31 @@ export function ConversationView({
   onChange,
   ai,
   onAIStatus,
+  renderSystem,
+  headerActions,
+  banner,
+  compact,
+  composerNotice,
+  composerDisabled,
+  subtitle,
 }: {
   conv: Conversation;
-  onBack: () => void;
+  onBack?: () => void;
   onChange: (c: Conversation) => void;
   ai?: AIStatus | null;
   onAIStatus?: (st: AIStatus) => void;
+  /** custom rendering of system messages with a card (dialogue call cards) */
+  renderSystem?: (m: ChatMessage) => ReactNode | null;
+  /** extra buttons in the header, before the settings menu */
+  headerActions?: ReactNode;
+  /** strip under the header (e.g. «созвон идёт — присоединиться») */
+  banner?: ReactNode;
+  /** no header / retention chip: thread + composer only (in-call side panel) */
+  compact?: boolean;
+  composerNotice?: ReactNode;
+  composerDisabled?: boolean;
+  /** replaces the role line under the name */
+  subtitle?: string;
 }) {
   const toast = useToast();
   const isAI = conv.kind === "ai";
@@ -396,22 +415,28 @@ export function ConversationView({
     ? "печатает…"
     : isAI
       ? ROLE_SUB.ai
-      : conv.counterpart.type === "support"
-        ? ROLE_SUB.support
-        : ROLE_SUB[conv.counterpart.type] ?? "";
+      : subtitle
+        ? subtitle
+        : conv.counterpart.type === "support"
+          ? ROLE_SUB.support
+          : ROLE_SUB[conv.counterpart.type] ?? "";
 
   let lastDay = "";
   return (
-    <section className={s.view} aria-label={`Чат: ${conv.counterpart.name}`}>
+    <section className={s.view} aria-label={`Диалог: ${conv.counterpart.name}`} data-compact={compact ? "" : undefined}>
+      {!compact && (
       <header className={s.viewHead}>
-        <button type="button" className={`${s.iconBtn} ${s.backBtn}`} onClick={onBack} aria-label="Назад к списку чатов">
-          <ArrowLeft size={20} />
-        </button>
+        {onBack && (
+          <button type="button" className={`${s.iconBtn} ${s.backBtn}`} onClick={onBack} aria-label="Назад к списку диалогов">
+            <ArrowLeft size={20} />
+          </button>
+        )}
         <ConvAvatar who={conv.counterpart} size={42} />
         <div className={s.viewTitle}>
           <div className={s.viewName}>{conv.counterpart.name}</div>
           <div className={`${s.viewSub} ${typing ? s.viewSubTyping : ""}`}>{sub}</div>
         </div>
+        {headerActions}
         <div className={s.headMenuWrap} ref={headMenuRef}>
           <button
             type="button"
@@ -439,13 +464,18 @@ export function ConversationView({
           )}
         </div>
       </header>
+      )}
 
-      <button type="button" className={s.retentionChip} onClick={() => setRetentionOpen(true)}>
-        {conv.retention === "24h" ? <Timer size={14} /> : <InfinityIcon size={14} />}
-        {conv.retention === "24h" ? "Новые сообщения удаляются через 24 часа" : "Сообщения хранятся, пока вы их не удалите"}
-      </button>
+      {!compact && (
+        <button type="button" className={s.retentionChip} onClick={() => setRetentionOpen(true)}>
+          {conv.retention === "24h" ? <Timer size={14} /> : <InfinityIcon size={14} />}
+          {conv.retention === "24h" ? "Новые сообщения удаляются через 24 часа" : "Сообщения хранятся, пока вы их не удалите"}
+        </button>
+      )}
 
-      {isAI && (
+      {banner}
+
+      {isAI && !compact && (
         <div className={s.aiNotice}>
           <LifeBuoy size={16} />
           <span>
@@ -477,6 +507,17 @@ export function ConversationView({
               const day = m.created_at.slice(0, 10);
               const showDay = day !== lastDay && !m.pending && !m.streaming;
               if (showDay) lastDay = day;
+              if (m.kind === "system" && m.card && renderSystem) {
+                const custom = renderSystem(m);
+                if (custom) {
+                  return (
+                    <Fragment key={m.id}>
+                      {showDay && <div className={s.day}>{dayLabel(m.created_at)}</div>}
+                      {custom}
+                    </Fragment>
+                  );
+                }
+              }
               const next = messages[i + 1];
               const own = ownSide(m);
               const showTail = !next || next.kind === "system" || ownSide(next) !== own;
@@ -521,6 +562,7 @@ export function ConversationView({
             : "Лимит сообщений Тише на сегодня исчерпан — завтра можно продолжить"}
         </div>
       )}
+      {composerNotice}
       <Composer
         onSendText={sendText}
         onSendVoice={sendVoice}
@@ -532,7 +574,7 @@ export function ConversationView({
         editing={editing}
         onCancelEdit={() => setEditing(null)}
         busy={aiBusy || sending}
-        disabled={isAI && !!ai && ai.remaining_today <= 0}
+        disabled={(isAI && !!ai && ai.remaining_today <= 0) || composerDisabled}
       />
 
       <RetentionModal

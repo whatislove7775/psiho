@@ -13,6 +13,7 @@ import {
   Video,
   Wallet,
   CircleAlert,
+  MessagesSquare,
 } from "lucide-react";
 import { Button, Card, CardHead, EmptyState, QuickAction, Skeleton, Stat } from "@/ui";
 import { InlineEmpty } from "@/components/illustrations";
@@ -24,6 +25,7 @@ import { useAuth } from "@/lib/auth/store";
 import { cabinetApi, psychologistsApi, sessionsApi } from "@/lib/api/endpoints";
 import type { PsychologistPrivate, PsychologistStats, ScheduleRule, Session, Slot } from "@/lib/api/types";
 import { isoDate, plural, rub, SESSION_STATUS, time, untilLabel, WEEKDAYS_SHORT, dayLabel } from "@/lib/format";
+import { NextCallCard, RecentDialogs, useDialogsSummary } from "@/components/dialogs/HomeWidgets";
 import s from "@/components/pro/pro.module.css";
 import p from "./overview.module.css";
 
@@ -41,6 +43,7 @@ const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
 
 export default function ProOverview() {
   const user = useAuth((st) => st.user);
+  const dialogs = useDialogsSummary();
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -100,7 +103,7 @@ export default function ProOverview() {
         href: "/pro/profile",
       },
       { label: "Настроить расписание", hint: "Клиенты записываются только в эти часы", done: (data?.schedule.length ?? 0) > 0, href: "/pro/schedule" },
-      { label: "Загрузить фото", hint: "Настоящее фото в карточке специалиста и на сессии", done: !!pr?.photo_url, href: "/pro/profile" },
+      { label: "Загрузить фото", hint: "Настоящее фото в карточке специалиста и на созвоне", done: !!pr?.photo_url, href: "/pro/profile" },
       {
         label: "Пройти проверку",
         hint: "Администратор проверяет анкету вручную",
@@ -115,7 +118,7 @@ export default function ProOverview() {
   const status = profile?.verification_status;
 
   const subtitle = data
-    ? `${name}. ${today.length ? `Сегодня ${today.length} ${plural(today.length, "сессия", "сессии", "сессий")}` : "Сегодня сессий нет"}${
+    ? `${name}. ${today.length ? `Сегодня ${today.length} ${plural(today.length, "созвон", "созвона", "созвонов")}` : "Сегодня созвонов нет"}${
         next ? `, ближайшая ${untilLabel(next.scheduled_at)}` : ""
       }.`
     : name;
@@ -126,21 +129,21 @@ export default function ProOverview() {
         title={`Сводка за ${monthName()}`}
         sub={subtitle}
         action={
-          <Button variant="primary" href="/pro/sessions" icon={<Video size={18} />}>
-            Все сессии
+          <Button variant="primary" href="/pro/dialogs" icon={<MessagesSquare size={18} />}>
+            Диалоги
           </Button>
         }
       />
       <WithRail
         rail={
           <div className={p.railDesktop}>
-            <RailCard data={data} next={next} weekSlots={weekSlots} />
+            <RailCard data={data} next={next} weekSlots={weekSlots} dialogNext={dialogs.next} />
           </div>
         }
       >
         {error && <LoadError text={error} onRetry={load} />}
         <div className={p.railMobile}>
-          <RailCard data={data} next={next} weekSlots={weekSlots} />
+          <RailCard data={data} next={next} weekSlots={weekSlots} dialogNext={dialogs.next} />
         </div>
         {status && status !== "approved" && <StatusCard status={status} />}
 
@@ -191,11 +194,11 @@ export default function ProOverview() {
           <CardHead title="Быстрые инструменты" />
           <div className={p.quick}>
             <QuickAction tone="sky" icon={<CalendarClock size={24} strokeWidth={1.8} />} label="Расписание" href="/pro/schedule" />
-            <QuickAction tone="mint" icon={<Video size={24} strokeWidth={1.8} />} label="Сессии сегодня" href="/pro/sessions?tab=today" />
+            <QuickAction tone="mint" icon={<MessagesSquare size={24} strokeWidth={1.8} />} label="Диалоги" href="/pro/dialogs" />
             <QuickAction tone="peach" icon={<UserRound size={24} strokeWidth={1.8} />} label="Профиль" href="/pro/profile" />
             <QuickAction tone="lilac" icon={<ImageUp size={24} strokeWidth={1.8} />} label="Фото профиля" href="/pro/profile#photo" />
             <QuickAction tone="butter" icon={<Camera size={24} strokeWidth={1.8} />} label="Проверить камеру" href="/pro/check" />
-            <QuickAction tone="lime" icon={<Wallet size={24} strokeWidth={1.8} />} label="Доход" href="/pro/sessions?tab=past" />
+            <QuickAction tone="lime" icon={<Wallet size={24} strokeWidth={1.8} />} label="Доход" href="/pro/earnings" />
           </div>
         </Card>
 
@@ -203,7 +206,7 @@ export default function ProOverview() {
           {data?.stats ? (
             <>
               <Stat label="Предстоящие" value={data.stats.upcoming} note={data.stats.upcoming ? "Оплачены и ждут вас" : "Пока никто не записался"} />
-              <Stat label={`Сессий в ${monthIn()}`} value={data.stats.sessions_month} note={`Всего ${data.stats.sessions_total}`} />
+              <Stat label={`Созвонов в ${monthIn()}`} value={data.stats.sessions_month} note={`Всего ${data.stats.sessions_total}`} />
               <Stat label={`Доход за ${monthName()}`} value={rub(data.stats.earnings_month_rub)} note={`Всего ${rub(data.stats.earnings_total_rub)}`} />
               <Stat label="Клиентов" value={data.stats.clients_total} note="За всё время, анонимно" />
             </>
@@ -225,30 +228,7 @@ export default function ProOverview() {
               <InlineEmpty scene="cozy">Сегодня свободный день. Если хотите принять клиентов, добавьте часы в расписание.</InlineEmpty>
             )}
           </Card>
-          <Card as="section">
-            <CardHead
-              title="Ближайшие"
-              sub="Следующие записи после сегодняшнего дня"
-              action={
-                upcoming.length ? (
-                  <Button size="sm" variant="ghost" href="/pro/sessions?tab=upcoming">
-                    Все
-                  </Button>
-                ) : undefined
-              }
-            />
-            {!data ? (
-              <Skeleton height={60} />
-            ) : upcoming.length ? (
-              <MiniList sessions={upcoming} showDay />
-            ) : (
-              <InlineEmpty scene="calendar">
-                {weekSlots > 0
-                  ? "Новых записей пока нет. Клиенты видят ваши свободные часы в каталоге."
-                  : "Записей нет: в расписании не отмечено ни одного часа."}
-              </InlineEmpty>
-            )}
-          </Card>
+          <RecentDialogs items={dialogs.recent} role="specialist" loading={dialogs.loading} />
         </div>
       </WithRail>
     </>
@@ -325,14 +305,27 @@ function StatusCard({ status }: { status: "pending" | "rejected" | "suspended" }
   );
 }
 
-function RailCard({ data, next, weekSlots }: { data: Data | null; next: Session | null; weekSlots: number }) {
+function RailCard({
+  data,
+  next,
+  weekSlots,
+  dialogNext,
+}: {
+  data: Data | null;
+  next: Session | null;
+  weekSlots: number;
+  dialogNext: import("@/lib/api/dialogs").DialogItem | null;
+}) {
   if (!data) return <Skeleton height={380} radius={22} />;
+
+  // «Ближайший созвон» lives in its dialogue
+  if (dialogNext) return <NextCallCard item={dialogNext} role="specialist" />;
 
   if (next) {
     const live = next.status === "in_progress";
     return (
-      <section className={s.accent} aria-label="Следующая сессия">
-        <div className={s.accentKicker}>{live ? "Сессия идёт сейчас" : `Следующая сессия ${untilLabel(next.scheduled_at)}`}</div>
+      <section className={s.accent} aria-label="Следующий созвон">
+        <div className={s.accentKicker}>{live ? "Созвон идёт сейчас" : `Следующий созвон ${untilLabel(next.scheduled_at)}`}</div>
         <div className={s.accentPerson}>
           <span className={s.accentAvatar}>
             <AvatarThumb config={next.client.avatar_config} seed={next.client.alias} size={64} background="rgba(255,255,255,.18)" />
@@ -359,7 +352,7 @@ function RailCard({ data, next, weekSlots }: { data: Data | null; next: Session 
           </li>
         </ul>
         <Button variant="white" size="lg" block disabled={!next.can_join} href={next.can_join ? `/room/${next.id}` : undefined}>
-          Войти в сессию
+          Присоединиться
         </Button>
         {!next.can_join && <p className={s.accentText}>Кнопка станет активной за 10 минут до начала.</p>}
         <Link href="/pro/check" className={s.accentLink}>

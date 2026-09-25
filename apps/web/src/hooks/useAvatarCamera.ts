@@ -3,32 +3,38 @@
 /**
  * Camera → on-device face tracking → live 3D avatar → MediaStream.
  *
- *   getUserMedia ─► hidden <video> ─► MediaPipe FaceLandmarker (52 ARKit
- *   blendshapes + 478 landmarks + head pose), run on EVERY camera frame
- *   (requestVideoFrameCallback) ─► FaceTracker (neutral calibration,
- *   landmark-refined expressions, One-Euro filtering) ─► KitRenderer
- *   ─► canvas.captureStream()
+ *   getUserMedia ─► hidden <video> ─► (requestVideoFrameCallback, one call per
+ *   camera frame) ─► FaceDetector: MediaPipe FaceLandmarker in a Web Worker
+ *   (main-thread fallback) ─► FaceTracker (neutral calibration, landmark-refined
+ *   expressions, One-Euro filtering) ─► KitRenderer.renderNow() ─►
+ *   canvas.captureStream(0) + requestFrame()
  *
- * The real camera image never leaves this hook: only the rendered avatar
- * video and the microphone audio are exposed.
+ * Latency budget: the avatar is rendered as soon as a camera frame has been
+ * processed (no waiting for the next animation tick) and that exact frame is
+ * pushed to the encoder. Detection never blocks the page; a frame that arrives
+ * while the detector is busy is dropped rather than queued.
+ *
+ * The real camera image never leaves this hook: only the rendered avatar video
+ * and the microphone audio are exposed. Frames go to the worker as transferred
+ * ImageBitmaps and are closed right after detection.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AvatarConfig } from "@/lib/avatar/schema";
 import type { AvatarRendererApi } from "@/lib/avatar/kit/types";
 import { FaceTracker, type LandmarkerResult } from "@/lib/tracking/FaceTracker";
+import { createFaceDetector, type FaceDetector } from "@/lib/tracking/FaceDetector";
+import { avatarPerf } from "@/lib/tracking/perf";
 import { paintBackdrop, type BackdropId } from "@/lib/avatar/backdrops";
 
-const MP_VERSION = "0.10.14"; // must match package.json exactly
-// Served from our own origin first (see scripts/copy-mediapipe.mjs); CDN as a fallback.
-const SOURCES = [
-  { wasm: "/mediapipe/wasm", model: "/mediapipe/face_landmarker.task" },
-  {
-    wasm: `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}/wasm`,
-    model: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
-  },
-];
-
 export type CameraState = "idle" | "starting" | "ready" | "denied" | "error";
+
+/** Microphone processing used by every call and voice message. */
+export const MIC_CONSTRAINTS: MediaTrackConstraints = {
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: true,
+  channelCount: 1,
+};
 
 export interface AvatarCamera {
   state: CameraState;
@@ -50,6 +56,10 @@ export interface AvatarCamera {
   calibrating: boolean;
   /** capture the neutral face again (ask the user to relax and look at the camera) */
   recalibrate: () => void;
+  /** switch the camera or microphone while running (keeps the avatar and the call) */
+  switchDevice: (kind: "videoinput" | "audioinput", deviceId: string) => Promise<void>;
+  /** deviceIds currently in use */
+  devices: { videoinput: string | null; audioinput: string | null };
   start: () => void;
   stop: () => void;
 }
@@ -58,6 +68,8 @@ export interface AvatarCameraOptions {
   /** background painted behind the avatar (part of the outgoing video) */
   backdrop?: BackdropId;
 }
+
+type RequestFrameTrack = MediaStreamTrack & { requestFrame?: () => void };
 
 export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptions = {}): AvatarCamera {
   const [state, setState] = useState<CameraState>("idle");
@@ -71,9 +83,11 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
   const [tracking, setTracking] = useState(false);
   const [calibrating, setCalibrating] = useState(false);
   const [runId, setRunId] = useState(0);
+  const [devices, setDevices] = useState<{ videoinput: string | null; audioinput: string | null }>({ videoinput: null, audioinput: null });
 
   const rendererRef = useRef<AvatarRendererApi | null>(null);
   const trackerRef = useRef<FaceTracker | null>(null);
+  const camRef = useRef<{ video: HTMLVideoElement; cam: MediaStream } | null>(null);
   const cfgRef = useRef(config);
   cfgRef.current = config;
 
@@ -93,13 +107,14 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
     if (runId === 0) return;
     let cancelled = false;
     let stopLoop = () => {};
-    let landmarker: { detectForVideo: (v: HTMLVideoElement, t: number) => unknown; close: () => void } | null = null;
+    let detector: FaceDetector | null = null;
     let cam: MediaStream | null = null;
     let lightTimer: ReturnType<typeof setInterval> | undefined;
     const video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
     video.autoplay = true;
+    avatarPerf.reset();
 
     (async () => {
       setState("starting");
@@ -107,7 +122,7 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
       try {
         cam = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } },
-          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+          audio: MIC_CONSTRAINTS,
         });
       } catch (e) {
         if (cancelled) return;
@@ -128,6 +143,11 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
       }
       video.srcObject = new MediaStream(cam.getVideoTracks());
       await video.play().catch(() => undefined);
+      camRef.current = { video, cam };
+      setDevices({
+        videoinput: cam.getVideoTracks()[0]?.getSettings().deviceId ?? null,
+        audioinput: cam.getAudioTracks()[0]?.getSettings().deviceId ?? null,
+      });
 
       // The avatar is the only picture that may ever be shown. If it can't be
       // rendered (no WebGL, driver crash) we stop the camera and explain —
@@ -149,11 +169,31 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
         r.setConfig(cfgRef.current);
         if (backdropRef.current) r.setBackground(paintBackdrop(backdropRef.current));
         r.start();
-        stream = r.captureStream(30);
+        // Push exactly the frames we render (captureStream(0) + requestFrame):
+        // no timer sampling in between, nothing sent while nothing changes.
+        stream = c.captureStream(0);
+        const vt = stream.getVideoTracks()[0] as RequestFrameTrack | undefined;
+        if (vt && typeof vt.requestFrame === "function") {
+          let last = 0;
+          r.onRender = () => {
+            const now = performance.now();
+            avatarPerf.rendered(now);
+            // the encoder never needs more than ~30 fps
+            if (now - last < 30) return;
+            last = now;
+            vt.requestFrame!();
+            avatarPerf.sent(now);
+          };
+        } else {
+          vt?.stop();
+          stream = c.captureStream(30);
+          r.onRender = () => avatarPerf.rendered();
+        }
       } catch (e) {
         console.warn("[avatar] renderer unavailable:", e);
         cam.getTracks().forEach((t) => t.stop());
         cam = null;
+        camRef.current = null;
         if (cancelled) return;
         setState("error");
         setError(
@@ -180,9 +220,10 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
       probe.height = 12;
       const p2d = probe.getContext("2d", { willReadFrequently: true });
       lightTimer = setInterval(() => {
-        if (cancelled || !p2d || video.readyState < 2) return;
+        const v = camRef.current?.video;
+        if (cancelled || !p2d || !v || v.readyState < 2) return;
         try {
-          p2d.drawImage(video, 0, 0, 16, 12);
+          p2d.drawImage(v, 0, 0, 16, 12);
           const px = p2d.getImageData(0, 0, 16, 12).data;
           let l = 0;
           for (let i = 0; i < px.length; i += 4) l += 0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2];
@@ -192,46 +233,8 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
         }
       }, 1000);
 
-      // Face tracking (GPU first, CPU fallback)
-      try {
-        const { FaceLandmarker, FilesetResolver } = await import("@mediapipe/tasks-vision");
-        outer: for (const src of SOURCES) {
-          let fileset;
-          try {
-            fileset = await FilesetResolver.forVisionTasks(src.wasm);
-          } catch {
-            continue;
-          }
-          for (const delegate of ["GPU", "CPU"] as const) {
-            if (cancelled) return;
-            try {
-              landmarker = (await FaceLandmarker.createFromOptions(fileset, {
-                baseOptions: { modelAssetPath: src.model, delegate },
-                // 478 landmarks (incl. irises) are always returned in 0.10.14 —
-                // there is no outputFaceLandmarks switch in this version.
-                outputFaceBlendshapes: true,
-                outputFacialTransformationMatrixes: true,
-                runningMode: "VIDEO",
-                numFaces: 1,
-              })) as unknown as typeof landmarker;
-              break outer;
-            } catch {
-              /* try next delegate / source */
-            }
-          }
-        }
-      } catch {
-        /* tracking unavailable — avatar keeps its idle animation */
-      }
-      if (cancelled || !landmarker) return;
-      setTracking(true);
-
+      // ── Face tracking ─────────────────────────────────────────────────
       const tracker = new FaceTracker();
-      trackerRef.current = tracker;
-      setCalibrating(true);
-
-      let lastTs = -1;
-      let lastMediaTime = -1;
       let lastFace = performance.now();
       let lost = false;
       let visible = false;
@@ -239,29 +242,26 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
       let calib = true;
       let frames = 0;
 
-      /** Run detection on one camera frame. `mediaTime` is the frame's video time (s). */
-      const onFrame = (mediaTime: number) => {
-        if (cancelled || video.readyState < 2 || mediaTime === lastMediaTime) return;
-        lastMediaTime = mediaTime;
-        frames++;
-        if (process.env.NODE_ENV !== "production") {
-          (window as unknown as { __faceTrack?: object }).__faceTrack = { frames, loop: raf ? "raf" : "rvfc", mediaTime };
-        }
-        // MediaPipe VIDEO mode needs strictly increasing timestamps (ms)
-        const ts = Math.max(Math.round(mediaTime * 1000), lastTs + 1);
-        lastTs = ts;
+      const onResult = (raw: LandmarkerResult | null, since: number) => {
+        if (cancelled) return;
         const now = performance.now();
+        const tsMs = since; // FaceTracker filters run on the frame's own timeline
+        let out = null;
         try {
-          const raw = landmarker!.detectForVideo(video, ts) as LandmarkerResult;
-          const out = tracker.process(raw, ts, video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 4 / 3);
-          if (out) {
-            if (now - lastFace > 500) tracker.resetFilters(); // re-acquired: don't smear from stale state
-            lastFace = now;
-            lastSeen = now;
-            r.applyFaceResult(out);
-          }
+          out = raw ? tracker.process(raw, tsMs, video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 4 / 3) : null;
         } catch {
-          /* transient */
+          out = null;
+        }
+        if (out) {
+          if (now - lastFace > 500) tracker.resetFilters(); // re-acquired: don't smear from stale state
+          lastFace = now;
+          lastSeen = now;
+          avatarPerf.faces++;
+          r.applyFaceResult(out);
+          const r0 = performance.now();
+          r.renderNow();
+          avatarPerf.renderCost(performance.now() - r0);
+          avatarPerf.latency(since);
         }
         if (tracker.calibrating !== calib) {
           calib = tracker.calibrating;
@@ -279,35 +279,74 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
         }
       };
 
+      const debugMain = typeof window !== "undefined" && /[?&]detector=main\b/.test(window.location.search);
+      detector = await createFaceDetector(
+        (raw, since) => {
+          onResult(raw, since);
+        },
+        { isCancelled: () => cancelled, worker: !debugMain },
+      );
+      if (cancelled) {
+        detector?.close();
+        return;
+      }
+      if (!detector) return; // tracking unavailable — avatar keeps its idle animation
+      trackerRef.current = tracker;
+      setTracking(true);
+      setCalibrating(true);
+
+      let lastMediaTime = -1;
+      /** One camera frame. `mediaTime` is its video time (s); `since` when it became available. */
+      const onFrame = (mediaTime: number, since: number) => {
+        const v = camRef.current?.video ?? video;
+        if (cancelled || v.readyState < 2 || mediaTime === lastMediaTime) return;
+        lastMediaTime = mediaTime;
+        frames++;
+        avatarPerf.camFrame(since);
+        if (process.env.NODE_ENV !== "production") {
+          (window as unknown as { __faceTrack?: object }).__faceTrack = { frames, loop: raf ? "raf" : "rvfc", mediaTime };
+        }
+        // VIDEO-mode timestamps: performance-clock ms (monotonic across camera switches)
+        const ts = since;
+        detector!.push(v, ts, since);
+      };
+
       // Prefer requestVideoFrameCallback: exactly one callback per decoded
-      // camera frame, with the frame's own timestamp. Fall back to rAF (and
-      // to rAF as well if rVFC stays silent, e.g. for a detached <video> on
-      // some engines).
+      // camera frame. Fall back to rAF (and to rAF as well if rVFC stays
+      // silent, e.g. for a detached <video> on some engines).
       type RVFC = (cb: (now: number, meta: { mediaTime: number }) => void) => number;
-      const v = video as HTMLVideoElement & { requestVideoFrameCallback?: RVFC; cancelVideoFrameCallback?: (h: number) => void };
+      type VEl = HTMLVideoElement & { requestVideoFrameCallback?: RVFC; cancelVideoFrameCallback?: (h: number) => void };
       let handle = 0;
       let raf = 0;
+      let rvfcVideo: VEl | null = null;
       const rafLoop = () => {
         if (cancelled) return;
         raf = requestAnimationFrame(rafLoop);
-        onFrame(video.currentTime);
+        const v = camRef.current?.video ?? video;
+        onFrame(v.currentTime, performance.now());
       };
-      if (typeof v.requestVideoFrameCallback === "function") {
-        const vfc = (_now: number, meta: { mediaTime: number }) => {
-          if (cancelled) return;
+      const useRvfc = typeof (video as VEl).requestVideoFrameCallback === "function";
+      if (useRvfc) {
+        const arm = () => {
+          const v = (camRef.current?.video ?? video) as VEl;
+          rvfcVideo = v;
           handle = v.requestVideoFrameCallback!(vfc);
-          onFrame(meta.mediaTime);
         };
-        handle = v.requestVideoFrameCallback(vfc);
+        const vfc = (now: number, meta: { mediaTime: number }) => {
+          if (cancelled) return;
+          arm();
+          onFrame(meta.mediaTime, now);
+        };
+        arm();
         const watchdog = window.setTimeout(() => {
           if (!cancelled && frames === 0) {
-            v.cancelVideoFrameCallback?.(handle);
+            rvfcVideo?.cancelVideoFrameCallback?.(handle);
             rafLoop();
           }
         }, 1500);
         stopLoop = () => {
           clearTimeout(watchdog);
-          v.cancelVideoFrameCallback?.(handle);
+          rvfcVideo?.cancelVideoFrameCallback?.(handle);
           cancelAnimationFrame(raf);
         };
       } else {
@@ -321,8 +360,10 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
       stopLoop();
       clearInterval(lightTimer);
       trackerRef.current = null;
-      landmarker?.close();
+      detector?.close();
+      camRef.current?.cam.getTracks().forEach((t) => t.stop());
       cam?.getTracks().forEach((t) => t.stop());
+      camRef.current = null;
       rendererRef.current?.dispose();
       rendererRef.current = null;
       setCanvas(null);
@@ -349,6 +390,38 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
     setCalibrating(true);
   }, []);
 
+  const switchDevice = useCallback(async (kind: "videoinput" | "audioinput", deviceId: string) => {
+    const cur = camRef.current;
+    if (!cur) return;
+    if (kind === "videoinput") {
+      const ms = await navigator.mediaDevices.getUserMedia({
+        video: { deviceId: { exact: deviceId }, width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } },
+      });
+      const next = ms.getVideoTracks()[0];
+      cur.cam.getVideoTracks().forEach((t) => {
+        t.stop();
+        cur.cam.removeTrack(t);
+      });
+      cur.cam.addTrack(next);
+      cur.video.srcObject = new MediaStream([next]);
+      await cur.video.play().catch(() => undefined);
+      trackerRef.current?.resetFilters();
+      setDevices((d) => ({ ...d, videoinput: next.getSettings().deviceId ?? deviceId }));
+    } else {
+      const ms = await navigator.mediaDevices.getUserMedia({ audio: { ...MIC_CONSTRAINTS, deviceId: { exact: deviceId } } });
+      const next = ms.getAudioTracks()[0];
+      const wasEnabled = cur.cam.getAudioTracks()[0]?.enabled ?? true;
+      next.enabled = wasEnabled;
+      cur.cam.getAudioTracks().forEach((t) => {
+        t.stop();
+        cur.cam.removeTrack(t);
+      });
+      cur.cam.addTrack(next);
+      setAudioStream(new MediaStream([next]));
+      setDevices((d) => ({ ...d, audioinput: next.getSettings().deviceId ?? deviceId }));
+    }
+  }, []);
+
   return {
     state,
     error,
@@ -362,6 +435,8 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
     tracking,
     calibrating,
     recalibrate,
+    switchDevice,
+    devices,
     start,
     stop,
   };

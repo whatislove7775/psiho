@@ -12,6 +12,8 @@ export interface Counterpart {
   name: string;
   avatar_config: AvatarConfig | null;
   psychologist_id?: number;
+  /** specialists appear with their real profile photo */
+  photo_url?: string | null;
 }
 
 export interface ChatAttachment {
@@ -22,6 +24,33 @@ export interface ChatAttachment {
   peaks: number[];
 }
 
+export interface CallBrief {
+  id: string;
+  status: "draft" | "awaiting_payment" | "paid" | "in_progress" | "completed" | "cancelled" | "refunded";
+  scheduled_at: string;
+  duration_minutes: number;
+  amount_rub: number;
+  can_join: boolean;
+}
+
+export interface ProposalBrief {
+  id: string;
+  status: "pending" | "accepted" | "declined" | "withdrawn" | "expired";
+  scheduled_at: string;
+  duration_minutes: number;
+  price_rub: number;
+  session_id: string | null;
+}
+
+export interface DialogCard {
+  type: "booked" | "rescheduled" | "cancelled" | "started" | "ended" | "proposed";
+  call: CallBrief | null;
+  proposal?: ProposalBrief | null;
+  by?: "client" | "specialist";
+  late?: boolean;
+  minutes?: number | null;
+}
+
 export interface ChatMessage {
   id: string;
   conversation: string;
@@ -29,6 +58,8 @@ export interface ChatMessage {
   sender_role: SenderRole;
   text: string;
   system_code: string | null;
+  /** call cards of a dialogue (system messages «call:*»), see lib/api/dialogs.ts */
+  card?: DialogCard | null;
   attachment: ChatAttachment | null;
   created_at: string;
   edited_at: string | null;

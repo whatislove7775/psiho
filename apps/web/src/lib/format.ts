@@ -77,9 +77,9 @@ export const WEEKDAYS_SHORT = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "
 
 export const SESSION_STATUS: Record<string, { label: string; tone: "neutral" | "success" | "warning" | "danger" | "primary" }> = {
   awaiting_payment: { label: "Ждёт оплаты", tone: "warning" },
-  paid: { label: "Запланирована", tone: "primary" },
+  paid: { label: "Назначен", tone: "primary" },
   in_progress: { label: "Идёт сейчас", tone: "success" },
-  completed: { label: "Завершена", tone: "neutral" },
-  cancelled: { label: "Отменена", tone: "danger" },
+  completed: { label: "Состоялся", tone: "neutral" },
+  cancelled: { label: "Отменён", tone: "danger" },
   refunded: { label: "Возврат", tone: "neutral" },
 };

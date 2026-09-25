@@ -1,6 +1,7 @@
 // Run: node --test src/lib/tracking/__tests__/   (from apps/web; no dependencies)
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { FILTERS } from "../FaceTracker.ts";
 import {
   LM,
   NeutralCalibrator,
@@ -78,13 +79,17 @@ const std = (a) => {
   return Math.sqrt(a.reduce((x, y) => x + (y - m) ** 2, 0) / a.length);
 };
 
-// Parameter sets used by FaceTracker.FILTERS (eyeBlink, mouth/jaw, eyeLook, brow)
-const EYE = [1.2, 1, 3];
-const MOUTH = [1.2, 2, 2];
-const LOOK = [1.2, 1, 1.5];
-const BROW = [1.0, 1, 1];
+// Parameter sets used by FaceTracker.FILTERS (eyeBlink, mouth/jaw, eyeLook, brow, head)
+const P = (k) => [FILTERS[k].minCutoff, FILTERS[k].beta, FILTERS[k].dCutoff];
+const EYE = P("eyeBlink");
+const MOUTH = P("jaw");
+const LOOK = P("eyeLook");
+const BROW = P("brow");
+const HEAD = P("headRot");
 
-test("OneEuro: resting jitter (±0.03 white noise @30 fps) is at least halved", () => {
+// Tuned for latency: the filter alone cuts resting jitter ≥ 1.8×; the renderer's
+// short follow (KitRenderer TRACK_RATE) brings the total to ≥ 2.5×.
+test("OneEuro: resting jitter (±0.03 white noise @30 fps) is cut ≥ 1.8×", () => {
   const rnd = noise(7);
   for (const [minCutoff, beta, dCutoff] of [EYE, MOUTH, LOOK, BROW]) {
     const f = new OneEuroFilter(minCutoff, beta, dCutoff);
@@ -96,7 +101,7 @@ test("OneEuro: resting jitter (±0.03 white noise @30 fps) is at least halved", 
       out.push(f.filter(x, i / 30));
     }
     const ratio = std(raw.slice(60)) / std(out.slice(60));
-    assert.ok(ratio > 2.2, `jitter reduction only ${ratio.toFixed(2)}× for ${minCutoff}/${beta}`);
+    assert.ok(ratio > 1.8, `jitter reduction only ${ratio.toFixed(2)}× for ${minCutoff}/${beta}`);
   }
 });
 
@@ -125,6 +130,44 @@ test("OneEuro: speech-rate jaw motion (4 Hz, 0..0.6) keeps most of its amplitude
   }
   const amp = (Math.max(...out.slice(30)) - Math.min(...out.slice(30))) / 2;
   assert.ok(amp > 0.2, `amplitude ${amp.toFixed(3)} of 0.3`);
+});
+
+/** 50 %-crossing lag (ms) of a ramp 0 → amp over rampMs, sampled at 30 fps with white noise. */
+function rampLag([minCutoff, beta, dCutoff], amp, rampMs, noiseSd) {
+  const f = new OneEuroFilter(minCutoff, beta, dCutoff);
+  const rnd = noise(3);
+  const sig = (t) => (t < 1 ? 0 : t < 1 + rampMs / 1000 ? ((t - 1) / (rampMs / 1000)) * amp : amp);
+  for (let i = 0; i < 90; i++) {
+    const t = i / 30;
+    const y = f.filter(sig(t) + (rnd() - 0.5) * 2 * noiseSd, t);
+    if (y >= amp / 2) return (t - (1 + rampMs / 2000)) * 1000;
+  }
+  return Infinity;
+}
+
+test("OneEuro: fast motion passes with little lag (mouth, brows, head)", () => {
+  const jaw = rampLag(MOUTH, 0.6, 80, 0.02);
+  const brow = rampLag(BROW, 0.4, 150, 0.02);
+  const head = rampLag(HEAD, 0.3, 200, 0.004);
+  const nod = rampLag(HEAD, 0.12, 120, 0.004);
+  assert.ok(jaw <= 40, `jaw lag ${jaw.toFixed(0)} ms`);
+  assert.ok(brow <= 60, `brow lag ${brow.toFixed(0)} ms`);
+  assert.ok(head <= 50, `head turn lag ${head.toFixed(0)} ms`);
+  assert.ok(nod <= 60, `nod lag ${nod.toFixed(0)} ms`);
+});
+
+test("OneEuro: resting head stays still (0.25° noise cut ≥ 2×)", () => {
+  const f = new OneEuroFilter(...HEAD);
+  const rnd = noise(11);
+  const raw = [];
+  const out = [];
+  for (let i = 0; i < 300; i++) {
+    const x = 0.05 + (rnd() - 0.5) * 0.008;
+    raw.push(x);
+    out.push(f.filter(x, i / 30));
+  }
+  const ratio = std(raw.slice(60)) / std(out.slice(60));
+  assert.ok(ratio > 2, `head jitter reduction only ${ratio.toFixed(2)}×`);
 });
 
 test("OneEuro: long gap restarts instead of smearing", () => {

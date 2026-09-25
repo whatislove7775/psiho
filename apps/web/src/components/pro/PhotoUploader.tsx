@@ -174,7 +174,7 @@ export function PhotoUploader({
       <SpecialistPhoto url={url} name={name || "?"} size={104} alt="Ваше фото" />
       <div className={s.body}>
         <p className={s.text}>
-          Настоящее фото, на котором хорошо видно лицо. Клиенты видят его в каталоге, при записи и на сессии. JPEG, PNG или WebP до 5 МБ.
+          Настоящее фото, на котором хорошо видно лицо. Клиенты видят его в каталоге, при записи и на созвоне. JPEG, PNG или WebP до 5 МБ.
         </p>
         <div className={s.actions}>
           <Button variant="primary" size="sm" icon={<ImageUp size={16} />} onClick={() => input.current?.click()} disabled={!!busy}>

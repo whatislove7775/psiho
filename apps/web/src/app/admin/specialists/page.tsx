@@ -55,7 +55,7 @@ const DECISION: Record<
   suspend: {
     button: "Приостановить",
     title: "Приостановить специалиста?",
-    text: "Карточка пропадёт из каталога, новые записи станут недоступны. Уже оплаченные сессии не отменятся, проверьте их в разделе «Сессии».",
+    text: "Карточка пропадёт из каталога, новые записи станут недоступны. Уже оплаченные созвоны не отменятся, проверьте их в разделе «Созвоны».",
     done: "Специалист приостановлен",
     variant: "danger",
     perm: "specialists.suspend",
@@ -225,7 +225,7 @@ function SpecialistsPage() {
                           </dd>
                           <dt>Цена</dt>
                           <dd>
-                            {p.hourly_rate_rub ? `${rub(p.hourly_rate_rub)} в час, ` : ""}самая короткая сессия {rub(p.session_rate_rub)}
+                            {p.hourly_rate_rub ? `${rub(p.hourly_rate_rub)} в час, ` : ""}самый короткий созвон {rub(p.session_rate_rub)}
                           </dd>
                           <dt>Языки</dt>
                           <dd>{p.languages.join(", ") || "Не указаны"}</dd>
@@ -245,7 +245,7 @@ function SpecialistsPage() {
                           </dd>
                           {d?.stats && (
                             <>
-                              <dt>Сессии</dt>
+                              <dt>Созвоны</dt>
                               <dd>
                                 {d.stats.completed} проведено, {d.stats.upcoming} впереди, {d.stats.cancelled} отменено
                                 {d.reports_open ? (
@@ -372,7 +372,7 @@ function EditModal({ p, onClose, onSaved }: { p: StaffSpecialist | null; onClose
       <div className={s.form}>
         <Input label="Имя в каталоге" value={form.display_name} onChange={set("display_name")} maxLength={80} />
         <div className={s.formRow}>
-          <Input label="Цена часа, ₽" hint="Цена сессии считается от неё по длительности" inputMode="numeric" value={form.hourly_rate_rub} onChange={set("hourly_rate_rub")} />
+          <Input label="Цена часа, ₽" hint="Цена созвона считается от неё по длительности" inputMode="numeric" value={form.hourly_rate_rub} onChange={set("hourly_rate_rub")} />
           <Input label="Опыт, лет" inputMode="numeric" value={form.experience_years} onChange={set("experience_years")} />
         </div>
         <Input label="Специализации" hint="Через запятую" value={form.specializations} onChange={set("specializations")} />

@@ -53,7 +53,7 @@ export function SessionNotepad({ roomId }: { roomId: string }) {
         value={text}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Мысли, вопросы, то, что хочется запомнить"
-        aria-label="Заметки к сессии"
+        aria-label="Заметки к созвону"
         style={{
           flex: 1,
           minHeight: 200,

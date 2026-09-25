@@ -1,6 +1,9 @@
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework import generics, status
+from rest_framework.exceptions import PermissionDenied
+
+from apps.dialogs.services import ensure_dialogue as dialogs_ensure
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -53,7 +56,7 @@ class BookSessionView(APIView):
     def post(self, request):
         if request.user.role != "client":
             return Response(
-                {"detail": "Записываться на сессии могут только клиенты."},
+                {"detail": "Назначать созвоны могут только клиенты."},
                 status=status.HTTP_403_FORBIDDEN,
             )
         serializer = BookSessionSerializer(data=request.data)
@@ -95,6 +98,9 @@ class BookSessionView(APIView):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
+        from apps.dialogs.services import on_call_booked  # карточка «созвон назначен» в диалоге пары
+
+        on_call_booked(session)
         session = sessions_for(request.user).get(pk=session.pk)
         return Response(SessionSerializer(session).data, status=status.HTTP_201_CREATED)
 
@@ -112,18 +118,18 @@ class CancelSessionView(SessionActionView):
         session, error = self.get_session(request, pk)
         if error:
             return error
-        if session.status not in (S.AWAITING_PAYMENT, S.PAID) or timezone.now() >= session.scheduled_at:
+        # Единые правила отмены и возврата — в apps.dialogs (созвон живёт внутри диалога пары)
+        from apps.dialogs import services as dialogs
+
+        role = "client" if participant_role(session, request.user) == "client" else "specialist"
+        try:
+            dialogs.cancel_call(dialogs.ensure_dialogue(session.client, session.psychologist_profile), session, role)
+        except PermissionDenied:
             return Response(
-                {"detail": "Эту сессию уже нельзя отменить."},
+                {"detail": "Этот созвон уже нельзя отменить."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        session.status = S.CANCELLED
-        session.save(update_fields=["status", "updated_at"])
-        SessionEvent.objects.create(
-            session=session,
-            event_type=SessionEvent.EventType.SESSION_ENDED,
-            metadata={"cancelled_by": participant_role(session, request.user)},
-        )
+        session.refresh_from_db()
         return Response(SessionSerializer(session).data)
 
 
@@ -134,7 +140,7 @@ class JoinSessionView(SessionActionView):
             return error
         if not can_join(session):
             return Response(
-                {"detail": "Подключиться можно за 10 минут до начала оплаченной сессии."},
+                {"detail": "Подключиться можно за 10 минут до начала оплаченного созвона."},
                 status=status.HTTP_403_FORBIDDEN,
             )
         role = participant_role(session, request.user)
@@ -144,6 +150,9 @@ class JoinSessionView(SessionActionView):
             SessionEvent.objects.create(
                 session=session, event_type=SessionEvent.EventType.ROOM_OPENED, metadata={}
             )
+            from apps.dialogs.services import on_call_started  # карточка «созвон начался» с кнопкой входа
+
+            on_call_started(session)
         SessionEvent.objects.create(
             session=session,
             event_type=SessionEvent.EventType.PARTICIPANT_JOINED,
@@ -165,6 +174,9 @@ class JoinSessionView(SessionActionView):
             "ws_token": make_ws_token(request.user.id, session.webrtc_room_id, role),
             "role": role,
             "peer": peer,
+            # Чат диалога пары для панели чата в звонке (id диалога = id разговора)
+            "conversation_id": str(dialogs_ensure(session.client, session.psychologist_profile).id),
+            "dialogue_id": str(dialogs_ensure(session.client, session.psychologist_profile).id),
         })
 
 
@@ -175,7 +187,7 @@ class CompleteSessionView(SessionActionView):
             return error
         if session.status != S.IN_PROGRESS:
             return Response(
-                {"detail": "Завершить можно только идущую сессию."},
+                {"detail": "Завершить можно только идущий созвон."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         session.status = S.COMPLETED
@@ -186,4 +198,7 @@ class CompleteSessionView(SessionActionView):
             event_type=SessionEvent.EventType.SESSION_ENDED,
             metadata={"completed_by": participant_role(session, request.user)},
         )
+        from apps.dialogs.services import on_call_ended  # карточка «созвон завершён, N мин»
+
+        on_call_ended(session)
         return Response(SessionSerializer(session).data)

@@ -28,6 +28,8 @@ export type StaffPermission =
   | "audit.view"
   | "system.view"
   | "lab.use"
+  | "finance.view"
+  | "finance.manage"
   | "staff.view"
   | "staff.manage";
 

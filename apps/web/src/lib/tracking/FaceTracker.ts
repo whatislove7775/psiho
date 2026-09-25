@@ -46,26 +46,30 @@ interface FilterParams {
 }
 
 /**
- * One-Euro parameters per channel group. minCutoff ≈ 1.2 Hz kills resting
- * jitter; beta lets fast motion through (blinks close in ~100 ms, so eyes get
- * the most aggressive speed response). Tuned in __tests__/faceMath.test.mjs.
+ * One-Euro parameters per channel group. minCutoff (Hz) sets how still a
+ * resting face stays; beta opens the filter while the value moves, so fast
+ * motion (blinks, syllables, head turns) passes with little lag.
+ *
+ * Retuned for latency (bounds checked in __tests__/faceMath.test.mjs).
+ * 50 %-crossing lag of a fast move through tracker + renderer at 30 fps,
+ * old → new: jaw 60 → 38 ms, smile 58 → 37 ms, brows 92 → 58 ms,
+ * head turn 133 → 46 ms, nod 140 → 53 ms; resting jitter still cut
+ * ≥ 2.5× overall. (The renderer's own smoothing, which used to add
+ * 40–80 ms, now follows at 60/s — see KitRenderer TRACK_RATE.)
  */
 export const FILTERS: Record<string, FilterParams> = {
-  // step 0→1 blink: 0.94 after 3 frames @30 fps, jitter ÷2.4
-  eyeBlink: { minCutoff: 1.2, beta: 1, dCutoff: 3 },
-  eyeWide: { minCutoff: 1.2, beta: 1, dCutoff: 1.5 },
-  // saccades: 0.91 after 3 frames, jitter ÷2.5
-  eyeLook: { minCutoff: 1.2, beta: 1, dCutoff: 1.5 },
-  // 4 Hz syllables keep ~75 % amplitude, jitter ÷2.3
-  jaw: { minCutoff: 1.2, beta: 2, dCutoff: 2 },
-  mouth: { minCutoff: 1.2, beta: 2, dCutoff: 2 },
-  // brows move slower; favour stillness (jitter ÷2.7)
-  brow: { minCutoff: 1.0, beta: 1, dCutoff: 1 },
-  default: { minCutoff: 1.2, beta: 1, dCutoff: 1.5 },
+  eyeBlink: { minCutoff: 1.2, beta: 2, dCutoff: 3 },
+  eyeWide: { minCutoff: 1.2, beta: 2.5, dCutoff: 3 },
+  eyeLook: { minCutoff: 1.2, beta: 2.5, dCutoff: 3 },
+  jaw: { minCutoff: 1.2, beta: 5, dCutoff: 2.5 },
+  mouth: { minCutoff: 1.2, beta: 4, dCutoff: 2.5 },
+  // brows: still slightly favour stillness
+  brow: { minCutoff: 1.2, beta: 3, dCutoff: 2 },
+  default: { minCutoff: 1.2, beta: 3, dCutoff: 2.5 },
   /** head rotation, radians (Euler YXZ) */
-  headRot: { minCutoff: 1.0, beta: 0.8, dCutoff: 1 },
+  headRot: { minCutoff: 1.2, beta: 6, dCutoff: 2 },
   /** head translation, MediaPipe canonical units (cm) */
-  headPos: { minCutoff: 1.0, beta: 0.05, dCutoff: 1 },
+  headPos: { minCutoff: 1.5, beta: 0.3, dCutoff: 2 },
 };
 
 function filterParams(name: string): FilterParams {

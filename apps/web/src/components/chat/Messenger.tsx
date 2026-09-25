@@ -371,7 +371,7 @@ export function Messenger({ mode }: { mode: MessengerMode }) {
           <div className={s.modalText}>
             {mode === "client" ? (
               <>
-                <p>Написать специалисту можно после записи на сессию. Пока можно поговорить с Тишей или написать в поддержку.</p>
+                <p>Написать специалисту можно после записи на созвон. Пока можно поговорить с Тишей или написать в поддержку.</p>
                 <div className={s.modalActions}>
                   <Button variant="primary" href="/app/specialists">
                     Выбрать специалиста
@@ -379,7 +379,7 @@ export function Messenger({ mode }: { mode: MessengerMode }) {
                 </div>
               </>
             ) : (
-              <p>Когда клиент запишется к вам на сессию, здесь можно будет начать с ним чат.</p>
+              <p>Когда клиент запишется к вам на созвон, здесь можно будет начать с ним чат.</p>
             )}
           </div>
         ) : (

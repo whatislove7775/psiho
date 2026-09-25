@@ -62,11 +62,11 @@ export default function AdminDashboard() {
                 value={data.specialists.active}
                 note={data.specialists.suspended ? `${data.specialists.suspended} приостановлено` : "Все активны"}
               />
-              <Stat label="Сессий сегодня" value={data.sessions.today} note={`${data.sessions.week} за 7 дней`} />
+              <Stat label="Созвонов сегодня" value={data.sessions.today} note={`${data.sessions.week} за 7 дней`} />
               {data.revenue ? (
                 <Stat label="Оборот за месяц, ₽" value={new Intl.NumberFormat("ru-RU").format(data.revenue.month_rub)} note={`Комиссия ${rub(data.revenue.month_fee_rub)}`} />
               ) : (
-                <Stat label="Впереди" value={data.sessions.upcoming} note="Оплаченных сессий" />
+                <Stat label="Впереди" value={data.sessions.upcoming} note="Оплаченных созвонов" />
               )}
             </>
           ) : (
@@ -75,7 +75,7 @@ export default function AdminDashboard() {
         </div>
 
         <Card as="section">
-          <CardHead title="Сессии по дням" sub="Последние 14 дней, без черновиков" />
+          <CardHead title="Созвоны по дням" sub="Последние 14 дней, без черновиков" />
           {data ? <SessionsChart series={data.series} /> : <Skeleton height={160} />}
         </Card>
 
@@ -173,10 +173,10 @@ function AttentionCard({ data, can }: { data: Dashboard; can: ReturnType<typeof 
 function SessionsChart({ series }: { series: Dashboard["series"] }) {
   const max = Math.max(1, ...series.map((d) => d.sessions));
   const total = series.reduce((a, d) => a + d.sessions, 0);
-  if (!total) return <EmptyState art={<EmptyArt scene="calendar" />} title="Сессий не было" text="Как только клиенты начнут записываться, здесь появится динамика." />;
+  if (!total) return <EmptyState art={<EmptyArt scene="calendar" />} title="Созвонов не было" text="Как только клиенты начнут назначать созвоны, здесь появится динамика." />;
   const label = (iso: string) => new Date(iso + "T12:00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
   return (
-    <figure className={s.chart} aria-label={`Сессии по дням, всего ${total}`}>
+    <figure className={s.chart} aria-label={`Созвоны по дням, всего ${total}`}>
       <div className={s.bars}>
         {series.map((d) => (
           <div key={d.date} className={s.barCol} tabIndex={0} aria-label={`${label(d.date)}: ${d.sessions}`}>

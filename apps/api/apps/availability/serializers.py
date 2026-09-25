@@ -85,7 +85,7 @@ class SettingsSerializer(serializers.Serializer):
         lo = attrs.get("min_duration", current.min_duration if current else 50)
         hi = attrs.get("max_duration", current.max_duration if current else 180)
         if lo > hi:
-            raise serializers.ValidationError({"max_duration": ["Самая длинная сессия короче самой короткой."]})
+            raise serializers.ValidationError({"max_duration": ["Самый длинный созвон короче самого короткого."]})
         durations = attrs.get("durations", current.durations if current else list(engine.DURATION_OPTIONS))
         attrs["durations"] = sorted({int(d) for d in durations})
         if not any(lo <= d <= hi for d in attrs["durations"]):

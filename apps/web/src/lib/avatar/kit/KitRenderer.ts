@@ -43,6 +43,13 @@ function loadMeta(): Promise<HeadMeta> {
   return (metaPromise ??= fetch(`${KIT_BASE}/head.json`).then((r) => r.json()));
 }
 
+/**
+ * Follow rate (1/s) for tracked input: at 30 fps a new camera value is ~86 %
+ * reached on the very next frame. Was 24 (shapes) / 12 (head), which alone
+ * added ~40 / ~80 ms of lag on top of the tracker's filtering.
+ */
+const TRACK_RATE = 60;
+
 const FRAMING: Record<Framing, { top: number; bottom: number; fov: number; width: number }> = {
   face: { top: 1.6, bottom: -1.1, fov: 22, width: 2.9 },
   portrait: { top: 1.8, bottom: -1.35, fov: 24, width: 3.3 },
@@ -519,6 +526,26 @@ export class KitRenderer implements AvatarRendererApi {
     this.camera.updateProjectionMatrix();
   }
 
+  /**
+   * Called after every rendered frame (e.g. to push it to a
+   * `captureStream(0)` track with requestFrame()).
+   */
+  onRender: (() => void) | null = null;
+
+  /**
+   * Render right now. Face tracking calls this as soon as a camera frame has
+   * been processed, so the avatar never waits for the next animation tick
+   * (that wait used to add up to a whole frame of latency).
+   */
+  renderNow() {
+    if (!this.running) return;
+    const t = performance.now();
+    this.lastFrame = t;
+    this.animate(Math.min(0.1, this.clock.getDelta()));
+    this.renderer.render(this.scene, this.camera);
+    this.onRender?.();
+  }
+
   start() {
     if (this.running) return;
     this.running = true;
@@ -526,10 +553,15 @@ export class KitRenderer implements AvatarRendererApi {
     const loop = (t: number) => {
       if (!this.running) return;
       this.raf = requestAnimationFrame(loop);
-      if (t - this.lastFrame < 1000 / this.opts.fps - 2) return;
-      this.lastFrame = t;
+      // While tracking drives renderNow() the loop only fills gaps (a slow or
+      // dropped camera frame); otherwise it animates the idle avatar at `fps`.
+      const driven = performance.now() - this.lastTrack < 150;
+      const gap = driven ? 1000 / 12 : 1000 / this.opts.fps - 2;
+      if (performance.now() - this.lastFrame < gap) return;
+      this.lastFrame = performance.now();
       this.animate(Math.min(0.1, this.clock.getDelta()));
       this.renderer.render(this.scene, this.camera);
+      this.onRender?.();
     };
     this.raf = requestAnimationFrame(loop);
   }
@@ -617,13 +649,16 @@ export class KitRenderer implements AvatarRendererApi {
       target.eyeLookDownLeft = target.eyeLookDownRight = Math.max(0, -gy);
       this.headTarget.setFromEuler(new THREE.Euler(Math.sin(t * 0.27 + 1) * 0.035 - this.look.pitch, Math.sin(t * 0.35) * 0.06 + this.look.yaw, Math.sin(t * 0.22) * 0.025, "YXZ"));
     }
-    const k = 1 - Math.exp(-dt * (tracking ? 24 : 14));
-    const kb = 1 - Math.exp(-dt * 40);
+    // Tracked input is already One-Euro filtered (FaceTracker), so it is
+    // followed almost directly; the short blend only hides the jump between
+    // idle animation and tracking. Idle motion keeps its soft easing.
+    const k = 1 - Math.exp(-dt * (tracking ? TRACK_RATE : 14));
+    const kb = 1 - Math.exp(-dt * (tracking ? TRACK_RATE : 40));
     for (const s of SHAPES) {
       const cur = this.current[s] ?? 0;
       this.current[s] = cur + ((target[s] ?? 0) - cur) * (s.startsWith("eyeBlink") ? kb : k);
     }
-    this.headCurrent.slerp(this.headTarget, 1 - Math.exp(-dt * 12));
+    this.headCurrent.slerp(this.headTarget, 1 - Math.exp(-dt * (tracking ? TRACK_RATE : 12)));
     this.headPivot.quaternion.copy(this.headCurrent);
     this.applyRig();
   }

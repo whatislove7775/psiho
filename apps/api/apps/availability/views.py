@@ -200,7 +200,7 @@ class AvailableStartsView(APIView):
             )
         if duration not in durations:
             return Response({
-                "detail": f"Специалист проводит сессии длительностью {services.human_list(durations)} минут.",
+                "detail": f"Специалист проводит созвоны длительностью {services.human_list(durations)} минут.",
             }, status=400)
         horizon_until = today + timedelta(days=s.horizon_days)
         starts = services.starts_for(profile, duration, max(first, today), min(last, horizon_until))

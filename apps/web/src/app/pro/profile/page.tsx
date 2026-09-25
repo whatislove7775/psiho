@@ -58,7 +58,7 @@ function validate(f: Form): Errors {
   if (!f.display_name.trim()) e.display_name = "Укажите имя, под которым вас увидят клиенты";
   if (f.bio.trim().length < 40) e.bio = `Напишите хотя бы пару предложений: сейчас ${f.bio.trim().length} из 40 символов`;
   if (!f.specializations.length) e.specializations = "Выберите хотя бы одну тему из подсказок или добавьте свою";
-  if (!f.languages.length) e.languages = "Добавьте язык, на котором проводите сессии";
+  if (!f.languages.length) e.languages = "Добавьте язык, на котором проводите созвоны";
   const exp = Number(f.experience_years);
   if (f.experience_years === "" || !Number.isInteger(exp) || exp < 0 || exp > 70) e.experience_years = "Целое число лет, от 0 до 70";
   return e;
@@ -222,7 +222,7 @@ export default function ProfilePage() {
                     addLabel="Добавить"
                   />
                 </Field>
-                <Field label="Языки сессий" error={errors.languages}>
+                <Field label="Языки созвонов" error={errors.languages}>
                   <ChipsField value={form.languages} onChange={(v) => set("languages", v)} suggestions={LANGS} placeholder="Другой язык" addLabel="Добавить" max={6} />
                 </Field>
               </div>
@@ -257,7 +257,7 @@ export default function ProfilePage() {
                 ))}
               </div>
               <p className={c.note}>
-                Комиссия платформы 20%. Цена часа, длительность сессий и перерывы настраиваются в расписании. Стоимость сессии
+                Комиссия платформы 20%. Цена часа, длительность созвонов и перерывы настраиваются в расписании. Стоимость созвона
                 пропорциональна длительности и округляется до 10 ₽.
               </p>
             </Card>
@@ -305,14 +305,14 @@ function Preview({ form, photo }: { form: Form | null; photo: string | null }) {
         <div className={c.pFoot}>
           <div>
             <div className={c.pPrice}>{rub(Number(form.session_rate_rub) || 0)}</div>
-            <div className={c.pMeta}>самая короткая сессия</div>
+            <div className={c.pMeta}>самый короткий созвон</div>
           </div>
           <Button variant="primary" size="sm" tabIndex={-1} aria-hidden>
             Записаться
           </Button>
         </div>
       </Card>
-      <p className={c.note}>Почта и документы клиентам не показываются. На сессии клиент видит ваше видео с камеры.</p>
+      <p className={c.note}>Почта и документы клиентам не показываются. На созвоне клиент видит ваше видео с камеры.</p>
     </div>
   );
 }

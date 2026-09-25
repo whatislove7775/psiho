@@ -2,6 +2,7 @@
 
 import { Headset } from "lucide-react";
 import { AvatarThumb } from "@/components/avatar/AvatarThumb";
+import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import type { Counterpart } from "@/lib/api/chat";
 import { Tisha } from "./Tisha";
 import s from "./chat.module.css";
@@ -18,6 +19,13 @@ export function ConvAvatar({ who, size = 44, seed }: { who: Counterpart; size?: 
     return (
       <span className={`${s.avatar} ${s.avatarSupport}`} style={{ width: size, height: size }}>
         <Headset size={Math.round(size * 0.45)} strokeWidth={1.8} />
+      </span>
+    );
+  }
+  if (who.type === "specialist" && who.photo_url !== undefined) {
+    return (
+      <span className={s.avatar} style={{ width: size, height: size }}>
+        <SpecialistPhoto url={who.photo_url ?? null} name={who.name} size={size} alt="" />
       </span>
     );
   }

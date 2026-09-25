@@ -1,7 +1,11 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { ArrowLeft, BadgeCheck, UserX } from "lucide-react";
+import { ArrowLeft, BadgeCheck, MessageCircle, UserX } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useToast } from "@/ui";
+import { dialogsApi } from "@/lib/api/dialogs";
 import { Badge, Button, Card, EmptyState, Skeleton } from "@/ui";
 import { WithRail } from "@/components/shell/AppShell";
 import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
@@ -17,6 +21,9 @@ import { EmptyArt } from "@/components/illustrations";
 
 export default function SpecialistProfile() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const toast = useToast();
+  const [starting, setStarting] = useState(false);
   const id = Number(params?.id);
   const psy = useLoad(async () => {
     if (!Number.isFinite(id)) throw new ApiError(404, "not found");
@@ -105,7 +112,7 @@ export default function SpecialistProfile() {
                     </dd>
                   </div>
                   <div>
-                    <dt>Сессия</dt>
+                    <dt>Созвон</dt>
                     <dd>
                       {p.booking && p.booking.min_duration !== p.booking.max_duration
                         ? `${durationLabel(p.booking.min_duration)} – ${durationLabel(p.booking.max_duration)}`
@@ -119,9 +126,28 @@ export default function SpecialistProfile() {
                     </dd>
                   </div>
                 </dl>
-                <Button variant="primary" href="#booking" className={s.jump}>
-                  Выбрать время
-                </Button>
+                <div className={s.ctaRow}>
+                  <Button
+                    variant="primary"
+                    loading={starting}
+                    icon={<MessageCircle size={18} strokeWidth={1.8} />}
+                    onClick={async () => {
+                      setStarting(true);
+                      try {
+                        const d = await dialogsApi.startWithSpecialist(p.id);
+                        router.push(`/app/dialogs?d=${encodeURIComponent(d.id)}`);
+                      } catch (e) {
+                        toast(e instanceof ApiError ? e.message : "Не получилось начать диалог", { error: true });
+                        setStarting(false);
+                      }
+                    }}
+                  >
+                    Начать диалог
+                  </Button>
+                  <Button variant="secondary" href="#booking" className={s.jump}>
+                    Выбрать время
+                  </Button>
+                </div>
               </div>
             </>
           ) : (
@@ -162,7 +188,7 @@ export default function SpecialistProfile() {
             <div className={s.section}>
               <h2>Как пройдёт встреча</h2>
               <p>
-                Зашифрованная видеосвязь напрямую между вами и специалистом.
+                Сначала можно просто написать специалисту — созвон назначается прямо в диалоге. Видеосвязь идёт напрямую и зашифрована.
                 Специалист видит ваш аватар и слышит голос, но не знает, кто вы.
               </p>
             </div>

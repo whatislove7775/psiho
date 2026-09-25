@@ -100,6 +100,30 @@ services:
       - YOOKASSA_RETURN_URL
       - YOOKASSA_WEBHOOK_SECRET
       - PLATFORM_FEE_PERCENT
+      # ── Баланс и выплаты (apps.billing, docs/PAYMENTS.md; необязательные) ──
+      - BILLING_PUBLIC_URL
+      - BILLING_MOCK_ENABLED
+      - BILLING_YOOKASSA_CONFIRMATION
+      - BILLING_WEBHOOK_IP_CHECK
+      - YOOKASSA_PAYOUT_AGENT_ID
+      - YOOKASSA_PAYOUT_SECRET_KEY
+      - BILLING_RECEIPTS_ENABLED
+      - BILLING_RECEIPT_REQUIRED
+      - BILLING_RECEIPT_VAT_CODE
+      - BILLING_RECEIPT_TAX_SYSTEM_CODE
+      - BILLING_RECEIPT_PAYMENT_MODE
+      - BILLING_RECEIPT_PAYMENT_SUBJECT
+      - BILLING_ENCRYPTION_KEY
+      - BILLING_TOPUP_MIN_RUB
+      - BILLING_TOPUP_MAX_RUB
+      - BILLING_TOPUP_PRESETS_RUB
+      - BILLING_MAX_BALANCE_RUB
+      - BILLING_FREE_CANCEL_HOURS
+      - BILLING_LATE_CANCEL_PENALTY_PERCENT
+      - BILLING_EARNINGS_HOLD_HOURS
+      - BILLING_UNPAID_TTL_MINUTES
+      - BILLING_SETTLE_GRACE_MINUTES
+      - BILLING_PAYOUT_MIN_RUB
       # ── TURN (for backend-issued ICE config, if used) ──
       - TURN_USER=${TURN_USER:-aprosop}
       - TURN_PASSWORD=${TURN_PASSWORD:-aprosopsecretturn}
@@ -146,7 +170,8 @@ services:
       redis:
         condition: service_started
 
-  # Удаляет сообщения чатов с истёкшим сроком хранения (режим «24 часа») каждые 5 минут.
+  # Каждые 5 минут: удаляет сообщения чатов с истёкшим сроком хранения (режим «24 часа»)
+  # и рассчитывает деньги по созвонам (billing_sweep: неявки, неоплаченные записи, созревание заработка).
   scheduler:
     image: aprosop-api:latest
     pull_policy: never
@@ -161,8 +186,15 @@ services:
       - DB_HOST=db
       - DB_PORT=5432
       - REDIS_URL=redis://redis:6379/0
+      # billing_sweep считает деньги по тем же правилам, что и api
+      - PLATFORM_FEE_PERCENT
+      - BILLING_FREE_CANCEL_HOURS
+      - BILLING_LATE_CANCEL_PENALTY_PERCENT
+      - BILLING_EARNINGS_HOLD_HOURS
+      - BILLING_UNPAID_TTL_MINUTES
+      - BILLING_SETTLE_GRACE_MINUTES
     command: >
-      sh -c "while :; do /app/.venv/bin/python manage.py purge_chats; sleep 300; done"
+      sh -c "while :; do /app/.venv/bin/python manage.py purge_chats; /app/.venv/bin/python manage.py billing_sweep; sleep 300; done"
     depends_on:
       api:
         condition: service_healthy

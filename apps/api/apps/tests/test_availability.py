@@ -273,18 +273,18 @@ def test_booking_durations_and_price(psychologist, client_user, day, settings):
     ok = {**base, "scheduled_at": at(day, 11, 40).isoformat(), "duration_minutes": 50}
     assert o.post("/api/v1/sessions/book/", ok, format="json").status_code == 201
 
-    # YooKassa получает рассчитанную цену
-    settings.YOOKASSA_SHOP_ID, settings.YOOKASSA_SECRET_KEY = "shop", "key"
-    fake = mock.Mock(id="yk-dur")
-    fake.confirmation.confirmation_url = "https://yoomoney.ru/checkout/dur"
+    # Оплата с баланса (apps.billing) замораживает рассчитанную цену
+    from apps.billing.services import adjust_client_balance
+    from apps.billing.ledger import balance_of
+
     third = client_user.__class__.objects.create_anonymous_client("thirdpass123")
-    with mock.patch("apps.payments.services.YKPayment") as yk:
-        yk.create.return_value = fake
-        resp = auth_client(third).post("/api/v1/sessions/book/", {
-            **base, "scheduled_at": at(day + timedelta(days=1), 10).isoformat(), "duration_minutes": 120,
-        }, format="json")
+    adjust_client_balance(third, 10000_00, reason="тест", key="avail-test")
+    resp = auth_client(third).post("/api/v1/sessions/book/", {
+        **base, "scheduled_at": at(day + timedelta(days=1), 10).isoformat(), "duration_minutes": 120,
+    }, format="json")
     assert resp.status_code == 201, resp.content
-    assert yk.create.call_args[0][0]["amount"]["value"] == "7200.00"
+    assert resp.json()["status"] == "paid" and resp.json()["amount_rub"] == 7200
+    assert balance_of(third) == 2800_00
 
 
 @pytest.mark.django_db

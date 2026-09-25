@@ -117,7 +117,7 @@ export default function CheckPage() {
     <>
       <PageHeader
         title="Проверка камеры и микрофона"
-        sub="Клиент увидит ваше настоящее видео с камеры и услышит обычный голос. Проверьте кадр, свет и звук перед первой сессией и после смены устройства."
+        sub="Клиент увидит ваше настоящее видео с камеры и услышит обычный голос. Проверьте кадр, свет и звук перед первым созвоном и после смены устройства."
         action={
           <Button variant="primary" icon={<RotateCw size={18} />} onClick={start} loading={state === "asking"}>
             Проверить снова
@@ -191,7 +191,7 @@ function Tips() {
   ];
   return (
     <Card as="section">
-      <CardHead title="Перед сессией" />
+      <CardHead title="Перед созвоном" />
       <ul className={c.tips}>
         {tips.map((t) => (
           <li key={t.title}>

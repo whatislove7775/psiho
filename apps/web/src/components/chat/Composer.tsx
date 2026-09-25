@@ -3,6 +3,7 @@
 import { Check, Mic, Paperclip, Pencil, Send, Square, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Segmented } from "@/ui";
+import { MI, Morph } from "@/components/ui/Morph";
 import type { VoicePreset } from "@/hooks/useVoiceTransform";
 import { fmtDuration, VoicePlayer } from "./VoicePlayer";
 import { useVoiceRecorder, type VoiceClip } from "./useVoiceRecorder";
@@ -237,7 +238,7 @@ export function Composer({
           onKeyDown={onKey}
           aria-label="Текст сообщения"
         />
-        {hasText || editing || !allowVoice ? (
+        {editing || !allowVoice ? (
           <button
             type="button"
             className={s.sendBtn}
@@ -248,8 +249,16 @@ export function Composer({
             {busy ? <span className={s.miniSpin} /> : editing ? <Check size={20} /> : <Send size={20} />}
           </button>
         ) : (
-          <button type="button" className={s.micBtn} onClick={rec.open} disabled={disabled} aria-label="Записать голосовое">
-            <Mic size={20} />
+          /* One button: the mic morphs into «send» as soon as there is text */
+          <button
+            type="button"
+            className={`${s.sendBtn} ${s.morphBtn}`}
+            data-mode={hasText ? "send" : "mic"}
+            onClick={hasText ? submit : rec.open}
+            disabled={hasText ? disabled || busy : disabled}
+            aria-label={hasText ? "Отправить" : "Записать голосовое"}
+          >
+            {busy ? <span className={s.miniSpin} /> : <Morph icon={hasText ? MI.Send : MI.Mic} size={20} />}
           </button>
         )}
       </div>

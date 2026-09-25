@@ -59,10 +59,10 @@ function SessionsPage() {
 
   return (
     <>
-      <PageHeader title="Сессии" sub="Все записи клиентов. Содержание сессий не хранится: видны только время, статус и оплата." />
+      <PageHeader title="Созвоны" sub="Все созвоны клиентов. Содержание созвонов не хранится: видны только время, статус и оплата." />
       <div className={s.tabsRow}>
         <Segmented<Filter>
-          ariaLabel="Статус сессий"
+          ariaLabel="Статус созвонов"
           value={filter}
           onChange={setFilter}
           options={[
@@ -74,7 +74,7 @@ function SessionsPage() {
         />
       </div>
       <Toolbar>
-        <SearchBox value={q} onChange={setQ} placeholder="Псевдоним клиента, специалист или ID" label="Поиск сессии" />
+        <SearchBox value={q} onChange={setQ} placeholder="Псевдоним клиента, специалист или ID" label="Поиск созвона" />
         <label className={s.dateField}>
           <span>С</span>
           <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="С даты" />
@@ -117,10 +117,10 @@ function SessionsPage() {
                 );
               })}
             </div>
-            <Pager page={data.page} pages={data.pages} count={data.count} onPage={setPage} noun={["сессия", "сессии", "сессий"]} />
+            <Pager page={data.page} pages={data.pages} count={data.count} onPage={setPage} noun={["созвон", "созвона", "созвонов"]} />
           </>
         ) : (
-          <EmptyState art={<EmptyArt scene="search" />} icon={<CalendarDays size={22} />} title="Сессий не нашли" text="Измените фильтры или период." />
+          <EmptyState art={<EmptyArt scene="search" />} icon={<CalendarDays size={22} />} title="Созвонов не нашли" text="Измените фильтры или период." />
         )}
       </Card>
       <SessionModal id={openId} onClose={() => setOpenId(null)} onChanged={load} />
@@ -151,7 +151,7 @@ function SessionModal({ id, onClose, onChanged }: { id: string | null; onClose: 
     setBusy(true);
     try {
       setX(await staffApi.cancelSession(x.id, reason, dialog === "refund"));
-      toast(dialog === "refund" ? "Возврат оформлен" : "Сессия отменена");
+      toast(dialog === "refund" ? "Возврат оформлен" : "Созвон отменён");
       setDialog(null);
       onChanged();
     } catch (e) {
@@ -168,7 +168,7 @@ function SessionModal({ id, onClose, onChanged }: { id: string | null; onClose: 
 
   return (
     <>
-      <Modal open={!!id && !dialog} onClose={onClose} title="Сессия" width={620}>
+      <Modal open={!!id && !dialog} onClose={onClose} title="Созвон" width={620}>
         {error ? (
           <p className={s.errorText}>{error}</p>
         ) : !x || !st ? (
@@ -245,9 +245,9 @@ function SessionModal({ id, onClose, onChanged }: { id: string | null; onClose: 
       </Modal>
       <ReasonModal
         open={dialog === "cancel"}
-        title="Отменить сессию без возврата?"
-        text="Слот освободится, клиент и специалист увидят отмену. Деньги останутся у сервиса, вернуть их можно позже."
-        confirm="Отменить сессию"
+        title="Отменить созвон без возврата?"
+        text="Слот освободится, клиент и специалист увидят отмену. Если созвон оплачен с баланса, деньги вернутся на баланс клиента; удержать часть можно в разделе «Финансы»."
+        confirm="Отменить созвон"
         variant="danger"
         busy={busy}
         onClose={() => setDialog(null)}
@@ -256,7 +256,7 @@ function SessionModal({ id, onClose, onChanged }: { id: string | null; onClose: 
       <ReasonModal
         open={dialog === "refund"}
         title="Вернуть деньги клиенту?"
-        text={`${x ? rub(x.amount_rub) : ""} вернутся на карту через ЮKassa, обычно в течение нескольких дней. Действие нельзя отменить.`}
+        text={`${x ? rub(x.amount_rub) : ""} ${x?.payment ? "вернутся на карту через ЮKassa, обычно в течение нескольких дней" : "вернутся на анонимный баланс клиента"}. Действие нельзя отменить.`}
         confirm="Оформить возврат"
         variant="danger"
         busy={busy}

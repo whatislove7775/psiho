@@ -1,31 +1,43 @@
 "use client";
 
-import { SessionTimer } from "./SessionTimer";
+/**
+ * The call screen (/room/[id]): lobby → call → end, for both sides.
+ *
+ *  - A client is only ever seen as their avatar (useAvatarCamera) with an
+ *    optional voice filter; their camera picture never leaves the device.
+ *  - A specialist sends real camera video (useRealCamera).
+ *  - The in-call chat is the dialogue's thread (C1's <DialogThread compact />).
+ *
+ * With `labToken` (a signed invite from /admin/lab) it opens a staff test
+ * room instead: no login, no booking, the side comes from the token.
+ */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Camera,
-  CameraOff,
+  ArrowLeft,
   Check,
   FlaskConical,
   Lock,
-  Mic,
-  MicOff,
-  NotebookPen,
+  MessageCircle,
+  MoreHorizontal,
   PhoneOff,
   RefreshCw,
+  Star,
+  Users,
   Waves,
-  Wind,
+  WifiOff,
   X,
 } from "lucide-react";
-import { Badge, Button, Card, Segmented, Spinner } from "@/ui";
+import { Button, Modal, Spinner, useToast } from "@/ui";
+import { MI, Morph } from "@/components/ui/Morph";
 import { ApiError } from "@/lib/api/client";
 import { sessionsApi } from "@/lib/api/endpoints";
 import { labApi, type LabJoinResponse } from "@/lib/api/lab";
+import { callsApi, type CallIssue, type CallTech } from "@/lib/api/calls";
 import type { JoinResponse, Session } from "@/lib/api/types";
 import { useAuth, homeFor } from "@/lib/auth/store";
 import { normalizeAvatar, randomAvatar } from "@/lib/avatar/schema";
-import { when, untilLabel } from "@/lib/format";
+import { when } from "@/lib/format";
 import { AvatarThumb } from "@/components/avatar/AvatarThumb";
 import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import { BackdropPicker } from "@/components/avatar/BackdropPicker";
@@ -33,49 +45,21 @@ import { loadBackdrop, saveBackdrop, type BackdropId } from "@/lib/avatar/backdr
 import { useAvatarCamera } from "@/hooks/useAvatarCamera";
 import { useRealCamera } from "@/hooks/useRealCamera";
 import { useP2PCall } from "@/hooks/useP2PCall";
-import { useVoiceTransform, type VoicePreset } from "@/hooks/useVoiceTransform";
+import { useVoiceTransform, VOICE_PRESETS, type VoicePreset } from "@/hooks/useVoiceTransform";
+import { avatarPerf } from "@/lib/tracking/perf";
 import { SessionNotepad } from "@/components/session/SessionNotepad";
 import { BreathingSync } from "@/components/session/BreathingSync";
+import { DialogThread } from "@/components/dialogs/DialogThread";
 import { TeaWait } from "@/components/illustrations";
+import { CanvasSlot, DraggablePip, MicMeter, QualityBars, QUALITY_LABEL, SelfVideo, mmss, useRemaining } from "./parts";
+import { CallMore, canPickSpeaker, useDevices, type DeviceChoice } from "./CallMore";
+import { VoicePicker, loadVoice, saveVoice } from "./VoicePicker";
+import { IssueChips, ReportProblem } from "./ReportProblem";
+import { DebugOverlay } from "./DebugOverlay";
 import art from "./art.module.css";
 import s from "./Room.module.css";
 
-const VOICES: { value: VoicePreset; label: string }[] = [
-  { value: "off", label: "Мой голос" },
-  { value: "lower", label: "Ниже" },
-  { value: "higher", label: "Выше" },
-];
-
-function mmss(sec: number) {
-  const m = Math.floor(sec / 60);
-  return `${String(m).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
-}
-
-/** Mounts an existing canvas element (the live avatar) into a React tree. */
-function CanvasSlot({ canvas }: { canvas: HTMLCanvasElement | null }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const host = ref.current;
-    if (!host || !canvas) return;
-    host.appendChild(canvas);
-    return () => {
-      if (canvas.parentNode === host) host.removeChild(canvas);
-    };
-  }, [canvas]);
-  return <div ref={ref} style={{ position: "absolute", inset: 0 }} />;
-}
-
-/** Specialist's own camera self-view (mirrored). Never used for clients. */
-function SelfVideo({ stream }: { stream: MediaStream | null }) {
-  const ref = useRef<HTMLVideoElement>(null);
-  useEffect(() => {
-    const v = ref.current;
-    if (!v) return;
-    v.srcObject = stream;
-    if (stream) v.play().catch(() => undefined);
-  }, [stream]);
-  return <video ref={ref} className={s.selfVideo} muted playsInline autoPlay aria-label="Ваша камера" />;
-}
+type Panel = null | "chat" | "voice" | "more" | "notes" | "breath";
 
 /** A test room from the staff lab, shaped like a Session so the normal room UI works unchanged. */
 function labSession(res: LabJoinResponse): Session {
@@ -99,12 +83,20 @@ function clock(iso: string) {
   return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
 
-/**
- * The session room. With `labToken` (a signed invite from /admin/lab) it opens a
- * staff test room instead: no login, no booking, the side comes from the token.
- */
+function minutesText(sec: number) {
+  const m = Math.max(1, Math.round(sec / 60));
+  if (m < 60) return `${m} мин`;
+  return `${Math.floor(m / 60)} ч ${m % 60} мин`;
+}
+
+function browserName() {
+  const ua = navigator.userAgent;
+  return /edg\//i.test(ua) ? "Edge" : /firefox/i.test(ua) ? "Firefox" : /chrome|crios/i.test(ua) ? "Chrome" : /safari/i.test(ua) ? "Safari" : "other";
+}
+
 export function Room({ sessionId, labToken }: { sessionId: string; labToken?: string }) {
   const router = useRouter();
+  const toast = useToast();
   const { user, status: authStatus, bootstrap } = useAuth();
   const isLab = !!labToken;
   const [labJoin, setLabJoin] = useState<LabJoinResponse | null>(null);
@@ -114,13 +106,24 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
   const [join, setJoin] = useState<JoinResponse | null>(null);
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
-  const [voice, setVoice] = useState<VoicePreset>("off");
-  const [panel, setPanel] = useState<null | "notes" | "breath" | "voice">(null);
-  const [completing, setCompleting] = useState(false);
-  const [completed, setCompleted] = useState(false);
+  const [voice, setVoiceState] = useState<VoicePreset>("off");
+  const [panel, setPanel] = useState<Panel>(null);
+  const [confirmEnd, setConfirmEnd] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [spent, setSpent] = useState(0);
+  const [peerHere, setPeerHere] = useState<boolean | null>(null);
+  const [debug, setDebug] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [sink, setSink] = useState<string | null>(null);
+  const [idle, setIdle] = useState(false);
+  const [reconnects, setReconnects] = useState(0);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const remoteEl = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     bootstrap();
+    setDebug(/[?&]debug=1\b/.test(window.location.search));
+    setVoiceState(loadVoice());
   }, [bootstrap]);
   useEffect(() => {
     if (authStatus === "guest" && !isLab) router.replace(`/login?next=${encodeURIComponent(`/room/${sessionId}`)}`);
@@ -143,7 +146,7 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
     sessionsApi
       .get(sessionId)
       .then(setSession)
-      .catch((e) => setLoadError(e instanceof ApiError ? e.message : "Не получилось загрузить сессию."));
+      .catch((e) => setLoadError(e instanceof ApiError ? e.message : "Не получилось загрузить звонок."));
   }, [authStatus, sessionId, isLab]);
 
   // Clients are only ever seen as their avatar; specialists use their real camera.
@@ -158,31 +161,55 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
         : isLab
           ? randomAvatar(labJoin?.test_room.id ?? "lab")
           : user?.avatar_config
-          ? normalizeAvatar(user.avatar_config)
-          : randomAvatar(user?.id ?? labJoin?.test_room.id ?? "me"),
+            ? normalizeAvatar(user.avatar_config)
+            : randomAvatar(user?.id ?? labJoin?.test_room.id ?? "me"),
     [user, labAvatar, labJoin?.test_room.id, isLab],
   );
-  const backHref = isLab ? "/admin/lab" : homeFor(user?.role);
   const [backdrop, setBackdropState] = useState<BackdropId>("dusk");
   useEffect(() => setBackdropState(loadBackdrop()), []);
   const setBackdrop = (id: BackdropId) => {
     setBackdropState(id);
     saveBackdrop(id);
   };
+  const setVoice = (v: VoicePreset) => {
+    setVoiceState(v);
+    saveVoice(v);
+  };
   const avatarCam = useAvatarCamera(myAvatar, { backdrop });
   const realCam = useRealCamera();
-  const cam = isPro
-    ? { ...realCam, faceLost: false, tracking: false, calibrating: false, recalibrate: () => undefined }
-    : avatarCam;
-  const { transformedStream } = useVoiceTransform({ inputStream: isPro ? null : avatarCam.audioStream, preset: voice });
+  const cam = isPro ? realCam : avatarCam;
+  const camState = cam.state;
+  const camError = cam.error;
+  const micStream = isPro ? realCam.audioStream : avatarCam.audioStream;
+  const { transformedStream } = useVoiceTransform({
+    inputStream: isPro ? null : avatarCam.audioStream,
+    preset: isPro ? "off" : voice,
+    preload: !isPro,
+  });
+
+  // Start the camera straight away if the browser already allows it (no extra click).
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (autoStarted.current || !session || phase !== "lobby") return;
+    autoStarted.current = true;
+    const perms = navigator.permissions as Permissions | undefined;
+    perms
+      ?.query({ name: "camera" as PermissionName })
+      .then((p) => {
+        if (p.state === "granted") cam.start();
+      })
+      .catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, phase]);
 
   const localStream = useMemo(() => {
     if (phase !== "call") return null;
     if (isPro) return realCam.stream;
     if (!avatarCam.videoStream) return null;
-    const audio = transformedStream?.getAudioTracks() ?? avatarCam.audioStream?.getAudioTracks() ?? [];
+    // With a filter chosen, never fall back to the raw voice (not even while the filter starts up).
+    const audio = voice === "off" ? (avatarCam.audioStream?.getAudioTracks() ?? []) : (transformedStream?.getAudioTracks() ?? []);
     return new MediaStream([...avatarCam.videoStream.getVideoTracks(), ...audio]);
-  }, [isPro, realCam.stream, avatarCam.videoStream, avatarCam.audioStream, transformedStream, phase]);
+  }, [isPro, realCam.stream, avatarCam.videoStream, avatarCam.audioStream, transformedStream, voice, phase]);
 
   const onEnd = useCallback(() => setPhase("ended"), []);
   const call = useP2PCall({
@@ -193,11 +220,27 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
     videoMaxBitrate: isPro ? 1_500_000 : 900_000,
   });
 
-  // Keep the session's can_join fresh while waiting in the lobby
   useEffect(() => {
-    if (isLab || phase !== "lobby" || !session || session.can_join) return;
-    const t = setInterval(() => sessionsApi.get(sessionId).then(setSession).catch(() => undefined), 30000);
-    return () => clearInterval(t);
+    if (call.status === "reconnecting") setReconnects((n) => n + 1);
+  }, [call.status]);
+
+  // Lobby: keep can_join fresh and show whether the other side is already in the room.
+  useEffect(() => {
+    if (isLab || phase !== "lobby" || !session) return;
+    let alive = true;
+    const poll = () => {
+      callsApi
+        .presence(sessionId)
+        .then((r) => alive && setPeerHere(r.peer_in_room))
+        .catch(() => undefined);
+      if (!session.can_join) sessionsApi.get(sessionId).then((x) => alive && setSession(x)).catch(() => undefined);
+    };
+    poll();
+    const t = setInterval(poll, 5000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
   }, [phase, session, sessionId, isLab]);
 
   const peer = session
@@ -210,11 +253,14 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
   const peerPhoto = isPro ? null : (join?.peer.photo_url ?? session?.psychologist.photo_url ?? null);
   /** The other party: a client is shown as their avatar, a specialist as their real photo. */
   const peerPic = (size: number) =>
-    isPro ? (
-      <AvatarThumb config={peerAvatar} seed={peer?.seed} size={size} />
-    ) : (
-      <SpecialistPhoto url={peerPhoto} name={peerName} size={size} />
-    );
+    isPro ? <AvatarThumb config={peerAvatar} seed={peer?.seed} size={size} /> : <SpecialistPhoto url={peerPhoto} name={peerName} size={size} />;
+  const peerWord = isPro ? "Клиент" : "Специалист";
+
+  const conversationId = join?.conversation_id ?? session?.conversation_id ?? null;
+  const dialogueId = join?.dialogue_id ?? session?.dialogue_id ?? conversationId;
+  const dialogueHref = isLab ? "/admin/lab" : `${isPro ? "/pro" : "/app"}/dialogs${dialogueId ? `?d=${encodeURIComponent(dialogueId)}` : ""}`;
+
+  const remaining = useRemaining(session?.scheduled_at ?? null, isLab ? null : (session?.duration_minutes ?? null));
 
   const enter = async () => {
     setJoining(true);
@@ -231,40 +277,118 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
   };
 
   const leave = () => {
+    setSpent(call.elapsed);
     call.hangUp();
     cam.stop();
+    setConfirmEnd(false);
+    setPanel(null);
     setPhase("ended");
   };
 
-  const complete = async () => {
-    setCompleting(true);
-    try {
-      await sessionsApi.complete(sessionId);
-      setCompleted(true);
-    } catch {
-      /* already completed or not allowed — ignore */
-      setCompleted(true);
-    } finally {
-      setCompleting(false);
-    }
-  };
-
   useEffect(() => {
-    if (phase === "ended") cam.stop();
+    if (phase === "ended") {
+      cam.stop();
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ── Devices, speaker, fullscreen ──────────────────────────────────────
+  const devices = useDevices(camState === "ready");
+  const choice: DeviceChoice = { videoinput: cam.devices.videoinput, audioinput: cam.devices.audioinput, audiooutput: sink };
+  const onDevice = (kind: MediaDeviceKind, id: string) => {
+    if (kind === "audiooutput") {
+      const v = remoteEl.current as (HTMLVideoElement & { setSinkId?: (id: string) => Promise<void> }) | null;
+      v?.setSinkId?.(id)
+        .then(() => setSink(id))
+        .catch(() => toast("Не получилось переключить динамик.", { error: true }));
+      return;
+    }
+    cam.switchDevice(kind, id).catch(() => toast("Не получилось переключить устройство. Возможно, оно занято другой программой.", { error: true }));
+  };
+  useEffect(() => {
+    const on = () => setFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", on);
+    return () => document.removeEventListener("fullscreenchange", on);
+  }, []);
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined);
+    else rootRef.current?.requestFullscreen?.().catch(() => undefined);
+  };
+
+  // Hide the controls after a few seconds without pointer movement (only while connected, no panel open).
+  useEffect(() => {
+    if (phase !== "call") return;
+    let t: ReturnType<typeof setTimeout>;
+    let px = -1, py = -1;
+    // keep the controls while the pointer rests on them or a control has keyboard focus
+    const hide = () => {
+      const over = px >= 0 && document.elementFromPoint(px, py)?.closest("nav, header, aside");
+      if (over || document.activeElement?.closest("nav, header, aside")) t = setTimeout(hide, 1500);
+      else setIdle(true);
+    };
+    const wake = (e?: Event) => {
+      if (e && "clientX" in e) {
+        px = (e as PointerEvent).clientX;
+        py = (e as PointerEvent).clientY;
+      }
+      setIdle(false);
+      clearTimeout(t);
+      t = setTimeout(hide, 4500);
+    };
+    wake();
+    window.addEventListener("pointermove", wake);
+    window.addEventListener("pointerdown", wake);
+    window.addEventListener("keydown", wake);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("pointermove", wake);
+      window.removeEventListener("pointerdown", wake);
+      window.removeEventListener("keydown", wake);
+    };
+  }, [phase]);
+
+  // Keyboard: M — microphone, V — camera/avatar (not while typing).
+  useEffect(() => {
+    if (phase !== "call") return;
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (e.metaKey || e.ctrlKey || e.altKey || (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)))) return;
+      if (e.key === "m" || e.key === "ь") call.toggleMute();
+      else if (e.key === "v" || e.key === "м") call.toggleCamera();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [phase, call]);
+
+  const tech = useCallback((): CallTech => {
+    const p = avatarPerf.snapshot();
+    const st = call.stats;
+    return {
+      ...(st ?? {}),
+      status: call.status,
+      browser: browserName(),
+      voice: isPro ? "off" : voice,
+      durationSec: call.elapsed,
+      reconnects,
+      ...(isPro ? {} : { backend: p.backend, detectFps: p.detectFps, detectMs: p.detectMs, latencyMs: p.latencyMs }),
+    };
+  }, [call.stats, call.status, call.elapsed, isPro, voice, reconnects]);
+
+  // ── Render ────────────────────────────────────────────────────────────
 
   if (loadError) {
     return (
       <div className={s.room}>
-        <div className={s.ended}>
-          <div className={s.endedCard}>
-            <h2>Сессия недоступна</h2>
+        <div className={s.center}>
+          <div className={s.card}>
+            <span className={s.bigIcon}>
+              <WifiOff size={28} />
+            </span>
+            <h2 className={s.h2}>Звонок недоступен</h2>
             <p className={s.note}>{loadError}</p>
-            <Button variant="primary" href={backHref}>
-              {isLab ? "В лабораторию" : "Вернуться в кабинет"}
+            <Button variant="primary" href={isLab ? "/admin/lab" : homeFor(user?.role)}>
+              {isLab ? "В лабораторию" : "На главную"}
             </Button>
           </div>
         </div>
@@ -275,8 +399,8 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
   if (!session || (!user && !isLab)) {
     return (
       <div className={s.room}>
-        <div className={s.ended}>
-          <Spinner />
+        <div className={s.center}>
+          <Spinner label="Открываем звонок" />
         </div>
       </div>
     );
@@ -285,158 +409,142 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
   if (phase === "ended") {
     return (
       <div className={s.room}>
-        <div className={s.ended}>
-          <div className={s.endedCard}>
-            {peerPic(112)}
-            <h2>Вы вышли из сессии</h2>
-            <p className={s.note}>
-              Видео и звук не записывались. Заметки остались только в этом браузере и удалятся сами через 24 часа.
-            </p>
-            {role === "psychologist" && !completed && !isLab && (
-              <Button variant="soft" loading={completing} onClick={complete} icon={<Check size={18} />}>
-                Отметить сессию проведённой
-              </Button>
-            )}
-            {completed && <Badge tone="success">Сессия отмечена проведённой</Badge>}
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
-              <Button variant="secondary" onClick={() => setPhase("lobby")} icon={<RefreshCw size={18} />}>
-                Вернуться в комнату
-              </Button>
-              <Button variant="primary" href={isLab ? "/admin/lab" : role === "psychologist" ? "/pro/sessions" : "/app/sessions"}>
-                {isLab ? "В лабораторию" : "В кабинет"}
-              </Button>
-            </div>
-          </div>
-        </div>
+        <EndScreen
+          peerPic={peerPic(96)}
+          peerName={peerName}
+          spent={spent}
+          sessionId={sessionId}
+          isPro={isPro}
+          isLab={isLab}
+          dialogueHref={dialogueHref}
+          canRejoin={!remaining || remaining.left > 0}
+          onRejoin={() => {
+            setJoin(null);
+            setPhase("lobby");
+            cam.start();
+          }}
+          tech={tech}
+        />
       </div>
     );
   }
 
   if (phase === "lobby") {
     const canJoin = session.can_join;
-    const camReady = cam.state === "ready";
+    const camReady = camState === "ready";
+    const statusLine = isLab
+      ? `Тестовый звонок, ссылка действует до ${clock(labJoin?.test_room.expires_at ?? session.scheduled_at)}`
+      : `${when(session.scheduled_at)}, ${session.duration_minutes} мин`;
+    const tag = !camReady
+      ? null
+      : isPro
+        ? "Так вас увидит клиент"
+        : avatarCam.faceLost
+          ? "Лицо не видно. Сядьте ближе к свету"
+          : !avatarCam.tracking
+            ? "Подключаем распознавание мимики"
+            : avatarCam.calibrating
+              ? "Запоминаем спокойное лицо. Расслабьтесь и смотрите в камеру"
+              : "Так вас увидит специалист";
     return (
-      <div className={s.room}>
+      <div className={s.room} ref={rootRef}>
+        <header className={s.lobbyHead}>
+          <Button variant="ghost" size="sm" href={dialogueHref} icon={<ArrowLeft size={18} />}>
+            {isLab ? "В лабораторию" : "К диалогу"}
+          </Button>
+          <span className={s.secure}>
+            <Lock size={14} /> Зашифровано, без записи
+          </span>
+        </header>
         <div className={s.lobby}>
-          <div className={`${s.stage} ${isPro ? s.stageWide : ""}`}>
-            <div className={s.stageInner}>
-              {isPro ? <SelfVideo stream={realCam.videoStream} /> : <CanvasSlot canvas={avatarCam.canvas} />}
-            </div>
+          <div className={`${s.preview} ${isPro ? s.previewWide : ""}`}>
+            <div className={s.fill}>{isPro ? <SelfVideo stream={realCam.videoStream} /> : <CanvasSlot canvas={avatarCam.canvas} />}</div>
             {!camReady && (
-              <div className={s.stagePlaceholder}>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
-                  {isPro ? (
-                    <Camera size={40} strokeWidth={1.6} />
-                  ) : (
-                    <AvatarThumb config={myAvatar} size={180} framing="portrait" background="transparent" />
-                  )}
-                  {cam.state === "starting" ? (
-                    <Spinner label="Включаем камеру" />
-                  ) : isPro ? (
-                    <p style={{ maxWidth: 320 }}>Клиент увидит ваше настоящее видео с камеры. Проверьте свет и кадр перед входом.</p>
-                  ) : (
-                    <p style={{ maxWidth: 320 }}>
-                      Камера нужна, чтобы аватар повторял вашу мимику. Собеседник видит только аватар, изображение с камеры остаётся на этом устройстве.
-                    </p>
-                  )}
-                  {cam.error && <p className={s.errorText}>{cam.error}</p>}
-                </div>
+              <div className={s.previewEmpty}>
+                {isPro ? (
+                  <span className={s.bigIcon}>
+                    <Morph icon={MI.Camera} size={28} />
+                  </span>
+                ) : (
+                  <AvatarThumb config={myAvatar} size={168} framing="portrait" background="transparent" />
+                )}
+                {camState === "starting" ? (
+                  <Spinner label="Включаем камеру" />
+                ) : (
+                  <p className={s.previewText}>
+                    {isPro
+                      ? "Клиент увидит ваше настоящее видео. Проверьте свет и кадр перед входом."
+                      : "Камера нужна, чтобы аватар повторял вашу мимику. Собеседник видит только аватар, картинка с камеры остаётся на этом устройстве."}
+                  </p>
+                )}
+                {camError && <p className={s.errorText}>{camError}</p>}
+                {camState !== "starting" && (
+                  <Button variant="primary" onClick={cam.start} icon={<Morph icon={MI.Camera} size={18} />}>
+                    Включить камеру
+                  </Button>
+                )}
+              </div>
+            )}
+            {tag && (
+              <div className={s.previewTag}>
+                <span className={`${s.dot} ${!isPro && avatarCam.faceLost ? s.dotWarn : ""}`} />
+                {tag}
               </div>
             )}
             {camReady && (
-              <div className={s.stageTag}>
-                <span className={`${s.dot} ${cam.faceLost ? s.dotWarn : ""}`} />
-                {isPro
-                  ? "Так вас увидит клиент"
-                  : cam.faceLost
-                    ? "Лицо не видно. Сядьте ближе к свету"
-                    : !cam.tracking
-                      ? "Подключаем распознавание мимики"
-                      : cam.calibrating
-                        ? "Запоминаем ваше спокойное лицо. Расслабьтесь и смотрите в камеру"
-                        : "Так вас увидит собеседник"}
+              <div className={s.previewMic} title="Уровень микрофона">
+                <Morph icon={MI.Mic} size={16} />
+                <MicMeter stream={micStream} />
               </div>
             )}
           </div>
 
           <div className={s.side}>
-            <Card>
-              <div className={s.peer}>
-                {peerPic(64)}
-                <div style={{ minWidth: 0 }}>
-                  <div className={s.peerName}>{peerName}</div>
-                  <div className={s.meta}>
-                    {isLab
-                      ? `Тестовый звонок, ссылка действует до ${clock(labJoin?.test_room.expires_at ?? session.scheduled_at)}`
-                      : `${when(session.scheduled_at)}, ${session.duration_minutes} минут`}
-                  </div>
-                </div>
+            <div className={s.peerCard}>
+              {peerPic(56)}
+              <div className={s.peerText}>
+                <div className={s.peerName}>{peerName}</div>
+                <div className={s.meta}>{statusLine}</div>
               </div>
-            </Card>
-
-            <Card>
-              <div className={s.label}>Перед входом</div>
-              <ul className={s.checks}>
-                <li className={s.check}>
-                  <span className={`${s.checkIcon} ${camReady ? s.checkOk : ""}`}>
-                    <Camera size={16} />
-                  </span>
-                  {isPro ? "Камера включена" : "Камера включена и аватар повторяет мимику"}
-                </li>
-                <li className={s.check}>
-                  <span className={`${s.checkIcon} ${cam.audioStream ? s.checkOk : ""}`}>
-                    <Mic size={16} />
-                  </span>
-                  Микрофон работает
-                </li>
-                <li className={s.check}>
-                  <span className={`${s.checkIcon} ${s.checkOk}`}>
-                    <Lock size={16} />
-                  </span>
-                  Видео идёт напрямую и зашифровано
-                </li>
-              </ul>
-              {cam.tracking && (
-                <Button variant="ghost" size="sm" onClick={cam.recalibrate} disabled={cam.calibrating} icon={<RefreshCw size={16} />}>
-                  {cam.calibrating ? "Калибруем мимику…" : "Откалибровать мимику"}
-                </Button>
-              )}
-            </Card>
+            </div>
+            {!isLab && (
+              <div className={`${s.presence} ${peerHere ? s.presenceOn : ""}`} aria-live="polite">
+                <span className={s.presenceDot} />
+                {peerHere ? `${peerWord} уже в звонке и ждёт вас` : `${peerWord} ещё не подключился`}
+              </div>
+            )}
 
             {!isPro && (
-              <Card>
+              <section className={s.block}>
                 <div className={s.label}>Фон за аватаром</div>
                 <BackdropPicker value={backdrop} onChange={setBackdrop} size="sm" />
-                <div className={s.label} style={{ marginTop: 16 }}>
-                  Голос
-                </div>
-                <Segmented value={voice} onChange={setVoice} options={VOICES} ariaLabel="Фильтр голоса" />
-                <p className={s.note} style={{ marginTop: 10 }}>
-                  Фильтр меняет тембр, чтобы голос было сложнее узнать. Его можно переключить и во время сессии.
-                </p>
-              </Card>
+              </section>
+            )}
+            {!isPro && (
+              <section className={s.block}>
+                <div className={s.label}>Голос</div>
+                <VoicePicker value={voice} onChange={setVoice} compact />
+                <p className={s.note}>{VOICE_PRESETS.find((p) => p.value === voice)?.hint}. Можно поменять во время звонка.</p>
+              </section>
+            )}
+            {!isPro && avatarCam.tracking && (
+              <Button variant="ghost" size="sm" onClick={avatarCam.recalibrate} disabled={avatarCam.calibrating} icon={<RefreshCw size={16} />}>
+                {avatarCam.calibrating ? "Калибруем мимику…" : "Откалибровать мимику"}
+              </Button>
             )}
 
-            {!camReady ? (
-              <Button variant="primary" size="lg" block loading={cam.state === "starting"} onClick={cam.start} icon={<Camera size={20} />}>
-                Включить камеру
-              </Button>
-            ) : (
-              <Button variant="primary" size="lg" block disabled={!canJoin} loading={joining} onClick={enter}>
-                Войти в сессию
-              </Button>
-            )}
-            {!canJoin && <p className={s.note}>Вход откроется за 10 минут до начала. Сессия начнётся {untilLabel(session.scheduled_at)}.</p>}
+            <Button variant="primary" size="lg" block disabled={!canJoin || !camReady} loading={joining} onClick={enter}>
+              {peerHere ? "Присоединиться" : "Войти в звонок"}
+            </Button>
+            {!canJoin && <p className={s.note}>Вход откроется за 10 минут до начала.</p>}
+            {canJoin && !camReady && camState !== "starting" && <p className={s.note}>Сначала включите камеру: без неё {isPro ? "клиент вас не увидит" : "аватар не оживёт"}.</p>}
             {joinError && <p className={s.errorText}>{joinError}</p>}
-            {isLab ? (
+            {isLab && (
               <p className={s.note} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
                 <FlaskConical size={16} style={{ flexShrink: 0, marginTop: 2 }} />
-                Тестовая комната из лаборатории: без записи, оплаты и статистики. Вы входите как {role === "psychologist" ? "специалист (настоящая камера)" : "клиент (аватар и фильтр голоса)"}.
+                Тестовая комната из лаборатории: без записи, оплаты и статистики. Вы входите как{" "}
+                {isPro ? "специалист (настоящая камера)" : "клиент (аватар и фильтр голоса)"}.
               </p>
-            ) : (
-              <Button variant="ghost" href={homeFor(user?.role)}>
-                Вернуться в кабинет
-              </Button>
             )}
           </div>
         </div>
@@ -444,122 +552,444 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
     );
   }
 
-  // ── In call ────────────────────────────────────────────────────────────────
-  const statusText =
-    call.status === "connected" && call.hasRemote
-      ? mmss(call.elapsed)
-      : call.status === "reconnecting"
-        ? "Восстанавливаем связь"
-        : call.status === "failed"
-          ? "Связь прервалась"
-          : "Подключаемся";
+  // ── In call ────────────────────────────────────────────────────────────
+  const connected = call.status === "connected" && call.hasRemote;
   const videoOff = call.isCameraOff;
+  const panelTitle: Record<Exclude<Panel, null>, string> = {
+    chat: "Чат диалога",
+    voice: "Фильтр голоса",
+    more: "Настройки звонка",
+    notes: "Заметки",
+    breath: "Дыхательная пауза",
+  };
+  const toggle = (p: Exclude<Panel, null>) => setPanel((cur) => (cur === p ? null : p));
+  const showChrome = !idle || !connected || panel !== null;
 
   return (
-    <div className={s.room}>
-      <div className={s.call}>
-        <video ref={call.remoteVideoRef} className={s.remote} autoPlay playsInline />
-        {!call.hasRemote && (
-          <div className={s.waiting}>
-            {!isPro && call.status !== "failed" ? (
-              <TeaWait className={art.waitArt} />
-            ) : (
-              <div className={s.waitingAvatar}>
-                {peerPic(148)}
+    <div className={`${s.room} ${s.dark}`} ref={rootRef}>
+      <div className={`${s.call} ${panel ? s.callWithPanel : ""}`}>
+        <div className={s.stage}>
+          <RemoteVideo
+            attach={(el) => {
+              remoteEl.current = el;
+              call.remoteVideoRef(el);
+              if (el && sink) (el as HTMLVideoElement & { setSinkId?: (id: string) => Promise<void> }).setSinkId?.(sink).catch(() => undefined);
+            }}
+            portrait={isPro}
+          />
+
+          {!call.hasRemote && call.status !== "failed" && call.status !== "reconnecting" && (
+            <div className={s.waiting}>
+              {isPro ? <div className={s.waitingPic}>{peerPic(132)}</div> : <TeaWait className={art.waitArt} />}
+              <h3 className={s.h3}>{call.status === "connecting" ? "Подключаемся" : `Ждём, когда ${isPro ? "клиент" : "специалист"} войдёт`}</h3>
+              <p className={s.note}>
+                {isPro ? "Как только клиент подключится, вы увидите его аватар." : "Специалист скоро подключится. Можно пока сделать пару спокойных вдохов."}
+              </p>
+            </div>
+          )}
+
+          {call.status === "reconnecting" && (
+            <div className={s.reconnect} role="status" aria-live="polite">
+              <span className={s.spinDot} />
+              Переподключаемся…
+            </div>
+          )}
+          {call.status === "failed" && (
+            <div className={s.failed}>
+              <div className={s.card}>
+                <span className={s.bigIcon}>
+                  <WifiOff size={28} />
+                </span>
+                <h3 className={s.h3}>Связь прервалась</h3>
+                <p className={s.note}>Проверьте интернет. Мы попробуем соединиться заново, как только вы нажмёте кнопку.</p>
+                <div className={s.row}>
+                  <Button variant="primary" onClick={call.retryNow} icon={<RefreshCw size={18} />}>
+                    Переподключиться
+                  </Button>
+                  <Button variant="ghost" onClick={leave}>
+                    Завершить
+                  </Button>
+                </div>
               </div>
+            </div>
+          )}
+
+          <header className={`${s.topbar} ${showChrome ? "" : s.hidden}`}>
+            <div className={s.topPeer}>
+              {peerPic(40)}
+              <span className={s.topText}>
+                <span className={s.topName}>{peerName}</span>
+                <span className={s.topSub}>
+                  {connected ? (
+                    <>
+                      <span className="num">{mmss(call.elapsed)}</span>
+                      {remaining && <span className={remaining.left <= 5 ? s.warnText : ""}>{remaining.text}</span>}
+                    </>
+                  ) : call.status === "reconnecting" ? (
+                    "Переподключаемся"
+                  ) : (
+                    "Подключаемся"
+                  )}
+                </span>
+              </span>
+            </div>
+            <div className={s.topRight}>
+              {isLab && (
+                <span className={s.pill}>
+                  <FlaskConical size={14} /> Тест
+                </span>
+              )}
+              {connected && (
+                <span className={s.pill} title={QUALITY_LABEL[call.quality]}>
+                  <QualityBars quality={call.quality} />
+                  <span className={s.pillText}>{call.quality === "poor" ? "Слабая связь" : call.quality === "fair" ? "Средняя связь" : "Связь"}</span>
+                </span>
+              )}
+              <span className={s.pill} title="Звук и видео идут напрямую и зашифрованы, ничего не записывается">
+                <Lock size={14} />
+                <span className={s.pillText}>Зашифровано</span>
+              </span>
+            </div>
+          </header>
+
+          {!isPro && avatarCam.faceLost && !videoOff && <div className={s.toast}>Лицо не видно, аватар замер. Сядьте ближе к свету</div>}
+          {remaining && remaining.left === 5 && connected && <div className={s.toast}>До конца звонка 5 минут</div>}
+
+          <DraggablePip label={isPro ? "Ваша камера" : "Ваш аватар"} wide={false}>
+            {isPro ? <SelfVideo stream={realCam.videoStream} /> : <CanvasSlot canvas={avatarCam.canvas} />}
+            {videoOff && <div className={s.pipOff}>{isPro ? "Камера выключена" : "Аватар скрыт"}</div>}
+            {call.isMuted && (
+              <span className={s.pipMuted} aria-label="Микрофон выключен">
+                <Morph icon={MI.MicOff} size={14} />
+              </span>
             )}
-            <h3>{call.status === "failed" ? "Не удалось соединиться" : `Ждём, когда ${role === "client" ? "специалист" : "клиент"} войдёт`}</h3>
-            <p className={s.note} style={{ maxWidth: 380 }}>
-              {call.status === "failed"
-                ? "Проверьте интернет и попробуйте переподключиться."
-                : isPro
-                  ? "Как только клиент подключится, вы увидите его аватар."
-                  : "Как только специалист подключится, вы увидите его. Можно пока сделать пару спокойных вдохов."}
-            </p>
-            {call.status === "failed" && (
-              <Button variant="primary" onClick={call.retryNow} icon={<RefreshCw size={18} />}>
-                Переподключиться
+          </DraggablePip>
+
+          {debug && <DebugOverlay stats={call.stats} status={call.status} avatar={!isPro} />}
+
+          <nav className={`${s.controls} ${showChrome ? "" : s.hidden}`} aria-label="Управление звонком">
+            <CtrlButton label={call.isMuted ? "Включить микрофон" : "Выключить микрофон"} caption="Микрофон" off={call.isMuted} onClick={call.toggleMute}>
+              <Morph icon={call.isMuted ? MI.MicOff : MI.Mic} size={22} />
+            </CtrlButton>
+            <CtrlButton
+              label={isPro ? (videoOff ? "Включить камеру" : "Выключить камеру") : videoOff ? "Показать аватар" : "Скрыть аватар"}
+              caption={isPro ? "Камера" : "Аватар"}
+              off={videoOff}
+              onClick={call.toggleCamera}
+            >
+              <Morph icon={videoOff ? MI.VideoOff : MI.Video} size={22} />
+            </CtrlButton>
+            {!isPro && (
+              <CtrlButton label="Фильтр голоса" caption="Голос" active={panel === "voice"} dot={voice !== "off"} onClick={() => toggle("voice")}>
+                <Waves size={22} />
+              </CtrlButton>
+            )}
+            <CtrlButton label={panel === "chat" ? "Закрыть чат" : "Открыть чат"} caption="Чат" active={panel === "chat"} onClick={() => toggle("chat")}>
+              <Morph icon={panel === "chat" ? MI.X : CHAT_ICON} size={22} />
+            </CtrlButton>
+            <CtrlButton label="Ещё" caption="Ещё" active={panel === "more" || panel === "notes" || panel === "breath"} onClick={() => toggle("more")}>
+              <MoreHorizontal size={22} />
+            </CtrlButton>
+            <CtrlButton label="Завершить звонок" caption="Завершить" end onClick={() => setConfirmEnd(true)}>
+              <PhoneOff size={22} />
+            </CtrlButton>
+          </nav>
+        </div>
+
+        {panel && <div className={s.scrim} onClick={() => setPanel(null)} aria-hidden />}
+        {panel && (
+          <aside className={s.panel} aria-label={panelTitle[panel]}>
+            <div className={s.panelHead}>
+              <span className={s.panelTitle}>
+                {panel === "chat" && <MessageCircle size={18} />}
+                {panelTitle[panel]}
+              </span>
+              <button type="button" className={s.iconBtn} aria-label="Закрыть" onClick={() => setPanel(null)}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className={`${s.panelBody} ${panel === "chat" ? s.panelChat : ""}`}>
+              {panel === "chat" &&
+                (conversationId ? (
+                  <DialogThread conversationId={conversationId} compact />
+                ) : (
+                  <div className={s.panelEmpty}>
+                    <Users size={28} />
+                    <p className={s.note}>{isLab ? "В тестовой комнате нет чата диалога." : "Чат диалога появится здесь, как только загрузится."}</p>
+                  </div>
+                ))}
+              {panel === "voice" && (
+                <>
+                  <VoicePicker value={voice} onChange={setVoice} />
+                  <p className={s.note}>Специалист услышит новый голос сразу после переключения. Фильтр работает на вашем устройстве.</p>
+                </>
+              )}
+              {panel === "more" && (
+                <CallMore
+                  devices={devices}
+                  choice={choice}
+                  onDevice={onDevice}
+                  isPro={isPro}
+                  fullscreen={fullscreen}
+                  onFullscreen={toggleFullscreen}
+                  onRecalibrate={isPro ? undefined : avatarCam.recalibrate}
+                  recalibrating={!isPro && avatarCam.calibrating}
+                  onBreath={() => setPanel("breath")}
+                  onNotes={isPro ? () => setPanel("notes") : undefined}
+                  onReport={() => setReportOpen(true)}
+                />
+              )}
+              {panel === "notes" && <SessionNotepad roomId={sessionId} />}
+              {panel === "breath" && <BreathingSync />}
+            </div>
+          </aside>
+        )}
+      </div>
+
+      <Modal open={confirmEnd} onClose={() => setConfirmEnd(false)} title="Завершить звонок?" width={420}>
+        <p className={s.note}>
+          {remaining && remaining.left > 0
+            ? `До конца забронированного времени ${remaining.text.replace("ещё ", "")}. Вернуться можно, пока оно не закончилось.`
+            : "Звонок закончится для вас. Собеседник увидит, что вы вышли."}
+        </p>
+        <div className={s.modalActions}>
+          <Button variant="ghost" onClick={() => setConfirmEnd(false)}>
+            Остаться
+          </Button>
+          <Button variant="danger" onClick={leave} icon={<PhoneOff size={18} />}>
+            Завершить
+          </Button>
+        </div>
+      </Modal>
+      <ReportProblem open={reportOpen} onClose={() => setReportOpen(false)} sessionId={sessionId} isClient={!isPro} tech={tech} disabled={isLab} />
+    </div>
+  );
+}
+
+/** lucide "message-circle" as morphicons data (so the chat button morphs into ×). */
+const CHAT_ICON = "M7.9 20A9 9 0 1 0 4 16.1L2 22Z";
+
+function CtrlButton({
+  children,
+  label,
+  caption,
+  off,
+  active,
+  end,
+  dot,
+  onClick,
+}: {
+  children: React.ReactNode;
+  label: string;
+  caption: string;
+  off?: boolean;
+  active?: boolean;
+  end?: boolean;
+  dot?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <span className={s.ctrlWrap}>
+      <button
+        type="button"
+        className={`${s.ctrl} ${off ? s.ctrlOff : ""} ${active ? s.ctrlActive : ""} ${end ? s.ctrlEnd : ""}`}
+        onClick={onClick}
+        aria-label={label}
+        aria-pressed={end ? undefined : !!(off || active)}
+        title={label}
+      >
+        {children}
+        {dot && <span className={s.ctrlDot} />}
+      </button>
+      <span className={s.ctrlCaption} aria-hidden>
+        {caption}
+      </span>
+    </span>
+  );
+}
+
+/** Remote video with a blurred copy behind when its shape doesn't match the screen. */
+function RemoteVideo({ attach, portrait }: { attach: (el: HTMLVideoElement | null) => void; portrait: boolean }) {
+  const back = useRef<HTMLVideoElement>(null);
+  const [fit, setFit] = useState<"cover" | "contain">("cover");
+  const main = useRef<HTMLVideoElement | null>(null);
+  useEffect(() => {
+    const v = main.current;
+    if (!v) return;
+    const check = () => {
+      const host = v.parentElement;
+      if (!host || !v.videoWidth) return;
+      const va = v.videoWidth / v.videoHeight;
+      const ha = host.clientWidth / host.clientHeight;
+      // crop at most ~25 % of the picture; otherwise letterbox over a blurred copy
+      setFit(Math.max(va / ha, ha / va) > 1.33 ? "contain" : "cover");
+      if (back.current && back.current.srcObject !== v.srcObject) {
+        back.current.srcObject = v.srcObject;
+        back.current.play().catch(() => undefined);
+      }
+    };
+    v.addEventListener("resize", check);
+    v.addEventListener("loadedmetadata", check);
+    window.addEventListener("resize", check);
+    const t = setInterval(check, 2000);
+    return () => {
+      v.removeEventListener("resize", check);
+      v.removeEventListener("loadedmetadata", check);
+      window.removeEventListener("resize", check);
+      clearInterval(t);
+    };
+  }, []);
+  return (
+    <>
+      {fit === "contain" && <video ref={back} className={s.remoteBlur} muted playsInline autoPlay aria-hidden />}
+      <video
+        ref={(el) => {
+          main.current = el;
+          attach(el);
+        }}
+        className={s.remote}
+        style={{ objectFit: fit }}
+        data-portrait={portrait ? "1" : "0"}
+        autoPlay
+        playsInline
+        aria-label="Собеседник"
+      />
+    </>
+  );
+}
+
+const RATING_WORDS = ["", "Очень плохо", "Плохо", "Нормально", "Хорошо", "Отлично"];
+
+function EndScreen({
+  peerPic,
+  peerName,
+  spent,
+  sessionId,
+  isPro,
+  isLab,
+  dialogueHref,
+  canRejoin,
+  onRejoin,
+  tech,
+}: {
+  peerPic: React.ReactNode;
+  peerName: string;
+  spent: number;
+  sessionId: string;
+  isPro: boolean;
+  isLab: boolean;
+  dialogueHref: string;
+  canRejoin: boolean;
+  onRejoin: () => void;
+  tech: () => CallTech;
+}) {
+  const toast = useToast();
+  const [rating, setRating] = useState(0);
+  const [hover, setHover] = useState(0);
+  const [issues, setIssues] = useState<CallIssue[]>([]);
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [completing, setCompleting] = useState(false);
+  const [completed, setCompleted] = useState(false);
+  const techRef = useRef<CallTech>({});
+  useEffect(() => {
+    techRef.current = tech(); // snapshot the numbers of the call that just ended
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const send = async () => {
+    if (isLab) {
+      setSent(true);
+      return;
+    }
+    setBusy(true);
+    try {
+      await callsApi.feedback(sessionId, { kind: "rating", rating, issues, tech: techRef.current });
+      setSent(true);
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Не получилось отправить оценку.", { error: true });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const complete = async () => {
+    setCompleting(true);
+    try {
+      await sessionsApi.complete(sessionId);
+    } catch {
+      /* already completed or not allowed */
+    } finally {
+      setCompleted(true);
+      setCompleting(false);
+    }
+  };
+  const shown = hover || rating;
+  return (
+    <div className={s.center}>
+      <div className={`${s.card} ${s.endCard}`}>
+        <div className={s.endPic}>
+          {peerPic}
+          <span className={s.endBadge}>
+            <PhoneOff size={14} />
+          </span>
+        </div>
+        <h2 className={s.h2}>Звонок завершён</h2>
+        <p className={s.meta}>
+          {peerName}
+          {spent > 0 ? `, ${minutesText(spent)}` : ""}
+        </p>
+
+        {!sent ? (
+          <section className={s.rate}>
+            <div className={s.label}>Как прошла связь?</div>
+            <div className={s.stars} role="radiogroup" aria-label="Оценка связи" onMouseLeave={() => setHover(0)}>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  role="radio"
+                  aria-checked={rating === n}
+                  aria-label={RATING_WORDS[n]}
+                  className={s.star}
+                  data-on={n <= shown ? "1" : "0"}
+                  onMouseEnter={() => setHover(n)}
+                  onClick={() => setRating(n)}
+                >
+                  <Star size={30} />
+                </button>
+              ))}
+            </div>
+            <div className={s.rateWord}>{shown ? RATING_WORDS[shown] : "Оценка поможет нам улучшить звонки"}</div>
+            {rating > 0 && rating <= 3 && <IssueChips value={issues} onChange={setIssues} isClient={!isPro} />}
+            {rating > 0 && (
+              <Button variant="soft" size="sm" loading={busy} onClick={send}>
+                Отправить оценку
               </Button>
             )}
-          </div>
+          </section>
+        ) : (
+          <p className={s.thanks}>
+            <Check size={18} /> Спасибо за оценку
+          </p>
         )}
 
-        <div className={s.topbar}>
-          <div className={s.topPeer}>
-            {peerPic(40)}
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{peerName}</div>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            {isLab ? (
-              <span className={s.pill}>
-                <FlaskConical size={14} /> Тест
-              </span>
-            ) : (
-              <SessionTimer className={s.pill} start={session.scheduled_at} minutes={session.duration_minutes} />
-            )}
-            <span className={s.pill}>
-              <span className={`${s.dot} ${call.status === "connected" && call.hasRemote ? "" : s.dotWarn}`} />
-              <span className="num">{statusText}</span>
-            </span>
-            <span className={s.pill}>
-              <Lock size={14} /> Зашифровано
-            </span>
-          </div>
-        </div>
-
-        {!isPro && cam.faceLost && !videoOff && <div className={s.toast}>Лицо не видно, аватар замер. Сядьте ближе к свету</div>}
-
-        <div className={`${s.pip} ${isPro ? s.pipWide : ""}`} aria-label={isPro ? "Ваша камера" : "Ваш аватар"}>
-          {isPro ? <SelfVideo stream={realCam.videoStream} /> : <CanvasSlot canvas={avatarCam.canvas} />}
-          {videoOff && <div className={s.pipOff}>{isPro ? "Камера выключена" : "Аватар скрыт от собеседника"}</div>}
-        </div>
-
-        {panel && (
-          <div className={s.panel}>
-            <div className={s.panelHead}>
-              {panel === "notes" ? "Заметки" : panel === "breath" ? "Дыхание" : "Голос"}
-              <Button variant="ghost" size="sm" iconOnly aria-label="Закрыть" onClick={() => setPanel(null)} icon={<X size={18} />} />
-            </div>
-            {panel === "notes" && <SessionNotepad roomId={sessionId} />}
-            {panel === "breath" && <BreathingSync />}
-            {panel === "voice" && (
-              <>
-                <Segmented value={voice} onChange={setVoice} options={VOICES} ariaLabel="Фильтр голоса" />
-                <p className={s.note}>Собеседник услышит изменённый голос сразу после переключения.</p>
-              </>
-            )}
-          </div>
-        )}
-
-        <div className={s.controls} role="toolbar" aria-label="Управление сессией">
-          <button className={`${s.ctrl} ${call.isMuted ? s.ctrlOff : ""}`} onClick={call.toggleMute} aria-label={call.isMuted ? "Включить микрофон" : "Выключить микрофон"} aria-pressed={call.isMuted}>
-            {call.isMuted ? <MicOff size={22} /> : <Mic size={22} />}
-          </button>
-          <button
-            className={`${s.ctrl} ${videoOff ? s.ctrlOff : ""}`}
-            onClick={call.toggleCamera}
-            aria-label={isPro ? (videoOff ? "Включить камеру" : "Выключить камеру") : videoOff ? "Показать аватар" : "Скрыть аватар"}
-            aria-pressed={videoOff}
-          >
-            {videoOff ? <CameraOff size={22} /> : <Camera size={22} />}
-          </button>
-          {!isPro && (
-            <button className={`${s.ctrl} ${panel === "voice" ? s.ctrlOff : ""}`} onClick={() => setPanel(panel === "voice" ? null : "voice")} aria-label="Фильтр голоса">
-              <Waves size={22} />
-            </button>
+        <div className={s.endActions}>
+          <Button variant="primary" block href={dialogueHref}>
+            {isLab ? "В лабораторию" : "Вернуться в диалог"}
+          </Button>
+          {canRejoin && (
+            <Button variant="ghost" block onClick={onRejoin} icon={<RefreshCw size={18} />}>
+              Вернуться в звонок
+            </Button>
           )}
-          <button className={`${s.ctrl} ${panel === "breath" ? s.ctrlOff : ""}`} onClick={() => setPanel(panel === "breath" ? null : "breath")} aria-label="Дыхательная пауза">
-            <Wind size={22} />
-          </button>
-          <button className={`${s.ctrl} ${panel === "notes" ? s.ctrlOff : ""}`} onClick={() => setPanel(panel === "notes" ? null : "notes")} aria-label="Заметки">
-            <NotebookPen size={22} />
-          </button>
-          <button className={`${s.ctrl} ${s.ctrlEnd}`} onClick={leave} aria-label="Выйти из сессии">
-            <PhoneOff size={22} />
-          </button>
+          {isPro && !isLab && !completed && (
+            <Button variant="ghost" block loading={completing} onClick={complete} icon={<Check size={18} />}>
+              Отметить звонок проведённым
+            </Button>
+          )}
+          {completed && <p className={s.thanks}>Звонок отмечен проведённым</p>}
         </div>
+        <p className={s.note}>Видео и звук не записывались. Заметки хранятся только в этом браузере и удалятся сами через 24 часа.</p>
       </div>
     </div>
   );

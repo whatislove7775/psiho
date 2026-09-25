@@ -27,11 +27,11 @@ const ACTION_LABEL: Record<ReportAction, string> = {
   warn: "Предупреждение",
   block_user: "Заблокировать аккаунт",
   suspend_specialist: "Приостановить специалиста",
-  cancel_session: "Отменить сессию",
+  cancel_session: "Отменить созвон",
 };
 
 const TARGET_ICON = { user: UserRound, specialist: UserRound, session: Video, message: MessageSquare };
-const TARGET_LABEL = { user: "Аккаунт", specialist: "Специалист", session: "Сессия", message: "Сообщение в чате" };
+const TARGET_LABEL = { user: "Аккаунт", specialist: "Специалист", session: "Созвон", message: "Сообщение в чате" };
 
 export default function Page_() {
   return (
@@ -74,7 +74,7 @@ function ModerationPage() {
     <>
       <PageHeader
         title="Жалобы"
-        sub="Клиенты и специалисты жалуются на аккаунты, сессии и сообщения. Текст переписки команде не виден: решайте по описанию и истории."
+        sub="Клиенты и специалисты жалуются на аккаунты, созвоны и сообщения. Текст переписки команде не виден: решайте по описанию и истории."
       />
       <div className={s.tabsRow}>
         <Segmented<Tab>
@@ -143,7 +143,7 @@ function ModerationPage() {
                     <span>От: {r.reporter.alias}</span>
                     {r.target.session && (
                       <span>
-                        Сессия {dateTime(r.target.session.scheduled_at)}, {SESSION_STATUS[r.target.session.status]?.label.toLowerCase()}
+                        Созвон {dateTime(r.target.session.scheduled_at)}, {SESSION_STATUS[r.target.session.status]?.label.toLowerCase()}
                       </span>
                     )}
                     {r.target.message_id && <span>Сообщение №{r.target.message_id.slice(0, 8)}</span>}

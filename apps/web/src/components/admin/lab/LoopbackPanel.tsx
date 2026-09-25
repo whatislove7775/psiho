@@ -16,7 +16,7 @@ import { normalizeAvatar, randomAvatar } from "@/lib/avatar/schema";
 import { useAvatarCamera } from "@/hooks/useAvatarCamera";
 import { useRealCamera } from "@/hooks/useRealCamera";
 import { getIceServers } from "@/hooks/useP2PCall";
-import { useVoiceTransform, type VoicePreset } from "@/hooks/useVoiceTransform";
+import { useVoiceTransform, VOICE_PRESETS, type VoicePreset } from "@/hooks/useVoiceTransform";
 import { BACKDROPS, type BackdropId } from "@/lib/avatar/backdrops";
 import { BackdropPicker } from "@/components/avatar/BackdropPicker";
 import { CanvasSlot, kbps, loadLabAvatar, StatGrid, StreamVideo, Switch } from "./shared";
@@ -50,11 +50,7 @@ const EMPTY: Stats = {
 const LIMIT_LABEL: Record<string, string> = { none: "нет", cpu: "процессор", bandwidth: "канал", other: "другое" };
 const CAND_LABEL: Record<string, string> = { host: "локальная сеть", srflx: "через STUN", prflx: "через STUN", relay: "через TURN" };
 
-const VOICES: { value: VoicePreset; label: string }[] = [
-  { value: "off", label: "Свой голос" },
-  { value: "lower", label: "Ниже" },
-  { value: "higher", label: "Выше" },
-];
+const VOICES: { value: VoicePreset; label: string }[] = VOICE_PRESETS.map(({ value, label }) => ({ value, label }));
 
 export function LoopbackPanel() {
   const { user } = useAuth();
