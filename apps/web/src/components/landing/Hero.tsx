@@ -52,7 +52,7 @@ export function Hero() {
       const cy = rect.top + rect.height * 0.4;
       const nx = clamp((last.clientX - cx) / (window.innerWidth / 2), -1, 1);
       const ny = clamp((last.clientY - cy) / (window.innerHeight / 2), -1, 1);
-      r.lookAt(nx * 0.5, ny * 0.28);
+      r.lookAt(nx * 0.95, ny * 0.7);
     };
     const onMove = (e: PointerEvent) => {
       last = e;

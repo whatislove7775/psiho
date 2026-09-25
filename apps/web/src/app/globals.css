@@ -114,6 +114,15 @@ video {
   border-radius: 10px;
 }
 
+/* Text fields draw their own focus state (the field or its wrapper) —
+   the global ring would add a second frame inside the field. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  box-shadow: none;
+  border-radius: inherit;
+}
+
 ::selection {
   background: var(--c-primary-soft);
 }

@@ -603,10 +603,12 @@ export class KitRenderer implements AvatarRendererApi {
       }
       if (t > I.glanceAt) {
         I.glanceAt = t + 1.8 + Math.random() * 3;
-        I.gx = (Math.random() * 2 - 1) * 0.35;
-        I.gy = (Math.random() * 2 - 1) * 0.2;
+        // no random glances while following a pointer — keep eye contact with it
+        const following = Math.abs(this.look.yaw) + Math.abs(this.look.pitch) > 0.02;
+        I.gx = following ? 0 : (Math.random() * 2 - 1) * 0.35;
+        I.gy = following ? 0 : (Math.random() * 2 - 1) * 0.2;
       }
-      const gx = I.gx + this.look.yaw * 0.8, gy = I.gy - this.look.pitch * 0.8;
+      const gx = I.gx + this.look.yaw * 1.5, gy = I.gy - this.look.pitch * 1.5;
       target.eyeLookOutLeft = Math.max(0, gx);
       target.eyeLookInRight = Math.max(0, gx);
       target.eyeLookInLeft = Math.max(0, -gx);
@@ -664,7 +666,7 @@ export class KitRenderer implements AvatarRendererApi {
         const L = i === 0; // eyeCenters[0] is +x = avatar's left
         const yaw = L ? g("eyeLookOutLeft") - g("eyeLookInLeft") : g("eyeLookInRight") - g("eyeLookOutRight");
         const pitch = L ? g("eyeLookUpLeft") - g("eyeLookDownLeft") : g("eyeLookUpRight") - g("eyeLookDownRight");
-        this.eyeBalls[i].rotation.set(-pitch * 0.35, yaw * 0.45, 0);
+        this.eyeBalls[i].rotation.set(-pitch * 0.35, -yaw * 0.45, 0);
       });
     }
   }
