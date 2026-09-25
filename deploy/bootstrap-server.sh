@@ -60,6 +60,8 @@ PUB="$(cat "$KEY.pub")"
 if grep -qF "$PUB" "$AUTH"; then
   ok "Ключ уже разрешён в $AUTH"
 else
+  # последняя строка файла может быть без перевода строки — иначе ключ склеится с ней
+  [[ -s "$AUTH" && -n "$(tail -c1 "$AUTH")" ]] && echo >> "$AUTH"
   echo "$PUB" >> "$AUTH"
   ok "Ключ добавлен в $AUTH"
 fi
