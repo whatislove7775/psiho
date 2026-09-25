@@ -326,12 +326,25 @@ export function Modal({
   width?: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  // Keep the latest onClose without re-running the effect: callers pass inline
+  // functions, and re-running it on every render stole focus while typing.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   useEffect(() => {
     if (!open) return;
     const prev = document.activeElement as HTMLElement | null;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onCloseRef.current();
     document.addEventListener("keydown", onKey);
-    const t = setTimeout(() => ref.current?.querySelector<HTMLElement>("input,button,textarea,select,[tabindex]")?.focus(), 20);
+    // Focus the first field in the body (not the close button in the header).
+    const t = setTimeout(() => {
+      const root = ref.current;
+      if (!root || root.contains(document.activeElement)) return;
+      const field = root.querySelector<HTMLElement>("input:not([type=hidden]),textarea,select");
+      const body = Array.from(root.querySelectorAll<HTMLElement>("button,[tabindex]:not([tabindex='-1'])")).find(
+        (el) => !el.closest("[data-modal-head]"),
+      );
+      (field ?? body ?? root.querySelector<HTMLElement>("button"))?.focus();
+    }, 20);
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
@@ -340,12 +353,12 @@ export function Modal({
       document.body.style.overflow = overflow;
       prev?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
   if (!open) return null;
   return (
     <div className={s.overlay} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div ref={ref} className={s.modal} role="dialog" aria-modal="true" style={width ? { width: `min(${width}px, 100%)` } : undefined}>
-        <div className={s.modalHead}>
+        <div className={s.modalHead} data-modal-head>
           <h3>{title}</h3>
           <Button variant="ghost" size="sm" iconOnly aria-label="Закрыть" onClick={onClose} icon={<X size={18} />} />
         </div>

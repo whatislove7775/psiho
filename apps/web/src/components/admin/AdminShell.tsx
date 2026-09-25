@@ -98,8 +98,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (status === "guest") router.replace(`/login?next=${encodeURIComponent(rawPath)}`);
-    else if (status === "authed" && user && user.role !== "admin") router.replace(homeFor(user.role));
-  }, [status, user, router, rawPath]);
+  }, [status, router, rawPath]);
 
   const reload = useCallback(async () => {
     try {
@@ -134,6 +133,35 @@ export function AdminShell({ children }: { children: ReactNode }) {
     logout();
     router.replace("/");
   };
+
+  // Signed in with a client/specialist account: explain instead of silently redirecting.
+  if (status === "authed" && user && user.role !== "admin") {
+    return (
+      <div className={sh.guard}>
+        <EmptyState
+          icon={<ShieldAlert size={22} />}
+          title="Это вход для команды сервиса"
+          text={`Сейчас вы вошли как ${user.role === "psychologist" ? "специалист" : "клиент"}. Чтобы открыть админку, войдите под аккаунтом сотрудника (например, admin).`}
+          action={
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+              <Button
+                onClick={() => {
+                  logout();
+                  router.replace(`/login?next=${encodeURIComponent(rawPath || "/admin")}`);
+                }}
+                icon={<LogOut size={18} />}
+              >
+                Выйти и войти как сотрудник
+              </Button>
+              <Button variant="secondary" onClick={() => router.replace(homeFor(user.role))}>
+                Вернуться в кабинет
+              </Button>
+            </div>
+          }
+        />
+      </div>
+    );
+  }
 
   if (status !== "authed" || !user || user.role !== "admin" || (!me && !meError)) {
     return (
