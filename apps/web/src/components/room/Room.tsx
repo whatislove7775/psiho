@@ -1,5 +1,6 @@
 "use client";
 
+import { SessionTimer } from "./SessionTimer";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -24,7 +25,11 @@ import { useAuth, homeFor } from "@/lib/auth/store";
 import { normalizeAvatar, randomAvatar } from "@/lib/avatar/schema";
 import { when, untilLabel } from "@/lib/format";
 import { AvatarThumb } from "@/components/avatar/AvatarThumb";
+import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
+import { BackdropPicker } from "@/components/avatar/BackdropPicker";
+import { loadBackdrop, saveBackdrop, type BackdropId } from "@/lib/avatar/backdrops";
 import { useAvatarCamera } from "@/hooks/useAvatarCamera";
+import { useRealCamera } from "@/hooks/useRealCamera";
 import { useP2PCall } from "@/hooks/useP2PCall";
 import { useVoiceTransform, type VoicePreset } from "@/hooks/useVoiceTransform";
 import { SessionNotepad } from "@/components/session/SessionNotepad";
@@ -56,6 +61,18 @@ function CanvasSlot({ canvas }: { canvas: HTMLCanvasElement | null }) {
   return <div ref={ref} style={{ position: "absolute", inset: 0 }} />;
 }
 
+/** Specialist's own camera self-view (mirrored). Never used for clients. */
+function SelfVideo({ stream }: { stream: MediaStream | null }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
+    v.srcObject = stream;
+    if (stream) v.play().catch(() => undefined);
+  }, [stream]);
+  return <video ref={ref} className={s.selfVideo} muted playsInline autoPlay aria-label="Ваша камера" />;
+}
+
 export function Room({ sessionId }: { sessionId: string }) {
   const router = useRouter();
   const { user, status: authStatus, bootstrap } = useAuth();
@@ -85,21 +102,43 @@ export function Room({ sessionId }: { sessionId: string }) {
       .catch((e) => setLoadError(e instanceof ApiError ? e.message : "Не получилось загрузить сессию."));
   }, [authStatus, sessionId]);
 
+  // Clients are only ever seen as their avatar; specialists use their real camera.
+  const role = user?.role === "psychologist" ? "psychologist" : "client";
+  const isPro = role === "psychologist";
+
   const myAvatar = useMemo(
     () => (user?.avatar_config ? normalizeAvatar(user.avatar_config) : randomAvatar(user?.id ?? "me")),
     [user],
   );
-  const cam = useAvatarCamera(myAvatar);
-  const { transformedStream } = useVoiceTransform({ inputStream: cam.audioStream, preset: voice });
+  const [backdrop, setBackdropState] = useState<BackdropId>("dusk");
+  useEffect(() => setBackdropState(loadBackdrop()), []);
+  const setBackdrop = (id: BackdropId) => {
+    setBackdropState(id);
+    saveBackdrop(id);
+  };
+  const avatarCam = useAvatarCamera(myAvatar, { backdrop });
+  const realCam = useRealCamera();
+  const cam = isPro
+    ? { ...realCam, faceLost: false, tracking: false, calibrating: false, recalibrate: () => undefined }
+    : avatarCam;
+  const { transformedStream } = useVoiceTransform({ inputStream: isPro ? null : avatarCam.audioStream, preset: voice });
 
   const localStream = useMemo(() => {
-    if (!cam.videoStream || phase !== "call") return null;
-    const audio = transformedStream?.getAudioTracks() ?? cam.audioStream?.getAudioTracks() ?? [];
-    return new MediaStream([...cam.videoStream.getVideoTracks(), ...audio]);
-  }, [cam.videoStream, cam.audioStream, transformedStream, phase]);
+    if (phase !== "call") return null;
+    if (isPro) return realCam.stream;
+    if (!avatarCam.videoStream) return null;
+    const audio = transformedStream?.getAudioTracks() ?? avatarCam.audioStream?.getAudioTracks() ?? [];
+    return new MediaStream([...avatarCam.videoStream.getVideoTracks(), ...audio]);
+  }, [isPro, realCam.stream, avatarCam.videoStream, avatarCam.audioStream, transformedStream, phase]);
 
   const onEnd = useCallback(() => setPhase("ended"), []);
-  const call = useP2PCall({ roomId: join?.room_id ?? "", wsToken: join?.ws_token ?? "", localStream, onEnd });
+  const call = useP2PCall({
+    roomId: join?.room_id ?? "",
+    wsToken: join?.ws_token ?? "",
+    localStream,
+    onEnd,
+    videoMaxBitrate: isPro ? 1_500_000 : 900_000,
+  });
 
   // Keep the session's can_join fresh while waiting in the lobby
   useEffect(() => {
@@ -108,7 +147,6 @@ export function Room({ sessionId }: { sessionId: string }) {
     return () => clearInterval(t);
   }, [phase, session, sessionId]);
 
-  const role = user?.role === "psychologist" ? "psychologist" : "client";
   const peer = session
     ? role === "psychologist"
       ? { name: session.client.alias, avatar: session.client.avatar_config, seed: session.client.alias }
@@ -116,6 +154,14 @@ export function Room({ sessionId }: { sessionId: string }) {
     : null;
   const peerName = join?.peer.name ?? peer?.name ?? "";
   const peerAvatar = join?.peer.avatar_config ?? peer?.avatar ?? null;
+  const peerPhoto = isPro ? null : (join?.peer.photo_url ?? session?.psychologist.photo_url ?? null);
+  /** The other party: a client is shown as their avatar, a specialist as their real photo. */
+  const peerPic = (size: number) =>
+    isPro ? (
+      <AvatarThumb config={peerAvatar} seed={peer?.seed} size={size} />
+    ) : (
+      <SpecialistPhoto url={peerPhoto} name={peerName} size={size} />
+    );
 
   const enter = async () => {
     setJoining(true);
@@ -188,7 +234,7 @@ export function Room({ sessionId }: { sessionId: string }) {
       <div className={s.room}>
         <div className={s.ended}>
           <div className={s.endedCard}>
-            <AvatarThumb config={peerAvatar} seed={peer?.seed} size={112} />
+            {peerPic(112)}
             <h2>Вы вышли из сессии</h2>
             <p className={s.note}>
               Видео и звук не записывались. Заметки остались только в этом браузере и удалятся сами через 24 часа.
@@ -219,19 +265,25 @@ export function Room({ sessionId }: { sessionId: string }) {
     return (
       <div className={s.room}>
         <div className={s.lobby}>
-          <div className={s.stage}>
+          <div className={`${s.stage} ${isPro ? s.stageWide : ""}`}>
             <div className={s.stageInner}>
-              <CanvasSlot canvas={cam.canvas} />
+              {isPro ? <SelfVideo stream={realCam.videoStream} /> : <CanvasSlot canvas={avatarCam.canvas} />}
             </div>
             {!camReady && (
               <div className={s.stagePlaceholder}>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
-                  <AvatarThumb config={myAvatar} size={180} framing="portrait" background="transparent" />
+                  {isPro ? (
+                    <Camera size={40} strokeWidth={1.6} />
+                  ) : (
+                    <AvatarThumb config={myAvatar} size={180} framing="portrait" background="transparent" />
+                  )}
                   {cam.state === "starting" ? (
                     <Spinner label="Включаем камеру" />
+                  ) : isPro ? (
+                    <p style={{ maxWidth: 320 }}>Клиент увидит ваше настоящее видео с камеры. Проверьте свет и кадр перед входом.</p>
                   ) : (
                     <p style={{ maxWidth: 320 }}>
-                      Камера нужна, чтобы аватар повторял вашу мимику. Изображение с неё обрабатывается только на этом устройстве.
+                      Камера нужна, чтобы аватар повторял вашу мимику. Собеседник видит только аватар, изображение с камеры остаётся на этом устройстве.
                     </p>
                   )}
                   {cam.error && <p className={s.errorText}>{cam.error}</p>}
@@ -241,13 +293,15 @@ export function Room({ sessionId }: { sessionId: string }) {
             {camReady && (
               <div className={s.stageTag}>
                 <span className={`${s.dot} ${cam.faceLost ? s.dotWarn : ""}`} />
-                {cam.faceLost
-                  ? "Лицо не видно — сядьте ближе к свету"
-                  : !cam.tracking
-                    ? "Подключаем распознавание мимики"
-                    : cam.calibrating
-                      ? "Запоминаем ваше спокойное лицо — расслабьтесь и смотрите в камеру"
-                      : "Так вас увидит собеседник"}
+                {isPro
+                  ? "Так вас увидит клиент"
+                  : cam.faceLost
+                    ? "Лицо не видно. Сядьте ближе к свету"
+                    : !cam.tracking
+                      ? "Подключаем распознавание мимики"
+                      : cam.calibrating
+                        ? "Запоминаем ваше спокойное лицо. Расслабьтесь и смотрите в камеру"
+                        : "Так вас увидит собеседник"}
               </div>
             )}
           </div>
@@ -255,7 +309,7 @@ export function Room({ sessionId }: { sessionId: string }) {
           <div className={s.side}>
             <Card>
               <div className={s.peer}>
-                <AvatarThumb config={peerAvatar} seed={peer?.seed} size={64} />
+                {peerPic(64)}
                 <div style={{ minWidth: 0 }}>
                   <div className={s.peerName}>{peerName}</div>
                   <div className={s.meta}>
@@ -272,7 +326,7 @@ export function Room({ sessionId }: { sessionId: string }) {
                   <span className={`${s.checkIcon} ${camReady ? s.checkOk : ""}`}>
                     <Camera size={16} />
                   </span>
-                  Камера включена и аватар повторяет мимику
+                  {isPro ? "Камера включена" : "Камера включена и аватар повторяет мимику"}
                 </li>
                 <li className={s.check}>
                   <span className={`${s.checkIcon} ${cam.audioStream ? s.checkOk : ""}`}>
@@ -294,13 +348,19 @@ export function Room({ sessionId }: { sessionId: string }) {
               )}
             </Card>
 
-            <Card>
-              <div className={s.label}>Голос</div>
-              <Segmented value={voice} onChange={setVoice} options={VOICES} ariaLabel="Фильтр голоса" />
-              <p className={s.note} style={{ marginTop: 10 }}>
-                Фильтр меняет тембр, чтобы голос было сложнее узнать. Его можно переключить и во время сессии.
-              </p>
-            </Card>
+            {!isPro && (
+              <Card>
+                <div className={s.label}>Фон за аватаром</div>
+                <BackdropPicker value={backdrop} onChange={setBackdrop} size="sm" />
+                <div className={s.label} style={{ marginTop: 16 }}>
+                  Голос
+                </div>
+                <Segmented value={voice} onChange={setVoice} options={VOICES} ariaLabel="Фильтр голоса" />
+                <p className={s.note} style={{ marginTop: 10 }}>
+                  Фильтр меняет тембр, чтобы голос было сложнее узнать. Его можно переключить и во время сессии.
+                </p>
+              </Card>
+            )}
 
             {!camReady ? (
               <Button variant="primary" size="lg" block loading={cam.state === "starting"} onClick={cam.start} icon={<Camera size={20} />}>
@@ -340,13 +400,15 @@ export function Room({ sessionId }: { sessionId: string }) {
         {!call.hasRemote && (
           <div className={s.waiting}>
             <div className={s.waitingAvatar}>
-              <AvatarThumb config={peerAvatar} seed={peer?.seed} size={148} />
+              {peerPic(148)}
             </div>
             <h3>{call.status === "failed" ? "Не удалось соединиться" : `Ждём, когда ${role === "client" ? "специалист" : "клиент"} войдёт`}</h3>
             <p className={s.note} style={{ maxWidth: 380 }}>
               {call.status === "failed"
                 ? "Проверьте интернет и попробуйте переподключиться."
-                : "Как только собеседник подключится, вы увидите его аватар. Можно пока сделать пару спокойных вдохов."}
+                : isPro
+                  ? "Как только клиент подключится, вы увидите его аватар."
+                  : "Как только специалист подключится, вы увидите его. Можно пока сделать пару спокойных вдохов."}
             </p>
             {call.status === "failed" && (
               <Button variant="primary" onClick={call.retryNow} icon={<RefreshCw size={18} />}>
@@ -358,12 +420,13 @@ export function Room({ sessionId }: { sessionId: string }) {
 
         <div className={s.topbar}>
           <div className={s.topPeer}>
-            <AvatarThumb config={peerAvatar} seed={peer?.seed} size={40} />
+            {peerPic(40)}
             <div style={{ minWidth: 0 }}>
               <div style={{ fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{peerName}</div>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <SessionTimer className={s.pill} start={session.scheduled_at} minutes={session.duration_minutes} />
             <span className={s.pill}>
               <span className={`${s.dot} ${call.status === "connected" && call.hasRemote ? "" : s.dotWarn}`} />
               <span className="num">{statusText}</span>
@@ -374,11 +437,11 @@ export function Room({ sessionId }: { sessionId: string }) {
           </div>
         </div>
 
-        {cam.faceLost && !videoOff && <div className={s.toast}>Лицо не видно — аватар замер. Сядьте ближе к свету</div>}
+        {!isPro && cam.faceLost && !videoOff && <div className={s.toast}>Лицо не видно, аватар замер. Сядьте ближе к свету</div>}
 
-        <div className={s.pip} aria-label="Ваш аватар">
-          <CanvasSlot canvas={cam.canvas} />
-          {videoOff && <div className={s.pipOff}>Аватар скрыт от собеседника</div>}
+        <div className={`${s.pip} ${isPro ? s.pipWide : ""}`} aria-label={isPro ? "Ваша камера" : "Ваш аватар"}>
+          {isPro ? <SelfVideo stream={realCam.videoStream} /> : <CanvasSlot canvas={avatarCam.canvas} />}
+          {videoOff && <div className={s.pipOff}>{isPro ? "Камера выключена" : "Аватар скрыт от собеседника"}</div>}
         </div>
 
         {panel && (
@@ -402,12 +465,19 @@ export function Room({ sessionId }: { sessionId: string }) {
           <button className={`${s.ctrl} ${call.isMuted ? s.ctrlOff : ""}`} onClick={call.toggleMute} aria-label={call.isMuted ? "Включить микрофон" : "Выключить микрофон"} aria-pressed={call.isMuted}>
             {call.isMuted ? <MicOff size={22} /> : <Mic size={22} />}
           </button>
-          <button className={`${s.ctrl} ${videoOff ? s.ctrlOff : ""}`} onClick={call.toggleCamera} aria-label={videoOff ? "Показать аватар" : "Скрыть аватар"} aria-pressed={videoOff}>
+          <button
+            className={`${s.ctrl} ${videoOff ? s.ctrlOff : ""}`}
+            onClick={call.toggleCamera}
+            aria-label={isPro ? (videoOff ? "Включить камеру" : "Выключить камеру") : videoOff ? "Показать аватар" : "Скрыть аватар"}
+            aria-pressed={videoOff}
+          >
             {videoOff ? <CameraOff size={22} /> : <Camera size={22} />}
           </button>
-          <button className={`${s.ctrl} ${panel === "voice" ? s.ctrlOff : ""}`} onClick={() => setPanel(panel === "voice" ? null : "voice")} aria-label="Фильтр голоса">
-            <Waves size={22} />
-          </button>
+          {!isPro && (
+            <button className={`${s.ctrl} ${panel === "voice" ? s.ctrlOff : ""}`} onClick={() => setPanel(panel === "voice" ? null : "voice")} aria-label="Фильтр голоса">
+              <Waves size={22} />
+            </button>
+          )}
           <button className={`${s.ctrl} ${panel === "breath" ? s.ctrlOff : ""}`} onClick={() => setPanel(panel === "breath" ? null : "breath")} aria-label="Дыхательная пауза">
             <Wind size={22} />
           </button>

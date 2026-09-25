@@ -60,6 +60,12 @@ main() {
   [[ -f .env ]] || die "Файл $deploy_path/.env не найден. Скопируйте .env.example в .env и заполните значения (см. deploy/SETUP.md)."
   grep -q '^NEXT_PUBLIC_API_URL=' .env \
     || warn "В .env нет NEXT_PUBLIC_API_URL — фронтенд соберётся с адресом http://localhost/api/v1."
+  # Ключ шифрования чатов: создаётся один раз и больше никогда не меняется.
+  if ! grep -q '^CHAT_ENCRYPTION_KEY=.' .env; then
+    printf '\n# Ключ шифрования чатов. НЕ МЕНЯТЬ и не терять — иначе переписка станет нечитаемой.\nCHAT_ENCRYPTION_KEY=%s\n' \
+      "$(openssl rand -base64 32 | tr '+/' '-_')" >> .env
+    log "В .env добавлен CHAT_ENCRYPTION_KEY"
+  fi
 
   # ── git: origin → psiho ────────────────────────────────────────
   local current_url
@@ -159,6 +165,7 @@ main() {
     fi
     log "Откат на предыдущий коммит ${prev:0:10}"
     git reset --hard "$prev"
+    export GIT_COMMIT="$(git rev-parse --short HEAD)" BUILD_TIME="$(date -u +%FT%TZ)"
     if "${compose[@]}" build api web && up_stack && wait_healthy; then
       reload_nginx || true
       echo "Откат выполнен: работает ${prev:0:10}"
@@ -171,6 +178,7 @@ main() {
 
   # ── Сборка ─────────────────────────────────────────────────────
   log "Сборка образов api и web"
+  export GIT_COMMIT="$(git rev-parse --short HEAD)" BUILD_TIME="$(date -u +%FT%TZ)"
   if ! "${compose[@]}" build api web; then
     # Контейнеры ещё не тронуты — просто возвращаем код.
     warn "Сборка упала — сайт продолжает работать на ${prev:0:10}, возвращаю код."

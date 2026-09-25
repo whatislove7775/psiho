@@ -35,8 +35,10 @@ class AvatarConfigField(serializers.JSONField):
 class PsychologistPublicSerializer(serializers.ModelSerializer):
     session_rate_rub = serializers.IntegerField(min_value=0, max_value=1_000_000)
     avatar_config = serializers.SerializerMethodField()
+    photo_url = serializers.SerializerMethodField()
     sessions_count = serializers.SerializerMethodField()
     next_slot = serializers.SerializerMethodField()
+    booking = serializers.SerializerMethodField()
     specializations = serializers.ListField(child=serializers.CharField(), required=False)
     languages = serializers.ListField(child=serializers.CharField(), required=False)
     experience_years = serializers.IntegerField(min_value=0, max_value=80, required=False)
@@ -45,8 +47,8 @@ class PsychologistPublicSerializer(serializers.ModelSerializer):
         model = PsychologistProfile
         fields = [
             "id", "display_name", "bio", "approach", "specializations", "languages",
-            "experience_years", "session_rate_rub", "avatar_config", "sessions_count",
-            "next_slot",
+            "experience_years", "session_rate_rub", "avatar_config", "photo_url", "sessions_count",
+            "next_slot", "booking",
         ]
         read_only_fields = ["id"]
 
@@ -58,6 +60,11 @@ class PsychologistPublicSerializer(serializers.ModelSerializer):
 
     def get_avatar_config(self, obj):
         return obj.user.avatar_config
+
+    def get_photo_url(self, obj):
+        from apps.photos.utils import photo_url
+
+        return photo_url(obj)
 
     def get_sessions_count(self, obj):
         annotated = getattr(obj, "completed_sessions_count", None)
@@ -73,6 +80,12 @@ class PsychologistPublicSerializer(serializers.ModelSerializer):
 
         slot = next_slot(obj)
         return serializers.DateTimeField().to_representation(slot) if slot else None
+
+    def get_booking(self, obj):
+        """Длительности и цены (apps.availability). session_rate_rub = цена самой короткой сессии."""
+        from apps.availability.services import booking_info
+
+        return booking_info(obj)
 
 
 class PsychologistPrivateSerializer(PsychologistPublicSerializer):

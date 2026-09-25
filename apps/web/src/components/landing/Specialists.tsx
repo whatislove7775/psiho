@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
-import { AvatarThumb } from "@/components/avatar/AvatarThumb";
+import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import { psychologistsApi } from "@/lib/api/endpoints";
 import type { PsychologistPublic } from "@/lib/api/types";
 import { plural, rub } from "@/lib/format";
@@ -61,7 +61,7 @@ export function Specialists() {
           <div className={s.specList}>
             <div className={s.specListHead}>
               <h3>Сейчас принимают</h3>
-              <span>цена за 50 минут</span>
+              <span>цена самой короткой сессии</span>
             </div>
             {state.kind === "loading"
               ? [0, 1, 2].map((i) => (
@@ -75,7 +75,7 @@ export function Specialists() {
                 ))
               : state.items.map((p) => (
                   <article key={p.id} className={s.specRow}>
-                    <AvatarThumb config={p.avatar_config} seed={`psy-${p.id}`} size={64} alt="" />
+                    <SpecialistPhoto url={p.photo_url} name={p.display_name} size={64} alt="" />
                     <div>
                       <div className={s.specName}>{p.display_name}</div>
                       <div className={s.specMeta}>

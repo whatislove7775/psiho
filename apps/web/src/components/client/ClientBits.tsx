@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { AlertCircle, CalendarDays, Clock } from "lucide-react";
 import { Badge, Button } from "@/ui";
-import { AvatarThumb } from "@/components/avatar/AvatarThumb";
+import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import type { Session } from "@/lib/api/types";
 import { SESSION_STATUS, rub, when } from "@/lib/format";
 import s from "./client.module.css";
@@ -47,11 +47,7 @@ export function SessionRow({
   };
   return (
     <div className={s.row}>
-      <AvatarThumb
-        config={session.psychologist.avatar_config}
-        seed={`psy-${session.psychologist.id}`}
-        size={56}
-      />
+      <SpecialistPhoto url={session.psychologist.photo_url} name={session.psychologist.display_name} size={56} />
       <div className={s.rowMain}>
         <div className={s.rowName}>{session.psychologist.display_name}</div>
         <div className={s.rowMeta}>

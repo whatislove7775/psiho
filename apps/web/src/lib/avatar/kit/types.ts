@@ -43,5 +43,7 @@ export interface AvatarRendererApi {
   start(): void;
   stop(): void;
   captureStream(fps?: number): MediaStream;
+  /** Replace the scene background (CSS colour, painted canvas, or null). */
+  setBackground?(bg: string | HTMLCanvasElement | null): void;
   dispose(): void;
 }

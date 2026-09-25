@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
-import { authApi } from "@/lib/api/endpoints";
+import { loginWithOtp, OtpRequiredError } from "@/lib/api/staff";
 import { homeFor, useAuth } from "@/lib/auth/store";
 import { Button, Input } from "@/ui";
 import { AuthCard, AuthLinks, AuthShell, safeNext } from "./AuthShell";
@@ -19,6 +19,9 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Staff accounts with 2FA get a second step: a 6-digit code from the authenticator app
+  const [otpStep, setOtpStep] = useState(false);
+  const [otp, setOtp] = useState("");
 
   // Already signed in: go straight where the person was heading.
   useEffect(() => {
@@ -40,10 +43,17 @@ export function LoginForm() {
     }
     setBusy(true);
     try {
-      const res = await authApi.login(login.trim(), password);
+      const res = await loginWithOtp(login.trim(), password, otpStep ? otp.trim() : undefined);
       useAuth.getState().accept(res);
       router.push(next ?? homeFor(res.user.role));
     } catch (err) {
+      if (err instanceof OtpRequiredError) {
+        setError(otpStep ? err.message : null);
+        setOtpStep(true);
+        setOtp("");
+        setBusy(false);
+        return;
+      }
       setError(err instanceof ApiError ? err.message : "Не получилось войти. Попробуйте ещё раз.");
       setBusy(false);
     }
@@ -80,6 +90,18 @@ export function LoginForm() {
             autoComplete="current-password"
             required
           />
+          {otpStep && (
+            <Input
+              label="Код из приложения-аутентификатора"
+              hint="Шесть цифр. Код обновляется каждые 30 секунд."
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="123456"
+              autoFocus
+            />
+          )}
           <FormError>{error}</FormError>
           <Button type="submit" variant="primary" size="lg" block loading={busy}>
             Войти

@@ -8,7 +8,9 @@ from apps.sessions.models import ConsultationSession
 from apps.sessions.serializers import SessionSerializer
 from apps.sessions.stats import day_bounds_utc, month_start_utc
 from apps.users.models import PsychologistProfile, User
-from apps.users.permissions import IsPlatformAdmin
+from apps.staff.audit import audit
+from apps.staff.permissions import StaffPerm
+from apps.staff.throttles import STAFF_THROTTLES
 from apps.users.serializers import PsychologistAdminSerializer
 
 S = ConsultationSession.Status
@@ -20,7 +22,8 @@ class VerifySerializer(serializers.Serializer):
 
 
 class AdminPsychologistListView(APIView):
-    permission_classes = [IsPlatformAdmin]
+    permission_classes = [StaffPerm("specialists.view")]
+    throttle_classes = STAFF_THROTTLES
 
     def get(self, request):
         qs = PsychologistProfile.objects.select_related("user").order_by("-created_at")
@@ -33,7 +36,8 @@ class AdminPsychologistListView(APIView):
 
 
 class AdminVerifyPsychologistView(APIView):
-    permission_classes = [IsPlatformAdmin]
+    permission_classes = [StaffPerm("specialists.verify")]
+    throttle_classes = STAFF_THROTTLES
 
     def post(self, request, pk):
         profile = PsychologistProfile.objects.select_related("user").filter(pk=pk).first()
@@ -41,15 +45,19 @@ class AdminVerifyPsychologistView(APIView):
             return Response({"detail": "Специалист не найден."}, status=status.HTTP_404_NOT_FOUND)
         serializer = VerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        before = profile.verification_status
         profile.verification_status = serializer.validated_data["status"]
         profile.verified_by = request.user
         profile.verified_at = timezone.now()
         profile.save(update_fields=["verification_status", "verified_by", "verified_at", "updated_at"])
+        audit(request, "specialist.verify_legacy", target=profile,
+              details={"from": before, "to": profile.verification_status})
         return Response(PsychologistAdminSerializer(profile).data)
 
 
 class AdminStatsView(APIView):
-    permission_classes = [IsPlatformAdmin]
+    permission_classes = [StaffPerm("dashboard.revenue")]
+    throttle_classes = STAFF_THROTTLES
 
     def get(self, request):
         now = timezone.now()
@@ -71,7 +79,8 @@ class AdminStatsView(APIView):
 
 
 class AdminSessionListView(APIView):
-    permission_classes = [IsPlatformAdmin]
+    permission_classes = [StaffPerm("sessions.view")]
+    throttle_classes = STAFF_THROTTLES
 
     def get(self, request):
         qs = (

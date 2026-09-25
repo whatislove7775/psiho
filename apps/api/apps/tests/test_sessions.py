@@ -46,9 +46,10 @@ def test_schedule_put_then_slots(psychologist, api, day):
 
     resp = api.get(f"/api/v1/psychologists/{psychologist.id}/slots/?from={day.isoformat()}&days=1")
     assert resp.status_code == 200
-    # 10:00, 11:00, 12:00 MSK → 07:00, 08:00, 09:00 UTC, 50 minutes each
+    # shortest duration (50 min) every 30 minutes (default start step): 10:00 … 12:00 MSK
+    starts = [msk(day, 10) + timedelta(minutes=m) for m in (0, 30, 60, 90, 120)]
     assert resp.json() == [
-        {"start": iso(msk(day, h)), "end": iso(msk(day, h) + timedelta(minutes=50))} for h in (10, 11, 12)
+        {"start": iso(x), "end": iso(x + timedelta(minutes=50))} for x in starts
     ]
     # other days of the week have no rules now
     resp = api.get(f"/api/v1/psychologists/{psychologist.id}/slots/?from={(day + timedelta(days=1)).isoformat()}&days=1")
@@ -83,7 +84,8 @@ def test_public_list_and_detail(psychologist, api):
     assert item["next_slot"] is not None and item["session_rate_rub"] == 3000
     assert set(item) == {
         "id", "display_name", "bio", "approach", "specializations", "languages", "experience_years",
-        "session_rate_rub", "avatar_config", "sessions_count", "next_slot",
+        "session_rate_rub", "avatar_config", "photo_url", "sessions_count", "next_slot",
+        "booking",
     }
     assert len(api.get("/api/v1/psychologists/?q=тревог").json()) == 1
     assert len(api.get("/api/v1/psychologists/?q=депрессия").json()) == 0
@@ -108,7 +110,9 @@ def test_booking_flow_and_conflicts(psychologist, client_user, day):
     s = resp.json()
     assert s["status"] == "paid" and s["payment_url"] is None  # dev mode: no YooKassa
     assert s["amount_rub"] == 3000 and s["duration_minutes"] == 50
-    assert s["psychologist"] == {"id": psychologist.id, "display_name": "Анна", "avatar_config": None}
+    assert s["psychologist"] == {
+        "id": psychologist.id, "display_name": "Анна", "avatar_config": None, "photo_url": None,
+    }
     assert s["client"]["alias"] == client_user.alias
     assert s["can_join"] is False
 
@@ -124,9 +128,9 @@ def test_booking_flow_and_conflicts(psychologist, client_user, day):
     # 80 minutes at 12:00 exceeds window end 13:00
     resp = auth_client(other).post("/api/v1/sessions/book/", {**payload, "scheduled_at": iso(msk(day, 12)), "duration_minutes": 80}, format="json")
     assert resp.status_code == 400
-    # 80 minutes at 11:00 fits; price ×1.5
+    # 80 minutes at 11:00 fits (10:50 + 10 min buffer); price = 3600 ₽/h × 80/60
     resp = auth_client(other).post("/api/v1/sessions/book/", {**payload, "scheduled_at": iso(msk(day, 11)), "duration_minutes": 80}, format="json")
-    assert resp.status_code == 201 and resp.json()["amount_rub"] == 4500
+    assert resp.status_code == 201 and resp.json()["amount_rub"] == 4800
     # is_test free booking path is gone; invalid duration rejected
     resp = auth_client(other).post("/api/v1/sessions/book/", {**payload, "duration_minutes": 30, "is_test": True}, format="json")
     assert resp.status_code == 400
@@ -199,7 +203,7 @@ def test_join_and_complete(client_user, psychologist):
     assert resp.status_code == 200, resp.content
     data = resp.json()
     assert data["role"] == "client" and data["room_id"] == str(soon.webrtc_room_id)
-    assert data["peer"] == {"name": "Анна", "avatar_config": None}
+    assert data["peer"] == {"name": "Анна", "avatar_config": None, "photo_url": None}
     claims = validate_ws_token(data["ws_token"], data["room_id"])
     assert claims == {"user_id": str(client_user.id), "room_id": str(soon.webrtc_room_id), "role": "client"}
     soon.refresh_from_db()

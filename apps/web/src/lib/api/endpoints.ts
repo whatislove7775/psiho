@@ -59,7 +59,7 @@ export const cabinetApi = {
 export const sessionsApi = {
   list: () => api<Session[]>("/sessions/"),
   get: (id: string) => api<Session>(`/sessions/${id}/`),
-  book: (psychologist_id: number, scheduled_at: string, duration_minutes: 50 | 80) =>
+  book: (psychologist_id: number, scheduled_at: string, duration_minutes: number) =>
     api<Session>("/sessions/book/", { method: "POST", body: { psychologist_id, scheduled_at, duration_minutes } }),
   cancel: (id: string) => api<Session>(`/sessions/${id}/cancel/`, { method: "POST" }),
   join: (id: string) => api<JoinResponse>(`/sessions/${id}/join/`, { method: "POST" }),

@@ -114,10 +114,13 @@ export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T
 
   const doFetch = () => {
     const headers: Record<string, string> = { Accept: "application/json" };
-    if (body !== undefined) headers["Content-Type"] = "application/json";
+    // FormData (file uploads) goes as multipart; the browser sets the boundary header.
+    const isForm = typeof FormData !== "undefined" && body instanceof FormData;
+    if (body !== undefined && !isForm) headers["Content-Type"] = "application/json";
     const access = auth ? tokens.access : null;
     if (access) headers.Authorization = `Bearer ${access}`;
-    return fetch(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal });
+    const payload = body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body);
+    return fetch(url, { method, headers, body: payload, signal });
   };
 
   let res: Response;

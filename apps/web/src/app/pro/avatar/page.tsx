@@ -1,5 +1,6 @@
-import { AvatarStudioPage } from "@/components/avatar-studio/AvatarStudioPage";
+import { redirect } from "next/navigation";
 
+// Specialists appear with their real photo and camera — no avatar needed.
 export default function Page() {
-  return <AvatarStudioPage variant="pro" />;
+  redirect("/pro/profile");
 }

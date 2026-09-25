@@ -1,5 +1,5 @@
-import { AppShell } from "@/components/shell/AppShell";
+import { AdminShell } from "@/components/admin/AdminShell";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return <AppShell role="admin">{children}</AppShell>;
+  return <AdminShell>{children}</AdminShell>;
 }

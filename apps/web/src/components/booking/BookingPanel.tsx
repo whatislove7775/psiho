@@ -10,10 +10,11 @@ import {
   Headphones,
   Wallet,
 } from "lucide-react";
-import { Button, Modal, Segmented, Skeleton, useToast } from "@/ui";
-import { AvatarThumb } from "@/components/avatar/AvatarThumb";
+import { Button, Modal, Skeleton, useToast } from "@/ui";
+import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import { ApiError } from "@/lib/api/client";
-import { psychologistsApi, sessionsApi } from "@/lib/api/endpoints";
+import { sessionsApi } from "@/lib/api/endpoints";
+import { availabilityApi, durationLabel } from "@/lib/api/availability";
 import type { PsychologistPublic, Slot } from "@/lib/api/types";
 import {
   WEEKDAYS_SHORT,
@@ -27,18 +28,30 @@ import {
 import { useLoad, errorText } from "@/components/client/useLoad";
 import s from "./booking.module.css";
 
-type Dur = "50" | "80";
-const HOUR = 3600000;
+const TZ_LOCAL = (() => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return "";
+  }
+})();
 
-export function priceFor(rate: number, minutes: 50 | 80) {
-  return minutes === 80 ? Math.round(rate * 1.5) : rate;
+function offsetLabel() {
+  const m = -new Date().getTimezoneOffset();
+  const sign = m >= 0 ? "+" : "−";
+  const h = Math.floor(Math.abs(m) / 60);
+  const mm = Math.abs(m) % 60;
+  return `UTC${sign}${h}${mm ? `:${String(mm).padStart(2, "0")}` : ""}`;
 }
 
 /** Choose duration, day and time, then confirm. Lives in the right rail of a profile. */
 export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
   const router = useRouter();
   const toast = useToast();
-  const [dur, setDur] = useState<Dur>("50");
+  const options = psy.booking?.durations?.length
+    ? psy.booking.durations
+    : [{ minutes: 50, price_rub: psy.session_rate_rub }];
+  const [minutes, setMinutes] = useState<number>(options[0].minutes);
   const [dayKey, setDayKey] = useState<string | null>(null);
   const [slot, setSlot] = useState<Slot | null>(null);
   const [confirm, setConfirm] = useState(false);
@@ -46,21 +59,17 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
   const [notice, setNotice] = useState<string | null>(null);
 
   const today = useMemo(() => new Date(), []);
-  const slots = useLoad(
-    () => psychologistsApi.slots(psy.id, isoDate(today), 14),
-    [psy.id],
+  const res = useLoad(() => availabilityApi.starts(psy.id, minutes), [psy.id, minutes]);
+
+  const price = res.data?.duration_minutes === minutes ? res.data.price_rub : (options.find((o) => o.minutes === minutes)?.price_rub ?? 0);
+
+  const usable: Slot[] = useMemo(
+    () =>
+      res.data?.duration_minutes === minutes
+        ? res.data.starts.map((st) => ({ start: st, end: new Date(new Date(st).getTime() + minutes * 60000).toISOString() }))
+        : [],
+    [res.data, minutes],
   );
-
-  const minutes = Number(dur) as 50 | 80;
-  const price = priceFor(psy.session_rate_rub, minutes);
-
-  // 80-minute sessions run into the next hourly slot, so it must be free too.
-  const usable = useMemo(() => {
-    const list = slots.data ?? [];
-    if (minutes === 50) return list;
-    const starts = new Set(list.map((x) => new Date(x.start).getTime()));
-    return list.filter((x) => starts.has(new Date(x.start).getTime() + HOUR));
-  }, [slots.data, minutes]);
 
   const byDay = useMemo(() => {
     const m = new Map<string, Slot[]>();
@@ -72,32 +81,30 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
     return m;
   }, [usable]);
 
-  const days = useMemo(
-    () =>
-      Array.from({ length: 14 }, (_, i) => {
-        const d = new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          today.getDate() + i,
-        );
-        return { key: isoDate(d), date: d };
-      }),
-    [today],
-  );
+  const days = useMemo(() => {
+    const until = res.data?.horizon_until ? new Date(`${res.data.horizon_until}T23:59:59`) : null;
+    const lastFree = usable.length ? new Date(usable[usable.length - 1].start) : null;
+    const end = [until, lastFree].filter(Boolean).reduce<Date | null>((a, b) => (!a || b! > a ? b : a), null);
+    const count = end ? Math.min(92, Math.max(14, Math.ceil((end.getTime() - today.getTime()) / 86400000) + 2)) : 14;
+    return Array.from({ length: count }, (_, i) => {
+      const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+      return { key: isoDate(d), date: d };
+    });
+  }, [today, res.data, usable]);
 
   const firstFree = days.find((d) => byDay.has(d.key))?.key ?? null;
   const activeDay = dayKey && byDay.has(dayKey) ? dayKey : firstFree;
   const times = activeDay ? (byDay.get(activeDay) ?? []) : [];
-  const chosen =
-    slot && times.some((t) => t.start === slot.start) ? slot : null;
+  const chosen = slot && times.some((t) => t.start === slot.start) ? slot : null;
+  const loading = res.loading && (!res.data || res.data.duration_minutes !== minutes);
 
   const book = async () => {
     if (!chosen) return;
     setBusy(true);
     try {
-      const res = await sessionsApi.book(psy.id, chosen.start, minutes);
-      if (res.payment_url) {
-        window.location.href = res.payment_url;
+      const r = await sessionsApi.book(psy.id, chosen.start, minutes);
+      if (r.payment_url) {
+        window.location.href = r.payment_url;
         return;
       }
       toast("Сессия запланирована");
@@ -106,10 +113,8 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
       setConfirm(false);
       setSlot(null);
       if (e instanceof ApiError && e.status === 400) {
-        setNotice(
-          `${e.message} Свободное время обновлено.`,
-        );
-        slots.reload();
+        setNotice(`${e.message} Свободное время обновлено.`);
+        res.reload();
       } else {
         setNotice(errorText(e));
       }
@@ -124,25 +129,31 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
         <h2 id="booking-title" className={s.title}>
           Запись на сессию
         </h2>
-        <p className={s.sub}>Время показано по вашему часовому поясу</p>
+        <p className={s.sub}>
+          Время по вашему часовому поясу, {offsetLabel()}{TZ_LOCAL && TZ_LOCAL.includes("/") ? ` (${TZ_LOCAL.split("/").pop()?.replace(/_/g, " ")})` : ""}
+        </p>
       </div>
 
-      <div className={s.dur}>
-        <Segmented<Dur>
-          ariaLabel="Длительность"
-          value={dur}
-          onChange={(v) => {
-            setDur(v);
-            setNotice(null);
-          }}
-          options={[
-            { value: "50", label: `50 мин, ${rub(psy.session_rate_rub)}` },
-            {
-              value: "80",
-              label: `80 мин, ${rub(priceFor(psy.session_rate_rub, 80))}`,
-            },
-          ]}
-        />
+      <div className={s.block}>
+        <div className={s.label}>Длительность</div>
+        <div className={s.durs} role="group" aria-label="Длительность сессии">
+          {options.map((o) => (
+            <button
+              key={o.minutes}
+              type="button"
+              className={s.durOpt}
+              aria-pressed={o.minutes === minutes}
+              onClick={() => {
+                setMinutes(o.minutes);
+                setSlot(null);
+                setNotice(null);
+              }}
+            >
+              <span>{durationLabel(o.minutes)}</span>
+              <small>{rub(o.price_rub)}</small>
+            </button>
+          ))}
+        </div>
       </div>
 
       {notice && (
@@ -152,21 +163,21 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
         </div>
       )}
 
-      {slots.error ? (
+      {res.error ? (
         <div className={s.notice} role="alert">
           <AlertCircle size={18} strokeWidth={1.8} aria-hidden />
           <span>
-            {slots.error}{" "}
+            {res.error}{" "}
             <button
               type="button"
               className={s.inlineBtn}
-              onClick={slots.reload}
+              onClick={res.reload}
             >
               Загрузить снова
             </button>
           </span>
         </div>
-      ) : slots.loading && !slots.data ? (
+      ) : loading ? (
         <div className={s.skel}>
           <Skeleton height={68} radius={16} />
           <Skeleton height={120} radius={16} />
@@ -174,10 +185,10 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
       ) : usable.length === 0 ? (
         <div className={s.none}>
           <CalendarDays size={22} strokeWidth={1.8} aria-hidden />
-          <strong>Нет свободного времени на две недели</strong>
+          <strong>Нет свободного времени</strong>
           <span>
-            {minutes === 80
-              ? "Для 80 минут окон не нашлось. Попробуйте 50 минут или другого специалиста."
+            {options.length > 1 && minutes !== options[0].minutes
+              ? `Для ${durationLabel(minutes)} окон не нашлось. Попробуйте сессию короче или другого специалиста.`
               : "Загляните через пару дней или выберите другого специалиста."}
           </span>
           <Button size="sm" variant="secondary" href="/app/specialists">
@@ -268,11 +279,7 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
         {chosen && (
           <div className={s.confirm}>
             <div className={s.who}>
-              <AvatarThumb
-                config={psy.avatar_config}
-                seed={`psy-${psy.id}`}
-                size={56}
-              />
+              <SpecialistPhoto url={psy.photo_url} name={psy.display_name} size={56} />
               <div>
                 <strong>{psy.display_name}</strong>
                 <span>Видеосессия с аватаром</span>
@@ -300,7 +307,7 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
                       new Date(chosen.start).getTime() + minutes * 60000,
                     ),
                   )}
-                  , {minutes} минут
+                  , {durationLabel(minutes)}
                 </dd>
               </div>
               <div>

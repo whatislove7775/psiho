@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useId, type ReactNode } from "react";
 import { Button, Skeleton } from "@/ui";
-import { AvatarThumb } from "@/components/avatar/AvatarThumb";
+import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import type { Session } from "@/lib/api/types";
 import { dayLabel, rub, time, untilLabel } from "@/lib/format";
 import s from "./rail.module.css";
@@ -79,8 +79,8 @@ export function NextSessionCard({
         <div className={s.rows}>
           <Row
             icon={<CalendarDays size={18} strokeWidth={1.8} />}
-            title="50 или 80 минут"
-            sub="Свободные окна на две недели вперёд"
+            title="От 50 минут до 3 часов"
+            sub="Длительность выбираете при записи, цена зависит от неё"
           />
           <Row
             icon={<ShieldCheck size={18} strokeWidth={1.8} />}
@@ -110,12 +110,7 @@ export function NextSessionCard({
       </div>
 
       <div className={s.person}>
-        <AvatarThumb
-          config={p.avatar_config}
-          seed={`psy-${p.id}`}
-          size={72}
-          background="rgba(255,255,255,0.18)"
-        />
+        <SpecialistPhoto url={p.photo_url} name={p.display_name} size={72} />
         <div className={s.personText}>
           <strong>{p.display_name}</strong>
           <span>

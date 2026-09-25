@@ -8,7 +8,7 @@ import {
   Check,
   Hourglass,
   PauseCircle,
-  Smile,
+  ImageUp,
   UserRound,
   Video,
   Wallet,
@@ -99,7 +99,7 @@ export default function ProOverview() {
         href: "/pro/profile",
       },
       { label: "Настроить расписание", hint: "Клиенты записываются только в эти часы", done: (data?.schedule.length ?? 0) > 0, href: "/pro/schedule" },
-      { label: "Создать аватар", hint: "Так клиенты увидят вас в карточке и на сессии", done: !!user?.avatar_config, href: "/pro/avatar" },
+      { label: "Загрузить фото", hint: "Настоящее фото в карточке специалиста и на сессии", done: !!pr?.photo_url, href: "/pro/profile" },
       {
         label: "Пройти проверку",
         hint: "Администратор проверяет анкету вручную",
@@ -107,7 +107,7 @@ export default function ProOverview() {
         href: undefined,
       },
     ];
-  }, [data, user?.avatar_config]);
+  }, [data]);
   const doneCount = steps.filter((x) => x.done).length;
 
   const weekSlots = data?.slots ? data.slots.length : slotsInWeek(rulesToWeek(data?.schedule ?? []));
@@ -192,7 +192,7 @@ export default function ProOverview() {
             <QuickAction tone="sky" icon={<CalendarClock size={24} strokeWidth={1.8} />} label="Расписание" href="/pro/schedule" />
             <QuickAction tone="mint" icon={<Video size={24} strokeWidth={1.8} />} label="Сессии сегодня" href="/pro/sessions?tab=today" />
             <QuickAction tone="peach" icon={<UserRound size={24} strokeWidth={1.8} />} label="Профиль" href="/pro/profile" />
-            <QuickAction tone="lilac" icon={<Smile size={24} strokeWidth={1.8} />} label="Мой аватар" href="/pro/avatar" />
+            <QuickAction tone="lilac" icon={<ImageUp size={24} strokeWidth={1.8} />} label="Фото профиля" href="/pro/profile#photo" />
             <QuickAction tone="butter" icon={<Camera size={24} strokeWidth={1.8} />} label="Проверить камеру" href="/pro/check" />
             <QuickAction tone="lime" icon={<Wallet size={24} strokeWidth={1.8} />} label="Доход" href="/pro/sessions?tab=past" />
           </div>

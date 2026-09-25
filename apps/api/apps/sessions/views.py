@@ -1,9 +1,10 @@
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.availability.services import allowed_durations, get_settings
 from apps.payments.services import PaymentProviderError, create_session, initiate_payment
 from apps.signaling.tokens import make_ws_token
 from apps.users.models import PsychologistProfile
@@ -17,7 +18,7 @@ S = ConsultationSession.Status
 
 def sessions_for(user):
     qs = ConsultationSession.objects.select_related(
-        "client", "psychologist_profile__user", "payment"
+        "client", "psychologist_profile__user", "psychologist_profile__photo", "payment"
     ).exclude(status=S.DRAFT)
     if user.role == "client":
         return qs.filter(client=user)
@@ -59,7 +60,7 @@ class BookSessionView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         scheduled_at = data["scheduled_at"]
-        duration = int(data["duration_minutes"])
+        duration = data.get("duration_minutes")
 
         try:
             with transaction.atomic():
@@ -75,11 +76,19 @@ class BookSessionView(APIView):
                 )
                 if profile is None:
                     return Response({"detail": "Специалист не найден."}, status=status.HTTP_404_NOT_FOUND)
+                if duration is None:
+                    duration = allowed_durations(get_settings(profile))[0]
                 error = check_bookable(profile, scheduled_at, duration, client=request.user)
                 if error:
                     return Response({"detail": error}, status=status.HTTP_400_BAD_REQUEST)
                 session = create_session(request.user, profile, scheduled_at, duration)
                 initiate_payment(session)
+        except IntegrityError:
+            # Уникальный индекс (специалист, начало) среди активных сессий: параллельная запись
+            return Response(
+                {"detail": "Это время только что заняли. Выберите другое."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         except PaymentProviderError:
             return Response(
                 {"detail": "Не удалось создать платёж. Попробуйте позже."},
@@ -142,7 +151,13 @@ class JoinSessionView(SessionActionView):
         )
         if role == "client":
             profile = session.psychologist_profile
-            peer = {"name": profile.display_name, "avatar_config": profile.user.avatar_config}
+            from apps.photos.utils import photo_url
+
+            peer = {
+                "name": profile.display_name,
+                "avatar_config": profile.user.avatar_config,
+                "photo_url": photo_url(profile),
+            }
         else:
             peer = {"name": session.client.alias, "avatar_config": session.client.avatar_config}
         return Response({

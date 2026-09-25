@@ -1,3 +1,90 @@
+.tabs {
+  display: flex;
+  margin-bottom: -4px;
+}
+.tabs > div {
+  max-width: 100%;
+}
+
+/* ── Periods (weekly templates with dates) ─────────────────────── */
+.periods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -4px 0 14px;
+}
+.period,
+.periodAdd {
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  border-radius: var(--r-pill);
+  font: inherit;
+  font-size: var(--t-13);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur), color var(--dur), border-color var(--dur);
+}
+.period {
+  border: 1px solid var(--c-line-strong);
+  background: transparent;
+  color: var(--c-muted);
+}
+.period[aria-pressed="true"] {
+  background: var(--c-text);
+  border-color: var(--c-text);
+  color: var(--c-panel);
+}
+.periodAdd {
+  border: 1px dashed var(--c-line-strong);
+  background: transparent;
+  color: var(--c-muted);
+}
+.periodAdd:hover,
+.period:hover:not([aria-pressed="true"]) {
+  color: var(--c-text);
+  background: var(--c-raised);
+}
+.period:focus-visible,
+.periodAdd:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+.periodEdit {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px;
+  border-radius: 18px;
+  background: var(--c-raised);
+}
+.periodEdit input {
+  background: var(--c-panel);
+}
+.periodEdit > button {
+  margin-top: 26px;
+}
+.periodNote {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: var(--t-12);
+  color: var(--c-muted);
+  line-height: 1.45;
+}
+@media (max-width: 560px) {
+  .periodEdit {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .periodEdit > button {
+    margin-top: 0;
+    justify-self: start;
+  }
+}
+
 .templates {
   display: flex;
   flex-wrap: wrap;
@@ -55,83 +142,6 @@
 .day[data-off] .full,
 .day[data-off] .short {
   color: var(--c-muted);
-}
-
-.ranges {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 8px;
-}
-.rangeWrap {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-width: 100%;
-}
-.range {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 4px 4px 6px;
-  border-radius: var(--r-control);
-  background: var(--c-panel);
-  border: 1px solid transparent;
-}
-.range[data-invalid] {
-  border-color: var(--c-danger);
-}
-.select {
-  appearance: none;
-  -webkit-appearance: none;
-  height: 36px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--c-text);
-  font-size: var(--t-15);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
-}
-.select:hover {
-  background: var(--c-raised);
-}
-.select:focus-visible {
-  outline: none;
-  box-shadow: var(--focus);
-}
-.select option {
-  background: var(--c-panel);
-  color: var(--c-text);
-}
-.dash {
-  color: var(--c-faint);
-}
-.err {
-  font-size: var(--t-12);
-  color: var(--c-danger);
-  max-width: 280px;
-  line-height: 1.35;
-}
-.add {
-  height: 46px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 14px;
-  border-radius: var(--r-control);
-  border: 1px dashed var(--c-line-strong);
-  background: transparent;
-  color: var(--c-muted);
-  font-size: var(--t-13);
-  font-weight: 550;
-  transition: background var(--dur), color var(--dur);
-}
-.add:hover {
-  background: var(--c-panel);
-  color: var(--c-text);
 }
 
 /* ── Rail chart ─────────────────────────────────────────────────── */
@@ -198,21 +208,6 @@
 @media (max-width: 760px) {
   .day {
     grid-template-columns: minmax(0, 1fr);
-  }
-}
-@media (max-width: 420px) {
-  .ranges {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .range {
-    display: flex;
-  }
-  .range .select {
-    flex: 1;
-  }
-  .add {
-    justify-content: center;
   }
 }
 

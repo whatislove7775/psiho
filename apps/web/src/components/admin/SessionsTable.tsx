@@ -2,6 +2,7 @@
 
 import { Badge } from "@/ui";
 import { AvatarThumb } from "@/components/avatar/AvatarThumb";
+import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import type { Session } from "@/lib/api/types";
 import { rub, SESSION_STATUS, dayShort, time } from "@/lib/format";
 import s from "./admin.module.css";
@@ -30,7 +31,7 @@ export function SessionsTable({ sessions, compact }: { sessions: Session[]; comp
               </span>
             </span>
             <span role="cell" className={s.who}>
-              <AvatarThumb config={x.psychologist.avatar_config} seed={x.psychologist.id} size={28} />
+              <SpecialistPhoto url={x.psychologist.photo_url} name={x.psychologist.display_name} size={28} />
               <span>{x.psychologist.display_name}</span>
             </span>
             <span role="cell" className={s.who}>

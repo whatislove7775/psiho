@@ -21,8 +21,12 @@ export interface PsychologistPublic {
   experience_years: number;
   session_rate_rub: number;
   avatar_config: AvatarConfig | null;
+  /** real photo of the specialist (square 512px), null if not uploaded */
+  photo_url?: string | null;
   sessions_count: number;
   next_slot: string | null;
+  /** durations & prices set by the specialist (see lib/api/availability.ts); session_rate_rub = shortest session price */
+  booking?: import("./availability").BookingInfo;
 }
 
 export interface PsychologistPrivate extends PsychologistPublic {
@@ -70,11 +74,12 @@ export interface Session {
   id: string;
   status: SessionStatus;
   scheduled_at: string;
-  duration_minutes: 50 | 80;
+  /** booked length, 50…180 minutes */
+  duration_minutes: number;
   amount_rub: number;
   room_id: string;
   can_join: boolean;
-  psychologist: { id: number; display_name: string; avatar_config: AvatarConfig | null };
+  psychologist: { id: number; display_name: string; avatar_config: AvatarConfig | null; photo_url?: string | null };
   client: { alias: string; avatar_config: AvatarConfig | null };
   payment_url: string | null;
 }
@@ -83,7 +88,7 @@ export interface JoinResponse {
   room_id: string;
   ws_token: string;
   role: "client" | "psychologist";
-  peer: { name: string; avatar_config: AvatarConfig | null };
+  peer: { name: string; avatar_config: AvatarConfig | null; photo_url?: string | null };
 }
 
 export interface PsychologistStats {

@@ -3,7 +3,7 @@
 
 Схема работы:
 1. Клиент выбирает психолога и слот → POST /api/v1/sessions/book/
-2. Сервер создаёт ConsultationSession (сумма = ставка психолога)
+2. Сервер создаёт ConsultationSession (сумма = цена часа × длительность, до 10 ₽)
 3. Если YooKassa настроена — создаётся платёж, клиент уходит на confirmation_url,
    сессия в статусе awaiting_payment. Иначе (dev) — сессия сразу paid.
 4. YooKassa → вебхук POST /api/v1/payments/webhook/. Статус платежа
@@ -49,15 +49,15 @@ def _configure_yookassa() -> None:
     Configuration.configure(settings.YOOKASSA_SHOP_ID, settings.YOOKASSA_SECRET_KEY)
 
 
-def session_amount_rub(rate_rub, duration_minutes: int) -> int:
-    rate = decimal.Decimal(rate_rub)
-    if duration_minutes == 80:
-        rate = rate * decimal.Decimal("1.5")
-    return int(rate.quantize(decimal.Decimal("1"), rounding=decimal.ROUND_HALF_UP))
+def session_amount_rub(psychologist_profile, duration_minutes: int) -> int:
+    """Цена = цена часа специалиста × длительность / 60, округление до 10 ₽ (apps.availability)."""
+    from apps.availability.services import price_for
+
+    return price_for(psychologist_profile, duration_minutes)
 
 
 def create_session(client_user, psychologist_profile, scheduled_at, duration_minutes: int) -> ConsultationSession:
-    amount_rub = session_amount_rub(psychologist_profile.session_rate_rub, duration_minutes)
+    amount_rub = session_amount_rub(psychologist_profile, duration_minutes)
     session = ConsultationSession(
         client=client_user,
         psychologist_profile=psychologist_profile,

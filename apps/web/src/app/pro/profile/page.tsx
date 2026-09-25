@@ -3,13 +3,15 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Button, Card, CardHead, Field, Input, Skeleton, Textarea, useToast } from "@/ui";
 import { PageHeader, WithRail } from "@/components/shell/AppShell";
-import { AvatarThumb } from "@/components/avatar/AvatarThumb";
+import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
+import { PhotoUploader } from "@/components/pro/PhotoUploader";
 import { ChipsField, LoadError } from "@/components/pro/controls";
 import { ApiError } from "@/lib/api/client";
 import { cabinetApi } from "@/lib/api/endpoints";
 import type { PsychologistPrivate } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/store";
 import { plural, rub } from "@/lib/format";
+import { durationLabel } from "@/lib/api/availability";
 import s from "@/components/pro/pro.module.css";
 import c from "./profile.module.css";
 
@@ -59,15 +61,12 @@ function validate(f: Form): Errors {
   if (!f.languages.length) e.languages = "Добавьте язык, на котором проводите сессии";
   const exp = Number(f.experience_years);
   if (f.experience_years === "" || !Number.isInteger(exp) || exp < 0 || exp > 70) e.experience_years = "Целое число лет, от 0 до 70";
-  const rate = Number(f.session_rate_rub);
-  if (!Number.isInteger(rate) || rate < 500) e.session_rate_rub = "Целая сумма в рублях, не меньше 500";
   return e;
 }
 
 export default function ProfilePage() {
   const toast = useToast();
   const refreshUser = useAuth((st) => st.refreshUser);
-  const user = useAuth((st) => st.user);
   const [initial, setInitial] = useState<Form | null>(null);
   const [form, setForm] = useState<Form | null>(null);
   const [status, setStatus] = useState<PsychologistPrivate["verification_status"] | null>(null);
@@ -75,6 +74,8 @@ export default function ProfilePage() {
   const [touched, setTouched] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [booking, setBooking] = useState<PsychologistPrivate["booking"]>(undefined);
 
   const load = useCallback(() => {
     setLoadError(null);
@@ -85,6 +86,8 @@ export default function ProfilePage() {
         setInitial(f);
         setForm(f);
         setStatus(p.verification_status);
+        setPhoto(p.photo_url ?? null);
+        setBooking(p.booking);
       })
       .catch((e) => setLoadError(`${(e as Error).message} Обновите страницу, чтобы загрузить профиль.`));
   }, []);
@@ -119,7 +122,6 @@ export default function ProfilePage() {
         specializations: form.specializations,
         languages: form.languages,
         experience_years: Number(form.experience_years),
-        session_rate_rub: Number(form.session_rate_rub),
       });
       const f = fromProfile(p);
       setInitial(f);
@@ -138,8 +140,6 @@ export default function ProfilePage() {
     }
   };
 
-  const rate = Number(form?.session_rate_rub) || 0;
-  const rate80 = Math.round(rate * 1.5);
 
   return (
     <>
@@ -151,7 +151,7 @@ export default function ProfilePage() {
             : "Заполните профиль полностью: администратор смотрит именно его, когда проверяет заявку."
         }
       />
-      <WithRail rail={<Preview form={form} avatar={user?.avatar_config ?? null} seed={user?.id ?? "me"} />}>
+      <WithRail rail={<Preview form={form} photo={photo} />}>
         {loadError && <LoadError text={loadError} onRetry={load} />}
         {!form ? (
           <Card>
@@ -163,6 +163,19 @@ export default function ProfilePage() {
           </Card>
         ) : (
           <form onSubmit={submit} noValidate className={c.form}>
+            <span id="photo" style={{ display: "block", scrollMarginTop: 16 }} />
+            <Card as="section">
+              <CardHead title="Фото" sub="Специалисты на платформе не анонимны: клиенту важно видеть, с кем он говорит" />
+              <PhotoUploader
+                url={photo}
+                name={form.display_name}
+                onChange={(u) => {
+                  setPhoto(u);
+                  refreshUser().catch(() => {});
+                }}
+              />
+            </Card>
+
             <Card as="section">
               <CardHead title="О вас" sub="Клиенты не видят вашу почту. Имя можно указать полностью или только имя и первую букву фамилии" />
               <div className={c.fields}>
@@ -228,30 +241,25 @@ export default function ProfilePage() {
                   onChange={(e) => set("experience_years", e.target.value)}
                   error={errors.experience_years}
                 />
-                <Input
-                  label="Сессия 50 минут, ₽"
-                  type="number"
-                  inputMode="numeric"
-                  min={500}
-                  step={100}
-                  value={form.session_rate_rub}
-                  onChange={(e) => set("session_rate_rub", e.target.value)}
-                  error={errors.session_rate_rub}
-                />
+                <Field label="Цена часа">
+                  <Button variant="secondary" block href="/pro/schedule?tab=rules">
+                    {booking ? `${rub(booking.hourly_rate_rub)}, изменить` : "Настроить"}
+                  </Button>
+                </Field>
               </div>
               <div className={c.prices}>
-                <div className={c.price}>
-                  <span>50 минут</span>
-                  <strong>{rub(rate)}</strong>
-                  <small>Вам {rub(rate * (1 - FEE))}</small>
-                </div>
-                <div className={c.price}>
-                  <span>80 минут</span>
-                  <strong>{rub(rate80)}</strong>
-                  <small>Вам {rub(rate80 * (1 - FEE))}</small>
-                </div>
+                {(booking?.durations ?? []).slice(0, 4).map((d) => (
+                  <div key={d.minutes} className={c.price}>
+                    <span>{durationLabel(d.minutes)}</span>
+                    <strong>{rub(d.price_rub)}</strong>
+                    <small>Вам {rub(d.price_rub * (1 - FEE))}</small>
+                  </div>
+                ))}
               </div>
-              <p className={c.note}>Комиссия платформы 20%. Цена 80-минутной сессии считается автоматически: полторы стоимости обычной.</p>
+              <p className={c.note}>
+                Комиссия платформы 20%. Цена часа, длительность сессий и перерывы настраиваются в расписании. Стоимость сессии
+                пропорциональна длительности и округляется до 10 ₽.
+              </p>
             </Card>
 
             <div className={c.bar} data-dirty={dirty || undefined}>
@@ -267,7 +275,7 @@ export default function ProfilePage() {
   );
 }
 
-function Preview({ form, avatar, seed }: { form: Form | null; avatar: PsychologistPrivate["avatar_config"]; seed: string }) {
+function Preview({ form, photo }: { form: Form | null; photo: string | null }) {
   if (!form) return <Skeleton height={420} radius={22} />;
   const exp = Number(form.experience_years) || 0;
   return (
@@ -275,7 +283,7 @@ function Preview({ form, avatar, seed }: { form: Form | null; avatar: Psychologi
       <div className={c.previewLabel}>Так вас видят клиенты</div>
       <Card as="article" className={c.preview}>
         <div className={c.pHead}>
-          <AvatarThumb config={avatar} seed={seed} size={72} />
+          <SpecialistPhoto url={photo} name={form.display_name.trim() || "?"} size={72} />
           <div style={{ minWidth: 0 }}>
             <div className={c.pName}>{form.display_name.trim() || "Ваше имя"}</div>
             <div className={c.pMeta}>
@@ -297,14 +305,14 @@ function Preview({ form, avatar, seed }: { form: Form | null; avatar: Psychologi
         <div className={c.pFoot}>
           <div>
             <div className={c.pPrice}>{rub(Number(form.session_rate_rub) || 0)}</div>
-            <div className={c.pMeta}>за 50 минут</div>
+            <div className={c.pMeta}>самая короткая сессия</div>
           </div>
           <Button variant="primary" size="sm" tabIndex={-1} aria-hidden>
             Записаться
           </Button>
         </div>
       </Card>
-      <p className={c.note}>Аватар меняется в разделе «Мой аватар». Почта и настоящее фото клиентам не показываются.</p>
+      <p className={c.note}>Почта и документы клиентам не показываются. На сессии клиент видит ваше видео с камеры.</p>
     </div>
   );
 }

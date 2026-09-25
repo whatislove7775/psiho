@@ -1,0 +1,226 @@
+/* ── Pastel tones (shared by covers and practice circles) ─────────────── */
+.tone[data-tone="peach"] { background: var(--p-peach); }
+.tone[data-tone="butter"] { background: var(--p-butter); }
+.tone[data-tone="lime"] { background: var(--p-lime); }
+.tone[data-tone="mint"] { background: var(--p-mint); }
+.tone[data-tone="lilac"] { background: var(--p-lilac); }
+.tone[data-tone="sky"] { background: var(--p-sky); }
+
+.meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--c-muted);
+  font-size: var(--t-13);
+}
+
+/* ── Article card ─────────────────────────────────────────────────────── */
+.article {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 10px 10px 16px;
+  border-radius: var(--r-card);
+  background: var(--c-panel);
+  min-width: 0;
+  transition: background var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+.article:hover {
+  background: var(--c-raised);
+}
+.article:focus-visible,
+.practice:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--c-primary);
+}
+.cover {
+  position: relative;
+  height: 112px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.cover::after {
+  /* soft light spot so flat pastel feels less like a placeholder */
+  content: "";
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  right: -40px;
+  top: -60px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+}
+.coverEmoji {
+  position: relative;
+  z-index: 1;
+  font-size: 44px;
+  line-height: 1;
+}
+.article[data-compact] .cover {
+  height: 88px;
+}
+.article[data-compact] .coverEmoji {
+  font-size: 36px;
+}
+.articleBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 8px;
+  min-width: 0;
+}
+.kicker {
+  font-size: var(--t-12);
+  font-weight: 600;
+  color: var(--c-muted);
+}
+.articleTitle {
+  font-size: var(--t-17);
+  font-weight: 650;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+.articleSummary {
+  color: var(--c-muted);
+  font-size: var(--t-13);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Practice card ────────────────────────────────────────────────────── */
+.practice {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px 12px 12px;
+  border-radius: 18px;
+  background: var(--c-raised);
+  min-width: 0;
+  transition: background var(--dur) var(--ease);
+}
+.practice:hover {
+  background: var(--c-raised-2);
+}
+.practiceIcon {
+  width: 52px;
+  height: 52px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+}
+.practiceText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+.practiceTitle {
+  font-weight: 600;
+  font-size: var(--t-15);
+  line-height: 1.3;
+}
+
+/* ── Grids ────────────────────────────────────────────────────────────── */
+.articleGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--s-4);
+}
+.practiceGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: var(--s-2);
+}
+
+/* ── Article prose ────────────────────────────────────────────────────── */
+.prose {
+  font-size: var(--t-17);
+  line-height: 1.65;
+  max-width: 68ch;
+  color: var(--c-text);
+}
+.prose > * + * {
+  margin-top: 1em;
+}
+.prose h2 {
+  font-size: var(--t-24);
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+  margin-top: 1.6em;
+}
+.prose h3,
+.prose h4 {
+  font-size: var(--t-20);
+  line-height: 1.3;
+  font-weight: 650;
+  margin-top: 1.4em;
+}
+.prose ul,
+.prose ol {
+  padding-left: 1.3em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45em;
+}
+.prose li::marker {
+  color: var(--c-primary);
+}
+.prose ol li::marker {
+  font-weight: 650;
+}
+.prose strong {
+  font-weight: 650;
+}
+.prose a {
+  color: var(--c-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.prose blockquote {
+  margin-left: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  padding: 16px 20px;
+  border-radius: 18px;
+  background: var(--c-raised);
+  border-left: 4px solid var(--c-primary);
+  font-size: var(--t-15);
+  line-height: 1.55;
+}
+.prose code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.9em;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--c-raised);
+}
+.prose hr {
+  border: 0;
+  height: 1px;
+  background: var(--c-line);
+  margin: 2em 0;
+}
+
+@media (max-width: 560px) {
+  .prose {
+    font-size: var(--t-15);
+  }
+  .prose h2 {
+    font-size: var(--t-20);
+  }
+  .articleGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .practiceGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -77,6 +77,15 @@ class ConsultationSession(models.Model):
             models.Index(fields=["status", "scheduled_at"]),
             models.Index(fields=["webrtc_room_id"]),
         ]
+        constraints = [
+            # Защита от гонки: два клиента не могут занять одно и то же начало у специалиста.
+            # Пересечения с другим началом отсекает блокировка профиля при записи.
+            models.UniqueConstraint(
+                fields=["psychologist_profile", "scheduled_at"],
+                condition=~models.Q(status__in=["cancelled", "refunded"]),
+                name="consultation_unique_active_start",
+            ),
+        ]
 
     def __str__(self):
         return f"Session {self.id} [{self.status}] @ {self.scheduled_at:%Y-%m-%d %H:%M}"

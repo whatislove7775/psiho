@@ -276,3 +276,52 @@
     padding: 2px var(--s-5) 6px;
   }
 }
+
+/* Duration options with prices (A3) */
+.durs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(98px, 1fr));
+  gap: 6px;
+}
+.durOpt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 12px;
+  border: 1px solid var(--c-line-strong);
+  border-radius: 14px;
+  background: none;
+  color: var(--c-text);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: background var(--dur), border-color var(--dur);
+}
+.durOpt span {
+  white-space: nowrap;
+  font-weight: 650;
+  font-size: var(--t-15);
+  font-variant-numeric: tabular-nums;
+}
+.durOpt small {
+  font-size: var(--t-12);
+  color: var(--c-muted);
+  font-variant-numeric: tabular-nums;
+}
+.durOpt:hover {
+  background: var(--c-raised);
+}
+.durOpt[aria-pressed="true"] {
+  background: var(--c-primary);
+  border-color: var(--c-primary);
+  color: var(--c-on-primary);
+}
+.durOpt[aria-pressed="true"] small {
+  color: var(--c-on-primary);
+  opacity: 0.85;
+}
+.durOpt:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}

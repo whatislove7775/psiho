@@ -10,6 +10,7 @@ django_asgi_app = get_asgi_application()
 from channels.routing import ProtocolTypeRouter, URLRouter  # noqa: E402
 from django.urls import re_path  # noqa: E402
 
+from apps.chat.consumers import ChatConsumer  # noqa: E402
 from apps.signaling.consumers import SignalingConsumer  # noqa: E402
 
 application = ProtocolTypeRouter(
@@ -22,6 +23,7 @@ application = ProtocolTypeRouter(
                     r"^ws/signaling/(?P<room_id>[0-9a-f-]{36})/$",
                     SignalingConsumer.as_asgi(),
                 ),
+                re_path(r"^ws/chat/$", ChatConsumer.as_asgi()),
             ]
         ),
     }

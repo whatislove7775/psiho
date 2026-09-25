@@ -162,6 +162,8 @@ TURN_USER=aprosop
 TURN_PASSWORD=$TURN_PW
 NEXT_PUBLIC_API_URL=https://$DOMAIN/api/v1
 NEXT_PUBLIC_WS_URL=wss://$DOMAIN
+# Ключ шифрования чатов. НЕ МЕНЯТЬ и не терять.
+CHAT_ENCRYPTION_KEY=$(openssl rand -base64 32 | tr '+/' '-_')
 EOF
   chmod 600 .env
   ok ".env создан со случайными паролями"

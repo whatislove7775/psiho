@@ -17,6 +17,7 @@ const nextConfig = {
       ? [
           { source: "/api/:path*/", destination: `${target}/api/:path*/` },
           { source: "/api/:path*", destination: `${target}/api/:path*` },
+          { source: "/media/:path*", destination: `${target}/media/:path*` },
         ]
       : [];
   },

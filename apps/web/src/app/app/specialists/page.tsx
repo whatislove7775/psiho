@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { CalendarClock, Search, SearchX, X } from "lucide-react";
 import { Badge, Button, Card, EmptyState, Segmented, Skeleton } from "@/ui";
 import { PageHeader } from "@/components/shell/AppShell";
-import { AvatarThumb } from "@/components/avatar/AvatarThumb";
+import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import { psychologistsApi } from "@/lib/api/endpoints";
+import { durationLabel } from "@/lib/api/availability";
 import { plural, rub, when } from "@/lib/format";
 import { useLoad } from "@/components/client/useLoad";
 import { ErrorBlock } from "@/components/client/ClientBits";
@@ -83,10 +84,10 @@ export default function SpecialistsPage() {
           </label>
           <div className={s.price}>
             <span className={s.priceLabel} id="price-label">
-              Цена за 50 минут
+              Цена сессии
             </span>
             <Segmented<Price>
-              ariaLabel="Цена за 50 минут"
+              ariaLabel="Цена самой короткой сессии"
               value={price}
               onChange={setPrice}
               options={[
@@ -167,12 +168,7 @@ export default function SpecialistsPage() {
         <div className={s.list} style={{ opacity: res.loading ? 0.6 : 1 }}>
           {list.map((p) => (
             <Card as="article" key={p.id} className={s.item}>
-              <AvatarThumb
-                config={p.avatar_config}
-                seed={`psy-${p.id}`}
-                size={112}
-                alt=""
-              />
+              <SpecialistPhoto url={p.photo_url} name={p.display_name} size={112} alt="" />
               <div className={s.body}>
                 <div className={s.nameRow}>
                   <h2 className={s.name}>{p.display_name}</h2>
@@ -192,8 +188,8 @@ export default function SpecialistsPage() {
               </div>
               <div className={s.side}>
                 <div className={s.rate}>
-                  <strong>{rub(p.session_rate_rub)}</strong>
-                  <span>за 50 минут</span>
+                  <strong>от {rub(p.session_rate_rub)}</strong>
+                  <span>за {durationLabel(p.booking?.min_duration ?? 50)}</span>
                 </div>
                 <div className={s.slot}>
                   <CalendarClock size={16} strokeWidth={1.8} aria-hidden />

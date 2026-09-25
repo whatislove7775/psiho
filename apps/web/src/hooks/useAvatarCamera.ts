@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { AvatarConfig } from "@/lib/avatar/schema";
 import type { AvatarRendererApi } from "@/lib/avatar/kit/types";
 import { FaceTracker, type LandmarkerResult } from "@/lib/tracking/FaceTracker";
+import { paintBackdrop, type BackdropId } from "@/lib/avatar/backdrops";
 
 const MP_VERSION = "0.10.14"; // must match package.json exactly
 // Served from our own origin first (see scripts/copy-mediapipe.mjs); CDN as a fallback.
@@ -40,6 +41,10 @@ export interface AvatarCamera {
   renderer: AvatarRendererApi | null;
   /** true while the face hasn't been detected for a few seconds */
   faceLost: boolean;
+  /** true while a face is detected right now (reacts within ~0.7 s) */
+  faceVisible: boolean;
+  /** average brightness of the camera picture, 0…255 (null until measured). Only this number leaves the hook. */
+  light: number | null;
   tracking: boolean;
   /** true while the user's neutral face is being captured (~1.5 s of a still face) */
   calibrating: boolean;
@@ -49,13 +54,20 @@ export interface AvatarCamera {
   stop: () => void;
 }
 
-export function useAvatarCamera(config: AvatarConfig): AvatarCamera {
+export interface AvatarCameraOptions {
+  /** background painted behind the avatar (part of the outgoing video) */
+  backdrop?: BackdropId;
+}
+
+export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptions = {}): AvatarCamera {
   const [state, setState] = useState<CameraState>("idle");
   const [error, setError] = useState<string | null>(null);
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
   const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const [faceLost, setFaceLost] = useState(false);
+  const [faceVisible, setFaceVisible] = useState(false);
+  const [light, setLight] = useState<number | null>(null);
   const [tracking, setTracking] = useState(false);
   const [calibrating, setCalibrating] = useState(false);
   const [runId, setRunId] = useState(0);
@@ -65,9 +77,17 @@ export function useAvatarCamera(config: AvatarConfig): AvatarCamera {
   const cfgRef = useRef(config);
   cfgRef.current = config;
 
+  const backdropRef = useRef(options.backdrop);
+  backdropRef.current = options.backdrop;
+
   useEffect(() => {
     rendererRef.current?.setConfig(config);
   }, [config]);
+
+  useEffect(() => {
+    const r = rendererRef.current;
+    if (r && options.backdrop) r.setBackground?.(paintBackdrop(options.backdrop));
+  }, [options.backdrop, canvas]);
 
   useEffect(() => {
     if (runId === 0) return;
@@ -75,6 +95,7 @@ export function useAvatarCamera(config: AvatarConfig): AvatarCamera {
     let stopLoop = () => {};
     let landmarker: { detectForVideo: (v: HTMLVideoElement, t: number) => unknown; close: () => void } | null = null;
     let cam: MediaStream | null = null;
+    let lightTimer: ReturnType<typeof setInterval> | undefined;
     const video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
@@ -108,21 +129,39 @@ export function useAvatarCamera(config: AvatarConfig): AvatarCamera {
       video.srcObject = new MediaStream(cam.getVideoTracks());
       await video.play().catch(() => undefined);
 
-      const { KitRenderer } = await import("@/lib/avatar/kit/KitRenderer");
-      if (cancelled) return;
+      // The avatar is the only picture that may ever be shown. If it can't be
+      // rendered (no WebGL, driver crash) we stop the camera and explain —
+      // never fall back to the raw video.
+      let r: InstanceType<typeof import("@/lib/avatar/kit/KitRenderer").KitRenderer>;
+      let stream: MediaStream;
       const c = document.createElement("canvas");
-      c.width = 540;
-      c.height = 720;
-      c.style.width = "100%";
-      c.style.height = "100%";
-      c.style.display = "block";
-      c.style.objectFit = "cover";
-      const r = new KitRenderer(c, { framing: "portrait", background: "#1d1d22", idle: true, preserveDrawingBuffer: true, maxPixelRatio: 1, fps: 30 });
-      r.resize(540, 720);
-      r.setConfig(cfgRef.current);
-      r.start();
+      try {
+        const { KitRenderer } = await import("@/lib/avatar/kit/KitRenderer");
+        if (cancelled) return;
+        c.width = 540;
+        c.height = 720;
+        c.style.width = "100%";
+        c.style.height = "100%";
+        c.style.display = "block";
+        c.style.objectFit = "cover";
+        r = new KitRenderer(c, { framing: "portrait", background: "#1d1d22", idle: true, preserveDrawingBuffer: true, maxPixelRatio: 1, fps: 30 });
+        r.resize(540, 720);
+        r.setConfig(cfgRef.current);
+        if (backdropRef.current) r.setBackground(paintBackdrop(backdropRef.current));
+        r.start();
+        stream = r.captureStream(30);
+      } catch (e) {
+        console.warn("[avatar] renderer unavailable:", e);
+        cam.getTracks().forEach((t) => t.stop());
+        cam = null;
+        if (cancelled) return;
+        setState("error");
+        setError(
+          "Не получилось показать аватар: браузер не поддерживает 3D-графику или она выключена. Откройте страницу в свежей версии Chrome, Safari или Firefox и включите аппаратное ускорение.",
+        );
+        return;
+      }
       rendererRef.current = r;
-      const stream = r.captureStream(30);
       stream.getVideoTracks().forEach((t) => {
         try {
           (t as MediaStreamTrack & { contentHint: string }).contentHint = "motion";
@@ -134,6 +173,24 @@ export function useAvatarCamera(config: AvatarConfig): AvatarCamera {
       setVideoStream(stream);
       setAudioStream(cam.getAudioTracks().length ? new MediaStream(cam.getAudioTracks()) : null);
       setState("ready");
+
+      // Rough light estimate from a tiny 16×12 sample of the hidden camera frame.
+      const probe = document.createElement("canvas");
+      probe.width = 16;
+      probe.height = 12;
+      const p2d = probe.getContext("2d", { willReadFrequently: true });
+      lightTimer = setInterval(() => {
+        if (cancelled || !p2d || video.readyState < 2) return;
+        try {
+          p2d.drawImage(video, 0, 0, 16, 12);
+          const px = p2d.getImageData(0, 0, 16, 12).data;
+          let l = 0;
+          for (let i = 0; i < px.length; i += 4) l += 0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2];
+          setLight(Math.round(l / (px.length / 4)));
+        } catch {
+          /* ignore */
+        }
+      }, 1000);
 
       // Face tracking (GPU first, CPU fallback)
       try {
@@ -177,6 +234,8 @@ export function useAvatarCamera(config: AvatarConfig): AvatarCamera {
       let lastMediaTime = -1;
       let lastFace = performance.now();
       let lost = false;
+      let visible = false;
+      let lastSeen = -1e9;
       let calib = true;
       let frames = 0;
 
@@ -198,6 +257,7 @@ export function useAvatarCamera(config: AvatarConfig): AvatarCamera {
           if (out) {
             if (now - lastFace > 500) tracker.resetFilters(); // re-acquired: don't smear from stale state
             lastFace = now;
+            lastSeen = now;
             r.applyFaceResult(out);
           }
         } catch {
@@ -206,6 +266,11 @@ export function useAvatarCamera(config: AvatarConfig): AvatarCamera {
         if (tracker.calibrating !== calib) {
           calib = tracker.calibrating;
           setCalibrating(calib);
+        }
+        const isVisible = now - lastSeen < 700;
+        if (isVisible !== visible) {
+          visible = isVisible;
+          setFaceVisible(isVisible);
         }
         const isLost = now - lastFace > 3000;
         if (isLost !== lost) {
@@ -254,6 +319,7 @@ export function useAvatarCamera(config: AvatarConfig): AvatarCamera {
     return () => {
       cancelled = true;
       stopLoop();
+      clearInterval(lightTimer);
       trackerRef.current = null;
       landmarker?.close();
       cam?.getTracks().forEach((t) => t.stop());
@@ -265,6 +331,8 @@ export function useAvatarCamera(config: AvatarConfig): AvatarCamera {
       setTracking(false);
       setCalibrating(false);
       setFaceLost(false);
+      setFaceVisible(false);
+      setLight(null);
     };
   }, [runId]);
 
@@ -289,6 +357,8 @@ export function useAvatarCamera(config: AvatarConfig): AvatarCamera {
     canvas,
     renderer: rendererRef.current,
     faceLost,
+    faceVisible,
+    light,
     tracking,
     calibrating,
     recalibrate,

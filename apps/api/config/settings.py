@@ -35,6 +35,11 @@ INSTALLED_APPS = [
     "apps.sessions",
     "apps.payments",
     "apps.signaling",
+    "apps.availability",
+    "apps.content",
+    "apps.photos",
+    "apps.chat",
+    "apps.staff",
 ]
 
 MIDDLEWARE = [
@@ -66,6 +71,9 @@ TEMPLATES = [
 
 STATIC_URL = "/api/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+# Uploaded files (specialist photos). Production: docker volume "media", served by nginx at /media/.
+MEDIA_URL = "/media/"
+MEDIA_ROOT = env("MEDIA_ROOT", default=str(BASE_DIR / "media"))
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
@@ -132,7 +140,8 @@ else:
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        # JWT + мгновенный отзыв токенов при принудительном выходе/блокировке (apps.staff)
+        "apps.staff.authentication.RevocableJWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),

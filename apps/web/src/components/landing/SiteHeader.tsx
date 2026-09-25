@@ -18,7 +18,7 @@ const LINKS = [
 export function Brand() {
   return (
     <Link href="/" className={s.brand} aria-label="aprosop, на главную">
-      <LogoMark className={s.brandMark} size={22} />
+      <LogoMark className={s.brandMark} size={36} />
       aprosop
     </Link>
   );

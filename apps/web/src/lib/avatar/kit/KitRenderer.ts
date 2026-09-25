@@ -555,8 +555,27 @@ export class KitRenderer implements AvatarRendererApi {
     return this.canvas.captureStream(fps);
   }
 
+  private bgTexture: THREE.Texture | null = null;
+
+  /** Replace the scene background: a CSS colour, a painted canvas (stretched to the view) or null. */
+  setBackground(bg: string | HTMLCanvasElement | null) {
+    this.bgTexture?.dispose();
+    this.bgTexture = null;
+    if (bg === null) {
+      this.scene.background = null;
+    } else if (typeof bg === "string") {
+      this.scene.background = new THREE.Color(bg);
+    } else {
+      const tex = new THREE.CanvasTexture(bg);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      this.bgTexture = tex;
+      this.scene.background = tex;
+    }
+  }
+
   dispose() {
     this.stop();
+    this.bgTexture?.dispose();
     this.eyeBalls.forEach((b) => b.geometry.dispose());
     this.skin.m.dispose();
     this.eyeMat.dispose();

@@ -368,3 +368,31 @@
     padding: 12px;
   }
 }
+
+/* ── Specialist's real camera ──────────────────────────────────────── */
+.selfVideo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); /* self-view is mirrored; the client gets the true image */
+  background: #1d1d22;
+}
+.stageWide {
+  aspect-ratio: 4 / 3;
+}
+.pipWide {
+  width: min(240px, 34vw);
+  aspect-ratio: 4 / 3;
+}
+@media (max-width: 860px) {
+  .stageWide {
+    aspect-ratio: 4 / 3;
+    height: auto;
+    width: 100%;
+  }
+  .pipWide {
+    width: 132px;
+  }
+}

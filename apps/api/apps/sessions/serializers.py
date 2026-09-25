@@ -3,6 +3,8 @@ from datetime import timedelta
 from django.utils import timezone
 from rest_framework import serializers
 
+from apps.photos.utils import photo_url
+
 from .models import ConsultationSession
 
 JOIN_EARLY = timedelta(minutes=10)
@@ -47,6 +49,7 @@ class SessionSerializer(serializers.ModelSerializer):
             "id": profile.id,
             "display_name": profile.display_name,
             "avatar_config": profile.user.avatar_config,
+            "photo_url": photo_url(profile),
         }
 
     def get_client(self, obj):
@@ -63,4 +66,5 @@ class SessionSerializer(serializers.ModelSerializer):
 class BookSessionSerializer(serializers.Serializer):
     psychologist_id = serializers.IntegerField()
     scheduled_at = serializers.DateTimeField()
-    duration_minutes = serializers.ChoiceField(choices=[50, 80], default=50)
+    # Допустимые значения задаёт специалист (apps.availability); по умолчанию — самая короткая
+    duration_minutes = serializers.IntegerField(min_value=10, max_value=240, required=False)

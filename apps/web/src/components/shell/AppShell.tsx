@@ -4,10 +4,15 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import {
+  BookOpen,
+  Leaf,
+  Camera,
   CalendarClock,
   CalendarDays,
   LayoutGrid,
   LogOut,
+  MessagesSquare,
+  ScanFace,
   ShieldCheck,
   Smile,
   UserRound,
@@ -20,6 +25,7 @@ import { Button, Spinner } from "@/ui";
 import { homeFor, useAuth } from "@/lib/auth/store";
 import type { Role } from "@/lib/api/types";
 import { AvatarThumb } from "@/components/avatar/AvatarThumb";
+import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import { ThemeToggle } from "@/components/shell/ThemeToggle";
 import { LogoMark } from "@/components/shell/Logo";
 import s from "./AppShell.module.css";
@@ -40,7 +46,11 @@ export const NAV: Record<Role, { items: NavItem[]; cta: { label: string; href: s
       { href: "/app", label: "Главная", icon: LayoutGrid, tab: true },
       { href: "/app/specialists", label: "Специалисты", icon: Users, tab: true },
       { href: "/app/sessions", label: "Мои сессии", icon: Video, tab: true },
+      { href: "/app/chats", label: "Чаты", icon: MessagesSquare, tab: true },
+      { href: "/app/practices", label: "Практики", icon: Leaf, group: "Для себя" },
+      { href: "/app/articles", label: "Статьи", icon: BookOpen, group: "Для себя" },
       { href: "/app/avatar", label: "Мой аватар", icon: Smile, tab: true, group: "Анонимность" },
+      { href: "/app/check", label: "Зеркало", icon: ScanFace, group: "Анонимность" },
       { href: "/app/privacy", label: "Приватность", icon: ShieldCheck, tab: true, group: "Анонимность" },
     ],
     cta: { label: "Записаться на сессию", href: "/app/specialists" },
@@ -49,9 +59,10 @@ export const NAV: Record<Role, { items: NavItem[]; cta: { label: string; href: s
     items: [
       { href: "/pro", label: "Сводка", icon: LayoutGrid, tab: true },
       { href: "/pro/sessions", label: "Сессии", icon: Video, tab: true },
+      { href: "/pro/chats", label: "Чаты", icon: MessagesSquare, tab: true },
       { href: "/pro/schedule", label: "Расписание", icon: CalendarClock, tab: true },
       { href: "/pro/profile", label: "Профиль", icon: UserRound, tab: true, group: "Кабинет" },
-      { href: "/pro/avatar", label: "Мой аватар", icon: Smile, tab: true, group: "Кабинет" },
+      { href: "/pro/check", label: "Проверка камеры", icon: Camera, group: "Кабинет" },
     ],
     cta: { label: "Открыть расписание", href: "/pro/schedule" },
   },
@@ -69,6 +80,13 @@ const ROLE_LABEL: Record<Role, string> = {
   client: "Анонимный клиент",
   psychologist: "Специалист",
   admin: "Администратор",
+};
+
+/** Where the sidebar profile card leads. */
+const PROFILE_HREF: Record<Role, string> = {
+  client: "/app/profile",
+  psychologist: "/pro/profile",
+  admin: "/admin/account",
 };
 
 function isActive(pathname: string, href: string, root: string) {
@@ -114,14 +132,22 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
   return (
     <div className={s.root}>
       <aside className={s.sidebar} aria-label="Навигация кабинета">
-        <Link href="/" className={s.brand}>
-          <LogoMark className={s.brandMark} />
-          aprosop
-        </Link>
+        {/* Theme switch lives here in every cabinet: one stable spot that never overlaps content */}
+        <div className={s.brandRow}>
+          <Link href="/" className={s.brand}>
+            <LogoMark className={s.brandMark} />
+            aprosop
+          </Link>
+          <ThemeToggle />
+        </div>
 
-        <Link href={role === "admin" ? root : `${root}/avatar`} className={s.profile}>
+        <Link href={PROFILE_HREF[role]} className={s.profile} title={`${name}, открыть профиль`}>
           <span className={s.profileAvatar}>
-            <AvatarThumb config={user.avatar_config} seed={user.id} size={48} />
+            {user.psychologist ? (
+              <SpecialistPhoto url={user.psychologist.photo_url} name={name} size={48} alt="" />
+            ) : (
+              <AvatarThumb config={user.avatar_config} seed={user.id} size={48} />
+            )}
           </span>
           <span className={s.profileText}>
             <span className={s.profileName} style={{ display: "block" }}>
@@ -159,17 +185,20 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
         </Button>
       </aside>
 
-      <div className={s.topActions}>
-        <ThemeToggle />
-      </div>
-
       <header className={s.mobileTop}>
         <Link href={root} className={s.brand}>
           <LogoMark className={s.brandMark} />
           aprosop
         </Link>
-        <div style={{ display: "flex", gap: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <ThemeToggle />
+          <Link href={PROFILE_HREF[role]} className={s.mobileProfile} aria-label={`${name}, открыть профиль`} title={name}>
+            {user.psychologist ? (
+              <SpecialistPhoto url={user.psychologist.photo_url} name={name} size={36} alt="" />
+            ) : (
+              <AvatarThumb config={user.avatar_config} seed={user.id} size={36} />
+            )}
+          </Link>
           <Button variant="ghost" size="md" iconOnly aria-label="Выйти" onClick={onLogout} icon={<LogOut size={20} />} />
         </div>
       </header>

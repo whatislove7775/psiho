@@ -1,203 +1,206 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Camera,
-  Check,
-  Headphones,
-  Lamp,
-  Lock,
-  Mic,
-  MicOff,
-  ScanFace,
-  VideoOff,
-} from "lucide-react";
-import { Button, Card, CardHead } from "@/ui";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { Check, Headphones, Lamp, Lock, Mic, MicOff, Play, RefreshCw, ScanFace, Square, VideoOff, Camera } from "lucide-react";
+import { Button, Card, CardHead, Segmented, Spinner } from "@/ui";
 import { PageHeader, WithRail } from "@/components/shell/AppShell";
 import { checkDone } from "@/components/client/sessions";
+import { AvatarThumb } from "@/components/avatar/AvatarThumb";
+import { BackdropPicker } from "@/components/avatar/BackdropPicker";
+import { useAuth } from "@/lib/auth/store";
+import { normalizeAvatar, randomAvatar } from "@/lib/avatar/schema";
+import { getBackdrop, loadBackdrop, saveBackdrop, type BackdropId } from "@/lib/avatar/backdrops";
+import { useAvatarCamera } from "@/hooks/useAvatarCamera";
+import { useVoiceTransform, type VoicePreset } from "@/hooks/useVoiceTransform";
 import s from "./check.module.css";
 
-type Status = "idle" | "asking" | "live" | "denied" | "missing" | "error";
+const VOICES: { value: VoicePreset; label: string }[] = [
+  { value: "off", label: "Мой голос" },
+  { value: "lower", label: "Ниже" },
+  { value: "higher", label: "Выше" },
+];
 
-const TIPS = [
-  {
-    key: "light",
-    icon: Lamp,
-    title: "Свет спереди",
-    text: "Лампа или окно перед вами, а не за спиной",
-  },
-  {
-    key: "face",
-    icon: ScanFace,
-    title: "Лицо в кадре",
-    text: "Голова по центру, камера примерно на уровне глаз",
-  },
-  {
-    key: "phones",
-    icon: Headphones,
-    title: "Наушники",
-    text: "Так вас не услышат соседи, а звук не даст эха",
-  },
-] as const;
+/** Mounts the live avatar canvas. The camera picture itself is never put on the page. */
+function CanvasSlot({ canvas }: { canvas: HTMLCanvasElement | null }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const host = ref.current;
+    if (!host || !canvas) return;
+    host.appendChild(canvas);
+    return () => {
+      if (canvas.parentNode === host) host.removeChild(canvas);
+    };
+  }, [canvas]);
+  return <div ref={ref} className={s.canvasHost} />;
+}
 
-export default function CheckPage() {
-  const video = useRef<HTMLVideoElement>(null);
-  const bar = useRef<HTMLSpanElement>(null);
-  const stream = useRef<MediaStream | null>(null);
-  const audioCtx = useRef<AudioContext | null>(null);
-  const raf = useRef<number>(0);
-  const lightTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const [status, setStatus] = useState<Status>("idle");
-  const [hasMic, setHasMic] = useState(false);
+/** Live microphone level (0…1) of a stream, written straight into a bar's transform. */
+function useMicMeter(stream: MediaStream | null, bar: React.RefObject<HTMLSpanElement>) {
   const [heard, setHeard] = useState(false);
-  const [light, setLight] = useState<number | null>(null);
-  const [ticks, setTicks] = useState<Record<string, boolean>>({});
-
-  const stop = useCallback(() => {
-    cancelAnimationFrame(raf.current);
-    if (lightTimer.current) clearInterval(lightTimer.current);
-    stream.current?.getTracks().forEach((t) => t.stop());
-    stream.current = null;
-    audioCtx.current?.close().catch(() => {});
-    audioCtx.current = null;
-    if (video.current) video.current.srcObject = null;
-  }, []);
-
-  useEffect(() => stop, [stop]);
-
-  const start = async () => {
-    stop();
-    setStatus("asking");
+  useEffect(() => {
     setHeard(false);
-    setLight(null);
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setStatus("error");
-      return;
-    }
-    let media: MediaStream;
-    try {
-      media = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: "user",
-        },
-        audio: { echoCancellation: true, noiseSuppression: true },
-      });
-    } catch (e) {
-      const name = (e as DOMException).name;
-      // No microphone? Try the camera alone so the user still sees the picture.
-      if (name === "NotFoundError" || name === "OverconstrainedError") {
-        try {
-          media = await navigator.mediaDevices.getUserMedia({ video: true });
-        } catch (e2) {
-          setStatus(
-            (e2 as DOMException).name === "NotAllowedError"
-              ? "denied"
-              : "missing",
-          );
-          return;
-        }
-      } else {
-        setStatus(
-          name === "NotAllowedError" || name === "SecurityError"
-            ? "denied"
-            : "error",
-        );
-        return;
+    if (!stream || !stream.getAudioTracks().length) return;
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new Ctx();
+    const an = ctx.createAnalyser();
+    an.fftSize = 1024;
+    ctx.createMediaStreamSource(stream).connect(an);
+    const buf = new Float32Array(an.fftSize);
+    let smooth = 0;
+    let once = false;
+    let raf = 0;
+    const loop = () => {
+      an.getFloatTimeDomainData(buf);
+      let sum = 0;
+      for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+      const lvl = Math.min(1, Math.sqrt(sum / buf.length) * 6);
+      smooth = Math.max(lvl, smooth * 0.9);
+      if (bar.current) bar.current.style.transform = `scaleX(${smooth.toFixed(3)})`;
+      if (!once && lvl > 0.12) {
+        once = true;
+        setHeard(true);
       }
-    }
+      raf = requestAnimationFrame(loop);
+    };
+    loop();
+    return () => {
+      cancelAnimationFrame(raf);
+      ctx.close().catch(() => {});
+      if (bar.current) bar.current.style.transform = "scaleX(0)";
+    };
+  }, [stream, bar]);
+  return heard;
+}
 
-    stream.current = media;
-    setStatus("live");
-    checkDone.set();
-    if (video.current) {
-      video.current.srcObject = media;
-      video.current.play().catch(() => {});
-    }
+/** Record a few seconds of (filtered) voice and play it back — safe without headphones. */
+function VoicePreview({ stream }: { stream: MediaStream | null }) {
+  const [state, setState] = useState<"idle" | "rec" | "play">("idle");
+  const [left, setLeft] = useState(0);
+  const rec = useRef<MediaRecorder | null>(null);
+  const audio = useRef<HTMLAudioElement | null>(null);
+  const supported = typeof window !== "undefined" && typeof window.MediaRecorder !== "undefined";
 
-    // Microphone level
-    const track = media.getAudioTracks()[0];
-    setHasMic(!!track);
-    if (track) {
-      const Ctx =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext })
-          .webkitAudioContext;
-      const ctx = new Ctx();
-      audioCtx.current = ctx;
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 1024;
-      ctx.createMediaStreamSource(media).connect(analyser);
-      const buf = new Float32Array(analyser.fftSize);
-      let smooth = 0;
-      let heardOnce = false;
-      const loop = () => {
-        analyser.getFloatTimeDomainData(buf);
-        let sum = 0;
-        for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
-        const rms = Math.sqrt(sum / buf.length);
-        const lvl = Math.min(1, rms * 6);
-        smooth = Math.max(lvl, smooth * 0.9);
-        if (bar.current)
-          bar.current.style.transform = `scaleX(${smooth.toFixed(3)})`;
-        if (!heardOnce && lvl > 0.12) {
-          heardOnce = true;
-          setHeard(true);
-        }
-        raf.current = requestAnimationFrame(loop);
+  useEffect(
+    () => () => {
+      rec.current?.state === "recording" && rec.current.stop();
+      audio.current?.pause();
+    },
+    [],
+  );
+  useEffect(() => {
+    if (state !== "rec") return;
+    const t = setInterval(() => setLeft((x) => Math.max(0, x - 1)), 1000);
+    return () => clearInterval(t);
+  }, [state]);
+
+  if (!supported) return null;
+
+  const record = () => {
+    if (!stream || !stream.getAudioTracks().length) return;
+    audio.current?.pause();
+    const chunks: Blob[] = [];
+    const r = new MediaRecorder(new MediaStream(stream.getAudioTracks()));
+    rec.current = r;
+    r.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+    r.onstop = () => {
+      const url = URL.createObjectURL(new Blob(chunks, { type: r.mimeType || "audio/webm" }));
+      const a = new Audio(url);
+      audio.current = a;
+      setState("play");
+      a.onended = a.onerror = () => {
+        URL.revokeObjectURL(url);
+        setState("idle");
       };
-      loop();
-    }
-
-    // Rough light estimate: average brightness of a tiny frame
-    const canvas = document.createElement("canvas");
-    canvas.width = 32;
-    canvas.height = 18;
-    const c2d = canvas.getContext("2d", { willReadFrequently: true });
-    lightTimer.current = setInterval(() => {
-      const v = video.current;
-      if (!c2d || !v || v.readyState < 2) return;
-      c2d.drawImage(v, 0, 0, 32, 18);
-      const px = c2d.getImageData(0, 0, 32, 18).data;
-      let l = 0;
-      for (let i = 0; i < px.length; i += 4)
-        l += 0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2];
-      setLight(l / (px.length / 4));
-    }, 800);
+      a.play().catch(() => setState("idle"));
+    };
+    r.start();
+    setLeft(4);
+    setState("rec");
+    setTimeout(() => r.state === "recording" && r.stop(), 4000);
+  };
+  const stop = () => {
+    if (rec.current?.state === "recording") rec.current.stop();
+    audio.current?.pause();
+    setState("idle");
   };
 
-  const lightOk = light !== null && light >= 70;
+  return (
+    <Button
+      variant="secondary"
+      size="sm"
+      disabled={!stream}
+      onClick={state === "idle" ? record : stop}
+      icon={state === "idle" ? <Play size={16} /> : <Square size={14} />}
+    >
+      {state === "rec" ? `Говорите… ${left}` : state === "play" ? "Слушаем запись" : "Записать и послушать"}
+    </Button>
+  );
+}
+
+export default function CheckPage() {
+  const user = useAuth((x) => x.user);
+  const avatar = useMemo(
+    () => (user?.avatar_config ? normalizeAvatar(user.avatar_config) : randomAvatar(user?.id ?? "me")),
+    [user],
+  );
+  const [backdrop, setBackdropState] = useState<BackdropId>("dusk");
+  useEffect(() => setBackdropState(loadBackdrop()), []);
+  const setBackdrop = (id: BackdropId) => {
+    setBackdropState(id);
+    saveBackdrop(id);
+  };
+  const [voice, setVoice] = useState<VoicePreset>("off");
+  const [ticks, setTicks] = useState<Record<string, boolean>>({});
+
+  const cam = useAvatarCamera(avatar, { backdrop });
+  const { transformedStream } = useVoiceTransform({ inputStream: cam.audioStream, preset: voice });
+  const bar = useRef<HTMLSpanElement>(null);
+  const heard = useMicMeter(cam.audioStream, bar);
+
+  const live = cam.state === "ready";
+  useEffect(() => {
+    if (live) checkDone.set();
+  }, [live]);
+
+  const light = cam.light;
+  const lightOk = light !== null && light >= 70 && light <= 215;
   const lightNote =
-    light === null
-      ? null
-      : light < 70
-        ? "Темновато. Включите свет перед собой"
-        : light > 215
-          ? "Очень ярко. Отодвиньтесь от лампы"
-          : "Света достаточно";
-  const done = TIPS.filter(
-    (t) => ticks[t.key] || (t.key === "light" && lightOk),
-  ).length;
+    light === null ? null : light < 70 ? "Темновато. Включите свет перед собой" : light > 215 ? "Очень ярко. Отодвиньтесь от лампы" : "Света достаточно";
+  const faceOk = live && cam.tracking && cam.faceVisible;
+
+  const TIPS = [
+    { key: "light", icon: Lamp, title: "Свет спереди", text: lightNote ?? "Лампа или окно перед вами, а не за спиной", auto: lightOk },
+    { key: "face", icon: ScanFace, title: "Лицо в кадре", text: "Голова по центру, камера примерно на уровне глаз", auto: faceOk },
+    { key: "phones", icon: Headphones, title: "Наушники", text: "Так вас не услышат соседи, а звук не даст эха", auto: false },
+  ];
+  const done = TIPS.filter((t) => ticks[t.key] || t.auto).length;
+
+  const status = !live
+    ? null
+    : !cam.tracking
+      ? { tone: "wait", text: "Подключаем распознавание мимики" }
+      : cam.calibrating
+        ? { tone: "wait", text: "Запоминаем спокойное лицо. Смотрите в камеру" }
+        : cam.faceVisible
+          ? { tone: "ok", text: "Лицо найдено, аватар повторяет мимику" }
+          : { tone: "warn", text: "Лицо не видно. Сядьте ближе и включите свет" };
+
+  const failed = cam.state === "denied" || cam.state === "error";
 
   return (
     <>
       <PageHeader
-        title="Проверка камеры и света"
-        sub="Во время сессии камера нужна, чтобы аватар повторял вашу мимику. Специалист видит только аватар."
+        title="Зеркало"
+        sub="Так вас увидит специалист: только аватар на выбранном фоне. Изображение с камеры не показывается на экране и никуда не отправляется."
       />
       <WithRail
         rail={
           <Card as="section">
-            <CardHead
-              title="Перед сессией"
-              sub={`Готово ${done} из ${TIPS.length}`}
-            />
+            <CardHead title="Перед сессией" sub={`Готово ${done} из ${TIPS.length}`} />
             <ul className={s.tips}>
               {TIPS.map((t) => {
-                const auto = t.key === "light" && lightOk;
-                const on = !!ticks[t.key] || auto;
+                const on = !!ticks[t.key] || t.auto;
                 const Icon = t.icon;
                 return (
                   <li key={t.key}>
@@ -205,163 +208,129 @@ export default function CheckPage() {
                       type="button"
                       className={s.tip}
                       aria-pressed={on}
-                      onClick={() =>
-                        setTicks((x) => ({ ...x, [t.key]: !x[t.key] }))
-                      }
+                      onClick={() => setTicks((x) => ({ ...x, [t.key]: !x[t.key] }))}
                     >
                       <span className={s.tipIcon} aria-hidden>
-                        {on ? (
-                          <Check size={18} strokeWidth={2.4} />
-                        ) : (
-                          <Icon size={18} strokeWidth={1.8} />
-                        )}
+                        {on ? <Check size={18} strokeWidth={2.4} /> : <Icon size={18} strokeWidth={1.8} />}
                       </span>
                       <span className={s.tipText}>
                         <strong>{t.title}</strong>
-                        <span>
-                          {t.key === "light" && lightNote ? lightNote : t.text}
-                        </span>
+                        <span>{t.text}</span>
                       </span>
                     </button>
                   </li>
                 );
               })}
             </ul>
-            <p className={s.tipHint}>
-              Отмечайте пункты, когда всё готово. Свет мы оценим сами по
-              картинке.
-            </p>
+            <p className={s.tipHint}>Свет и лицо мы проверим сами, остальное отметьте, когда будет готово.</p>
           </Card>
         }
       >
         <Card as="section" className={s.stageCard}>
-          <div className={s.stage} data-live={status === "live" || undefined}>
-            <video
-              ref={video}
-              className={s.video}
-              muted
-              playsInline
-              autoPlay
-              aria-label="Изображение с вашей камеры"
-            />
-            {status === "live" ? (
-              <span className={s.private}>
-                <Lock size={14} strokeWidth={2} aria-hidden />
-                Видите только вы, никуда не передаётся
-              </span>
-            ) : (
-              <div className={s.placeholder}>
-                <span className={s.placeholderIcon}>
-                  {status === "denied" ||
-                  status === "missing" ||
-                  status === "error" ? (
-                    <VideoOff size={28} strokeWidth={1.8} />
-                  ) : (
-                    <Camera size={28} strokeWidth={1.8} />
-                  )}
+          <div className={s.layout}>
+            <div className={s.stage} style={{ background: getBackdrop(backdrop).css }}>
+              {live && <CanvasSlot canvas={cam.canvas} />}
+              {live && status && (
+                <span className={s.status} data-tone={status.tone}>
+                  <span className={s.dot} aria-hidden />
+                  {status.text}
                 </span>
-                {status === "idle" && (
-                  <>
-                    <strong>Посмотрим, как вас видит камера</strong>
-                    <span>
-                      Изображение останется на этом устройстве. Мы его не
-                      записываем и никуда не отправляем.
-                    </span>
-                    <Button variant="primary" size="lg" onClick={start}>
-                      Включить камеру
-                    </Button>
-                  </>
-                )}
-                {status === "asking" && (
-                  <>
-                    <strong>Разрешите доступ в окне браузера</strong>
-                    <span>
-                      Браузер спросит про камеру и микрофон. Нажмите
-                      «Разрешить».
-                    </span>
-                  </>
-                )}
-                {status === "denied" && (
-                  <>
-                    <strong>Браузер не дал доступ к камере</strong>
-                    <span>
-                      Нажмите на значок камеры или замка в адресной строке,
-                      разрешите камеру и микрофон, затем попробуйте снова.
-                    </span>
-                    <Button variant="primary" onClick={start}>
-                      Попробовать снова
-                    </Button>
-                  </>
-                )}
-                {status === "missing" && (
-                  <>
-                    <strong>Камера не найдена</strong>
-                    <span>
-                      Подключите камеру или закройте программы, которые могут её
-                      занимать, например другой видеозвонок.
-                    </span>
-                    <Button variant="primary" onClick={start}>
-                      Проверить снова
-                    </Button>
-                  </>
-                )}
-                {status === "error" && (
-                  <>
-                    <strong>Не получилось включить камеру</strong>
-                    <span>
-                      Откройте страницу в свежей версии Chrome, Safari или
-                      Firefox. Сайт должен работать по защищённому адресу https.
-                    </span>
-                    <Button variant="primary" onClick={start}>
-                      Попробовать снова
-                    </Button>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className={s.mic}>
-            <span
-              className={s.micIcon}
-              data-ok={heard || undefined}
-              aria-hidden
-            >
-              {status === "live" && !hasMic ? (
-                <MicOff size={18} strokeWidth={1.8} />
-              ) : (
-                <Mic size={18} strokeWidth={1.8} />
               )}
-            </span>
-            <div className={s.micBody}>
-              <div className={s.micHead}>
-                <strong>Микрофон</strong>
-                <span>
-                  {status !== "live"
-                    ? "Проверим вместе с камерой"
-                    : !hasMic
-                      ? "Микрофон не найден. Подключите гарнитуру"
-                      : heard
-                        ? "Слышим вас хорошо"
-                        : "Скажите пару слов"}
+              {live && (
+                <span className={s.private}>
+                  <Lock size={13} strokeWidth={2.2} aria-hidden />
+                  Только аватар
                 </span>
-              </div>
-              <div className={s.meter} role="presentation">
-                <span ref={bar} />
-              </div>
+              )}
+              {!live && (
+                <div className={s.placeholder}>
+                  {cam.state === "starting" ? (
+                    <>
+                      <AvatarThumb config={avatar} size={140} framing="portrait" background="transparent" />
+                      <Spinner label="Включаем камеру" />
+                    </>
+                  ) : failed ? (
+                    <>
+                      <span className={s.placeholderIcon}>
+                        <VideoOff size={26} strokeWidth={1.8} />
+                      </span>
+                      <strong>Камера не включилась</strong>
+                      <span>{cam.error}</span>
+                      <Button variant="primary" onClick={cam.start}>
+                        Попробовать снова
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <AvatarThumb config={avatar} size={140} framing="portrait" background="transparent" />
+                      <strong>Посмотрите на себя глазами специалиста</strong>
+                      <span>Камера нужна, чтобы аватар повторял вашу мимику. Её изображение обрабатывается только на этом устройстве.</span>
+                      <Button variant="primary" size="lg" onClick={cam.start} icon={<Camera size={18} />}>
+                        Включить камеру
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
-            {status === "live" && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  stop();
-                  setStatus("idle");
-                }}
-              >
-                Выключить камеру
-              </Button>
-            )}
+
+            <div className={s.controls}>
+              <div className={s.group}>
+                <div className={s.groupHead}>Фон</div>
+                <BackdropPicker value={backdrop} onChange={setBackdrop} />
+                <p className={s.hint}>Этот фон увидит специалист во время сессии.</p>
+              </div>
+
+              <div className={s.group}>
+                <div className={s.groupHead}>Мимика</div>
+                <p className={s.hint}>
+                  Если аватар хмурится или улыбается, когда вы спокойны, расслабьте лицо, смотрите в камеру и откалибруйте заново.
+                </p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={cam.recalibrate}
+                  disabled={!live || !cam.tracking || cam.calibrating}
+                  icon={<RefreshCw size={16} />}
+                >
+                  {cam.calibrating ? "Калибруем…" : "Откалибровать"}
+                </Button>
+                <Link href="/app/avatar" className={s.link}>
+                  Изменить аватар
+                </Link>
+              </div>
+
+              <div className={s.group}>
+                <div className={s.mic}>
+                  <span className={s.micIcon} data-ok={heard || undefined} aria-hidden>
+                    {live && !cam.audioStream ? <MicOff size={18} strokeWidth={1.8} /> : <Mic size={18} strokeWidth={1.8} />}
+                  </span>
+                  <div className={s.micBody}>
+                    <div className={s.micHead}>
+                      <strong>Микрофон</strong>
+                      <span>
+                        {!live ? "Проверим вместе с камерой" : !cam.audioStream ? "Микрофон не найден" : heard ? "Слышим вас хорошо" : "Скажите пару слов"}
+                      </span>
+                    </div>
+                    <div className={s.meter} role="presentation">
+                      <span ref={bar} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className={s.group}>
+                <div className={s.groupHead}>Голос</div>
+                <Segmented value={voice} onChange={setVoice} options={VOICES} ariaLabel="Фильтр голоса" />
+                <VoicePreview stream={live ? transformedStream : null} />
+              </div>
+
+              {live && (
+                <Button variant="ghost" size="sm" onClick={cam.stop}>
+                  Выключить камеру
+                </Button>
+              )}
+            </div>
           </div>
         </Card>
       </WithRail>

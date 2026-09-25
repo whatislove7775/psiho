@@ -1,0 +1,120 @@
+.root {
+  display: block;
+  overflow: visible;
+  color: var(--c-muted);
+  flex: none;
+}
+.shadow {
+  fill: #000;
+  opacity: 0.18;
+  transform-origin: 60px 110px;
+}
+.bodyGroup {
+  transform-origin: 60px 106px;
+}
+.sprout {
+  transform-origin: 60px 24px;
+}
+.eyes,
+.eyeL,
+.eyeR {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.pawL,
+.pawR {
+  transform-box: fill-box;
+  transform-origin: center top;
+}
+.dots circle {
+  fill: var(--c-primary);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .idle .bodyGroup {
+    animation: breathe 4.2s ease-in-out infinite;
+  }
+  .idle .shadow {
+    animation: shadow 4.2s ease-in-out infinite;
+  }
+  .idle .sprout,
+  .sleep .sprout {
+    animation: sway 5s ease-in-out infinite;
+  }
+  .idle .eyeL,
+  .idle .eyeR {
+    animation: blink 5.5s infinite;
+  }
+
+  .typing .bodyGroup {
+    animation: bob 1.1s ease-in-out infinite;
+  }
+  .typing .shadow {
+    animation: shadowBob 1.1s ease-in-out infinite;
+  }
+  .typing .eyes {
+    animation: look 2.2s ease-in-out infinite;
+  }
+  .typing .pawR {
+    animation: wave 1.1s ease-in-out infinite;
+  }
+  .typing .dots circle {
+    animation: dot 1.1s ease-in-out infinite;
+  }
+  .typing .dots circle:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+  .typing .dots circle:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+
+  .sleep .bodyGroup {
+    animation: breathe 6s ease-in-out infinite;
+  }
+  .sleep .zzz {
+    animation: zzz 3s ease-in-out infinite;
+  }
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.025, 0.975); }
+}
+@keyframes shadow {
+  0%, 100% { transform: scaleX(1); }
+  50% { transform: scaleX(1.05); }
+}
+@keyframes sway {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(5deg); }
+}
+@keyframes blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.12); }
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  45% { transform: translateY(-4px) scale(0.99, 1.02); }
+  60% { transform: translateY(-4px) scale(1, 1); }
+}
+@keyframes shadowBob {
+  0%, 100% { transform: scaleX(1); opacity: 0.18; }
+  50% { transform: scaleX(0.85); opacity: 0.12; }
+}
+@keyframes look {
+  0%, 100% { transform: translate(0, 0); }
+  30%, 60% { transform: translate(2.5px, -2px); }
+}
+@keyframes wave {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-24deg); }
+}
+@keyframes dot {
+  0%, 100% { opacity: 0.25; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-2px); }
+}
+@keyframes zzz {
+  0% { opacity: 0; transform: translate(0, 4px); }
+  40%, 70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(4px, -6px); }
+}

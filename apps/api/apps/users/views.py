@@ -103,6 +103,11 @@ class LoginView(AuthThrottleMixin, APIView):
                 {"detail": "Неверный логин или пароль."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        # Сотрудники с включённым TOTP передают ещё поле "otp" (apps.staff)
+        from apps.staff.twofactor import login_second_factor
+        challenge = login_second_factor(request, user)
+        if challenge is not None:
+            return challenge
         return Response(auth_payload(user, request))
 
 
@@ -167,7 +172,7 @@ def approved_psychologists():
             verification_status=PsychologistProfile.VerificationStatus.APPROVED,
             user__is_active=True,
         )
-        .select_related("user")
+        .select_related("user", "photo")
         .annotate(
             completed_sessions_count=Count(
                 "psychologist_sessions",
@@ -253,13 +258,24 @@ class PsychologistProfileView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         return self.request.user.psychologist_profile
 
+    def perform_update(self, serializer):
+        from apps.availability.services import set_rate_from_legacy
+
+        old_rate = serializer.instance.session_rate_rub
+        profile = serializer.save()
+        if "session_rate_rub" in serializer.validated_data and profile.session_rate_rub != old_rate:
+            set_rate_from_legacy(profile)
+
 
 class PsychologistScheduleView(APIView):
+    """Устаревший API недельных правил; новое — /psychologist/availability/ (apps.availability)."""
+
     permission_classes = [IsPsychologist]
 
     def _rules(self, profile):
-        rules = profile.schedule_slots.filter(is_active=True).order_by("weekday", "start_time")
-        return ScheduleRuleSerializer(rules, many=True).data
+        from apps.availability.services import legacy_rules
+
+        return legacy_rules(profile)
 
     def get(self, request):
         return Response(self._rules(request.user.psychologist_profile))
@@ -273,12 +289,10 @@ class PsychologistScheduleView(APIView):
         error = schedule_overlap_error(rules)
         if error:
             return Response({"detail": error}, status=400)
+        from apps.availability.services import replace_default_template
+
         profile = request.user.psychologist_profile
-        with transaction.atomic():
-            profile.schedule_slots.all().delete()
-            PsychologistSchedule.objects.bulk_create([
-                PsychologistSchedule(psychologist=profile, **rule) for rule in rules
-            ])
+        replace_default_template(profile, rules)
         return Response(self._rules(profile))
 
 

@@ -42,6 +42,8 @@ interface UseP2PCallOptions {
   wsToken: string;
   localStream: MediaStream | null;
   onEnd?: () => void;
+  /** Video encoder cap, bps. Default 900 kbps (avatar); a real camera wants more. */
+  videoMaxBitrate?: number;
 }
 
 /** Random id for one RTCPeerConnection instance (tags every signal we send). */
@@ -68,7 +70,7 @@ function newPcId(): string {
  *  - Local track changes (voice filter on/off → new MediaStream) are applied
  *    with RTCRtpSender.replaceTrack(): no teardown, no renegotiation.
  */
-export function useP2PCall({ roomId, wsToken, localStream, onEnd }: UseP2PCallOptions) {
+export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrate = 900_000 }: UseP2PCallOptions) {
   const [status,      setStatus]      = useState<P2PStatus>("idle");
   const [isMuted,     setIsMuted]     = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
@@ -82,6 +84,8 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd }: UseP2PCallOp
   const remoteStreamRef = useRef<MediaStream | null>(null);
   const localStreamRef = useRef<MediaStream | null>(localStream);
   localStreamRef.current = localStream;
+  const maxBitrateRef  = useRef(videoMaxBitrate);
+  maxBitrateRef.current = videoMaxBitrate;
   const cancelRef      = useRef(false);
   const hasRemoteRef   = useRef(false);
   const elapsedTimer   = useRef<ReturnType<typeof setInterval>>();
@@ -256,13 +260,14 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd }: UseP2PCallOp
       }
 
       // ── Tune the video encoder for low latency ──────────────────
-      // The avatar is light, predictable motion. Cap bitrate/fps and prefer
-      // keeping framerate over resolution when CPU is tight.
+      // The avatar is light, predictable motion (a specialist's real camera
+      // gets a higher cap). Cap bitrate/fps and prefer keeping framerate over
+      // resolution when CPU is tight.
       const vSender = pc.getSenders().find(s => s.track?.kind === "video");
       if (vSender) {
         const params = vSender.getParameters();
         if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
-        params.encodings[0].maxBitrate   = 900_000;
+        params.encodings[0].maxBitrate   = maxBitrateRef.current;
         params.encodings[0].maxFramerate = 30;
         (params as RTCRtpSendParameters & { degradationPreference?: string }).degradationPreference = "maintain-framerate";
         vSender.setParameters(params).catch(() => { /* not all browsers allow this pre-negotiation */ });

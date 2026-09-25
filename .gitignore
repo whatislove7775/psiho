@@ -33,3 +33,6 @@ apps/web/public/mediapipe/wasm/
 # avatar kit build cache
 tools/avatar-kit/.cache/
 __pycache__/
+
+# Uploaded media (dev)
+apps/api/media/

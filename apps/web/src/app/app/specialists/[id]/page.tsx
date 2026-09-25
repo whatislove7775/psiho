@@ -4,13 +4,14 @@ import { useParams } from "next/navigation";
 import { ArrowLeft, BadgeCheck, UserX } from "lucide-react";
 import { Badge, Button, Card, EmptyState, Skeleton } from "@/ui";
 import { WithRail } from "@/components/shell/AppShell";
-import { AvatarThumb } from "@/components/avatar/AvatarThumb";
+import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import { ApiError } from "@/lib/api/client";
 import { psychologistsApi } from "@/lib/api/endpoints";
 import { plural, rub } from "@/lib/format";
 import { useLoad } from "@/components/client/useLoad";
 import { ErrorBlock } from "@/components/client/ClientBits";
-import { BookingPanel, priceFor } from "@/components/booking/BookingPanel";
+import { BookingPanel } from "@/components/booking/BookingPanel";
+import { durationLabel } from "@/lib/api/availability";
 import s from "./profile.module.css";
 
 export default function SpecialistProfile() {
@@ -80,13 +81,12 @@ export default function SpecialistProfile() {
         <Card as="article" className={s.hero}>
           {p ? (
             <>
-              <AvatarThumb
-                config={p.avatar_config}
-                seed={`psy-${p.id}`}
+              <SpecialistPhoto
+                url={p.photo_url}
+                name={p.display_name}
                 size={168}
-                framing="portrait"
                 rounded={false}
-                alt={`Аватар: ${p.display_name}`}
+                alt={`Фото: ${p.display_name}`}
               />
               <div className={s.heroText}>
                 <Badge tone="success">
@@ -104,12 +104,18 @@ export default function SpecialistProfile() {
                     </dd>
                   </div>
                   <div>
-                    <dt>50 минут</dt>
-                    <dd>{rub(p.session_rate_rub)}</dd>
+                    <dt>Сессия</dt>
+                    <dd>
+                      {p.booking && p.booking.min_duration !== p.booking.max_duration
+                        ? `${durationLabel(p.booking.min_duration)} – ${durationLabel(p.booking.max_duration)}`
+                        : durationLabel(p.booking?.min_duration ?? 50)}
+                    </dd>
                   </div>
                   <div>
-                    <dt>80 минут</dt>
-                    <dd>{rub(priceFor(p.session_rate_rub, 80))}</dd>
+                    <dt>Стоимость</dt>
+                    <dd>
+                      {p.booking ? `${rub(p.booking.hourly_rate_rub)} за час` : rub(p.session_rate_rub)}
+                    </dd>
                   </div>
                 </dl>
                 <Button variant="primary" href="#booking" className={s.jump}>

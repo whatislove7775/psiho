@@ -1,0 +1,227 @@
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.tone[data-tone="peach"], .circle[data-tone="peach"], .halo[data-tone="peach"], .doneIcon[data-tone="peach"], .timerBar span[data-tone="peach"] { background: var(--p-peach); }
+.tone[data-tone="butter"], .circle[data-tone="butter"], .halo[data-tone="butter"], .doneIcon[data-tone="butter"], .timerBar span[data-tone="butter"] { background: var(--p-butter); }
+.tone[data-tone="lime"], .circle[data-tone="lime"], .halo[data-tone="lime"], .doneIcon[data-tone="lime"], .timerBar span[data-tone="lime"] { background: var(--p-lime); }
+.tone[data-tone="mint"], .circle[data-tone="mint"], .halo[data-tone="mint"], .doneIcon[data-tone="mint"], .timerBar span[data-tone="mint"] { background: var(--p-mint); }
+.tone[data-tone="lilac"], .circle[data-tone="lilac"], .halo[data-tone="lilac"], .doneIcon[data-tone="lilac"], .timerBar span[data-tone="lilac"] { background: var(--p-lilac); }
+.tone[data-tone="sky"], .circle[data-tone="sky"], .halo[data-tone="sky"], .doneIcon[data-tone="sky"], .timerBar span[data-tone="sky"] { background: var(--p-sky); }
+
+/* ── Breathing circle ─────────────────────────────────────────────────── */
+.breath {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-5);
+  padding: var(--s-4) 0;
+}
+.stage {
+  position: relative;
+  width: min(320px, 78vw);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+}
+.circle,
+.halo {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  transition-property: transform;
+  transition-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  will-change: transform;
+}
+.halo {
+  opacity: 0.25;
+}
+.stageText {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--p-ink);
+  text-align: center;
+}
+.stageText strong {
+  font-size: var(--t-24);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.stageText span {
+  font-size: var(--t-15);
+  opacity: 0.75;
+}
+.stageText .count {
+  font-size: var(--t-32);
+  font-weight: 650;
+  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
+}
+.cycles {
+  color: var(--c-muted);
+  font-size: var(--t-13);
+}
+@media (prefers-reduced-motion: reduce) {
+  .circle,
+  .halo {
+    transition-duration: 0s !important;
+  }
+}
+
+/* ── Controls ─────────────────────────────────────────────────────────── */
+.controls {
+  display: flex;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ── Step player ──────────────────────────────────────────────────────── */
+.player {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+.outline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.outline li {
+  display: flex;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: var(--c-raised);
+}
+.outline li > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.outline strong {
+  font-weight: 600;
+}
+.outline li > span:last-child > span {
+  color: var(--c-muted);
+  font-size: var(--t-15);
+  line-height: 1.5;
+}
+.outlineNum {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--c-panel);
+  display: grid;
+  place-items: center;
+  font-size: var(--t-13);
+  font-weight: 650;
+  color: var(--c-muted);
+}
+
+.progress {
+  display: flex;
+  gap: 6px;
+}
+.progress span {
+  flex: 1;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--c-raised);
+  transition: background var(--dur) var(--ease);
+}
+.progress span[data-state="done"] {
+  background: var(--c-primary);
+}
+.progress span[data-state="current"] {
+  background: color-mix(in srgb, var(--c-primary) 55%, var(--c-raised));
+}
+
+.stepCard {
+  min-height: 260px;
+  padding: var(--s-8);
+  border-radius: var(--r-card);
+  background: var(--c-raised);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--s-3);
+  outline: none;
+}
+.stepNum {
+  font-size: var(--t-13);
+  color: var(--c-muted);
+  font-weight: 550;
+}
+.stepTitle {
+  font-size: var(--t-24);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+.stepText {
+  font-size: var(--t-17);
+  line-height: 1.6;
+  max-width: 60ch;
+}
+.doneIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--p-ink);
+}
+.timer {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-top: var(--s-2);
+}
+.timerBar {
+  flex: 1;
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--c-panel);
+  overflow: hidden;
+}
+.timerBar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 1s linear;
+}
+.timerText {
+  min-width: 96px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-muted);
+  font-size: var(--t-15);
+}
+
+@media (max-width: 560px) {
+  .stepCard {
+    padding: var(--s-5);
+    min-height: 220px;
+  }
+  .stepTitle {
+    font-size: var(--t-20);
+  }
+  .stepText {
+    font-size: var(--t-15);
+  }
+}
