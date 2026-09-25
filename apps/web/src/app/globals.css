@@ -108,6 +108,14 @@ video {
   max-width: 100%;
 }
 
+/* Theme swap (ThemeToggle): suspend transitions for a frame so the page repaints
+   at once instead of fading panel by panel; only the sun/moon icon animates. */
+html.theme-swap *:not([data-theme-icon]),
+html.theme-swap *::before,
+html.theme-swap *::after {
+  transition: none !important;
+}
+
 :focus-visible {
   outline: none;
   box-shadow: var(--focus);

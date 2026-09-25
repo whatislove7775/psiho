@@ -1,0 +1,71 @@
+/* Theme switch: sun ↔ moon crossfade with a small rotation. Which icon shows is
+   driven by html[data-theme] (set before first paint), so there is no flash on load. */
+
+.toggle {
+  position: relative;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--c-muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+.toggle:hover {
+  background: var(--c-raised);
+  color: var(--c-text);
+}
+/* Mouse/touch clicks never draw a ring; keyboard focus gets a tight one. */
+.toggle:focus {
+  outline: none;
+  box-shadow: none;
+}
+.toggle:focus-visible {
+  outline: none;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--c-primary);
+}
+
+.icon {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 20px;
+  height: 20px;
+  transition: opacity 220ms ease, transform 320ms cubic-bezier(0.3, 0.7, 0.3, 1);
+  will-change: transform, opacity;
+}
+
+/* Dark theme (default): show the sun (tap → light). */
+.sun {
+  opacity: 1;
+  transform: none;
+}
+.moon {
+  opacity: 0;
+  transform: rotate(-70deg) scale(0.6);
+}
+:global(html[data-theme="light"]) .sun {
+  opacity: 0;
+  transform: rotate(70deg) scale(0.6);
+}
+:global(html[data-theme="light"]) .moon {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icon {
+    transition: opacity 120ms linear;
+  }
+  .moon,
+  :global(html[data-theme="light"]) .sun {
+    transform: none;
+  }
+}

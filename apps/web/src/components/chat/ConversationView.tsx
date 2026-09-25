@@ -67,6 +67,8 @@ export function ConversationView({
   composerNotice,
   composerDisabled,
   subtitle,
+  menuItems,
+  onTitleClick,
 }: {
   conv: Conversation;
   onBack?: () => void;
@@ -85,6 +87,10 @@ export function ConversationView({
   composerDisabled?: boolean;
   /** replaces the role line under the name */
   subtitle?: string;
+  /** extra items at the top of the header «⋮» menu */
+  menuItems?: { key: string; icon: ReactNode; label: string; onClick: () => void }[];
+  /** makes the avatar + name a button (e.g. opens dialogue details) */
+  onTitleClick?: () => void;
 }) {
   const toast = useToast();
   const isAI = conv.kind === "ai";
@@ -427,15 +433,27 @@ export function ConversationView({
       {!compact && (
       <header className={s.viewHead}>
         {onBack && (
-          <button type="button" className={`${s.iconBtn} ${s.backBtn}`} onClick={onBack} aria-label="Назад к списку диалогов">
+          <button type="button" className={`${s.iconBtn} ${s.backBtn}`} onClick={onBack} aria-label="Назад к списку диалогов" data-back="">
             <ArrowLeft size={20} />
           </button>
         )}
-        <ConvAvatar who={conv.counterpart} size={42} />
-        <div className={s.viewTitle}>
-          <div className={s.viewName}>{conv.counterpart.name}</div>
-          <div className={`${s.viewSub} ${typing ? s.viewSubTyping : ""}`}>{sub}</div>
-        </div>
+        {onTitleClick ? (
+          <button type="button" className={s.viewTitleBtn} onClick={onTitleClick} aria-label={`${conv.counterpart.name}: о диалоге`}>
+            <ConvAvatar who={conv.counterpart} size={42} />
+            <span className={s.viewTitle}>
+              <span className={s.viewName} style={{ display: "block" }}>{conv.counterpart.name}</span>
+              <span className={`${s.viewSub} ${typing ? s.viewSubTyping : ""}`} style={{ display: "block" }}>{sub}</span>
+            </span>
+          </button>
+        ) : (
+          <>
+            <ConvAvatar who={conv.counterpart} size={42} />
+            <div className={s.viewTitle}>
+              <div className={s.viewName}>{conv.counterpart.name}</div>
+              <div className={`${s.viewSub} ${typing ? s.viewSubTyping : ""}`}>{sub}</div>
+            </div>
+          </>
+        )}
         {headerActions}
         <div className={s.headMenuWrap} ref={headMenuRef}>
           <button
@@ -449,6 +467,11 @@ export function ConversationView({
           </button>
           {headMenu && (
             <div className={`${s.menu} ${s.headMenu}`} role="menu">
+              {menuItems?.map((it) => (
+                <button key={it.key} type="button" role="menuitem" onClick={() => { setHeadMenu(false); it.onClick(); }}>
+                  {it.icon} {it.label}
+                </button>
+              ))}
               <button type="button" role="menuitem" onClick={() => { setHeadMenu(false); setRetentionOpen(true); }}>
                 <Timer size={16} /> Хранение сообщений
               </button>

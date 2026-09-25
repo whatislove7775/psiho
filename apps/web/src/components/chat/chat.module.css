@@ -1266,3 +1266,29 @@
     animation-iteration-count: 1;
   }
 }
+
+/* Header title as a button (dialogues: opens the dialogue details) */
+.viewTitleBtn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: -4px -8px -4px -8px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 16px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur);
+}
+.viewTitleBtn:hover {
+  background: var(--c-raised);
+}
+.viewTitleBtn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}

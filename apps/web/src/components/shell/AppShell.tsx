@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type FocusEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import {
   BookOpen,
   Leaf,
@@ -97,6 +97,9 @@ const PROFILE_HREF: Record<Role, string> = {
   admin: "/admin/account",
 };
 
+/** Pages where the sidebar collapses to a slim icon rail (messenger layouts). */
+const RAIL_ROUTES = /^\/(app|pro)\/dialogs(\/|$)/;
+
 function isActive(pathname: string, href: string, root: string, also?: string[]) {
   const hit = (h: string) => (h === root ? pathname === root : pathname === h || pathname.startsWith(h + "/"));
   return hit(href) || (also ?? []).some(hit);
@@ -142,13 +145,18 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
   const pathname = usePathname() ?? "";
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [tip, setTip] = useState<{ text: string; top: number; left: number } | null>(null);
+  const rail = RAIL_ROUTES.test(pathname);
   const unread = useUnread(status === "authed" && !!user && user.role === role && role !== "admin", pathname);
 
   useEffect(() => {
     bootstrap();
   }, [bootstrap]);
 
-  useEffect(() => setMenuOpen(false), [pathname]);
+  useEffect(() => {
+    setMenuOpen(false);
+    setTip(null);
+  }, [pathname]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -180,19 +188,38 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
     router.replace("/");
   };
 
+  // Rail tooltips: one fixed bubble next to the hovered / focused icon (not clipped by the nav scroller)
+  const showTip = (e: ReactMouseEvent<HTMLElement> | FocusEvent<HTMLElement>) => {
+    if (!rail) return;
+    const el = (e.target as HTMLElement).closest<HTMLElement>("[data-tip]");
+    if (!el) return;
+    let text = el.dataset.tip || "";
+    if (text === "@balance") text = (el.querySelector("a")?.getAttribute("aria-label") ?? "Баланс").replace(/\. Открыть$/, "");
+    const r = el.getBoundingClientRect();
+    setTip({ text, top: r.top + r.height / 2, left: r.right + 10 });
+  };
+  const hideTip = () => setTip(null);
+
   return (
-    <div className={s.root}>
-      <aside className={s.sidebar} aria-label="Навигация кабинета">
+    <div className={s.root} data-rail={rail ? "" : undefined}>
+      <aside
+        className={s.sidebar}
+        aria-label="Навигация кабинета"
+        onMouseOver={showTip}
+        onMouseLeave={hideTip}
+        onFocus={showTip}
+        onBlur={hideTip}
+      >
         {/* Theme switch lives here in every cabinet: one stable spot that never overlaps content */}
         <div className={s.brandRow}>
-          <Link href="/" className={s.brand}>
+          <Link href="/" className={s.brand} data-tip="На главную сайта">
             <LogoMark className={s.brandMark} />
-            aprosop
+            <span className={s.label}>aprosop</span>
           </Link>
-          <ThemeToggle />
+          <ThemeToggle className={s.topToggle} />
         </div>
 
-        <Link href={PROFILE_HREF[role]} className={s.profile} title={`${name}, открыть профиль`}>
+        <Link href={PROFILE_HREF[role]} className={s.profile} title={rail ? undefined : `${name}, открыть профиль`} data-tip={name}>
           <span className={s.profileAvatar}>
             {user.psychologist ? (
               <SpecialistPhoto url={user.psychologist.photo_url} name={name} size={48} alt="" />
@@ -200,14 +227,18 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
               <AvatarThumb config={user.avatar_config} seed={user.id} size={48} />
             )}
           </span>
-          <span className={s.profileText}>
+          <span className={`${s.profileText} ${s.label}`}>
             <span className={s.profileName} style={{ display: "block" }}>
               {name}
             </span>
             <span className={s.profileRole}>{ROLE_LABEL[role]}</span>
           </span>
         </Link>
-        {role === "client" && <BalanceChip block />}
+        {role === "client" && (
+          <div className={s.balance} data-tip="@balance">
+            <BalanceChip block />
+          </div>
+        )}
 
         <nav className={s.nav}>
           {nav.items.map((item) => {
@@ -217,18 +248,34 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
             return (
               <div key={item.href}>
                 {showGroup && <div className={s.navGroup}>{item.group}</div>}
-                <Link href={item.href} className={s.navItem} aria-current={isActive(pathname, item.href, root) ? "page" : undefined}>
+                <Link
+                  href={item.href}
+                  className={s.navItem}
+                  aria-current={isActive(pathname, item.href, root) ? "page" : undefined}
+                  aria-label={rail ? item.label : undefined}
+                  data-tip={item.label}
+                >
                   <Icon size={20} strokeWidth={1.8} />
-                  {item.label}
+                  <span className={s.label}>{item.label}</span>
                   {countOf(item, unread) ? <span className={s.navCount}>{countOf(item, unread)}</span> : null}
                 </Link>
               </div>
             );
           })}
           <div style={{ flex: 1 }} />
-          <button type="button" className={s.navItem} onClick={onLogout} style={{ border: 0, background: "none", width: "100%" }}>
+          <div className={s.railToggle} data-tip="Сменить тему">
+            <ThemeToggle />
+          </div>
+          <button
+            type="button"
+            className={s.navItem}
+            onClick={onLogout}
+            style={{ border: 0, background: "none", width: "100%" }}
+            aria-label={rail ? "Выйти" : undefined}
+            data-tip="Выйти"
+          >
             <LogOut size={20} strokeWidth={1.8} />
-            Выйти
+            <span className={s.label}>Выйти</span>
           </button>
         </nav>
 
@@ -236,6 +283,11 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
           {nav.cta.label}
         </Button>
       </aside>
+      {rail && tip && (
+        <div className={s.tip} role="tooltip" style={{ top: tip.top, left: tip.left }}>
+          {tip.text}
+        </div>
+      )}
 
       <header className={s.mobileTop}>
         <Link href={root} className={s.brand}>

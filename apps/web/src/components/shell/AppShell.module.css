@@ -1,9 +1,11 @@
 .root {
+  --rail-w-collapsed: 72px;
   min-height: 100dvh;
   display: grid;
   grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
   gap: var(--s-6);
   padding: var(--s-4);
+  transition: grid-template-columns 320ms var(--ease), column-gap 320ms var(--ease);
 }
 
 /* ── Sidebar ─────────────────────────────────────────────────────────── */
@@ -62,6 +64,7 @@
 }
 .profileAvatar {
   width: 48px;
+  min-width: 48px;
   height: 48px;
   flex: none;
   border-radius: 50%;
@@ -116,6 +119,7 @@
   color: var(--c-text);
 }
 .navItem svg {
+  flex: none;
   transition: transform 260ms var(--ease-bounce), color var(--dur);
 }
 .navItem:hover svg {
@@ -369,4 +373,135 @@
   display: grid;
   place-items: center;
   color: var(--c-muted);
+}
+
+/* ── Slim icon rail (dialogues: rail | list | thread) ──────────────── */
+.label {
+  white-space: nowrap;
+  transition: opacity 200ms ease;
+}
+.railToggle {
+  display: none;
+}
+.brand,
+.profile,
+.nav,
+.navItem,
+.balance a {
+  transition-property: background, color, box-shadow, padding;
+  transition-duration: var(--dur), var(--dur), var(--dur), 320ms;
+  transition-timing-function: ease, ease, ease, var(--ease);
+}
+.tip {
+  position: fixed;
+  z-index: 80;
+  transform: translateY(-50%);
+  padding: 7px 12px;
+  border-radius: 10px;
+  background: var(--c-raised-2);
+  color: var(--c-text);
+  border: 1px solid var(--c-line);
+  box-shadow: var(--shadow-float);
+  font-size: var(--t-13);
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: tipIn 140ms ease-out;
+}
+@keyframes tipIn {
+  from {
+    opacity: 0;
+    transform: translate(-4px, -50%);
+  }
+}
+
+@media (min-width: 861px) {
+  .root[data-rail] {
+    grid-template-columns: var(--rail-w-collapsed) minmax(0, 1fr);
+    column-gap: var(--s-4);
+  }
+  .root[data-rail] .main {
+    padding: 0;
+  }
+  .root[data-rail] .sidebar {
+    overflow: hidden;
+    overflow: clip;
+    overflow-clip-margin: 4px;
+  }
+  .root[data-rail] .label {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .root[data-rail] .brandRow {
+    padding-right: 0;
+  }
+  .root[data-rail] .brand {
+    padding-left: 19px;
+    padding-right: 0;
+  }
+  .root[data-rail] .topToggle {
+    display: none;
+  }
+  .root[data-rail] .profile {
+    overflow: hidden;
+  }
+  .root[data-rail] .balance a {
+    padding-left: 20px;
+    overflow: hidden;
+  }
+  .root[data-rail] .balance a > span:not(:first-child) {
+    opacity: 0;
+  }
+  .root[data-rail] .nav {
+    padding: 8px;
+  }
+  .root[data-rail] .navItem {
+    position: relative;
+    padding: 0 18px;
+    overflow: hidden;
+  }
+  .root[data-rail] .navItem:hover svg {
+    transform: none;
+  }
+  .root[data-rail] .navGroup {
+    height: 1px;
+    margin: 8px 10px;
+    padding: 0;
+    overflow: hidden;
+    font-size: 0;
+    background: var(--c-line);
+  }
+  .root[data-rail] .navCount {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    font-size: 11px;
+    box-shadow: 0 0 0 2px var(--c-panel);
+  }
+  .root[data-rail] .railToggle {
+    display: flex;
+    justify-content: center;
+    padding: 4px 0;
+  }
+  .root[data-rail] .cta {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .root,
+  .label,
+  .brand,
+  .profile,
+  .nav,
+  .navItem,
+  .balance a {
+    transition: none;
+  }
+  .tip {
+    animation: none;
+  }
 }

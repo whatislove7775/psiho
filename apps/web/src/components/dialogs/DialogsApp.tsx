@@ -1,11 +1,11 @@
 "use client";
 
-import { CalendarPlus, EyeOff, Lock, PanelRight, Timer, Video, Mic, AlertCircle } from "lucide-react";
+import { CalendarPlus, EyeOff, History, Info, Lock, NotebookPen, Timer, Video, Mic, AlertCircle, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, EmptyState, Modal, Skeleton, useToast } from "@/ui";
 import { ApiError } from "@/lib/api/client";
-import { chatApi, type AIStatus, type Contact, type Conversation, type Retention } from "@/lib/api/chat";
+import { chatApi, type AIStatus, type Contact, type Conversation } from "@/lib/api/chat";
 import { dialogsApi, type DialogDetail, type DialogItem } from "@/lib/api/dialogs";
 import { chatSocket } from "@/lib/chat/socket";
 import { AIIntro } from "@/components/chat/AIIntro";
@@ -16,16 +16,16 @@ import art from "@/components/chat/art.module.css";
 import { DialogActionsProvider, useDialogController } from "./DialogActions";
 import { DialogList } from "./DialogList";
 import { DialogThread } from "./DialogThread";
-import { InfoPanel } from "./InfoPanel";
-import { hm, isLive, weekdayDay } from "./time";
+import { DialogDetails, DialogSummary, type DetailsFocus } from "./InfoPanel";
 import s from "./dialogs.module.css";
 
 type Mode = "client" | "specialist";
-type InfoState = "auto" | "open" | "closed";
 
-const WIDE = "(min-width: 1361px)";
-
-/** Messenger of dialogues: list + thread + info panel (client /app/dialogs, specialist /pro/dialogs). */
+/**
+ * Messenger of dialogues (client /app/dialogs, specialist /pro/dialogs): list + thread.
+ * Dialogue extras live inside the thread: a collapsible call summary under the header
+ * and the «О диалоге» sheet (history, files, notes) that slides over the thread.
+ */
 export function DialogsApp({ mode }: { mode: Mode }) {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -37,7 +37,7 @@ export function DialogsApp({ mode }: { mode: Mode }) {
   const [ai, setAi] = useState<AIStatus | null>(null);
   const [detail, setDetail] = useState<DialogDetail | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
-  const [info, setInfo] = useState<InfoState>("auto");
+  const [details, setDetails] = useState<DetailsFocus | null>(null);
   const [opening, setOpening] = useState(false);
   const [contacts, setContacts] = useState<Contact[] | null>(null);
   const [newOpen, setNewOpen] = useState(false);
@@ -162,6 +162,18 @@ export function DialogsApp({ mode }: { mode: Mode }) {
     }
   }, [items, selected, opening, select, toast, loadList]);
 
+  useEffect(() => setDetails(null), [selected]);
+  const sheetClose = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (details === "top") sheetClose.current?.focus({ preventScroll: true });
+  }, [details]);
+  useEffect(() => {
+    if (!details) return;
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && !document.querySelector("[role=dialog][aria-modal=true]") && setDetails(null);
+    document.addEventListener("keydown", esc);
+    return () => document.removeEventListener("keydown", esc);
+  }, [details]);
+
   const { value: actions, modals } = useDialogController(isSpecialistDialog ? detail : null, loadDetail);
 
   const updateConv = useCallback((conv: Conversation) => {
@@ -174,29 +186,18 @@ export function DialogsApp({ mode }: { mode: Mode }) {
     );
   }, []);
 
-  const setRetention = async (r: Retention) => {
-    const convId = item?.conversation_id;
-    if (!convId || r === item?.retention) return;
-    try {
-      const conv = await chatApi.setRetention(convId, r);
-      updateConv(conv);
-      if (detail) setDetail({ ...detail, retention: conv.retention, conversation: conv });
-      toast(r === "24h" ? "Новые сообщения будут удаляться через 24 часа" : "Сообщения будут храниться бессрочно");
-    } catch (e) {
-      toast(e instanceof ApiError ? e.message : "Не получилось изменить режим", { error: true });
-    }
-  };
-
-  const toggleInfo = () =>
-    setInfo((v) =>
-      typeof window !== "undefined" && window.matchMedia(WIDE).matches
-        ? v === "closed"
-          ? "auto"
-          : "closed"
-        : v === "open"
-          ? "auto"
-          : "open",
-    );
+  const infoButton = (
+    <Button
+      variant="ghost"
+      size="md"
+      iconOnly
+      className={s.infoBtn}
+      aria-label="О диалоге"
+      aria-expanded={!!details}
+      onClick={() => setDetails((v) => (v ? null : "top"))}
+      icon={<Info size={20} strokeWidth={1.8} />}
+    />
+  );
 
   const openNew = async () => {
     if (mode === "client") {
@@ -254,8 +255,6 @@ export function DialogsApp({ mode }: { mode: Mode }) {
       </div>
     );
   } else if (isSpecialistDialog) {
-    const call = detail?.next_call ?? item.next_call;
-    const live = !!call && isLive(call);
     const left = detail?.first_messages_left ?? null;
     const role = detail?.my_role ?? item.my_role;
     thread = detailError && !detail ? (
@@ -278,54 +277,17 @@ export function DialogsApp({ mode }: { mode: Mode }) {
         conversation={detail?.conversation}
         onBack={() => select(null)}
         onChange={updateConv}
-        subtitle={
-          call
-            ? live
-              ? "Созвон идёт"
-              : `Созвон ${weekdayDay(call.scheduled_at)} в ${hm(call.scheduled_at)}`
-            : role === "client"
-              ? "Специалист"
-              : "Анонимный клиент"
-        }
-        headerActions={
-          <>
-            {actions && (role === "client" ? detail?.can_book : detail?.can_propose) && (
-              <Button
-                variant="soft"
-                size="sm"
-                className={s.headBtn}
-                icon={<CalendarPlus size={18} strokeWidth={1.8} />}
-                onClick={role === "client" ? actions.openBook : actions.openPropose}
-                aria-label={role === "client" ? "Назначить созвон" : "Предложить время созвона"}
-              >
-                <span className={s.headBtnLabel}>{role === "client" ? "Назначить созвон" : "Предложить время"}</span>
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="md"
-              iconOnly
-              aria-label="Информация о диалоге"
-              aria-pressed={info !== "closed"}
-              onClick={toggleInfo}
-              icon={<PanelRight size={20} strokeWidth={1.8} />}
-            />
-          </>
-        }
-        banner={
-          live && call ? (
-            <div className={s.liveBanner} role="status">
-              <Video size={20} strokeWidth={1.8} aria-hidden />
-              <div className={s.liveBannerText}>
-                <strong>Созвон идёт</strong>
-                <span>Собеседник может быть уже на связи</span>
-              </div>
-              <Button variant="white" size="sm" href={`/room/${call.id}`}>
-                Присоединиться
-              </Button>
-            </div>
-          ) : null
-        }
+        onTitleClick={() => setDetails("top")}
+        menuItems={[
+          { key: "info", icon: <Info size={16} />, label: "О диалоге", onClick: () => setDetails("top") },
+          { key: "history", icon: <History size={16} />, label: "Созвоны и файлы", onClick: () => setDetails("history") },
+          ...(role === "specialist"
+            ? [{ key: "notes", icon: <NotebookPen size={16} />, label: "Заметки о клиенте", onClick: () => setDetails("notes") }]
+            : []),
+        ]}
+        subtitle={role === "client" ? "Психолог" : "Анонимный клиент"}
+        headerActions={infoButton}
+        banner={<DialogSummary item={item} detail={detail} />}
         composerNotice={
           left !== null && role === "client" ? (
             <div className={s.limitNotice} role="note">
@@ -353,36 +315,43 @@ export function DialogsApp({ mode }: { mode: Mode }) {
           setAi(st);
           if (!st.consent) select("ai");
         }}
-        headerActions={
-          <Button
-            variant="ghost"
-            size="md"
-            iconOnly
-            aria-label="Информация о диалоге"
-            aria-pressed={info !== "closed"}
-            onClick={toggleInfo}
-            icon={<PanelRight size={20} strokeWidth={1.8} />}
-          />
-        }
+        onTitleClick={() => setDetails("top")}
+        headerActions={infoButton}
       />
     );
   }
 
   const showInfo = !!item && !showAIIntro && !!item.conversation_id;
+  const sheetOpen = showInfo && !!details;
 
   return (
     <DialogActionsProvider value={actions}>
-      <div className={s.app} data-open={open ? "" : undefined} data-info={showInfo ? info : "closed"}>
+      <div className={s.app} data-open={open ? "" : undefined}>
         <DialogList items={items} selected={selected} onSelect={select} mode={mode} onNew={openNew} />
-        <div className={s.threadPane}>{thread}</div>
-        {showInfo && (
-          <>
-            {info === "open" && <button type="button" className={s.scrim} aria-label="Закрыть" onClick={() => setInfo("auto")} />}
-            <aside className={s.info} aria-label="О диалоге">
-              <InfoPanel item={item} detail={isSpecialistDialog ? detail : null} onClose={() => setInfo("auto")} onRetention={setRetention} />
-            </aside>
-          </>
-        )}
+        <div className={s.threadPane}>
+          {thread}
+          {showInfo && item && (
+            <>
+              <button
+                type="button"
+                className={s.sheetScrim}
+                data-open={sheetOpen ? "" : undefined}
+                aria-hidden
+                tabIndex={-1}
+                onClick={() => setDetails(null)}
+              />
+              <aside className={s.sheet} data-open={sheetOpen ? "" : undefined} aria-label="О диалоге" aria-hidden={!sheetOpen}>
+                <div className={s.sheetHead}>
+                  <span className={s.sheetTitle}>О диалоге</span>
+                  <Button ref={sheetClose} variant="ghost" size="md" iconOnly aria-label="Закрыть" onClick={() => setDetails(null)} icon={<X size={20} />} />
+                </div>
+                <div className={s.sheetBody}>
+                  <DialogDetails item={item} detail={isSpecialistDialog ? detail : null} focus={details ?? undefined} />
+                </div>
+              </aside>
+            </>
+          )}
+        </div>
       </div>
       {modals}
 

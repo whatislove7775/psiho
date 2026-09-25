@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   CalendarPlus,
   CalendarX2,
+  ChevronDown,
   CircleCheckBig,
   Clock3,
   Download,
@@ -14,11 +15,10 @@ import {
   Sparkles,
   Timer,
   Video,
-  X,
+  Wallet,
 } from "lucide-react";
-import { Badge, Button, Segmented, useToast } from "@/ui";
-import { ApiError } from "@/lib/api/client";
-import { attachmentUrl, type Retention } from "@/lib/api/chat";
+import { Badge, Button, useToast } from "@/ui";
+import { attachmentUrl } from "@/lib/api/chat";
 import { dialogsApi, type CallInfo, type DialogDetail, type DialogItem } from "@/lib/api/dialogs";
 import { durationLabel } from "@/lib/api/availability";
 import { plural, rub } from "@/lib/format";
@@ -35,33 +35,232 @@ function fmtSize(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} МБ`;
 }
 
-/** Right panel of a dialogue: who, next call, calls history, files, notes, retention. */
-export function InfoPanel({
-  item,
-  detail,
-  onClose,
-  onRetention,
-}: {
-  item: DialogItem | null;
-  detail: DialogDetail | null;
-  onClose: () => void;
-  onRetention: (r: Retention) => void;
-}) {
-  if (!item) return null;
-  if (item.kind !== "specialist") return <PinnedInfo item={item} onClose={onClose} onRetention={onRetention} />;
+const SUMMARY_KEY = "aprosop.dialog.summary";
+
+function readOpen(): boolean {
+  try {
+    return localStorage.getItem(SUMMARY_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+// ── In-thread summary: next call + actions, collapsible ─────────────────────
+
+/**
+ * Compact strip under the dialogue header: the next call with a countdown and the
+ * main action (join / pay / book). Expands to reschedule, cancel, proposals.
+ */
+export function DialogSummary({ item, detail }: { item: DialogItem; detail: DialogDetail | null }) {
+  const ctx = useDialogActions();
+  const now = useNow(1000);
+  const [open, setOpen] = useState(false);
+  useEffect(() => setOpen(readOpen()), []);
+  const toggle = () =>
+    setOpen((v) => {
+      try {
+        localStorage.setItem(SUMMARY_KEY, v ? "0" : "1");
+      } catch {
+        /* ignore */
+      }
+      return !v;
+    });
+
+  const call = (detail?.next_call ?? item.next_call) as CallInfo | null;
+  const role = detail?.my_role ?? item.my_role;
+  const pending = detail?.proposals.filter((p) => p.status === "pending") ?? [];
+  const live = !!call && isLive(call);
+  const canBook = role === "client" ? !!detail?.can_book : !!detail?.can_propose;
+  const bookLabel = role === "client" ? "Назначить созвон" : "Предложить время";
+  const onBook = ctx ? (role === "client" ? ctx.openBook : ctx.openPropose) : undefined;
+
+  let kicker: string;
+  let main: string;
+  if (call) {
+    kicker = live ? "Созвон идёт" : call.status === "awaiting_payment" ? "Созвон ждёт оплаты" : "Ближайший созвон";
+    main = live
+      ? range(call.scheduled_at, call.duration_minutes)
+      : `${weekdayDay(call.scheduled_at)}, ${range(call.scheduled_at, call.duration_minutes)}`;
+  } else if (pending.length) {
+    kicker = role === "client" ? "Специалист предлагает время" : "Вы предложили время";
+    main = `${weekdayDay(pending[0].scheduled_at)}, ${range(pending[0].scheduled_at, pending[0].duration_minutes)}`;
+  } else {
+    kicker = "Созвон не назначен";
+    main = role === "client" ? "Выберите время из расписания специалиста" : "Предложите клиенту время из расписания";
+  }
+
+  let action: React.ReactNode = null;
+  if (call && (call.can_join || live)) {
+    action = (
+      <Button
+        variant={live ? "white" : "primary"}
+        size="sm"
+        href={call.can_join ? `/room/${call.id}` : undefined}
+        disabled={!call.can_join}
+        icon={<Video size={16} strokeWidth={1.8} />}
+      >
+        Присоединиться
+      </Button>
+    );
+  } else if (call?.status === "awaiting_payment" && role === "client" && ctx) {
+    action = (
+      <Button variant="primary" size="sm" icon={<Wallet size={16} strokeWidth={1.8} />} onClick={() => ctx.openPay(call)}>
+        Оплатить
+      </Button>
+    );
+  } else if (call) {
+    action = (
+      <span className={s.sumCountdown}>
+        <Clock3 size={14} strokeWidth={2} aria-hidden />
+        {countdown(call.scheduled_at, call.duration_minutes, now)}
+      </span>
+    );
+  } else if (pending.length && role === "client" && ctx) {
+    action = (
+      <Button variant="primary" size="sm" loading={ctx.busy === pending[0].id} onClick={() => ctx.accept(pending[0])}>
+        Принять
+      </Button>
+    );
+  } else if (onBook && canBook) {
+    action = (
+      <Button variant="soft" size="sm" icon={<CalendarPlus size={16} strokeWidth={1.8} />} onClick={onBook}>
+        <span className={s.sumActionLabel}>{bookLabel}</span>
+      </Button>
+    );
+  }
+
+  const expandable = !!detail && (!!call || pending.length > 0);
+
+  return (
+    <section
+      className={s.sum}
+      data-tone={live ? "live" : call ? "call" : "empty"}
+      data-open={open && expandable ? "" : undefined}
+      aria-label="Созвоны в диалоге"
+    >
+      <div className={s.sumRow}>
+        <span className={s.sumIcon} aria-hidden>
+          {live ? <Video size={18} strokeWidth={1.8} /> : call ? <Clock3 size={18} strokeWidth={1.8} /> : pending.length ? <Sparkles size={18} strokeWidth={1.8} /> : <CalendarPlus size={18} strokeWidth={1.8} />}
+        </span>
+        <div className={s.sumText}>
+          <div className={s.sumKicker}>
+            {live && <span className={s.liveDot} aria-hidden />}
+            {kicker}
+          </div>
+          <div className={s.sumMain}>{main}</div>
+        </div>
+        {action}
+        {expandable && (
+          <button
+            type="button"
+            className={s.sumToggle}
+            onClick={toggle}
+            aria-expanded={open}
+            aria-label={open ? "Свернуть" : "Подробнее о созвоне"}
+          >
+            <ChevronDown size={18} strokeWidth={2} />
+          </button>
+        )}
+      </div>
+
+      {expandable && detail && (
+        <div className={s.sumMore} aria-hidden={!open}>
+          <div className={s.sumMoreInner}>
+            {call && (
+              <>
+                <div className={s.sumMeta}>
+                  {durationLabel(call.duration_minutes)}, {rub(call.amount_rub)}
+                  {CALL_STATUS[call.status] && !live ? ` · ${CALL_STATUS[call.status].label.toLowerCase()}` : ""}
+                  {!live && !call.can_join && call.status !== "awaiting_payment" ? " · вход откроется за 10 минут до начала" : ""}
+                </div>
+                {call.status === "awaiting_payment" && role === "client" && !ctx && (
+                  <PayCall sessionId={call.id} amountRub={call.amount_rub} paymentUrl={call.payment_url} onPaid={() => undefined} />
+                )}
+              </>
+            )}
+            {pending.length > 0 && (
+              <div className={s.rows}>
+                {pending.map((p) => (
+                  <div key={p.id} className={s.proposal}>
+                    <Sparkles size={16} strokeWidth={1.8} aria-hidden />
+                    <span>
+                      {role === "specialist" ? "Предложено: " : "Предлагает: "}
+                      {weekdayDay(p.scheduled_at)}, {range(p.scheduled_at, p.duration_minutes)}
+                    </span>
+                    {ctx &&
+                      (role === "client" ? (
+                        <Button size="sm" variant="primary" loading={ctx.busy === p.id} onClick={() => ctx.accept(p)} tabIndex={open ? undefined : -1}>
+                          Принять
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="ghost" disabled={ctx.busy === p.id} onClick={() => ctx.closeProposal(p)} tabIndex={open ? undefined : -1}>
+                          Отозвать
+                        </Button>
+                      ))}
+                  </div>
+                ))}
+              </div>
+            )}
+            {ctx && (
+              <div className={s.sumLinks}>
+                {call?.can_reschedule && (
+                  <button type="button" className={s.sumLink} onClick={() => ctx.openReschedule(call)} tabIndex={open ? undefined : -1}>
+                    Перенести
+                  </button>
+                )}
+                {call?.can_cancel && (
+                  <button type="button" className={s.sumLink} onClick={() => ctx.openCancel(call)} tabIndex={open ? undefined : -1}>
+                    Отменить
+                  </button>
+                )}
+                {canBook && onBook && (
+                  <button type="button" className={s.sumLink} onClick={onBook} tabIndex={open ? undefined : -1}>
+                    <CalendarPlus size={14} strokeWidth={2} aria-hidden /> {call ? (role === "client" ? "Ещё созвон" : "Предложить ещё") : bookLabel}
+                  </button>
+                )}
+              </div>
+            )}
+            {role === "client" && call && !live && (
+              <div className={s.sumRule}>Бесплатно отменить или перенести можно за {detail.rules.free_cancel_hours} ч до начала.</div>
+            )}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ── Details sheet: person, call history, files, notes ───────────────────────
+
+export type DetailsFocus = "top" | "notes" | "history";
+
+/** Content of the «О диалоге» sheet that slides over the thread. */
+export function DialogDetails({ item, detail, focus }: { item: DialogItem; detail: DialogDetail | null; focus?: DetailsFocus }) {
+  const notesRef = useRef<HTMLDivElement>(null);
+  const historyRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = focus === "notes" ? notesRef.current : focus === "history" ? historyRef.current : null;
+    if (!el) return;
+    el.scrollIntoView({ block: "start", behavior: "smooth" });
+    if (focus === "notes") el.querySelector("textarea")?.focus({ preventScroll: true });
+  }, [focus]);
+
+  if (item.kind !== "specialist") return <PinnedInfo item={item} />;
   return (
     <>
-      <div className={s.infoHead}>
-        <span className={s.infoHeadTitle}>О диалоге</span>
-        <Button variant="ghost" size="sm" iconOnly className={s.infoClose} aria-label="Закрыть" onClick={onClose} icon={<X size={18} />} />
-      </div>
       <Person item={detail ?? item} />
-      <NextCall detail={detail} />
-      {detail && <Proposals detail={detail} />}
-      {detail && <History detail={detail} />}
+      {detail && (
+        <div ref={historyRef}>
+          <History detail={detail} />
+        </div>
+      )}
       {detail && <Files detail={detail} />}
-      {detail?.my_role === "specialist" && <Notes id={detail.id} />}
-      <RetentionBlock item={detail ?? item} onRetention={onRetention} />
+      {detail?.my_role === "specialist" && (
+        <div ref={notesRef}>
+          <Notes id={detail.id} />
+        </div>
+      )}
+      <Privacy item={detail ?? item} />
     </>
   );
 }
@@ -72,34 +271,34 @@ function Person({ item }: { item: DialogItem | DialogDetail }) {
   if (who.type === "specialist") {
     return (
       <div className={s.person}>
-        <SpecialistPhoto url={who.photo_url ?? null} name={who.name} size={96} alt={`Фото: ${who.name}`} />
-        <div>
+        <SpecialistPhoto url={who.photo_url ?? null} name={who.name} size={64} alt={`Фото: ${who.name}`} />
+        <div className={s.personBody}>
           <div className={s.personName}>{who.name}</div>
           <div className={s.personSub}>
             Психолог{who.experience_years ? `, опыт ${who.experience_years} ${plural(who.experience_years, "год", "года", "лет")}` : ""}
           </div>
+          {!!who.specializations?.length && (
+            <div className={s.chips}>
+              {who.specializations.slice(0, 4).map((x) => (
+                <span key={x} className={s.chip}>
+                  {x}
+                </span>
+              ))}
+            </div>
+          )}
+          {who.psychologist_id && (
+            <Link href={`/app/specialists/${who.psychologist_id}`} className={s.personLink}>
+              Открыть профиль
+            </Link>
+          )}
         </div>
-        {!!who.specializations?.length && (
-          <div className={s.chips}>
-            {who.specializations.slice(0, 4).map((x) => (
-              <span key={x} className={s.chip}>
-                {x}
-              </span>
-            ))}
-          </div>
-        )}
-        {who.psychologist_id && (
-          <Button variant="ghost" size="sm" href={`/app/specialists/${who.psychologist_id}`}>
-            Открыть профиль
-          </Button>
-        )}
       </div>
     );
   }
   return (
     <div className={s.person}>
-      <AvatarThumb config={who.avatar_config} seed={who.name} size={96} />
-      <div>
+      <AvatarThumb config={who.avatar_config} seed={who.name} size={64} />
+      <div className={s.personBody}>
         <div className={s.personName}>{who.name}</div>
         <div className={s.personSub}>
           Анонимный клиент{calls ? `, ${calls} ${plural(calls, "созвон", "созвона", "созвонов")}` : ""}
@@ -109,151 +308,11 @@ function Person({ item }: { item: DialogItem | DialogDetail }) {
   );
 }
 
-function NextCall({ detail }: { detail: DialogDetail | null }) {
-  const ctx = useDialogActions();
-  const now = useNow(1000);
-  const call = detail?.next_call as CallInfo | null | undefined;
-  const role = detail?.my_role;
-
-  if (!detail) return null;
-  if (!call) {
-    return (
-      <div className={s.emptyCall}>
-        <strong>Созвон не назначен</strong>
-        <span>
-          {role === "specialist"
-            ? "Предложите клиенту время из своего расписания — он примет его одной кнопкой."
-            : "Выберите удобное время из расписания специалиста. Писать можно и без созвона."}
-        </span>
-        {ctx && (
-          <Button
-            variant="primary"
-            icon={<CalendarPlus size={18} strokeWidth={1.8} />}
-            onClick={role === "specialist" ? ctx.openPropose : ctx.openBook}
-            disabled={role === "client" && !detail.can_book}
-          >
-            {role === "specialist" ? "Предложить время" : "Назначить созвон"}
-          </Button>
-        )}
-      </div>
-    );
-  }
-
-  const live = isLive(call);
-  const rules = detail.rules;
-  return (
-    <section className={s.nextCall} aria-label="Ближайший созвон">
-      <div className={s.nextKicker}>
-        <span>{live ? "Созвон идёт" : "Ближайший созвон"}</span>
-        <span className={s.countdown}>
-          <Clock3 size={14} strokeWidth={2} aria-hidden />
-          {live ? (call.can_join ? "можно входить" : "идёт") : countdown(call.scheduled_at, call.duration_minutes, now)}
-        </span>
-      </div>
-      <div>
-        <div className={s.nextWhen}>
-          {weekdayDay(call.scheduled_at)}, {hm(call.scheduled_at)}
-        </div>
-        <div className={s.nextMeta}>
-          {range(call.scheduled_at, call.duration_minutes)}, {durationLabel(call.duration_minutes)}, {rub(call.amount_rub)}
-          {call.status === "awaiting_payment" ? ", ждёт оплаты" : ""}
-        </div>
-      </div>
-      {call.status === "awaiting_payment" && role === "client" ? (
-        ctx ? (
-          <Button variant="white" onClick={() => ctx.openPay(call)}>
-            Оплатить {rub(call.amount_rub)}
-          </Button>
-        ) : (
-          <PayCall sessionId={call.id} amountRub={call.amount_rub} paymentUrl={call.payment_url} tone="white" onPaid={() => undefined} />
-        )
-      ) : (
-        <div className={s.nextActions}>
-          <Button
-            variant="white"
-            href={call.can_join ? `/room/${call.id}` : undefined}
-            disabled={!call.can_join}
-            icon={<Video size={18} strokeWidth={1.8} />}
-          >
-            Присоединиться
-          </Button>
-        </div>
-      )}
-      {!call.can_join && !live && (
-        <span className={s.rule}>Кнопка станет активной за 10 минут до начала.</span>
-      )}
-      {ctx && (call.can_reschedule || call.can_cancel) && (
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-          {call.can_reschedule && (
-            <button type="button" className={s.linkBtn} onClick={() => ctx.openReschedule(call)}>
-              Перенести
-            </button>
-          )}
-          {call.can_cancel && (
-            <button type="button" className={s.linkBtn} onClick={() => ctx.openCancel(call)}>
-              Отменить
-            </button>
-          )}
-        </div>
-      )}
-      {role === "client" && !live && (
-        <span className={s.rule}>
-          Бесплатно отменить или перенести можно за {rules.free_cancel_hours} ч до начала.
-        </span>
-      )}
-    </section>
-  );
-}
-
-function Proposals({ detail }: { detail: DialogDetail }) {
-  const ctx = useDialogActions();
-  const pending = detail.proposals.filter((p) => p.status === "pending");
-  if (!pending.length) return null;
-  return (
-    <section className={s.section}>
-      <div className={s.sectionTitle}>
-        {detail.my_role === "specialist" ? "Предложенное время" : "Специалист предлагает"}
-      </div>
-      {pending.map((p) => (
-        <div key={p.id} className={s.proposal}>
-          <Sparkles size={16} strokeWidth={1.8} aria-hidden />
-          <span>
-            {weekdayDay(p.scheduled_at)}, {range(p.scheduled_at, p.duration_minutes)}
-          </span>
-          {ctx &&
-            (detail.my_role === "client" ? (
-              <Button size="sm" variant="primary" loading={ctx.busy === p.id} onClick={() => ctx.accept(p)}>
-                Принять
-              </Button>
-            ) : (
-              <Button size="sm" variant="ghost" disabled={ctx.busy === p.id} onClick={() => ctx.closeProposal(p)}>
-                Отозвать
-              </Button>
-            ))}
-        </div>
-      ))}
-    </section>
-  );
-}
-
 function History({ detail }: { detail: DialogDetail }) {
-  const ctx = useDialogActions();
   const past = detail.calls.filter((c) => c.id !== detail.next_call?.id);
   return (
     <section className={s.section}>
-      <div className={s.sectionTitle}>
-        <span>История созвонов</span>
-        {ctx && detail.next_call && (
-          <Button
-            size="sm"
-            variant="ghost"
-            icon={<CalendarPlus size={16} strokeWidth={1.8} />}
-            onClick={detail.my_role === "specialist" ? ctx.openPropose : ctx.openBook}
-          >
-            {detail.my_role === "specialist" ? "Предложить" : "Ещё созвон"}
-          </Button>
-        )}
-      </div>
+      <div className={s.sectionTitle}>История созвонов</div>
       {past.length === 0 ? (
         <p className={s.muted}>Здесь появятся прошедшие и отменённые созвоны.</p>
       ) : (
@@ -357,7 +416,12 @@ function Notes({ id }: { id: string }) {
       .catch(() => alive && setLoaded(true));
     return () => {
       alive = false;
-      if (timer.current) clearTimeout(timer.current);
+      // Unsaved typing is flushed, not dropped, when the dialogue changes
+      if (timer.current) {
+        clearTimeout(timer.current);
+        timer.current = null;
+        void dialogsApi.saveNote(id, latest.current).catch(() => undefined);
+      }
     };
   }, [id]);
 
@@ -366,9 +430,8 @@ function Notes({ id }: { id: string }) {
     try {
       await dialogsApi.saveNote(id, value);
       if (latest.current === value) setState("saved");
-    } catch (e) {
+    } catch {
       setState("error");
-      void (e instanceof ApiError);
     }
   };
 
@@ -393,7 +456,10 @@ function Notes({ id }: { id: string }) {
           latest.current = v;
           setState("idle");
           if (timer.current) clearTimeout(timer.current);
-          timer.current = setTimeout(() => save(v), 900);
+          timer.current = setTimeout(() => {
+            timer.current = null;
+            void save(v);
+          }, 900);
         }}
         onBlur={() => {
           if (timer.current) {
@@ -411,52 +477,33 @@ function Notes({ id }: { id: string }) {
   );
 }
 
-function RetentionBlock({ item, onRetention }: { item: DialogItem | DialogDetail; onRetention: (r: Retention) => void }) {
-  const canChange = "conversation" in item ? item.conversation.can_change_retention : item.my_role === "client";
+function Privacy({ item }: { item: DialogItem | DialogDetail }) {
   return (
     <section className={s.section}>
-      <div className={s.sectionTitle}>Хранение сообщений</div>
-      {canChange ? (
-        <Segmented<Retention>
-          ariaLabel="Хранение сообщений"
-          value={item.retention}
-          onChange={onRetention}
-          options={[
-            { value: "forever", label: "Бессрочно" },
-            { value: "24h", label: "24 часа" },
-          ]}
-        />
-      ) : (
-        <p className={s.muted}>
-          <Timer size={14} strokeWidth={1.8} aria-hidden style={{ verticalAlign: -2 }} />{" "}
-          {item.retention === "24h" ? "Новые сообщения удаляются через 24 часа." : "Сообщения хранятся бессрочно."} Режим
-          выбирает клиент.
-        </p>
-      )}
+      <div className={s.sectionTitle}>Приватность</div>
       <p className={s.muted}>
-        Переписка зашифрована. Сотрудники платформы не имеют доступа к диалогам клиентов и специалистов.
+        <Timer size={14} strokeWidth={1.8} aria-hidden style={{ verticalAlign: -2 }} />{" "}
+        {item.retention === "24h" ? "Новые сообщения удаляются через 24 часа." : "Сообщения хранятся бессрочно."}{" "}
+        {item.my_role === "client" ? "Режим меняется кнопкой над перепиской." : "Режим выбирает клиент."}
       </p>
+      <p className={s.muted}>Переписка зашифрована. Сотрудники платформы не имеют доступа к диалогам клиентов и специалистов.</p>
     </section>
   );
 }
 
-function PinnedInfo({ item, onClose, onRetention }: { item: DialogItem; onClose: () => void; onRetention: (r: Retention) => void }) {
+function PinnedInfo({ item }: { item: DialogItem }) {
   const isAI = item.kind === "ai";
   return (
     <>
-      <div className={s.infoHead}>
-        <span className={s.infoHeadTitle}>{isAI ? "О Тише" : "О поддержке"}</span>
-        <Button variant="ghost" size="sm" iconOnly className={s.infoClose} aria-label="Закрыть" onClick={onClose} icon={<X size={18} />} />
-      </div>
       <div className={s.person}>
         {isAI ? (
-          <Tisha size={96} state="idle" />
+          <Tisha size={64} state="idle" />
         ) : (
-          <span className={s.rowIcon} style={{ width: 96, height: 96, borderRadius: "50%" }}>
-            <Headset size={40} strokeWidth={1.6} />
+          <span className={s.rowIcon} style={{ width: 64, height: 64, borderRadius: "50%" }}>
+            <Headset size={28} strokeWidth={1.6} />
           </span>
         )}
-        <div>
+        <div className={s.personBody}>
           <div className={s.personName}>{item.counterpart.name}</div>
           <div className={s.personSub}>{isAI ? "ИИ-помощник, не психолог" : "Отвечаем в течение нескольких часов"}</div>
         </div>
@@ -466,13 +513,12 @@ function PinnedInfo({ item, onClose, onRetention }: { item: DialogItem; onClose:
           ? "Тиша поможет разобраться в чувствах, подскажет практику или поможет подготовиться к созвону. Если вам плохо прямо сейчас, звоните 112."
           : "Вопросы об оплате, созвонах и работе сервиса. Сотрудники поддержки видят только обращения сюда, но не ваши диалоги со специалистами."}
       </p>
-      {item.conversation_id && <RetentionBlock item={item} onRetention={onRetention} />}
+      <Privacy item={item} />
       {!isAI && (
-        <Link href="/legal/privacy" className={s.muted}>
+        <Link href="/legal/privacy" className={s.personLink}>
           Политика конфиденциальности
         </Link>
       )}
     </>
   );
 }
-

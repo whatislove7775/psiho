@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ComponentProps, type ReactNode } from "react";
 import { Spinner } from "@/ui";
 import { chatApi, type AIStatus, type ChatMessage, type Conversation } from "@/lib/api/chat";
 import { chatSocket } from "@/lib/chat/socket";
@@ -30,6 +30,8 @@ export function DialogThread({
   subtitle,
   ai,
   onAIStatus,
+  menuItems,
+  onTitleClick,
 }: {
   conversationId: string;
   compact?: boolean;
@@ -43,6 +45,8 @@ export function DialogThread({
   subtitle?: string;
   ai?: AIStatus | null;
   onAIStatus?: (st: AIStatus) => void;
+  menuItems?: ComponentProps<typeof ConversationView>["menuItems"];
+  onTitleClick?: () => void;
 }) {
   const [own, setOwn] = useState<Conversation | null>(conversation ?? null);
   const [failed, setFailed] = useState(false);
@@ -94,6 +98,8 @@ export function DialogThread({
       subtitle={subtitle}
       ai={ai}
       onAIStatus={onAIStatus}
+      menuItems={menuItems}
+      onTitleClick={onTitleClick}
     />
   );
 }
