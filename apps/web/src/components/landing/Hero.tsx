@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AtSign, AudioLines, ShieldCheck, Shuffle, Smile, UserRound, Wallet, type LucideIcon } from "lucide-react";
+import Link from "next/link";
+import { AtSign, AudioLines, ListChecks, ShieldCheck, Shuffle, Smile, UserRound, Wallet, type LucideIcon } from "lucide-react";
 import { AvatarThumb } from "@/components/avatar/AvatarThumb";
 import { AvatarView, type AvatarViewHandle } from "@/components/avatar/AvatarView";
 import { randomAvatar } from "@/lib/avatar/schema";
@@ -179,6 +180,13 @@ export function Hero() {
             Я специалист
           </Button>
         </div>
+        {/* H1: public matching quiz, works without login */}
+        <Link href="/match" className={s.heroQuiz}>
+          <ListChecks size={18} strokeWidth={1.9} aria-hidden />
+          <span>
+            Не знаете, к кому идти? <strong>Подберём психолога по анкете</strong> — 5 вопросов, без регистрации
+          </span>
+        </Link>
         <p className={s.heroNote}>
           <span>
             Понадобится только пароль. Имя придумаем за вас, например <strong>тихий-кит-4821</strong>.

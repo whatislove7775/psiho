@@ -163,7 +163,19 @@ HISTORY_LABELS = {
     T.CALL_REFUND: "Возврат за созвон",
     T.GIFT_REDEEM: "Подарочный код",
     T.ADJUSTMENT: "Корректировка от поддержки",
+    T.COMPANY_TOPUP: "Пополнение бюджета компании",
 }
+
+
+def _circle_refs(refs) -> set:
+    """Какие из заморозок — оплата «Кругов» (apps.circles), а не созвонов."""
+    from django.apps import apps as django_apps
+
+    if not refs or not django_apps.is_installed("apps.circles"):
+        return set()
+    from apps.circles.models import Charge
+
+    return set(Charge.objects.filter(ref__in=refs).values_list("ref", flat=True))
 
 
 class HistoryView(APIView):
@@ -183,6 +195,7 @@ class HistoryView(APIView):
             h.session_ref: h
             for h in Hold.objects.filter(session_ref__in=sids).select_related("session__psychologist_profile__photo")
         }
+        circle_refs = _circle_refs(sids)
         items = []
         for e in entries:
             txn = e.transaction
@@ -196,6 +209,9 @@ class HistoryView(APIView):
                 "test": (txn.metadata or {}).get("provider") == "mock",
                 "call": hold_payload(hold) if hold else None,
             }
+            if hold is not None and hold.session_ref in circle_refs:
+                # Групповые «Круги» (apps.circles): заморозка без созвона
+                item["label"] = "Оплата круга" if txn.kind == T.HOLD else "Возврат за круг"
             if txn.kind == T.ADJUSTMENT:
                 item["note"] = txn.memo
             if txn.kind in (T.RELEASE, T.CAPTURE) and hold and hold.reason == "late_cancel":
@@ -289,10 +305,22 @@ class QuoteView(APIView):
             return err("Специалист не найден.", http=status.HTTP_404_NOT_FOUND)
         amount = int(quote_call(profile, minutes) * 100)
         balance = balance_of(request.user, K.CLIENT)
+        company = _company_preview(request.user, amount)
         return Response({
-            "amount_kopecks": amount, "balance_kopecks": balance, "enough": balance >= amount,
-            "shortfall_kopecks": max(0, amount - balance),
+            "amount_kopecks": amount, "balance_kopecks": balance, "enough": balance + company >= amount,
+            "shortfall_kopecks": max(0, amount - company - balance), "company_kopecks": company,
         })
+
+
+def _company_preview(user, amount: int) -> int:
+    """Сколько из суммы оплатит программа компании (apps.business), если она есть."""
+    from django.apps import apps as django_apps
+
+    if amount <= 0 or not django_apps.is_installed("apps.business"):
+        return 0
+    from apps.business.funding import preview_call
+
+    return preview_call(user, amount)
 
 
 def _client_session(request, pk):
@@ -307,6 +335,7 @@ def call_payload(request, session) -> dict:
 
     hold = Hold.objects.filter(session_ref=session.pk).first()
     balance = balance_of(request.user, K.CLIENT)
+    company = _company_preview(request.user, session.amount_kopecks) if hold is None else 0
     profile = session.psychologist_profile
     return {
         "session_id": str(session.pk),
@@ -319,7 +348,8 @@ def call_payload(request, session) -> dict:
         "paid": bool(hold and hold.status in (Hold.Status.ACTIVE, Hold.Status.CAPTURED, Hold.Status.PARTIAL)),
         "payable": session.status == "awaiting_payment" and hold is None,
         "balance_kopecks": balance,
-        "shortfall_kopecks": max(0, session.amount_kopecks - balance) if hold is None else 0,
+        "shortfall_kopecks": max(0, session.amount_kopecks - company - balance) if hold is None else 0,
+        "company_kopecks": company,
     }
 
 
@@ -388,7 +418,8 @@ class EarningsView(APIView):
                 "session_id": str(h.session_ref),
                 "scheduled_at": h.scheduled_at.isoformat() if h.scheduled_at else None,
                 "duration_minutes": h.duration_minutes,
-                "client_alias": h.session.client.alias if h.session and h.session.client_id else "Удалённый аккаунт",
+                "client_alias": h.session.client.alias if h.session and h.session.client_id else (
+                    "Участник круга" if not h.session_id and h.duration_minutes else "Удалённый аккаунт"),
                 "status": h.status,
                 "reason": h.reason,
                 "gross_kopecks": h.amount_kopecks if h.status == Hold.Status.ACTIVE else h.specialist_kopecks + h.fee_kopecks,

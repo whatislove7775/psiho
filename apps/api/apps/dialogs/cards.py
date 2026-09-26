@@ -36,6 +36,8 @@ def call_brief(session: ConsultationSession) -> dict:
         "duration_minutes": session.duration_minutes,
         "amount_rub": session.amount_kopecks // 100,
         "can_join": can_join(session),
+        # «Знакомство, 15 минут» (apps.availability): 15 минут бывают только у знакомства
+        "is_intro": session.duration_minutes == 15,
     }
 
 
@@ -116,15 +118,18 @@ def card_text(code: str) -> str:
     from django.utils.dateparse import parse_datetime
 
     when = human_dt(parse_datetime(call["scheduled_at"]))
+    what = "Знакомство" if call.get("is_intro") else "Созвон"
     if t == "booked":
-        return f"Созвон назначен: {when}, {minutes_label(call['duration_minutes'])}"
+        return f"{what} назначено: {when}, {minutes_label(call['duration_minutes'])}" if call.get("is_intro") \
+            else f"Созвон назначен: {when}, {minutes_label(call['duration_minutes'])}"
     if t == "rescheduled":
-        return f"Созвон перенесён на {when}"
+        return f"{what} перенесено на {when}" if call.get("is_intro") else f"Созвон перенесён на {when}"
     if t == "cancelled":
-        return f"Созвон {when} отменён"
+        return f"{what} {when} отменено" if call.get("is_intro") else f"Созвон {when} отменён"
     if t == "started":
-        return "Созвон начался"
+        return "Знакомство началось" if call.get("is_intro") else "Созвон начался"
     if t == "ended":
         m = card.get("minutes")
-        return f"Созвон завершён, {minutes_label(m)}" if m else "Созвон завершён"
-    return "Созвон"
+        done = "Знакомство завершено" if call.get("is_intro") else "Созвон завершён"
+        return f"{done}, {minutes_label(m)}" if m else done
+    return what

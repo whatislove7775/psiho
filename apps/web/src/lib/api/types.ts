@@ -1,7 +1,7 @@
 /** Types mirroring /docs/API.md — keep in sync with the backend contract. */
 import type { AvatarConfig } from "@/lib/avatar/schema";
 
-export type Role = "client" | "psychologist" | "admin";
+export type Role = "client" | "psychologist" | "admin" | "business";
 export type VerificationStatus = "pending" | "approved" | "rejected" | "suspended";
 export type SessionStatus =
   | "awaiting_payment"

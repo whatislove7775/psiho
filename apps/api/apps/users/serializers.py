@@ -110,7 +110,10 @@ class PsychologistPublicSerializer(serializers.ModelSerializer):
         """Длительности и цены (apps.availability). session_rate_rub = цена самой короткой сессии."""
         from apps.availability.services import booking_info
 
-        return booking_info(obj)
+        # H1: «знакомство уже было» — только для самого клиента (по его запросу)
+        request = self.context.get("request") if hasattr(self, "context") else None
+        user = getattr(request, "user", None)
+        return booking_info(obj, user if getattr(user, "role", "") == "client" else None)
 
 
 class PsychologistPrivateSerializer(PsychologistPublicSerializer):

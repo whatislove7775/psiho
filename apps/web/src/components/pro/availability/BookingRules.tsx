@@ -16,6 +16,8 @@ export type RulesDraft = Pick<
   | "horizon_days"
   | "start_step_minutes"
   | "hourly_rate_rub"
+  | "intro_enabled"
+  | "intro_price_rub"
 >;
 
 const BUFFERS = [0, 10, 15, 30, 60];
@@ -235,6 +237,61 @@ export function PriceCard({
             );
           })}
         </ul>
+      </div>
+    </Card>
+  );
+}
+
+/** H1: «Знакомство, 15 минут» — optional short first call with its own small fixed price (or free). Off by default. */
+export function IntroCard({
+  draft,
+  maxPrice,
+  error,
+  onChange,
+}: {
+  draft: RulesDraft;
+  maxPrice: number;
+  error: string | null;
+  onChange: (patch: Partial<RulesDraft>) => void;
+}) {
+  const mode = !draft.intro_enabled ? "off" : draft.intro_price_rub ? "paid" : "free";
+  return (
+    <Card as="section" tone="minor">
+      <CardHead
+        title="Знакомство, 15 минут"
+        sub="Короткий первый созвон, чтобы клиент понял, комфортно ли ему с вами. Один раз на клиента"
+      />
+      <div className={c.rules}>
+        <Segmented<string>
+          ariaLabel="Знакомство"
+          value={mode}
+          onChange={(v) =>
+            onChange(
+              v === "off"
+                ? { intro_enabled: false }
+                : v === "free"
+                  ? { intro_enabled: true, intro_price_rub: 0 }
+                  : { intro_enabled: true, intro_price_rub: draft.intro_price_rub || 500 },
+            )
+          }
+          options={[
+            { value: "off", label: "Не провожу" },
+            { value: "free", label: "Бесплатно" },
+            { value: "paid", label: "Платно" },
+          ]}
+        />
+        {mode === "paid" && (
+          <div className={c.priceInput}>
+            <Input
+              label="Цена знакомства, ₽"
+              inputMode="numeric"
+              value={draft.intro_price_rub ? String(draft.intro_price_rub) : ""}
+              onChange={(e) => onChange({ intro_price_rub: Number(e.target.value.replace(/\D/g, "").slice(0, 5)) || 0 })}
+              error={error ?? undefined}
+              hint={`До ${rub(maxPrice)}. Время берётся из вашего расписания`}
+            />
+          </div>
+        )}
       </div>
     </Card>
   );

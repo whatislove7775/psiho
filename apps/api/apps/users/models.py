@@ -63,6 +63,8 @@ class User(AbstractBaseUser, PermissionsMixin):
         CLIENT = "client", "Клиент"
         PSYCHOLOGIST = "psychologist", "Психолог"
         ADMIN = "admin", "Администратор"
+        # HR-администратор компании (apps.business): видит только агрегаты своей компании
+        BUSINESS = "business", "HR компании"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     # Хеш email — только у тех, кто его указал (психологи). Клиенты анонимны.

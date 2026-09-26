@@ -276,7 +276,8 @@ def test_booking_pays_from_balance_or_waits(psychologist, client_user):
     assert r2.status_code == 201 and r2.json()["status"] == "paid" and r2.json()["payment_url"] is None
     assert balance_of(client_user) == 2000_00
     q = c.get(f"/api/v1/billing/quote/?psychologist={psychologist.id}&minutes=50").json()
-    assert q == {"amount_kopecks": 3000_00, "balance_kopecks": 2000_00, "enough": False, "shortfall_kopecks": 1000_00}
+    assert q == {"amount_kopecks": 3000_00, "balance_kopecks": 2000_00, "enough": False, "shortfall_kopecks": 1000_00,
+                 "company_kopecks": 0}
 
 
 # ── Вебхук ЮKassa ──────────────────────────────────────────────────

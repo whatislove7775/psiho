@@ -85,6 +85,8 @@ export interface CallPayment {
   payable: boolean;
   balance_kopecks: number;
   shortfall_kopecks: number;
+  /** part paid by the employer's program (apps.business), first in order */
+  company_kopecks?: number;
 }
 
 export interface EarningsCall {

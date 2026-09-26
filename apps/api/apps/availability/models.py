@@ -41,6 +41,10 @@ class AvailabilitySettings(models.Model):
     start_step_minutes = models.PositiveSmallIntegerField(default=30)
     # Цена часа; стоимость сессии пропорциональна длительности, округление до 10 ₽
     hourly_rate_rub = models.PositiveIntegerField(default=3600)
+    # «Знакомство, 15 минут»: короткий первый созвон по своей фиксированной цене (0 — бесплатно).
+    # Выключено по умолчанию; 15 минут разрешены только для знакомства (engine.INTRO_MINUTES).
+    intro_enabled = models.BooleanField(default=False)
+    intro_price_rub = models.PositiveIntegerField(default=0)
 
     updated_at = models.DateTimeField(auto_now=True)
 

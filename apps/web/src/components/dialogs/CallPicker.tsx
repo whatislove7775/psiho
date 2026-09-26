@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { AlertCircle, CalendarDays } from "lucide-react";
+import { AlertCircle, CalendarDays, Handshake } from "lucide-react";
 import { Button, Modal, Skeleton } from "@/ui";
 import { ApiError } from "@/lib/api/client";
 import { dialogsApi, type DialogStarts, type DurationOption } from "@/lib/api/dialogs";
-import { durationLabel } from "@/lib/api/availability";
+import { durationLabel, INTRO_MINUTES, type IntroInfo } from "@/lib/api/availability";
 import { WEEKDAYS_SHORT, dayLabel, isoDate, plural, rub, time } from "@/lib/format";
 import b from "@/components/booking/booking.module.css";
 import s from "./dialogs.module.css";
@@ -23,6 +23,7 @@ export function CallPicker({
   fixedMinutes,
   submitLabel,
   note,
+  intro,
   onSubmit,
 }: {
   open: boolean;
@@ -34,6 +35,8 @@ export function CallPicker({
   fixedMinutes?: number;
   submitLabel: (priceRub: number, minutes: number) => string;
   note?: ReactNode;
+  /** H1: offer «Сначала познакомиться — 15 мин» (client booking only) */
+  intro?: IntroInfo;
   onSubmit: (startIso: string, minutes: number) => Promise<string | void>;
 }) {
   const options = durations.length ? durations : [{ minutes: 50, price_rub: 0 }];
@@ -80,7 +83,10 @@ export function CallPicker({
   const days = useMemo(() => Array.from(byDay.keys()).slice(0, 60), [byDay]);
   const activeDay = dayKey && byDay.has(dayKey) ? dayKey : days[0] ?? null;
   const times = activeDay ? byDay.get(activeDay) ?? [] : [];
-  const price = data?.price_rub ?? options.find((o) => o.minutes === minutes)?.price_rub ?? 0;
+  const canIntro = !fixedMinutes && !!intro?.enabled && !intro.used;
+  const isIntro = minutes === INTRO_MINUTES;
+  const price =
+    data?.price_rub ?? (isIntro ? intro?.price_rub ?? 0 : options.find((o) => o.minutes === minutes)?.price_rub ?? 0);
 
   const submit = async () => {
     if (!chosen) return;
@@ -101,7 +107,7 @@ export function CallPicker({
   return (
     <Modal open={open} onClose={() => !busy && onClose()} title={title} width={520}>
       <div className={s.picker}>
-        {!fixedMinutes && options.length > 1 && (
+        {!fixedMinutes && (options.length > 1 || canIntro) && (
           <div className={b.block}>
             <div className={b.label}>Длительность</div>
             <div className={b.durs} role="group" aria-label="Длительность созвона">
@@ -121,6 +127,22 @@ export function CallPicker({
                 </button>
               ))}
             </div>
+            {canIntro && (
+              <button
+                type="button"
+                className={b.introOpt}
+                aria-pressed={isIntro}
+                onClick={() => {
+                  setMinutes(isIntro ? options[0].minutes : INTRO_MINUTES);
+                  setChosen(null);
+                }}
+              >
+                <Handshake size={16} strokeWidth={1.8} aria-hidden />
+                <span>
+                  Сначала познакомиться — {INTRO_MINUTES} мин {intro!.price_rub ? `за ${rub(intro!.price_rub)}` : "бесплатно"}
+                </span>
+              </button>
+            )}
           </div>
         )}
 

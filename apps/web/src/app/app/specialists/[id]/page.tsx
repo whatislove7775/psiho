@@ -16,6 +16,7 @@ import { useLoad } from "@/components/client/useLoad";
 import { ErrorBlock } from "@/components/client/ClientBits";
 import { BookingPanel } from "@/components/booking/BookingPanel";
 import { durationLabel } from "@/lib/api/availability";
+import { IntroChip } from "@/components/matching/IntroChip";
 import s from "./profile.module.css";
 import { EmptyArt } from "@/components/illustrations";
 import { PublicCredentials, VerifiedBadge } from "@/components/credentials/PublicCredentials";
@@ -109,6 +110,7 @@ export default function SpecialistProfile() {
                     </Badge>
                   )}
                   <RatingPill rating={p.rating} count={p.reviews_count} href="#reviews" />
+                  <IntroChip psy={p} withPrice />
                 </div>
                 <h1 className={s.name}>{p.display_name}</h1>
                 <p className={s.bio}>{p.bio}</p>

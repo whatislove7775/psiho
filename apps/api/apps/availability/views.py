@@ -198,10 +198,12 @@ class AvailableStartsView(APIView):
             return Response(
                 {"detail": "Неверные параметры: duration — минуты, from и to — даты YYYY-MM-DD."}, status=400
             )
-        if duration not in durations:
-            return Response({
-                "detail": f"Специалист проводит созвоны длительностью {services.human_list(durations)} минут.",
-            }, status=400)
+        if not services.accepts_duration(s, duration):
+            detail = (
+                "Специалист сейчас не проводит знакомства." if duration == engine.INTRO_MINUTES
+                else f"Специалист проводит созвоны длительностью {services.human_list(durations)} минут."
+            )
+            return Response({"detail": detail}, status=400)
         horizon_until = today + timedelta(days=s.horizon_days)
         starts = services.starts_for(profile, duration, max(first, today), min(last, horizon_until))
         return Response({
@@ -210,4 +212,5 @@ class AvailableStartsView(APIView):
             "durations": [{"minutes": d, "price_rub": services.price_for(profile, d)} for d in durations],
             "horizon_until": horizon_until.isoformat(),
             "starts": [_iso(x) for x in starts],
+            "intro": services.intro_info(profile, request.user),
         })

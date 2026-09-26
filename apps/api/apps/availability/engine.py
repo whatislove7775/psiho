@@ -23,6 +23,8 @@ from decimal import ROUND_HALF_UP, Decimal
 from zoneinfo import ZoneInfo
 
 DURATION_OPTIONS = (50, 60, 80, 90, 120, 150, 180)
+INTRO_MINUTES = 15  # «Знакомство»: единственная длительность короче 50 минут, только для первого созвона
+INTRO_MAX_PRICE_RUB = 3000
 BUFFER_OPTIONS = (0, 5, 10, 15, 20, 30, 45, 60)
 NOTICE_OPTIONS = (60, 120, 180, 360, 720, 1440, 2880)  # минуты
 HORIZON_OPTIONS = (7, 14, 21, 28, 42, 56, 84)  # дни

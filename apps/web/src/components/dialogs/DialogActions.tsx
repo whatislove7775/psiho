@@ -65,7 +65,7 @@ export function useDialogController(detail: DialogDetail | null, reload: () => P
         setPaying(call);
         return;
       }
-      toast("Созвон назначен");
+      toast(call.is_intro ? "Знакомство назначено" : "Созвон назначен");
     },
     [reload, toast],
   );
@@ -150,9 +150,12 @@ export function useDialogController(detail: DialogDetail | null, reload: () => P
           picker?.mode === "propose" ? "Предложить время созвона" : picker?.mode === "reschedule" ? "Перенести созвон" : "Назначить созвон"
         }
         durations={detail.booking.durations}
+        intro={picker?.mode === "book" ? detail.booking.intro : undefined}
         fixedMinutes={picker?.mode === "reschedule" ? picker.call.duration_minutes : undefined}
         submitLabel={(price) =>
-          picker?.mode === "propose" ? "Отправить предложение" : picker?.mode === "reschedule" ? "Перенести" : `Назначить за ${rub(price)}`
+          picker?.mode === "propose" ? "Отправить предложение" : picker?.mode === "reschedule" ? "Перенести" : price
+                ? `Назначить за ${rub(price)}`
+                : "Назначить бесплатно"
         }
         note={
           picker?.mode === "propose"

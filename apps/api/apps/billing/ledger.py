@@ -94,7 +94,7 @@ def post(kind: str, key: str, legs: list[tuple[Account, int]], *, session_id=Non
                 delta[acc.pk] = delta.get(acc.pk, 0) + amount
             for pk, change in delta.items():
                 acc = locked[pk]
-                if acc.is_user_account and acc.balance_kopecks + change < 0:
+                if acc.must_stay_non_negative and acc.balance_kopecks + change < 0:
                     raise InsufficientFunds(-(acc.balance_kopecks + change), acc.balance_kopecks)
             txn = LedgerTransaction.objects.create(
                 kind=kind, idempotency_key=key, session_id=session_id, memo=memo[:200],
@@ -129,7 +129,7 @@ def verify() -> dict:
         real = sums.get(acc.pk, 0) or 0
         if real != acc.balance_kopecks:
             drift.append({"account": acc.key, "cached": acc.balance_kopecks, "entries": real})
-        if acc.is_user_account and real < 0:
+        if acc.must_stay_non_negative and real < 0:
             negative.append(acc.key)
     return {
         "ok": total == 0 and not unbalanced and not drift and not negative,

@@ -32,6 +32,8 @@ export interface CallBrief {
   duration_minutes: number;
   amount_rub: number;
   can_join: boolean;
+  /** H1: «Знакомство, 15 минут» */
+  is_intro?: boolean;
 }
 
 export interface ProposalBrief {

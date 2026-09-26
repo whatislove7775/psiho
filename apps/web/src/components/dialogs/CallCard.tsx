@@ -52,7 +52,7 @@ export function CallCard({ msg }: { msg: ChatMessage }) {
 
   switch (card.type) {
     case "booked": {
-      title = "Созвон назначен";
+      title = call?.is_intro ? "Знакомство назначено" : "Созвон назначен";
       sub = call ? `${when}, ${call.duration_minutes} мин` : null;
       if (call && call.status !== "paid") {
         const st = CALL_STATUS[call.status];
@@ -75,7 +75,7 @@ export function CallCard({ msg }: { msg: ChatMessage }) {
     case "rescheduled":
       icon = <CalendarClock size={20} strokeWidth={1.8} />;
       iconTone = "lilac";
-      title = "Созвон перенесён";
+      title = call?.is_intro ? "Знакомство перенесено" : "Созвон перенесён";
       sub = call ? `Новое время: ${when}. Перенёс ${byLabel(card.by)}` : null;
       if (live) {
         tone = "live";
@@ -86,7 +86,7 @@ export function CallCard({ msg }: { msg: ChatMessage }) {
       icon = <CalendarX2 size={20} strokeWidth={1.8} />;
       iconTone = "coral";
       tone = "muted";
-      title = "Созвон отменён";
+      title = call?.is_intro ? "Знакомство отменено" : "Созвон отменён";
       sub = call ? (
         <>
           <span className={s.cardStrike}>{when}</span>. Отменил {byLabel(card.by)}
@@ -96,7 +96,7 @@ export function CallCard({ msg }: { msg: ChatMessage }) {
     case "started":
       icon = <PhoneCall size={20} strokeWidth={1.8} />;
       iconTone = "mint";
-      title = live ? "Созвон идёт" : "Созвон начался";
+      title = call?.is_intro ? (live ? "Знакомство идёт" : "Знакомство началось") : live ? "Созвон идёт" : "Созвон начался";
       sub = call ? when : null;
       if (live) {
         tone = "live";
@@ -106,7 +106,7 @@ export function CallCard({ msg }: { msg: ChatMessage }) {
     case "ended":
       icon = <CircleCheckBig size={20} strokeWidth={1.8} />;
       iconTone = "mint";
-      title = "Созвон завершён";
+      title = call?.is_intro ? "Знакомство завершено" : "Созвон завершён";
       sub = card.minutes ? `Длился ${card.minutes} мин` : call ? when : null;
       // G2: клиенту — приглашение оставить отзыв (модалка сама проверит, что созвон засчитан)
       if (role === "client" && reviewFor) {

@@ -67,7 +67,13 @@ export interface DialogDetail extends DialogItem {
   calls: CallInfo[];
   proposals: ProposalBrief[];
   files: DialogFile[];
-  booking: { hourly_rate_rub: number; min_duration: number; max_duration: number; durations: DurationOption[] };
+  booking: {
+    hourly_rate_rub: number;
+    min_duration: number;
+    max_duration: number;
+    durations: DurationOption[];
+    intro?: import("./availability").IntroInfo;
+  };
   rules: { free_cancel_hours: number; late_penalty_percent: number | null; first_messages: number };
   pay_mode: "balance" | "external";
   can_book: boolean;
@@ -82,6 +88,7 @@ export interface DialogStarts {
   durations: DurationOption[];
   horizon_until: string;
   starts: string[];
+  intro?: import("./availability").IntroInfo;
 }
 
 export interface CancelResult {

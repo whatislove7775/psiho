@@ -124,6 +124,9 @@ def _nav_badges(user) -> dict:
         from apps.credentials.models import Credential
 
         badges["credentials"] = Credential.objects.filter(status=Credential.Status.PENDING).count()
+        from apps.circles.models import Circle
+
+        badges["circles"] = Circle.objects.filter(status=Circle.Status.PENDING).count()
     if has_staff_perm(user, "support.inbox"):
         queue = _support_queue()
         if queue:

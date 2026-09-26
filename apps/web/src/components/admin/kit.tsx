@@ -233,6 +233,23 @@ export const ACTION_LABEL: Record<string, string> = {
   "auth.staff_login_failed": "Неверный код 2FA при входе",
   "lab.room.create": "Создал тестовую комнату",
   "lab.room.close": "Закрыл тестовую комнату",
+  "business.company.create": "Добавил компанию",
+  "business.company.update": "Изменил компанию",
+  "business.hr.invite": "Выдал доступ HR компании",
+  "business.hr.update": "Изменил доступ HR компании",
+  "business.hr.password": "HR сменил пароль",
+  "business.program.create": "Создал программу компании",
+  "business.program.update": "Изменил программу компании",
+  "business.codes.generate": "Выпустил коды сотрудников",
+  "business.codes.export": "Выгрузил коды сотрудников",
+  "business.codes.revoke_batch": "Отозвал партию кодов",
+  "business.codes.revoke_code": "Отозвал код сотрудника",
+  "business.invoice.issue": "Выставил счёт компании",
+  "business.invoice.request": "Компания запросила счёт",
+  "business.invoice.paid": "Отметил оплату счёта компании",
+  "business.invoice.cancel": "Отменил счёт компании",
+  "business.budget.adjust": "Скорректировал бюджет компании",
+  "business.lead.update": "Обработал заявку компании",
 };
 
 export const actionLabel = (a: string) => ACTION_LABEL[a] ?? a;

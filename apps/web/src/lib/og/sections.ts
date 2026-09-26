@@ -88,6 +88,13 @@ export const OG: Record<string, OgSection> = {
     art: "chat",
     alt: "Психологи aprosop",
   },
+  business: {
+    kicker: "Для компаний",
+    title: "Психолог для сотрудников",
+    subtitle: "Анонимно для людей, прозрачно для бюджета",
+    art: "lock",
+    alt: "aprosop для компаний — анонимная психологическая помощь сотрудникам",
+  },
   /** private areas (cabinets, calls, staff): noindex, generic card */
   private: {
     title: "Анонимная помощь психолога",

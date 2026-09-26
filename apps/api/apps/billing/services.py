@@ -103,10 +103,14 @@ def hold_for_call(session) -> Hold:
         amount = int(session.amount_kopecks)
         client = session.client
         if amount > 0:
+            # Сначала — программа компании (apps.business), остаток — с личного баланса
+            corp_acc, covered = _corp_reserve(session, amount)
             post(
                 T.HOLD, f"hold:{session.pk}",
-                [(account_for(client, K.CLIENT), -amount), (account_for(client, K.CLIENT_HOLD), amount)],
+                [(account_for(client, K.CLIENT), -(amount - covered)), (account_for(client, K.CLIENT_HOLD), amount)]
+                + ([(corp_acc, -covered)] if covered else []),
                 session_id=session.pk, memo="Оплата созвона",
+                metadata={"company_kopecks": covered} if covered else None,
             )
         hold = Hold.objects.create(
             session=session, session_ref=session.pk, client=client, specialist=session.psychologist_profile.user,
@@ -116,6 +120,34 @@ def hold_for_call(session) -> Hold:
         if session.status in (S.DRAFT, S.AWAITING_PAYMENT):
             mark_session_paid(session, {"mode": "balance"})
         return hold
+
+
+# ── Программы компаний (apps.business): кто платит первым ─────────────
+
+def _corp():
+    from django.apps import apps as django_apps
+
+    if not django_apps.is_installed("apps.business"):
+        return None
+    from apps.business import funding
+
+    return funding
+
+
+def _corp_reserve(session, amount: int):
+    """(счёт бюджета компании, сколько покрывает программа). Вызывается внутри транзакции оплаты."""
+    corp = _corp()
+    if corp is None:
+        return None, 0
+    return corp.reserve_call(session, amount)
+
+
+def _corp_share(hold: Hold):
+    """(счёт компании, сколько ещё «лежит» денег компании в этой оплате) — для возвратов."""
+    corp = _corp()
+    if corp is None:
+        return None, 0
+    return corp.company_share(hold.session_ref)
 
 
 def start_call_payment(session) -> Hold | None:
@@ -135,6 +167,41 @@ def start_call_payment(session) -> Hold | None:
         return None
 
 
+GROUP_HOLD_MARK = "group"
+
+
+def hold_for_group(*, ref, client, specialist, amount_kopecks: int, scheduled_at, duration_minutes: int,
+                   memo: str = "Оплата круга", metadata: dict | None = None) -> Hold:
+    """Заморозка за групповую встречу/цикл (apps.circles) — без ConsultationSession.
+
+    ref — уникальный UUID единицы оплаты (Hold.session_ref): дальше деньги двигаются теми же
+    capture_for_call(ref) / release_for_call(ref, reason) с правилами отмены, как у созвонов.
+    Такие заморозки помечены reason="group": settle_overdue_calls их не трогает — их
+    расчитывает владелец (apps.circles.services.sweep). Идемпотентно по ref.
+    """
+    with transaction.atomic():
+        hold = _hold_of(ref, lock=True)
+        if hold is not None:
+            return hold
+        amount = int(amount_kopecks)
+        if amount > 0:
+            # Программа компании (если в ней есть «Круги») платит первой — apps.business
+            corp = _corp()
+            corp_acc, covered = corp.reserve_group(client, amount, ref=ref, scheduled_at=scheduled_at,
+                                                   minutes=duration_minutes) if corp else (None, 0)
+            post(
+                T.HOLD, f"hold:{ref}",
+                [(account_for(client, K.CLIENT), -(amount - covered)), (account_for(client, K.CLIENT_HOLD), amount)]
+                + ([(corp_acc, -covered)] if covered else []),
+                session_id=ref, memo=memo, metadata={**(metadata or {}), **({"company_kopecks": covered} if covered else {})},
+            )
+        return Hold.objects.create(
+            session=None, session_ref=ref, client=client, specialist=specialist,
+            client_ref=str(client.pk), specialist_ref=str(specialist.pk), amount_kopecks=amount,
+            duration_minutes=duration_minutes, scheduled_at=scheduled_at, reason=GROUP_HOLD_MARK,
+        )
+
+
 def _settle(hold: Hold, *, penalty_kopecks: int, reason: str, kind: str, by=None) -> Hold:
     """Разморозить: penalty уходит специалисту (минус комиссия), остальное — клиенту."""
     amount = hold.amount_kopecks
@@ -142,10 +209,16 @@ def _settle(hold: Hold, *, penalty_kopecks: int, reason: str, kind: str, by=None
     returned = amount - penalty
     spec, fee = split_fee(penalty)
     legs = []
+    corp_acc, corp_net = _corp_share(hold)
+    # Возврат — в обратном порядке оплаты: сначала личная часть, остальное — в бюджет компании
+    to_client = min(returned, amount - corp_net)
+    to_company = returned - to_client
     if amount:
         legs.append((account_for(hold.client_ref, K.CLIENT_HOLD), -amount))
-        if returned:
-            legs.append((account_for(hold.client_ref, K.CLIENT), returned))
+        if to_client:
+            legs.append((account_for(hold.client_ref, K.CLIENT), to_client))
+        if to_company:
+            legs.append((corp_acc, to_company))
         if spec:
             legs.append((account_for(hold.specialist_ref, K.SPEC_PENDING), spec))
         if fee:
@@ -166,6 +239,8 @@ def _settle(hold: Hold, *, penalty_kopecks: int, reason: str, kind: str, by=None
     if spec:
         hold.available_at = now + timedelta(hours=conf.earnings_hold_hours())
     hold.save()
+    if corp_acc is not None:
+        _corp().settled(hold.session_ref, returned_kopecks=to_company)
     return hold
 
 
@@ -251,7 +326,12 @@ def refund_captured_call(session_or_hold, *, by=None, reason: str = "staff_refun
             legs.append((account_for(hold.specialist_ref, src), -hold.specialist_kopecks))
         if hold.fee_kopecks:
             legs.append((system_account(K.PLATFORM_FEE), -hold.fee_kopecks))
-        legs.append((account_for(hold.client_ref, K.CLIENT), charged))
+        corp_acc, corp_net = _corp_share(hold)
+        to_company = min(charged, corp_net)
+        if charged - to_company:
+            legs.append((account_for(hold.client_ref, K.CLIENT), charged - to_company))
+        if to_company:
+            legs.append((corp_acc, to_company))
         try:
             post(T.CALL_REFUND, f"call_refund:{hold.pk}", legs, session_id=hold.session_ref, memo=reason, by=by)
         except InsufficientFunds as exc:
@@ -260,6 +340,8 @@ def refund_captured_call(session_or_hold, *, by=None, reason: str = "staff_refun
         hold.status = HS.REFUNDED
         hold.reason = reason[:40]
         hold.save(update_fields=["returned_kopecks", "status", "reason"])
+        if corp_acc is not None:
+            _corp().settled(hold.session_ref, returned_kopecks=to_company, refund=True)
         return hold
 
 
@@ -346,7 +428,8 @@ def settle_overdue_calls(now=None) -> int:
     now = now or timezone.now()
     grace = timedelta(minutes=conf.settle_grace_minutes())
     n = 0
-    holds = Hold.objects.filter(status=HS.ACTIVE).select_related("session")[:500]
+    # Групповые заморозки (apps.circles) расчитывает их владелец
+    holds = Hold.objects.filter(status=HS.ACTIVE).exclude(reason=GROUP_HOLD_MARK).select_related("session")[:500]
     for hold in holds:
         session = hold.session
         if session is None:

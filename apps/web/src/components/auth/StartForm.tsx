@@ -9,7 +9,7 @@ import type { AuthResponse } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/store";
 import { Button } from "@/ui";
 import { Hello, KeyFriend } from "@/components/illustrations";
-import { AuthCard, AuthLinks, AuthShell } from "./AuthShell";
+import { AuthCard, AuthLinks, AuthShell, safeNext } from "./AuthShell";
 import { FormError } from "./FormError";
 import { PasswordInput } from "./PasswordInput";
 import { RecoveryKeyReveal } from "./RecoveryKeyReveal";
@@ -56,7 +56,9 @@ export function StartForm() {
           avatar={result.user.avatar_config}
           onContinue={() => {
             useAuth.getState().accept(result);
-            router.push("/app/avatar?welcome=1");
+            // H1: «Подбор по анкете» → «Начать анонимно» brings the person back to their results
+            const next = safeNext(new URLSearchParams(window.location.search).get("next"));
+            router.push(next && next.startsWith("/app/") ? next : "/app/avatar?welcome=1");
           }}
         />
       </AuthShell>

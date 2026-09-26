@@ -14,6 +14,7 @@ const LINKS = [
   { href: "/#specialists", label: "Специалисты" },
   { href: "/#faq", label: "Вопросы" },
   { href: "/articles", label: "Полезное" },
+  { href: "/business", label: "Для компаний" },
 ];
 
 export function Brand() {

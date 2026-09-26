@@ -20,6 +20,7 @@ import { useLoad } from "@/components/client/useLoad";
 import { ErrorBlock } from "@/components/client/ClientBits";
 import { TopUpForm } from "@/components/billing/TopUpForm";
 import { RedeemForm } from "@/components/billing/RedeemForm";
+import { CompanyAllowance } from "@/components/business/CompanyAllowance";
 import { EmptyArt, Spot } from "@/components/illustrations";
 import { billingApi, notifyBalanceChanged, rubK, type HistoryItem } from "@/lib/api/billing";
 import { dayShort, time } from "@/lib/format";
@@ -98,6 +99,7 @@ export default function BalancePage() {
         <WithRail
           rail={
             <>
+              <CompanyAllowance onChanged={refresh} />
               <Card as="section">
                 <CardHead title="Подарочный код" icon={<Gift size={18} />} sub="Подарок или предоплата от близкого человека" />
                 <RedeemForm onRedeemed={refresh} />

@@ -325,3 +325,43 @@
   outline: none;
   box-shadow: var(--focus);
 }
+
+/* H1: «Сначала познакомиться — 15 мин» — a quiet secondary option under durations */
+.introOpt {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px dashed var(--c-line-strong);
+  border-radius: var(--r-pill);
+  background: none;
+  color: var(--c-muted);
+  font: inherit;
+  font-size: var(--t-13);
+  font-weight: 550;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur), color var(--dur), border-color var(--dur);
+}
+.introOpt svg {
+  flex: none;
+  color: var(--a-mint-ink);
+}
+.introOpt:hover {
+  background: var(--c-raised);
+  color: var(--c-text);
+}
+.introOpt:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+.introOpt[aria-pressed="true"] {
+  border-style: solid;
+  border-color: var(--c-primary);
+  background: var(--c-primary-soft);
+  color: var(--c-primary-ink);
+}
+.introOpt[aria-pressed="true"] svg {
+  color: currentColor;
+}

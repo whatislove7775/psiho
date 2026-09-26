@@ -6,6 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import {
   Activity,
   BadgeCheck,
+  Building2,
   CalendarDays,
   Flag,
   FileText,
@@ -24,6 +25,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
+import { UsersRound as CirclesIcon } from "lucide-react";
 import { Button, EmptyState, Modal, Spinner } from "@/ui";
 import { homeFor, useAuth } from "@/lib/auth/store";
 import { ApiError } from "@/lib/api/client";
@@ -36,7 +38,7 @@ import sh from "@/components/shell/AppShell.module.css";
 import s from "./staff.module.css";
 import { EmptyArt } from "@/components/illustrations";
 
-type Badges = Partial<Record<"reports" | "specialists" | "support" | "credentials", number>>;
+type Badges = Partial<Record<"reports" | "specialists" | "support" | "credentials" | "circles", number>>;
 type Me = StaffMe & { badges?: Badges };
 
 interface StaffCtx {
@@ -69,8 +71,10 @@ const ITEMS: Item[] = [
   { href: "/admin/users", label: "Пользователи", icon: Users, perm: "users.view", group: "Платформа" },
   { href: "/admin/specialists", label: "Специалисты", icon: BadgeCheck, perm: "specialists.view", group: "Платформа", badge: "specialists" },
   { href: "/admin/credentials", label: "Документы", icon: FileCheck2, perm: "specialists.verify", group: "Платформа", badge: "credentials" },
+  { href: "/admin/circles", label: "Круги", icon: CirclesIcon, perm: "specialists.verify", group: "Платформа", badge: "circles" },
   { href: "/admin/sessions", label: "Созвоны", icon: CalendarDays, perm: "sessions.view", group: "Платформа" },
   { href: "/admin/finance", label: "Финансы", icon: Wallet, perm: "finance.view", group: "Платформа" },
+  { href: "/admin/business", label: "Компании", icon: Building2, perm: "business.view", group: "Платформа" },
   { href: "/admin/moderation", label: "Жалобы", icon: Flag, perm: "reports.view", group: "Забота", badge: "reports" },
   { href: "/admin/reviews", label: "Отзывы", icon: MessageSquareQuote, perm: "reports.view", group: "Забота" },
   { href: "/admin/support", label: "Поддержка", icon: Headset, perm: "support.inbox", group: "Забота", badge: "support" },

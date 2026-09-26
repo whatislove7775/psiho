@@ -21,6 +21,8 @@ export interface SpecialistQuery {
   min_experience?: number;
   gender?: GenderFilter;
   language?: string;
+  /** only specialists who offer «Знакомство, 15 минут» */
+  intro?: boolean;
   sort?: SortOrder;
 }
 
@@ -43,6 +45,8 @@ export interface SearchFacets {
   genders: { value: GenderFilter; count: number }[];
   price: { min: number; max: number };
   when: { value: WhenFilter; label: string }[];
+  /** how many specialists offer a 15-minute intro call */
+  intro?: number;
 }
 
 const clientTz = () => {
@@ -64,6 +68,7 @@ function toParams(q: SpecialistQuery): Record<string, string | number | undefine
     min_experience: q.min_experience,
     gender: q.gender,
     language: q.language,
+    intro: q.intro ? 1 : undefined,
     sort: q.sort && q.sort !== "relevance" ? q.sort : undefined,
     tz: q.when ? clientTz() : undefined,
   };
@@ -93,6 +98,7 @@ export function queryToSearchParams(q: SpecialistQuery): URLSearchParams {
   if (q.min_experience) p.set("min_experience", String(q.min_experience));
   if (q.gender) p.set("gender", q.gender);
   if (q.language) p.set("language", q.language);
+  if (q.intro) p.set("intro", "1");
   if (q.sort && q.sort !== "relevance") p.set("sort", q.sort);
   return p;
 }
@@ -117,6 +123,7 @@ export function searchParamsToQuery(p: URLSearchParams | null | undefined): Spec
     min_experience: num("min_experience"),
     gender: gender === "female" || gender === "male" ? gender : undefined,
     language: p.get("language") || undefined,
+    intro: p.get("intro") === "1" || undefined,
     sort: sort && SORT_VALUES.includes(sort) ? sort : undefined,
   };
 }
@@ -125,6 +132,6 @@ export function searchParamsToQuery(p: URLSearchParams | null | undefined): Spec
 export function activeFilters(q: SpecialistQuery): number {
   return (
     (q.topics?.length ?? 0) +
-    [q.approach, q.max_rate, q.when, q.duration, q.min_experience, q.gender, q.language].filter(Boolean).length
+    [q.approach, q.max_rate, q.when, q.duration, q.min_experience, q.gender, q.language, q.intro].filter(Boolean).length
   );
 }

@@ -79,7 +79,53 @@ def allowed_durations(s: AvailabilitySettings) -> tuple[int, ...]:
 
 
 def price_for(profile, minutes: int) -> int:
-    return engine.round_price(get_settings(profile).hourly_rate_rub, minutes)
+    s = get_settings(profile)
+    if int(minutes) == engine.INTRO_MINUTES:
+        return int(s.intro_price_rub or 0)  # знакомство — своя фиксированная цена
+    return engine.round_price(s.hourly_rate_rub, minutes)
+
+
+# ── «Знакомство, 15 минут» ────────────────────────────────────────
+
+def is_intro(session) -> bool:
+    """Созвон-знакомство: 15 минут разрешены только для него."""
+    return int(getattr(session, "duration_minutes", 0) or 0) == engine.INTRO_MINUTES
+
+
+def accepts_duration(s: AvailabilitySettings, duration: int) -> bool:
+    """Длительность по правилам записи: обычные длительности или 15 минут, если знакомство включено."""
+    if duration == engine.INTRO_MINUTES:
+        return bool(s.intro_enabled)
+    return duration in allowed_durations(s)
+
+
+def intro_used(client, profile) -> bool:
+    """Знакомство с этим специалистом уже назначено или было (отменённые не считаются)."""
+    from apps.sessions.models import ConsultationSession
+
+    if client is None or not getattr(client, "is_authenticated", False) or getattr(client, "role", "") != "client":
+        return False
+    return (
+        ConsultationSession.objects.filter(
+            client=client, psychologist_profile=profile, duration_minutes=engine.INTRO_MINUTES,
+        )
+        .exclude(status__in=_blocking_statuses_excluded())
+        .exclude(status=ConsultationSession.Status.DRAFT)
+        .exists()
+    )
+
+
+def intro_info(profile, client=None) -> dict:
+    s = get_settings(profile)
+    info = {
+        "enabled": bool(s.intro_enabled),
+        "minutes": engine.INTRO_MINUTES,
+        "price_rub": int(s.intro_price_rub or 0),
+        "used": False,
+    }
+    if s.intro_enabled and client is not None:
+        info["used"] = intro_used(client, profile)
+    return info
 
 
 def price_from(s: AvailabilitySettings) -> int:
@@ -104,7 +150,7 @@ def set_rate_from_legacy(profile) -> None:
     sync_profile_rate(s)
 
 
-def booking_info(profile) -> dict:
+def booking_info(profile, client=None) -> dict:
     s = get_settings(profile)
     durations = allowed_durations(s)
     return {
@@ -112,6 +158,7 @@ def booking_info(profile) -> dict:
         "min_duration": durations[0],
         "max_duration": durations[-1],
         "durations": [{"minutes": d, "price_rub": engine.round_price(s.hourly_rate_rub, d)} for d in durations],
+        "intro": intro_info(profile, client),
     }
 
 
@@ -127,8 +174,13 @@ def to_engine_template(t: WeeklyTemplate) -> engine.Template:
     return engine.Template(t.valid_from, t.valid_until, days, order=t.id or 0)
 
 
-def load(profile, first: date | None = None, last: date | None = None) -> engine.Availability:
+def load(profile, first: date | None = None, last: date | None = None, intro: bool = False) -> engine.Availability:
+    """intro=True — добавить 15 минут к длительностям (только для расчёта знакомства; в конец, чтобы
+    «самая короткая обычная» длительность оставалась первой)."""
     s = get_settings(profile)
+    durations = allowed_durations(s)
+    if intro and s.intro_enabled:
+        durations = durations + (engine.INTRO_MINUTES,)
     overrides = DateOverride.objects.filter(profile=profile)
     time_off = TimeOff.objects.filter(profile=profile)
     if first and last:
@@ -139,7 +191,7 @@ def load(profile, first: date | None = None, last: date | None = None) -> engine
         templates=[to_engine_template(t) for t in templates_of(profile)],
         overrides={o.date: [tuple(r) for r in o.ranges] for o in overrides},
         time_off=[(t.start_date, t.end_date) for t in time_off],
-        durations=allowed_durations(s),
+        durations=durations,
         buffer=s.buffer_minutes,
         notice=s.min_notice_minutes,
         horizon_days=s.horizon_days,
@@ -171,7 +223,7 @@ def starts_for(profile, duration: int, first: date, last: date, now: datetime | 
     from apps.sessions.models import ConsultationSession
 
     now = now or timezone.now()
-    av = load(profile, first, last)
+    av = load(profile, first, last, intro=duration == engine.INTRO_MINUTES)
     pad = timedelta(days=1, minutes=MAX_BOOKED_MINUTES + 120)
     busy = busy_intervals(
         ConsultationSession.objects.filter(psychologist_profile=profile),
@@ -202,7 +254,12 @@ def check_bookable(profile, start: datetime, duration: int, client=None, now: da
     now = now or timezone.now()
     s = get_settings(profile)
     durations = allowed_durations(s)
-    if duration not in durations:
+    if duration == engine.INTRO_MINUTES:
+        if not s.intro_enabled:
+            return "Специалист сейчас не проводит знакомства. Выберите обычный созвон."
+        if client is not None and intro_used(client, profile):
+            return "Знакомство с этим специалистом у вас уже было. Выберите обычный созвон."
+    elif duration not in durations:
         return f"Специалист проводит созвоны длительностью {human_list(durations)} минут."
     if timezone.is_naive(start):
         start = timezone.make_aware(start, dt_timezone.utc)

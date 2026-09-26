@@ -31,7 +31,9 @@ export type StaffPermission =
   | "finance.view"
   | "finance.manage"
   | "staff.view"
-  | "staff.manage";
+  | "staff.manage"
+  | "business.view"
+  | "business.manage";
 
 export const STAFF_ROLE_LABEL: Record<StaffRole, string> = {
   owner: "Владелец",

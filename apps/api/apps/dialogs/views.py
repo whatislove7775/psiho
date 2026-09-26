@@ -115,7 +115,7 @@ class DialogueStartsView(APIView):
             duration = int(request.query_params.get("duration") or durations[0])
         except ValueError:
             raise ValidationError({"duration": "Длительность — число минут."})
-        if duration not in durations:
+        if not availability.accepts_duration(s, duration):
             raise ValidationError({"duration": f"Созвоны у специалиста длятся {availability.human_list(durations)} минут."})
         today = availability.local_today(profile)
         until = today + timedelta(days=s.horizon_days)
@@ -126,6 +126,7 @@ class DialogueStartsView(APIView):
             "durations": [{"minutes": d, "price_rub": availability.price_for(profile, d)} for d in durations],
             "horizon_until": until.isoformat(),
             "starts": [x.isoformat().replace("+00:00", "Z") for x in starts],
+            "intro": availability.intro_info(profile, conv.client),
         })
 
 

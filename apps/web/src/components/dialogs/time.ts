@@ -75,6 +75,21 @@ export function cardPreview(card: import("@/lib/api/chat").DialogCard): string {
   }
   if (!call) return "Созвон";
   const w = `${weekdayDay(call.scheduled_at)}, ${hm(call.scheduled_at)}`;
+  if (call.is_intro) {
+    // H1: «Знакомство, 15 минут»
+    switch (card.type) {
+      case "booked":
+        return `Знакомство назначено: ${w}`;
+      case "rescheduled":
+        return `Знакомство перенесено на ${w}`;
+      case "cancelled":
+        return `Знакомство ${w} отменено`;
+      case "started":
+        return "Знакомство началось";
+      case "ended":
+        return "Знакомство завершено";
+    }
+  }
   switch (card.type) {
     case "booked":
       return `Созвон назначен: ${w}`;

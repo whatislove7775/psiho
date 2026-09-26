@@ -24,7 +24,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowRight, CalendarClock, CornerDownLeft, Search, SearchX, X } from "lucide-react";
+import { ArrowRight, CalendarClock, CornerDownLeft, ListChecks, Search, SearchX, X } from "lucide-react";
 import { Badge, Button } from "@/ui";
 import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import { durationLabel } from "@/lib/api/availability";
@@ -40,6 +40,7 @@ import {
 import { plural, rub, time, dayLabel } from "@/lib/format";
 import { topicTone } from "@/lib/topicTone";
 import { FilterBar } from "./FilterBar";
+import { IntroChip } from "@/components/matching/IntroChip";
 import s from "./search.module.css";
 
 // ── Context & hotkey ──────────────────────────────────────────────────────────
@@ -368,6 +369,11 @@ function SearchPalette({
     close({ navigating: true });
     router.push(allHref);
   };
+  // H1: «Подобрать по анкете»
+  const openQuiz = () => {
+    close({ navigating: true });
+    router.push("/app/match");
+  };
 
   const toggleTopic = (t: string) => {
     const cur = query.topics ?? [];
@@ -497,6 +503,14 @@ function SearchPalette({
                 </div>
               </section>
             )}
+
+            <button type="button" className={s.quizLink} onClick={openQuiz}>
+              <ListChecks size={16} strokeWidth={1.8} aria-hidden />
+              <span>
+                Не знаете, кого выбрать? <strong>Подобрать по анкете</strong>
+              </span>
+              <ArrowRight size={14} strokeWidth={2} aria-hidden />
+            </button>
 
             <FilterBar value={{ ...query, q: text }} onChange={(q) => setQuery(q)} facets={facets} className={s.paletteFilters} />
 
@@ -641,6 +655,7 @@ function ResultRow({
             {p.experience_years} {plural(p.experience_years, "год", "года", "лет")} опыта
           </span>
           <RatingPill rating={p.rating} count={p.reviews_count} compact />
+          <IntroChip psy={p} />
         </div>
         <div className={s.rowTopics}>
           {topics.slice(0, 3).map((t) => (

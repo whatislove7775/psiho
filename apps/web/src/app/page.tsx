@@ -10,6 +10,7 @@ import { SessionSteps } from "@/components/landing/SessionSteps";
 import { SiteFooter } from "@/components/landing/SiteFooter";
 import { SiteHeader } from "@/components/landing/SiteHeader";
 import { Specialists } from "@/components/landing/Specialists";
+import { CirclesTeaser } from "@/components/landing/CirclesTeaser";
 import { Button } from "@/ui";
 import { Hello } from "@/components/illustrations";
 import a from "@/components/landing/art.module.css";
@@ -37,6 +38,7 @@ export default function LandingPage() {
         <Anonymity />
         <SessionSteps />
         <Specialists />
+        <CirclesTeaser />
         <FeaturedContent />
         <Faq />
         <section className={`${s.wrap} ${s.section}`} aria-labelledby="closing-title">

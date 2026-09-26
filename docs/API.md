@@ -403,6 +403,84 @@ Proposal { id, status: "pending" | "accepted" | "declined" | "withdrawn" | "expi
 В карточках специалистов (`/psychologists/`, `/psychologists/search/`, детальная) добавлены `rating` (среднее, null без отзывов),
 `reviews_count`, `verified_credentials` (> 0 → значок «Проверено aprosop»).
 
+## Подбор по анкете — `/matching/`
+
+Без входа. Ответы **не сохраняются и не логируются** (фронт держит копию только в localStorage браузера).
+
+| Метод | Путь | Описание |
+|---|---|---|
+| GET | `options/` | варианты ответов, `weights`, `crisis_help` |
+| POST | `` | `{ topics: TopicKey[], duration?: weeks\|months\|year, intensity?: mild\|notable\|heavy, safety: no\|sometimes\|now, style?: support\|techniques\|depth, gender?: female\|male, min_experience?: 0\|3\|5\|10, budget?: ₽ за час\|null, times?: (morning\|day\|evening\|weekend)[], tz? }` → `{ crisis: {level: none\|some\|acute, help: {label, phone, note}[]}, weights, stored: false, count, results: {psychologist: карточка, score: 0–100, fits, summary, price_hour_rub, reasons: {key, ok, text, points, max}[]}[] }` (до 12, лучшие первыми) |
+
+Оценка из 100: темы 35 · стиль 20 (подход специалиста) · бюджет 15 (цена часа) · удобное время 15 (свободные окна
+в ближайшие 14 дней по поясу клиента) · опыт 10 · отзывы 5. Пол — жёсткое пожелание: неподходящие идут после всех
+подходящих (`fits: false`, причина `gender`). `TopicKey`: anxiety, burnout, relationships, self_esteem, grief,
+depression, panic, sleep, anger, addiction, crisis, family, loneliness. Троттлинг — scope `search`.
+
+## Знакомство, 15 минут
+
+Специалист включает в правилах записи (`PUT /psychologist/availability/` → `intro_enabled`, `intro_price_rub` 0…3000;
+по умолчанию выключено; в ответе ещё `intro_minutes`, `intro_max_price_rub`). 15 минут — длительность только для
+знакомства: `available-starts?duration=15`, `dialogues/<id>/starts/?duration=15`, `dialogues/book/` и
+`dialogues/<id>/calls/` с `duration_minutes: 15`. Цена — `intro_price_rub` (0 → бесплатно, оплата с баланса не нужна).
+Одно знакомство на пару клиент–специалист (отменённое не считается) → иначе 400. `booking.intro =
+{enabled, minutes, price_rub, used}` в карточке специалиста и диалоге (`used` — для текущего клиента).
+Созвоны: `is_intro` в `CallBrief`; карточки в ленте — «Знакомство назначено/перенесено/…». Поиск: `?intro=1`;
+в `popular-requests/` — `intro` (сколько специалистов проводят знакомства).
+
+## Для компаний (B2B) — `/business/`
+
+Компания предоплачивает бюджет (счёт `company_budget:<id>` в журнале `apps.billing`), сотрудники
+активируют одноразовые коды `BIZ-XXXX-XXXX-XXXX` в анонимном аккаунте. Созвон оплачивается сначала из
+программы компании, остаток — с личного баланса; возвраты — в обратном порядке (сначала личная часть).
+Компания видит только агрегаты: числа людей/созвонов/часов, темы и оценки — только при ≥ 5 участниках
+за период (иначе `null` → «менее 5»), только закрытые месяцы, без статусов отдельных кодов.
+
+- `POST leads/` (публично) `{company_name, contact, contact_name?, employees?, message?}` → 201; 5/час с IP.
+- Клиент: `GET me/` → `{programs: [{company, program, services, period, amount_kopecks, calls_limit, rub_left_kopecks, calls_left, renews_on, expires_on, budget_ok}]}`;
+  `POST redeem/ {code}` → 201 `{programs}`; `POST me/<id>/leave/`.
+- HR (роль `business`, одноразовый пароль → `portal/me/password/`, до смены — 403 `password_change_required`):
+  `GET portal/me/`, `GET portal/dashboard/` (budget на 1-е число + пополнения месяца + флаг `low`, totals, codes, monthly, topics, satisfaction, `k_min`),
+  `GET/POST portal/codes/ {count, label}` (коды — один раз в ответе), `GET portal/codes/<batch>/export/` (CSV),
+  `POST portal/codes/<batch>/revoke/`, `POST portal/codes/revoke/ {code}` (одинаковый ответ для активированного и нет),
+  `GET/PATCH portal/program/`, `GET portal/documents/`, `POST portal/documents/invoices/ {amount_rub}`, `GET portal/documents/acts.csv`.
+- Персонал (`business.view` / `business.manage`, всё в журнал): `GET/POST staff/companies/`, `GET/PATCH staff/companies/<id>/`,
+  `POST staff/companies/<id>/admins/ {login, full_name}` → `one_time_password`, `PATCH …/admins/<admin_id>/ {is_active?, reset_password?}`,
+  `POST …/programs/`, `PATCH staff/programs/<id>/`, `POST …/codes/`, `GET staff/codes/<batch>/export/`,
+  `POST …/invoices/ {amount_rub}`, `POST staff/invoices/<id>/paid|cancel/` (paid → проводка `company_topup`), `POST …/adjust/ {amount_rub, reason, idempotency_key}`,
+  `GET staff/leads/`, `PATCH staff/leads/<id>/ {status}`.
+- `billing/quote/` и `billing/calls/<id>/` получили поле `company_kopecks` — сколько оплатит программа компании.
+
+## Круги — `/circles/`, `/staff/circles/`
+
+Группы поддержки на 5–8 участников с психологом-ведущим. Участник известен другим **только** по
+псевдониму круга («Участник-Лиса») и `handle` (случайная строка, новая в каждом круге); id
+пользователя и alias не отдаются никому, включая ведущего. Подробности, mesh и путь к SFU — `docs/CIRCLES.md`.
+
+| Метод | Путь | Кто | Что |
+|---|---|---|---|
+| GET | `/circles/?topic=` | все | открытые круги (набор, идут) + `topics` со счётчиками |
+| GET | `/circles/mine/` | вход | мои круги (участие/лист ожидания) с ближайшей встречей |
+| GET | `/circles/{id}/` | все | круг: ведущий, расписание, места, цена, правила, `join_closed_reason`, `amount_due_kopecks`, `cancel_rules`, `my_role`, `me` (псевдоним, место в очереди, `leave_terms`, оплаты) |
+| POST | `/circles/{id}/join/` | клиент | записаться: заморозка на балансе (по встрече — каждая будущая встреча; за цикл — одна). Мест нет → лист ожидания (`waitlisted: true`, без заморозки). 402 `insufficient_funds` + `shortfall_kopecks` |
+| POST | `/circles/{id}/leave/` | участник | выйти: будущие встречи возвращаются по правилам отмены созвонов (бесплатно ≥ N ч, иначе штраф %); освободившееся место получает первый из очереди, у кого хватает денег |
+| GET | `/circles/{id}/members/` | участник/ведущий | псевдонимы участников |
+| GET/POST | `/circles/{id}/messages/` | участник/ведущий | групповой чат `{text}`; новый участник видит сообщения с момента входа; исчезающие по `chat_retention`. Живые события — через `/ws/chat/`: `circle.message`, `circle.message.deleted` |
+| POST | `/circles/{id}/messages/{mid}/delete/` | автор/ведущий | удалить |
+| POST | `/circles/meetings/{mid}/join/` | участник/ведущий | токен групповой комнаты `{ws_token, room_id, role, self{id,name,tone}, circle, meeting, host, max_peers}`; 409 — комната закрыта (открывается за 10 мин, закрывается через 15 мин после конца) |
+| GET/POST | `/circles/pro/` | специалист | мои круги / создать черновик `{topic,title,description,rules,format,meeting_minutes,capacity(5–8),billing,price_rub,first_meeting_at,meetings_count,allow_real_faces,chat_retention}` |
+| GET/PUT/DELETE | `/circles/pro/{id}/` | ведущий | черновик меняется целиком; после публикации — только `description, rules, allow_real_faces, chat_retention` |
+| POST | `/circles/pro/{id}/action/` | ведущий | `{action: submit}` на проверку · `{action: cancel, reason}` — отмена до начала (все получают полный возврат) |
+| POST | `/circles/pro/{id}/members/{handle}/` | ведущий | `{action: mute \| unmute \| remove}` (remove — полный возврат будущих встреч) |
+| POST | `/circles/pro/meetings/{mid}/end/` | ведущий | завершить встречу и сразу рассчитать оплату |
+| GET | `/staff/circles/?status=pending` | `specialists.verify` | очередь проверки + `counts` |
+| GET/POST | `/staff/circles/{id}/` | `specialists.verify` | `{decision: approve \| reject \| cancel, comment}` (reject/cancel — с комментарием; в журнал) |
+
+Деньги: `billing.services.hold_for_group` (Hold без созвона, `reason="group"`); после встречи с ведущим —
+`capture_for_call(ref)`, ведущий не пришёл — полный возврат. Расчёт — `manage.py circles_sweep` (scheduler) и лениво из API.
+
+WebSocket `/ws/circle/{room_id}/?token=` — групповой сигналинг (до 9 пиров), см. `docs/CIRCLES.md`.
+
 ## Здоровье
 
 `GET /health/` → `{ status: "ok" }`

@@ -66,6 +66,8 @@ class SettingsSerializer(serializers.Serializer):
     horizon_days = serializers.IntegerField(min_value=7, max_value=90, required=False)
     start_step_minutes = serializers.ChoiceField(choices=engine.STEP_OPTIONS, required=False)
     hourly_rate_rub = serializers.IntegerField(min_value=500, max_value=200_000, required=False)
+    intro_enabled = serializers.BooleanField(required=False)
+    intro_price_rub = serializers.IntegerField(min_value=0, max_value=engine.INTRO_MAX_PRICE_RUB, required=False)
     templates = TemplateSerializer(many=True, required=False)
 
     def validate_time_zone(self, value):
@@ -107,6 +109,10 @@ def settings_payload(s, templates) -> dict:
         "start_step_minutes": s.start_step_minutes,
         "hourly_rate_rub": s.hourly_rate_rub,
         "prices": [{"minutes": d, "price_rub": engine.round_price(s.hourly_rate_rub, d)} for d in durations],
+        "intro_enabled": bool(s.intro_enabled),
+        "intro_price_rub": int(s.intro_price_rub or 0),
+        "intro_minutes": engine.INTRO_MINUTES,
+        "intro_max_price_rub": engine.INTRO_MAX_PRICE_RUB,
         "platform_fee_percent": dj_settings.PLATFORM_FEE_PERCENT,
         "templates": [
             {

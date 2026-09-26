@@ -47,6 +47,9 @@ INSTALLED_APPS = [
     "apps.prefs",
     "apps.credentials",
     "apps.reviews",
+    "apps.matching",  # H1: подбор специалиста по анкете (без моделей)
+    "apps.circles",  # H2: групповые «Круги»
+    "apps.business",  # H3: программы для компаний (B2B)
 ]
 
 MIDDLEWARE = [

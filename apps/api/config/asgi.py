@@ -12,6 +12,7 @@ from django.urls import re_path  # noqa: E402
 
 from apps.chat.consumers import ChatConsumer  # noqa: E402
 from apps.signaling.consumers import SignalingConsumer  # noqa: E402
+from apps.signaling.group import GroupSignalingConsumer  # noqa: E402
 
 application = ProtocolTypeRouter(
     {
@@ -24,6 +25,8 @@ application = ProtocolTypeRouter(
                     SignalingConsumer.as_asgi(),
                 ),
                 re_path(r"^ws/chat/$", ChatConsumer.as_asgi()),
+                # «Круги»: групповая комната (mesh до 9 пиров)
+                re_path(r"^ws/circle/(?P<room_id>[0-9a-f-]{36})/$", GroupSignalingConsumer.as_asgi()),
             ]
         ),
     }

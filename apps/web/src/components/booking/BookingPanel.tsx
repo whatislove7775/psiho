@@ -7,6 +7,7 @@ import {
   Camera,
   CalendarDays,
   Clock,
+  Handshake,
   Headphones,
   Wallet,
 } from "lucide-react";
@@ -14,7 +15,7 @@ import { Button, Modal, Skeleton, useToast } from "@/ui";
 import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import { ApiError } from "@/lib/api/client";
 import { dialogsApi } from "@/lib/api/dialogs";
-import { availabilityApi, durationLabel } from "@/lib/api/availability";
+import { availabilityApi, durationLabel, INTRO_MINUTES } from "@/lib/api/availability";
 import type { PsychologistPublic, Slot } from "@/lib/api/types";
 import {
   WEEKDAYS_SHORT,
@@ -51,7 +52,11 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
   const options = psy.booking?.durations?.length
     ? psy.booking.durations
     : [{ minutes: 50, price_rub: psy.session_rate_rub }];
+  // H1: «Сначала познакомиться» — a short first call, once per specialist
+  const intro = psy.booking?.intro;
+  const canIntro = !!intro?.enabled && !intro.used;
   const [minutes, setMinutes] = useState<number>(options[0].minutes);
+  const isIntro = minutes === INTRO_MINUTES;
   const [dayKey, setDayKey] = useState<string | null>(null);
   const [slot, setSlot] = useState<Slot | null>(null);
   const [confirm, setConfirm] = useState(false);
@@ -61,7 +66,12 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
   const today = useMemo(() => new Date(), []);
   const res = useLoad(() => availabilityApi.starts(psy.id, minutes), [psy.id, minutes]);
 
-  const price = res.data?.duration_minutes === minutes ? res.data.price_rub : (options.find((o) => o.minutes === minutes)?.price_rub ?? 0);
+  const price =
+    res.data?.duration_minutes === minutes
+      ? res.data.price_rub
+      : isIntro
+        ? (intro?.price_rub ?? 0)
+        : (options.find((o) => o.minutes === minutes)?.price_rub ?? 0);
 
   const usable: Slot[] = useMemo(
     () =>
@@ -108,7 +118,13 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
         window.location.href = r.payment_url;
         return;
       }
-      toast(r.status === "awaiting_payment" ? "Время за вами — осталось оплатить созвон" : "Созвон назначен");
+      toast(
+        r.status === "awaiting_payment"
+          ? "Время за вами — осталось оплатить созвон"
+          : isIntro
+            ? "Знакомство назначено"
+            : "Созвон назначен",
+      );
       router.push(`/app/dialogs?d=${encodeURIComponent(r.dialogue_id)}`);
     } catch (e) {
       setConfirm(false);
@@ -155,6 +171,24 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
             </button>
           ))}
         </div>
+        {canIntro && (
+          <button
+            type="button"
+            className={s.introOpt}
+            aria-pressed={isIntro}
+            onClick={() => {
+              setMinutes(isIntro ? options[0].minutes : INTRO_MINUTES);
+              setSlot(null);
+              setNotice(null);
+            }}
+          >
+            <Handshake size={16} strokeWidth={1.8} aria-hidden />
+            <span>
+              Сначала познакомиться — {INTRO_MINUTES} мин{" "}
+              {intro!.price_rub ? `за ${rub(intro!.price_rub)}` : "бесплатно"}
+            </span>
+          </button>
+        )}
       </div>
 
       {notice && (
@@ -283,7 +317,7 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
               <SpecialistPhoto url={psy.photo_url} name={psy.display_name} size={56} />
               <div>
                 <strong>{psy.display_name}</strong>
-                <span>Видеосозвон с аватаром</span>
+                <span>{isIntro ? "Знакомство, 15 минут" : "Видеосозвон с аватаром"}</span>
               </div>
             </div>
             <dl className={s.summary}>
@@ -318,6 +352,12 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
                 <dd>{rub(price)}</dd>
               </div>
             </dl>
+            {isIntro && (
+              <p className={s.note}>
+                Короткий созвон, чтобы понять, комфортно ли вам с этим специалистом. Знакомство
+                бывает одно на специалиста.
+              </p>
+            )}
             <p className={s.note}>
               Созвон появится в вашем диалоге со специалистом. Бесплатно отменить или
               перенести его можно за 24 часа до начала.
@@ -341,7 +381,7 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
                 Изменить
               </Button>
               <Button variant="primary" onClick={book} loading={busy}>
-                Назначить за {rub(price)}
+                {price ? `Назначить за ${rub(price)}` : "Назначить бесплатно"}
               </Button>
             </div>
           </div>

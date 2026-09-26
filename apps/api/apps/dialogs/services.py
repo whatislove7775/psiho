@@ -286,7 +286,7 @@ def detail(conv: Conversation, user, role: str) -> dict:
     data["calls"] = [call_data(s, role) for s in calls]
     data["proposals"] = [proposal_brief(p) for p in _pending_proposals(conv)]
     data["files"] = files_of(conv, user)
-    data["booking"] = availability.booking_info(conv.specialist)
+    data["booking"] = availability.booking_info(conv.specialist, conv.client)
     data["rules"] = policy.rules()
     data["pay_mode"] = pay_mode()
     data["can_book"] = role == "client" and conv.specialist.verification_status == \

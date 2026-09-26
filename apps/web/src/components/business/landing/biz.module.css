@@ -1,0 +1,464 @@
+/* Public /business landing. Uses the landing base (landing.module.css) + tokens. */
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: 56px;
+  align-items: center;
+  padding-block: 40px 56px;
+}
+.hero::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -60px 20% -40px -10%;
+  background:
+    radial-gradient(40% 45% at 25% 35%, color-mix(in srgb, #7aa5ff 26%, transparent), transparent 70%),
+    radial-gradient(30% 40% at 75% 70%, var(--a-mint-soft), transparent 70%);
+  filter: blur(20px);
+  pointer-events: none;
+}
+.heroText {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+}
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  padding: 6px 14px;
+  border-radius: var(--r-pill);
+  background: var(--c-primary-soft);
+  color: var(--c-primary-ink);
+  font-size: var(--t-13);
+  font-weight: 650;
+}
+.title {
+  font-size: var(--t-60);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+  max-width: 15ch;
+}
+.titleAccent {
+  background: var(--g-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+:global([data-theme="dark"]) .titleAccent,
+:global(:root:not([data-theme="light"])) .titleAccent {
+  background: linear-gradient(120deg, #9aa5ff, #b9a6ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.heroPoints {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  color: var(--c-muted);
+  font-size: var(--t-15);
+}
+.heroPoints li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.heroPoints svg {
+  color: var(--a-mint-ink);
+}
+
+.heroVisual {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 420px;
+}
+.heroArt {
+  position: absolute;
+  right: -8px;
+  bottom: -18px;
+  width: 150px;
+}
+.heroArt > * {
+  width: 100% !important;
+  height: auto !important;
+  max-width: none;
+}
+.mock {
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px;
+  border-radius: var(--r-panel);
+  background: var(--c-panel);
+  box-shadow: var(--shadow-float);
+  transform: rotate(-2deg);
+}
+.mockHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 650;
+  font-size: var(--t-15);
+}
+.mockDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--g-primary);
+}
+.mockGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.mockKpi {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  border-radius: var(--r-control);
+  background: var(--c-raised);
+  font-size: var(--t-13);
+  color: var(--c-muted);
+}
+.mockKpi strong {
+  font-size: var(--t-32);
+  color: var(--c-text);
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.mockRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--t-15);
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--c-line);
+}
+.mockHidden {
+  color: var(--c-faint);
+  font-size: var(--t-13);
+}
+.mockLock {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  background: var(--a-mint-soft);
+  color: var(--a-mint-ink);
+  font-size: var(--t-13);
+  font-weight: 600;
+}
+.mockBars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mockBars span {
+  height: 10px;
+  border-radius: var(--r-pill);
+  background: var(--c-primary);
+}
+.mockBars span:nth-child(2) {
+  opacity: 0.7;
+}
+.mockBars span:nth-child(3) {
+  opacity: 0.45;
+}
+.mockNote {
+  font-size: var(--t-12);
+  color: var(--c-faint);
+}
+
+.sectionHead {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.sectionHead h2 {
+  max-width: 22ch;
+}
+
+.compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.compareCol {
+  padding: 28px;
+  border-radius: var(--r-panel);
+  background: var(--c-panel);
+}
+.compareCol h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--t-20);
+  margin: 0 0 18px;
+  letter-spacing: -0.02em;
+}
+.compareCol ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.compareCol li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  line-height: 1.45;
+}
+.compareCol li svg {
+  flex: none;
+  margin-top: 2px;
+}
+.compareSees li svg,
+.compareSees h3 svg {
+  color: var(--c-primary-ink);
+}
+.compareNever {
+  background:
+    radial-gradient(80% 100% at 100% 0%, var(--a-mint-soft), transparent 70%),
+    var(--c-panel);
+}
+.compareNever li svg,
+.compareNever h3 svg {
+  color: var(--a-mint-ink);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 26px;
+  border-radius: var(--r-card);
+  background: var(--c-panel);
+}
+.card h3,
+.step h3 {
+  font-size: var(--t-18);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.card p,
+.step p {
+  color: var(--c-muted);
+  line-height: 1.55;
+  margin: 0;
+}
+.cardIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  color: var(--p-ink);
+}
+.tLilac {
+  background: var(--a-lilac);
+}
+.tMint {
+  background: var(--a-mint);
+}
+.tSun {
+  background: var(--a-sun);
+}
+.tCyan {
+  background: var(--a-cyan);
+}
+.tCoral {
+  background: var(--a-coral);
+}
+
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  counter-reset: none;
+}
+.step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 26px;
+  border-radius: var(--r-card);
+  background: var(--c-panel);
+}
+.stepNum {
+  position: absolute;
+  top: 18px;
+  right: 22px;
+  font-size: var(--t-44);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--c-raised-2);
+  letter-spacing: -0.04em;
+}
+
+.calc {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 40px;
+  padding: 40px;
+  border-radius: var(--r-panel);
+  background:
+    radial-gradient(60% 120% at 100% 100%, color-mix(in srgb, #6a4fe8 18%, transparent), transparent 70%),
+    radial-gradient(40% 100% at 0% 0%, color-mix(in srgb, #7aa5ff 14%, transparent), transparent 70%),
+    var(--c-panel);
+}
+.calcIntro {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.calcList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.calcList li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  line-height: 1.45;
+}
+.calcList svg {
+  flex: none;
+  color: var(--a-mint-ink);
+  margin-top: 2px;
+}
+.calcForm {
+  padding: 24px;
+  border-radius: var(--r-card);
+  background: var(--c-page);
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.formFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+}
+.formNote {
+  font-size: var(--t-13);
+  color: var(--c-muted);
+  max-width: 36ch;
+  line-height: 1.4;
+}
+.error {
+  color: var(--c-danger);
+  font-size: var(--t-13);
+}
+.trap {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.sent {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 8px 0;
+}
+.sent svg {
+  color: var(--c-success);
+  flex: none;
+}
+.sent p {
+  color: var(--c-muted);
+  margin: 4px 0 0;
+}
+.faqArt {
+  width: 180px;
+  height: auto;
+}
+
+@media (max-width: 1000px) {
+  .hero,
+  .calc {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .heroVisual {
+    min-height: 0;
+    padding: 12px 0 24px;
+  }
+  .cards,
+  .steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 720px) {
+  .title {
+    font-size: var(--t-44);
+  }
+  .compare,
+  .formRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .calc {
+    padding: 22px 16px;
+    gap: 24px;
+  }
+  .calcForm {
+    padding: 16px;
+  }
+  .compareCol,
+  .card,
+  .step {
+    padding: 22px;
+  }
+  .heroArt {
+    width: 96px;
+    right: -4px;
+    bottom: -8px;
+  }
+}
+@media (max-width: 420px) {
+  .title {
+    font-size: 36px;
+  }
+}

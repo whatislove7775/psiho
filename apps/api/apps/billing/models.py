@@ -39,8 +39,11 @@ class Account(models.Model):
         PAYOUTS_SENT = "payouts_sent", "Выплачено специалистам"
         GIFT = "gift", "Подарочные коды"
         ADJUSTMENT = "adjustment", "Корректировки"
+        COMPANY_BUDGET = "company_budget", "Бюджет компании (B2B)"
 
     USER_KINDS = frozenset({"client", "client_hold", "spec_pending", "spec_available", "spec_payout"})
+    # Счета, которые не могут уйти в минус: пользовательские + предоплаченный бюджет компании (apps.business)
+    NON_NEGATIVE_KINDS = USER_KINDS | {"company_budget"}
 
     key = models.CharField(max_length=80, unique=True)
     kind = models.CharField(max_length=20, choices=Kind.choices, db_index=True)
@@ -61,6 +64,10 @@ class Account(models.Model):
     def is_user_account(self) -> bool:
         return self.kind in self.USER_KINDS
 
+    @property
+    def must_stay_non_negative(self) -> bool:
+        return self.kind in self.NON_NEGATIVE_KINDS
+
 
 class LedgerTransaction(models.Model):
     class Kind(models.TextChoices):
@@ -77,6 +84,8 @@ class LedgerTransaction(models.Model):
         PAYOUT_RETURN = "payout_return", "Выплата отклонена"
         GIFT_REDEEM = "gift_redeem", "Подарочный код"
         ADJUSTMENT = "adjustment", "Корректировка"
+        COMPANY_TOPUP = "company_topup", "Пополнение бюджета компании"
+        COMPANY_ADJUSTMENT = "company_adjustment", "Корректировка бюджета компании"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     kind = models.CharField(max_length=30, choices=Kind.choices, db_index=True)

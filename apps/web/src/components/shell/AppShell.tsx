@@ -18,8 +18,13 @@ import {
   Users,
   BadgeCheck,
   Search,
+  KeyRound,
+  SlidersHorizontal,
+  FileText,
+  LifeBuoy,
   type LucideIcon,
 } from "lucide-react";
+import { UsersRound as CirclesIcon } from "lucide-react";
 import { chatApi } from "@/lib/api/chat";
 import { chatSocket } from "@/lib/chat/socket";
 import { MI, Morph } from "@/components/ui/Morph";
@@ -58,6 +63,8 @@ export const NAV: Record<Role, { items: NavItem[]; cta: { label: string; href: s
       { href: "/app", label: "Главная", icon: LayoutGrid, tab: true },
       { href: "/app/specialists", label: "Специалисты", icon: Users, tab: true },
       { href: "/app/dialogs", label: "Диалоги", icon: MessagesSquare, tab: true, unread: true },
+      // H2: групповые «Круги» (группы поддержки с психологом)
+      { href: "/app/circles", label: "Круги", icon: CirclesIcon },
       // «Полезное»: статьи (первыми) и практики — одна страница с вкладками
       { href: "/app/articles", label: "Полезное", icon: BookOpen, tab: true, also: ["/app/practices"] },
       // Аватар, зеркало и приватность — одна страница с вкладками
@@ -71,6 +78,7 @@ export const NAV: Record<Role, { items: NavItem[]; cta: { label: string; href: s
       { href: "/pro", label: "Сводка", icon: LayoutGrid, tab: true },
       { href: "/pro/dialogs", label: "Диалоги", icon: MessagesSquare, tab: true, unread: true },
       { href: "/pro/schedule", label: "Расписание", icon: CalendarClock, tab: true },
+      { href: "/pro/circles", label: "Круги", icon: CirclesIcon },
       { href: "/pro/profile", label: "Профиль", icon: UserRound, tab: true, group: "Кабинет" },
       { href: "/pro/earnings", label: "Доходы", icon: Banknote, group: "Кабинет" },
       { href: "/pro/check", label: "Проверка камеры", icon: Camera, tab: true, tabLabel: "Камера", group: "Кабинет" },
@@ -85,12 +93,24 @@ export const NAV: Record<Role, { items: NavItem[]; cta: { label: string; href: s
     ],
     cta: { label: "Проверить заявки", href: "/admin/psychologists" },
   },
+  // HR компании (B2B): только агрегаты своей компании
+  business: {
+    items: [
+      { href: "/business/portal", label: "Сводка", icon: LayoutGrid, tab: true },
+      { href: "/business/portal/codes", label: "Коды сотрудников", icon: KeyRound, tab: true, tabLabel: "Коды" },
+      { href: "/business/portal/program", label: "Программа", icon: SlidersHorizontal, tab: true },
+      { href: "/business/portal/documents", label: "Документы", icon: FileText, tab: true, group: "Компания" },
+      { href: "/business/portal/support", label: "Поддержка", icon: LifeBuoy, group: "Компания" },
+    ],
+    cta: { label: "Выпустить коды", href: "/business/portal/codes" },
+  },
 };
 
 const ROLE_LABEL: Record<Role, string> = {
   client: "Анонимный клиент",
   psychologist: "Специалист",
   admin: "Администратор",
+  business: "HR компании",
 };
 
 /** Where the sidebar profile card leads. */
@@ -98,6 +118,7 @@ const PROFILE_HREF: Record<Role, string> = {
   client: "/app/profile",
   psychologist: "/pro/profile",
   admin: "/admin/account",
+  business: "/business/portal/support",
 };
 
 /** Pages where the sidebar collapses to a slim icon rail (messenger layouts). */
@@ -150,7 +171,7 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
   const [menuOpen, setMenuOpen] = useState(false);
   const [tip, setTip] = useState<{ text: string; top: number; left: number } | null>(null);
   const rail = RAIL_ROUTES.test(pathname);
-  const unread = useUnread(status === "authed" && !!user && user.role === role && role !== "admin", pathname);
+  const unread = useUnread(status === "authed" && !!user && user.role === role && role !== "admin" && role !== "business", pathname);
 
   useEffect(() => {
     bootstrap();

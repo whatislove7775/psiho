@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
 
+from apps.circles import urls as circles_urls
 from apps.credentials import urls as credentials_urls
 from apps.reviews import urls as reviews_urls
 
@@ -47,6 +48,11 @@ urlpatterns = [
     path("api/v1/staff/credentials/", include(credentials_urls.urlpatterns_staff)),
     path("api/v1/staff/reviews/", include(reviews_urls.urlpatterns_staff)),
     path("api/v1/reviews/", include("apps.reviews.urls")),
+    path("api/v1/matching/", include("apps.matching.urls")),  # H1: подбор по анкете
+    # H2: «Круги»
+    path("api/v1/circles/", include("apps.circles.urls")),
+    path("api/v1/business/", include("apps.business.urls")),  # H3: B2B
+    path("api/v1/staff/circles/", include(circles_urls.urlpatterns_staff)),
 ]
 
 if settings.DEBUG:  # production: nginx serves /media/ from the "media" volume

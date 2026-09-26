@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { BookOpen, CalendarClock, LayoutGrid, MessagesSquare, Search, type LucideIcon } from "lucide-react";
+import { BookOpen, CalendarClock, FileText, KeyRound, LayoutGrid, MessagesSquare, Search, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import { PanicButton } from "@/components/privacy/PanicButton";
 import s from "./Island.module.css";
 
@@ -18,7 +18,7 @@ export interface IslandItem {
 
 /** Items of the mobile island per cabinet (4–5 key places). */
 export function islandItems(
-  role: "client" | "psychologist" | "admin",
+  role: "client" | "psychologist" | "admin" | "business",
   isActive: (href: string, also?: string[]) => boolean,
   unread: number,
   avatar: ReactNode,
@@ -48,6 +48,14 @@ export function islandItems(
         art: avatar,
         active: isActive("/pro/profile", ["/pro/earnings", "/pro/check", "/pro/avatar"]),
       },
+    ];
+  }
+  if (role === "business") {
+    return [
+      { href: "/business/portal", label: "Сводка", icon: LayoutGrid, active: isActive("/business/portal") },
+      { href: "/business/portal/codes", label: "Коды", icon: KeyRound, active: isActive("/business/portal/codes") },
+      { href: "/business/portal/program", label: "Программа", icon: SlidersHorizontal, active: isActive("/business/portal/program") },
+      { href: "/business/portal/documents", label: "Документы", icon: FileText, active: isActive("/business/portal/documents", ["/business/portal/support"]) },
     ];
   }
   return [];

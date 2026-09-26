@@ -76,6 +76,9 @@ PERMISSIONS: dict[str, frozenset[str]] = {
     # Финансы: балансы (только псевдонимы), выплаты, возвраты, подарочные коды, сверка
     "finance.view": frozenset({OWNER, ADMIN}),
     "finance.manage": frozenset({OWNER, ADMIN}),
+    # Программы для компаний (B2B): компании, бюджеты, коды, заявки. Данных сотрудников нет ни у кого.
+    "business.view": frozenset({OWNER, ADMIN}),
+    "business.manage": frozenset({OWNER, ADMIN}),
     # Персонал
     "staff.view": frozenset({OWNER, ADMIN}),
     "staff.manage": frozenset({OWNER, ADMIN}),
@@ -106,6 +109,8 @@ PERMISSION_LABELS = {
     "lab.use": "Лаборатория: тестовые звонки и аватары",
     "finance.view": "Финансы: просмотр",
     "finance.manage": "Финансы: выплаты, возвраты, коды",
+    "business.view": "Компании (B2B): просмотр",
+    "business.manage": "Компании (B2B): бюджеты, программы, HR-доступы",
     "staff.view": "Список сотрудников",
     "staff.manage": "Управление сотрудниками",
 }

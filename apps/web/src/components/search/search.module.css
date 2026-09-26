@@ -261,6 +261,37 @@
 .pillClear:hover {
   background: color-mix(in srgb, var(--c-primary) 22%, transparent);
 }
+/* H1: on/off filter pill («Знакомство 15 мин») */
+.pillToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--c-raised);
+  color: var(--c-muted);
+  font: inherit;
+  font-size: var(--t-13);
+  font-weight: 550;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur), color var(--dur);
+}
+.pillToggle:hover {
+  background: var(--c-raised-2);
+  color: var(--c-text);
+}
+.pillToggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+.pillToggle[aria-pressed="true"] {
+  background: var(--c-primary-soft);
+  color: var(--c-primary-ink);
+  font-weight: 600;
+}
 
 /* ── Results ──────────────────────────────────────────────────────────────── */
 .resultsHead {
@@ -626,4 +657,37 @@
   .closeBtn:hover {
     transform: none;
   }
+}
+
+/* H1: link to the matching quiz inside the palette */
+.quizLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--a-lilac-soft);
+  color: var(--c-text);
+  font: inherit;
+  font-size: var(--t-13);
+  text-align: left;
+  cursor: pointer;
+  transition: filter var(--dur);
+}
+.quizLink strong {
+  color: var(--a-lilac-ink);
+  font-weight: 650;
+}
+.quizLink svg {
+  flex: none;
+  color: var(--a-lilac-ink);
+}
+.quizLink:hover {
+  filter: brightness(1.06);
+}
+.quizLink:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
 }

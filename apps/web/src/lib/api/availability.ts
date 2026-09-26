@@ -31,6 +31,11 @@ export interface AvailabilitySettings {
   start_step_minutes: number;
   hourly_rate_rub: number;
   prices: DurationPrice[];
+  /** H1: «Знакомство, 15 минут» — off by default */
+  intro_enabled: boolean;
+  intro_price_rub: number;
+  intro_minutes: number;
+  intro_max_price_rub: number;
   platform_fee_percent: number;
   templates: WeeklyTemplate[];
   options: {
@@ -54,6 +59,8 @@ export type AvailabilityUpdate = Partial<
     | "horizon_days"
     | "start_step_minutes"
     | "hourly_rate_rub"
+    | "intro_enabled"
+    | "intro_price_rub"
     | "templates"
   >
 >;
@@ -86,7 +93,19 @@ export interface AvailableStarts {
   durations: DurationPrice[];
   horizon_until: string;
   starts: string[];
+  intro?: IntroInfo;
 }
+
+/** «Знакомство, 15 минут»: a specialist may offer one short first call per client (own price, may be free). */
+export interface IntroInfo {
+  enabled: boolean;
+  minutes: number;
+  price_rub: number;
+  /** the current client already has (or had) an intro with this specialist */
+  used: boolean;
+}
+
+export const INTRO_MINUTES = 15;
 
 /** Booking info embedded into the public psychologist card. */
 export interface BookingInfo {
@@ -94,6 +113,7 @@ export interface BookingInfo {
   min_duration: number;
   max_duration: number;
   durations: DurationPrice[];
+  intro?: IntroInfo;
 }
 
 export const availabilityApi = {

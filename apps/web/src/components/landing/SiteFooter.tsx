@@ -41,6 +41,20 @@ export function SiteFooter() {
             </ul>
           </div>
           <div className={s.footerCol}>
+            <h3>Компаниям</h3>
+            <ul>
+              <li>
+                <Link href="/business">Для компаний</Link>
+              </li>
+              <li>
+                <Link href="/business#calc">Рассчитать стоимость</Link>
+              </li>
+              <li>
+                <Link href="/login">Вход для HR</Link>
+              </li>
+            </ul>
+          </div>
+          <div className={s.footerCol}>
             <h3>Полезное</h3>
             <ul>
               <li>

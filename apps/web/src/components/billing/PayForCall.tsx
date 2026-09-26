@@ -51,7 +51,9 @@ export function PayForCall({
 
   const amount = call?.amount_kopecks ?? Math.round(amountRub * 100);
   const balance = call?.balance_kopecks ?? summary?.balance_kopecks ?? 0;
-  const shortfall = Math.max(0, amount - balance);
+  const company = call?.company_kopecks ?? 0;
+  const personal = amount - company;
+  const shortfall = Math.max(0, personal - balance);
 
   const pay = async () => {
     setBusy(true);
@@ -114,6 +116,12 @@ export function PayForCall({
           <dt>Стоимость созвона</dt>
           <dd>{rubK(amount)}</dd>
         </div>
+        {company > 0 && (
+          <div className={s.ok}>
+            <dt>Оплатит программа компании</dt>
+            <dd>{rubK(company)}</dd>
+          </div>
+        )}
         <div>
           <dt>На балансе</dt>
           <dd>{rubK(balance)}</dd>
@@ -126,7 +134,7 @@ export function PayForCall({
         ) : (
           <div className={s.ok}>
             <dt>Останется после оплаты</dt>
-            <dd>{rubK(balance - amount)}</dd>
+            <dd>{rubK(balance - personal)}</dd>
           </div>
         )}
       </dl>
@@ -147,7 +155,7 @@ export function PayForCall({
         )
       ) : (
         <Button variant="primary" size="lg" block loading={busy} icon={<Wallet size={18} />} onClick={pay}>
-          Оплатить с баланса
+          {personal <= 0 ? "Оплатить по программе компании" : "Оплатить с баланса"}
         </Button>
       )}
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronRight, Leaf, Search, Wind } from "lucide-react";
+import { Check, ChevronRight, Leaf, ListChecks, Search, Wind } from "lucide-react";
 import { Badge, Button, Card, CardHead, CollapsibleCard } from "@/ui";
 import { WithRail } from "@/components/shell/AppShell";
 import { useAuth } from "@/lib/auth/store";
@@ -91,6 +91,13 @@ export default function ClientHome() {
             <SearchTrigger variant="white" size="lg" icon={<Search size={18} strokeWidth={2} />}>
               Найти специалиста
             </SearchTrigger>
+            {/* H1: new people get a gentle way in — the matching quiz */}
+            {!dialogs.loading && !hasAny && (
+              <Link href="/app/match" className={s.heroLink}>
+                <ListChecks size={18} strokeWidth={1.8} aria-hidden />
+                Подобрать по анкете
+              </Link>
+            )}
             <Link href="/app/practices/dyhanie-4-6" className={s.heroLink}>
               <Wind size={18} strokeWidth={1.8} aria-hidden />
               Дыхательная пауза

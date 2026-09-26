@@ -6,7 +6,7 @@
  * restyled as a pill; a set filter gets a soft accent and its own clear button.
  */
 import type { ReactNode } from "react";
-import { Banknote, Clock3, GraduationCap, Hourglass, Languages, MessageCircleHeart, Sparkles, UserRound, X } from "lucide-react";
+import { Banknote, Clock3, Handshake, GraduationCap, Hourglass, Languages, MessageCircleHeart, Sparkles, UserRound, X } from "lucide-react";
 import { Select, type SelectOption } from "@/ui";
 import { durationLabel } from "@/lib/api/availability";
 import { plural } from "@/lib/format";
@@ -159,6 +159,20 @@ export function FilterBar({
           value={value.gender}
           onChange={(v) => set("gender", v as GenderFilter | undefined)}
         />
+      )}
+      {(facets?.intro ?? 0) > 0 && (
+        // H1: «Знакомство, 15 минут» — a simple on/off pill
+        <button
+          type="button"
+          className={s.pillToggle}
+          aria-pressed={!!value.intro}
+          title="Специалисты, у которых можно записаться на короткое знакомство"
+          onClick={() => set("intro", value.intro ? undefined : true)}
+        >
+          <Handshake {...ic} />
+          Знакомство 15 мин
+          {value.intro && <X size={13} strokeWidth={2.2} aria-hidden />}
+        </button>
       )}
       {languages.length > 1 && (
         <Pill

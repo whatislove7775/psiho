@@ -95,6 +95,7 @@ class Query:
     min_experience: int | None = None
     gender: str = ""
     language: str = ""
+    intro: bool = False  # H1: только те, кто проводит «Знакомство, 15 минут»
     sort: str = "relevance"
     tz: ZoneInfo | None = None
 
@@ -105,7 +106,7 @@ class Query:
     @property
     def is_empty(self) -> bool:
         return not (self.q or self.topics or self.approach or self.max_rate or self.when or self.duration
-                    or self.min_experience or self.gender or self.language)
+                    or self.min_experience or self.gender or self.language or self.intro)
 
 
 def _int(params, name, lo=0, hi=1_000_000) -> int | None:
@@ -162,6 +163,7 @@ def parse(params) -> Query:
         min_experience=_int(params, "min_experience", 0, 80),
         gender=gender,
         language=(params.get("language") or "").strip()[:40],
+        intro=(params.get("intro") or "").strip().lower() in ("1", "true", "yes"),
         sort=sort,
         tz=tz,
     )
@@ -265,6 +267,8 @@ def search(profiles, query: Query, now: datetime | None = None) -> list[Hit]:
     kept: list[Hit] = []
     for h in hits:
         plan = plans[h.profile.id]
+        if query.intro and not plan.settings.intro_enabled:
+            continue
         if query.duration and query.duration not in plan.durations:
             continue
         h.price = engine.round_price(plan.settings.hourly_rate_rub, query.duration or plan.durations[0])
@@ -315,6 +319,7 @@ def facets(profiles) -> dict:
     durations: set[int] = set()
     rates: list[int] = []
     genders: Counter = Counter()
+    intro = 0
     for p in profiles:
         sessions = getattr(p, "completed_sessions_count", 0) or 0
         for s in p.specializations or []:
@@ -329,6 +334,7 @@ def facets(profiles) -> dict:
             genders[p.gender] += 1
         st = prefetched.get(p.id) or services.get_settings(p)
         durations.update(services.allowed_durations(st))
+        intro += 1 if st.intro_enabled else 0
         rates.append(int(p.session_rate_rub or 0))
 
     curated = [fold(c) for c in CURATED if fold(c) in topic_weight]
@@ -345,6 +351,7 @@ def facets(profiles) -> dict:
         "genders": [{"value": g, "count": genders[g]} for g in GENDERS if genders[g]],
         "price": {"min": min(rates, default=0), "max": max(rates, default=0)},
         "when": [{"value": k, "label": v} for k, v in WHEN.items()],
+        "intro": intro,  # сколько специалистов проводят «Знакомство, 15 минут»
     }
 
 

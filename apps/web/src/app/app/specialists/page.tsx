@@ -3,7 +3,7 @@
 import { RatingPill } from "@/components/reviews/ReviewBits";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowDownUp, CalendarClock, Search, SearchX, X } from "lucide-react";
+import { ArrowDownUp, CalendarClock, ListChecks, Search, SearchX, X } from "lucide-react";
 import { topicTone } from "@/lib/topicTone";
 import { Badge, Button, Card, EmptyState, Select, Skeleton } from "@/ui";
 import { PageHeader } from "@/components/shell/AppShell";
@@ -22,6 +22,7 @@ import { plural, rub, when } from "@/lib/format";
 import { useLoad } from "@/components/client/useLoad";
 import { ErrorBlock } from "@/components/client/ClientBits";
 import { FilterBar } from "@/components/search/FilterBar";
+import { IntroChip } from "@/components/matching/IntroChip";
 import s from "./specialists.module.css";
 import { EmptyArt } from "@/components/illustrations";
 
@@ -103,6 +104,12 @@ function Specialists() {
       <PageHeader
         title="Специалисты"
         sub="Каждый психолог прошёл проверку диплома и опыта. Выберите того, чей подход вам откликается."
+        action={
+          // H1: quiz-based matching
+          <Button variant="soft" size="sm" href="/app/match" icon={<ListChecks size={16} strokeWidth={1.8} />}>
+            Подобрать по анкете
+          </Button>
+        }
       />
 
       <Card as="section" className={s.filters}>
@@ -216,6 +223,7 @@ function Specialists() {
                     {plural(p.experience_years, "год", "года", "лет")}
                   </span>
                   <RatingPill rating={p.rating} count={p.reviews_count} />
+                  <IntroChip psy={p} />
                 </div>
                 <p className={s.bio}>{p.bio}</p>
                 <div className={s.badges}>

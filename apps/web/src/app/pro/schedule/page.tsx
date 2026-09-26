@@ -20,7 +20,7 @@ import {
 import { WeekTimeline } from "@/components/pro/availability/WeekTimeline";
 import { RangesEditor } from "@/components/pro/availability/RangesEditor";
 import { OverridesCalendar } from "@/components/pro/availability/OverridesCalendar";
-import { PriceCard, SessionRules, utcOffset, zoneName, type RulesDraft } from "@/components/pro/availability/BookingRules";
+import { IntroCard, PriceCard, SessionRules, utcOffset, zoneName, type RulesDraft } from "@/components/pro/availability/BookingRules";
 import { availabilityApi, durationLabel, type AvailabilitySettings } from "@/lib/api/availability";
 import { plural, WEEKDAYS, WEEKDAYS_SHORT } from "@/lib/format";
 import s from "@/components/pro/pro.module.css";
@@ -61,6 +61,8 @@ function fromServer(a: AvailabilitySettings): Draft {
       horizon_days: a.horizon_days,
       start_step_minutes: a.start_step_minutes,
       hourly_rate_rub: a.hourly_rate_rub,
+      intro_enabled: !!a.intro_enabled,
+      intro_price_rub: a.intro_price_rub ?? 0,
     },
     templates,
   };
@@ -164,9 +166,13 @@ export default function SchedulePage() {
       : null;
   const priceError =
     draft && (draft.rules.hourly_rate_rub < 500 || draft.rules.hourly_rate_rub > 200000) ? "От 500 до 200 000 ₽ за час" : null;
+  const introMax = server?.intro_max_price_rub ?? 3000;
+  const introError =
+    draft && draft.rules.intro_enabled && draft.rules.intro_price_rub > introMax ? `Не больше ${introMax} ₽` : null;
   const hasErrors =
     allErrors ||
     !!priceError ||
+    !!introError ||
     (draft?.templates.some((t) => t.valid_from && t.valid_until && t.valid_until < t.valid_from) ?? false);
   const dirty = !!draft && !!saved && keyOf(draft) !== keyOf(saved);
 
@@ -415,6 +421,12 @@ export default function SchedulePage() {
                 draft={draft.rules}
                 feePercent={server.platform_fee_percent}
                 error={priceError}
+                onChange={(p) => edit((d) => Object.assign(d.rules, p))}
+              />
+              <IntroCard
+                draft={draft.rules}
+                maxPrice={introMax}
+                error={introError}
                 onChange={(p) => edit((d) => Object.assign(d.rules, p))}
               />
             </>

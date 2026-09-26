@@ -41,9 +41,14 @@ export function SessionSteps() {
               Как проходит созвон
             </h2>
           </div>
-          <Button href="/start" variant="primary">
-            Начать анонимно
-          </Button>
+          <div className={s.howActions}>
+            <Button href="/match" variant="secondary">
+              Подобрать по анкете
+            </Button>
+            <Button href="/start" variant="primary">
+              Начать анонимно
+            </Button>
+          </div>
         </div>
         <ol className={s.steps}>
           {STEPS.map((st, i) => (

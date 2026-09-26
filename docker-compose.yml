@@ -195,7 +195,7 @@ services:
       - BILLING_UNPAID_TTL_MINUTES
       - BILLING_SETTLE_GRACE_MINUTES
     command: >
-      sh -c "while :; do /app/.venv/bin/python manage.py purge_chats; /app/.venv/bin/python manage.py billing_sweep; sleep 300; done"
+      sh -c "while :; do /app/.venv/bin/python manage.py purge_chats; /app/.venv/bin/python manage.py billing_sweep; /app/.venv/bin/python manage.py circles_sweep; sleep 300; done"
     depends_on:
       api:
         condition: service_healthy

@@ -72,5 +72,6 @@ export const useAuth = create<AuthState>((set, get) => ({
 export function homeFor(role: Role | undefined): string {
   if (role === "psychologist") return "/pro";
   if (role === "admin") return "/admin";
+  if (role === "business") return "/business/portal";
   return "/app";
 }

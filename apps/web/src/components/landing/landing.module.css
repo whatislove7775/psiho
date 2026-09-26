@@ -862,7 +862,7 @@
 
 .footerGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.4fr) repeat(5, minmax(0, 1fr));
   gap: 32px;
 }
 
@@ -1133,4 +1133,46 @@
 }
 .footerCol h3 a {
   color: inherit;
+}
+
+/* H1: «Подберём психолога по анкете» under the hero CTAs */
+.heroQuiz {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  align-self: flex-start;
+  padding: 10px 16px;
+  border-radius: var(--r-pill);
+  background: var(--a-lilac-soft);
+  color: var(--c-text);
+  font-size: var(--t-15);
+  line-height: 1.35;
+  text-decoration: none;
+  transition: transform var(--dur) var(--ease-bounce), filter var(--dur);
+}
+.heroQuiz strong {
+  color: var(--a-lilac-ink);
+  font-weight: 650;
+}
+.heroQuiz svg {
+  flex: none;
+  color: var(--a-lilac-ink);
+}
+.heroQuiz:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+.heroQuiz:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+@media (prefers-reduced-motion: reduce) {
+  .heroQuiz {
+    transition: none;
+  }
+}
+.howActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }

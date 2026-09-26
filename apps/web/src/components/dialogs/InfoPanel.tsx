@@ -78,6 +78,7 @@ export function DialogSummary({ item, detail }: { item: DialogItem; detail: Dial
   let main: string;
   if (call) {
     kicker = live ? "Созвон идёт" : call.status === "awaiting_payment" ? "Созвон ждёт оплаты" : "Ближайший созвон";
+    if (call.is_intro) kicker = live ? "Знакомство идёт" : call.status === "awaiting_payment" ? "Знакомство ждёт оплаты" : "Знакомство, 15 минут";
     main = live
       ? range(call.scheduled_at, call.duration_minutes)
       : `${weekdayDay(call.scheduled_at)}, ${range(call.scheduled_at, call.duration_minutes)}`;
