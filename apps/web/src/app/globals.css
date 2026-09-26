@@ -116,7 +116,7 @@ html.theme-swap *::after {
   transition: none !important;
 }
 
-:focus-visible {
+:focus-visible:not(input):not(textarea):not(select) {
   outline: none;
   box-shadow: var(--focus);
   border-radius: 10px;
@@ -127,8 +127,7 @@ html.theme-swap *::after {
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  box-shadow: none;
-  border-radius: inherit;
+  outline: none;
 }
 
 ::selection {
