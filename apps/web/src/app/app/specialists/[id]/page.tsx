@@ -196,13 +196,6 @@ export default function SpecialistProfile() {
                 <p>{p.languages.join(", ")}</p>
               </div>
             )}
-            <div className={s.section}>
-              <h2>Как пройдёт встреча</h2>
-              <p>
-                Сначала можно просто написать специалисту — созвон назначается прямо в диалоге. Видеосвязь идёт напрямую и зашифрована.
-                Специалист видит ваш аватар и слышит голос, но не знает, кто вы.
-              </p>
-            </div>
           </Card>
         )}
         {p && <PublicCredentials psychologistId={p.id} />}

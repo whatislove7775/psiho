@@ -59,7 +59,7 @@ function SessionsPage() {
 
   return (
     <>
-      <PageHeader title="Созвоны" sub="Все созвоны клиентов. Содержание созвонов не хранится: видны только время, статус и оплата." />
+      <PageHeader title="Созвоны" />
       <div className={s.tabsRow}>
         <Segmented<Filter>
           ariaLabel="Статус созвонов"

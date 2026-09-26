@@ -1,14 +1,13 @@
 "use client";
 
+import { HelpLine } from "@/components/client/HelpLine";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle,
-  Camera,
   CalendarDays,
   Clock,
   Handshake,
-  Headphones,
   Wallet,
 } from "lucide-react";
 import { Button, Modal, Skeleton, useToast } from "@/ui";
@@ -352,26 +351,10 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
                 <dd>{rub(price)}</dd>
               </div>
             </dl>
-            {isIntro && (
-              <p className={s.note}>
-                Короткий созвон, чтобы понять, комфортно ли вам с этим специалистом. Знакомство
-                бывает одно на специалиста.
-              </p>
-            )}
             <p className={s.note}>
-              Созвон появится в вашем диалоге со специалистом. Бесплатно отменить или
-              перенести его можно за 24 часа до начала.
+              {isIntro ? "Знакомство бывает одно на специалиста. " : ""}Отменить или перенести бесплатно можно за 24 часа.
             </p>
-            <div className={s.need}>
-              <span>
-                <Camera size={16} strokeWidth={1.8} aria-hidden /> Камера, чтобы
-                аватар повторял мимику
-              </span>
-              <span>
-                <Headphones size={16} strokeWidth={1.8} aria-hidden /> Тихое
-                место и наушники
-              </span>
-            </div>
+            <HelpLine />
             <div className={s.actions}>
               <Button
                 variant="secondary"

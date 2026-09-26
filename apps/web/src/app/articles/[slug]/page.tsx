@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarCheck, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 import { ArticleCard, PracticeCard } from "@/components/content/Cards";
 import { EvidenceBadge, KeyFacts, SeekHelp, Sources } from "@/components/content/Evidence";
 import { Markdown } from "@/components/content/Markdown";
@@ -64,10 +64,6 @@ const PRACTICE_FOR_TOPIC: Record<string, string[]> = {
 function rank(kinds: string[], kind: string) {
   const i = kinds.indexOf(kind);
   return i === -1 ? kinds.length : i;
-}
-
-function dateRu(iso?: string | null) {
-  return iso ? new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" }) : "";
 }
 
 export default async function ArticlePage({ params }: Props) {
@@ -151,14 +147,6 @@ export default async function ArticlePage({ params }: Props) {
             </div>
             <h1 className={s.title}>{a.title}</h1>
             {a.summary && <p className={s.lead}>{a.summary}</p>}
-            {a.reviewed_at && (
-              <p className={s.meta}>
-                <span>
-                  <CalendarCheck size={14} strokeWidth={1.8} aria-hidden />
-                  Проверено редакцией <time dateTime={a.reviewed_at}>{dateRu(a.reviewed_at)}</time>
-                </span>
-              </p>
-            )}
           </header>
 
           <KeyFacts facts={a.key_facts} />
@@ -172,10 +160,6 @@ export default async function ArticlePage({ params }: Props) {
             }
           />
           <Sources sources={sources} level={a.evidence_level} reviewedAt={a.reviewed_at} />
-          <p className={s.disclaimer}>
-            {a.author_name ? `${a.author_name}. ` : ""}
-            Статья помогает сориентироваться, но не заменяет консультацию специалиста и не является диагнозом.
-          </p>
         </article>
 
         <aside className={s.aside} aria-label="Ещё по теме">

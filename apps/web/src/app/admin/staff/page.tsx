@@ -82,7 +82,6 @@ function StaffPage() {
     <>
       <PageHeader
         title="Сотрудники"
-        sub="Кто работает в консоли и что может. Новый сотрудник получает логин и одноразовый пароль, который обязан сменить при первом входе."
         action={
           canManage ? (
             <Button variant="primary" icon={<UserPlus size={18} />} onClick={() => setInviting(true)}>

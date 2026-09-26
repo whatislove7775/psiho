@@ -6,7 +6,6 @@ import {
   ChevronDown,
   Headphones,
   Lamp,
-  LifeBuoy,
   ShieldCheck,
   Sparkles,
   Video,
@@ -181,24 +180,6 @@ export function NextSessionCard({
           Все диалоги
         </Link>
       )}
-    </section>
-  );
-}
-
-/** Always-visible, quiet pointer to emergency help. */
-export function SupportCard() {
-  return (
-    <section className={s.support} aria-label="Срочная помощь">
-      <span className={s.supportIcon} aria-hidden>
-        <LifeBuoy size={20} strokeWidth={1.8} />
-      </span>
-      <div>
-        <strong>Если сейчас очень тяжело</strong>
-        <p>
-          Онлайн-созвон не заменяет экстренную помощь. Если есть угроза жизни,
-          позвоните <a href="tel:112">112</a>, это бесплатно и круглосуточно.
-        </p>
-      </div>
     </section>
   );
 }

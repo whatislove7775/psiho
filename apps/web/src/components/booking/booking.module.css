@@ -365,3 +365,21 @@
 .introOpt[aria-pressed="true"] svg {
   color: currentColor;
 }
+
+/* ROUND 7: phones — durations scroll sideways instead of wrapping into rows */
+@media (max-width: 560px) {
+  .durs {
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-inline: calc(var(--s-5) * -1);
+    padding-inline: var(--s-5);
+  }
+  .durs::-webkit-scrollbar {
+    display: none;
+  }
+  .durs > * {
+    flex: none;
+    min-width: 88px;
+  }
+}

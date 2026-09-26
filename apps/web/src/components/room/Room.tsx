@@ -14,6 +14,7 @@
  * With `labToken` (a signed invite from /admin/lab) it opens a staff test
  * room instead: no login, no booking, the side comes from the token.
  */
+import { HelpLine } from "@/components/client/HelpLine";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -1105,7 +1106,8 @@ function EndScreen({
           )}
           {completed && <p className={s.thanks}>Звонок отмечен проведённым</p>}
         </div>
-        <p className={s.note}>Видео и звук не записывались. Заметки хранятся только в этом браузере и удалятся сами через 24 часа.</p>
+        <p className={s.note}>Видео и звук не записывались.</p>
+        {!isPro && !isLab && <HelpLine />}
       </div>
     </div>
   );

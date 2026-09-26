@@ -26,7 +26,7 @@ function Articles() {
 
   return (
     <>
-      <PageHeader title="Полезное" sub="Статьи о тревоге, отношениях, сне и о том, как устроена терапия. И короткие практики на каждый день." />
+      <PageHeader title="Полезное" />
       <UsefulTabs />
 
       <div className={s.chips} role="group" aria-label="Темы статей">
@@ -56,7 +56,7 @@ function Articles() {
           text="Статьи на эту тему скоро появятся. Загляните в другие разделы."
         />
       ) : (
-        <div className={c.articleGrid} style={{ opacity: articles.loading ? 0.6 : 1 }}>
+        <div className={`${c.articleGrid} ${c.articleRows}`} style={{ opacity: articles.loading ? 0.6 : 1 }}>
           {(articles.data ?? []).map((a) => (
             <ArticleCard key={a.id} a={a} />
           ))}

@@ -1,0 +1,14 @@
+.line {
+  font-size: var(--t-12);
+  line-height: 1.45;
+  color: var(--c-faint);
+}
+.line a {
+  color: var(--c-muted);
+  text-decoration: underline;
+  text-decoration-color: var(--c-line-strong);
+  text-underline-offset: 2px;
+}
+.line a:hover {
+  color: var(--c-text);
+}

@@ -1,24 +1,8 @@
 import type { Metadata } from "next";
-import {
-  BarChart3,
-  Building2,
-  CalendarCheck2,
-  Check,
-  EyeOff,
-  FileText,
-  HeartHandshake,
-  KeyRound,
-  Lock,
-  Scale,
-  ShieldCheck,
-  UserX,
-  Wallet,
-  X,
-} from "lucide-react";
+import { BarChart3, Check, EyeOff, FileText, Lock, UserX, X } from "lucide-react";
 import { SiteFooter } from "@/components/landing/SiteFooter";
 import { SiteHeader } from "@/components/landing/SiteHeader";
 import { JsonLd } from "@/components/public/JsonLd";
-import { ShieldFriend, Together } from "@/components/illustrations";
 import { BizFaq } from "@/components/business/landing/BizFaq";
 import { LeadForm } from "@/components/business/landing/LeadForm";
 import { bizFaqLd } from "@/components/business/landing/content";
@@ -74,9 +58,7 @@ export default function BusinessLanding() {
         {/* 1. Hero */}
         <section className={`${l.wrap} ${s.hero}`} aria-labelledby="biz-title">
           <div className={s.heroText}>
-            <span className={s.kicker}>
-              <Building2 size={16} aria-hidden /> Для компаний
-            </span>
+            <p className={l.kicker}>Для компаний</p>
             <h1 id="biz-title" className={s.title}>
               Психолог для ваших сотрудников. <span className={s.titleAccent}>Полностью анонимно.</span>
             </h1>
@@ -135,9 +117,6 @@ export default function BusinessLanding() {
               </div>
               <div className={s.mockNote}>Пример интерфейса, цифры условные</div>
             </div>
-            <div className={s.heroArt}>
-              <ShieldFriend />
-            </div>
           </div>
         </section>
 
@@ -193,23 +172,14 @@ export default function BusinessLanding() {
           </div>
           <div className={s.cards}>
             <div className={s.card}>
-              <span className={`${s.cardIcon} ${s.tLilac}`}>
-                <HeartHandshake size={22} />
-              </span>
               <h3>Помощь до выгорания</h3>
               <p>Когда не нужно объяснять руководителю и платить из своего кармана, к специалисту обращаются раньше, а не в кризисе.</p>
             </div>
             <div className={s.card}>
-              <span className={`${s.cardIcon} ${s.tMint}`}>
-                <ShieldCheck size={22} />
-              </span>
               <h3>Без стигмы</h3>
               <p>Ни почты, ни телефона, ни лица на камере: вместо него 3D-аватар. Сотрудник уверен, что об обращении не узнают.</p>
             </div>
             <div className={s.card}>
-              <span className={`${s.cardIcon} ${s.tSun}`}>
-                <Scale size={22} />
-              </span>
               <h3>Предсказуемый бюджет</h3>
               <p>Лимит на человека за месяц, квартал или год. Списываются только состоявшиеся созвоны, отмены возвращаются.</p>
             </div>
@@ -223,28 +193,19 @@ export default function BusinessLanding() {
               Как это работает
             </h2>
           </div>
-          <ol className={s.steps}>
-            <li className={s.step}>
-              <span className={s.stepNum}>1</span>
-              <span className={`${s.cardIcon} ${s.tCyan}`}>
-                <Wallet size={22} />
-              </span>
+          <ol className={l.steps}>
+            <li className={l.step}>
+              <span className={l.stepNum} aria-hidden>1</span>
               <h3>Компания пополняет бюджет</h3>
               <p>Подписываем договор, выставляем счёт. Вы задаёте лимит на сотрудника и что оплачивает программа.</p>
             </li>
-            <li className={s.step}>
-              <span className={s.stepNum}>2</span>
-              <span className={`${s.cardIcon} ${s.tCoral}`}>
-                <KeyRound size={22} />
-              </span>
+            <li className={l.step}>
+              <span className={l.stepNum} aria-hidden>2</span>
               <h3>HR раздаёт одноразовые коды</h3>
               <p>Выпускаете коды в кабинете и выгружаете в CSV. Раздаёте как удобно: в письме, в чате, на бумаге.</p>
             </li>
-            <li className={s.step}>
-              <span className={s.stepNum}>3</span>
-              <span className={`${s.cardIcon} ${s.tLilac}`}>
-                <CalendarCheck2 size={22} />
-              </span>
+            <li className={l.step}>
+              <span className={l.stepNum} aria-hidden>3</span>
               <h3>Сотрудник записывается анонимно</h3>
               <p>Вводит код в анонимном аккаунте, выбирает психолога — созвоны оплачиваются из программы, дальше при желании сам.</p>
             </li>
@@ -290,24 +251,23 @@ export default function BusinessLanding() {
               <p className={l.lead}>
                 Не нашли ответ? Напишите на <a href="mailto:b2b@aprosop.ru">b2b@aprosop.ru</a>.
               </p>
-              <Together className={s.faqArt} />
             </div>
             <BizFaq />
           </div>
         </section>
 
         {/* 7. CTA */}
-        <section className={`${l.wrap} ${l.section}`} aria-labelledby="biz-closing">
-          <div className={l.closing}>
-            <div>
-              <h2 id="biz-closing">Забота, о которой не нужно докладывать</h2>
-              <p>Запустим пилот за неделю: договор, счёт, коды для первого отдела.</p>
-            </div>
+        <section className={`${l.wrap} ${l.closing}`} aria-labelledby="biz-closing">
+          <div>
+            <h2 id="biz-closing">Забота, о которой не нужно докладывать</h2>
+            <p>Запустим пилот за неделю: договор, счёт, коды для первого отдела.</p>
+          </div>
+          <div>
             <div className={l.closingActions}>
               <Button href="#calc" variant="primary" size="lg">
                 Рассчитать для компании
               </Button>
-              <Button href="/login" variant="soft" size="lg">
+              <Button href="/login" variant="ghost" size="lg">
                 Вход для HR
               </Button>
             </div>

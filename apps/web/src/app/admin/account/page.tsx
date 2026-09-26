@@ -11,7 +11,7 @@ export default function AccountPage() {
   const { me, reload } = useStaff();
   return (
     <>
-      <PageHeader title="Мой доступ" sub="Роль, пароль и двухфакторная защита вашего служебного аккаунта." />
+      <PageHeader title="Мой доступ" />
       <div className={s.narrow}>
         <Card as="section">
           <CardHead title="Аккаунт" />

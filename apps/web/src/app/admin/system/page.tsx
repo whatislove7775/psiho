@@ -49,7 +49,6 @@ function SystemPage() {
     <>
       <PageHeader
         title="Система"
-        sub="Проверки выполняются при открытии страницы. Счётчик ошибок хранит только адрес и тип ошибки, без данных запросов."
         action={
           <Button variant="secondary" icon={<RefreshCw size={18} />} loading={busy} onClick={load}>
             Проверить снова

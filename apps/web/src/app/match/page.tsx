@@ -21,10 +21,7 @@ export default function PublicMatchPage() {
     <PublicShell narrow>
       <header className={s.head}>
         <h1 className={s.title}>Подберём психолога за пару минут</h1>
-        <p className={s.sub}>
-          Пять коротких вопросов — и вы увидите, кто подходит и почему. Без регистрации; ответы не уходят на сервер
-          дальше самого подбора.
-        </p>
+        <p className={s.sub}>Пять коротких вопросов — и вы увидите, кто подходит и почему. Без регистрации.</p>
       </header>
       <MatchQuiz mode="public" />
     </PublicShell>

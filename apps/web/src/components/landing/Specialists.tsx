@@ -1,19 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import { psychologistsApi } from "@/lib/api/endpoints";
 import type { PsychologistPublic } from "@/lib/api/types";
 import { plural, rub } from "@/lib/format";
-import { topicTone } from "@/lib/topicTone";
-import { Badge, Button, Skeleton } from "@/ui";
-import { SpecialistFriend } from "@/components/illustrations";
-import a from "./art.module.css";
+import { Skeleton } from "@/ui";
 import s from "./landing.module.css";
 
 type State = { kind: "loading" } | { kind: "ready"; items: PsychologistPublic[] } | { kind: "hidden" };
 
+/** Specialists: a horizontal scroller of compact cards (a grid row on desktop). */
 export function Specialists() {
   const [state, setState] = useState<State>({ kind: "loading" });
 
@@ -23,7 +22,7 @@ export function Specialists() {
       .list()
       .then((items) => {
         if (!alive) return;
-        const list = Array.isArray(items) ? items.slice(0, 4) : [];
+        const list = Array.isArray(items) ? items.slice(0, 8) : [];
         setState(list.length ? { kind: "ready", items: list } : { kind: "hidden" });
       })
       .catch(() => alive && setState({ kind: "hidden" }));
@@ -32,80 +31,45 @@ export function Specialists() {
     };
   }, []);
 
+  if (state.kind === "hidden") return null;
+
   return (
     <section id="specialists" className={`${s.wrap} ${s.section}`} aria-labelledby="specialists-title">
-      <div className={`${s.specs} ${state.kind === "hidden" ? s.specsSolo : ""}`}>
-        <div className={s.verifyCard}>
-          <h2 id="specialists-title">Каждого специалиста проверяем вручную</h2>
-          <p>
-            Профиль попадает в каталог только после того, как мы сами посмотрим образование и опыт. Специалист видит ваш
-            аватар и имя вроде «тихий-кит-4821», и больше ничего.
-          </p>
-          <ul className={s.verifyList}>
-            <li>
-              <Check size={18} strokeWidth={2} aria-hidden />
-              Образование и опыт работы
-            </li>
-            <li>
-              <Check size={18} strokeWidth={2} aria-hidden />
-              Подход и темы, с которыми работает
-            </li>
-            <li>
-              <Check size={18} strokeWidth={2} aria-hidden />
-              Цена созвона известна заранее
-            </li>
-          </ul>
-          <SpecialistFriend className={a.verifyArt} />
-          <Button href="/join" variant="white" className={s.verifyAction}>
-            Подать анкету специалиста
-          </Button>
+      <div className={s.sectionHead}>
+        <div>
+          <h2 id="specialists-title" className={s.sectionTitle}>
+            Специалисты
+          </h2>
+          <p className={s.sectionSub}>Каждого проверяем вручную. Они видят только ваш аватар и псевдоним.</p>
         </div>
-
-        {state.kind !== "hidden" && (
-          <div className={s.specList}>
-            <div className={s.specListHead}>
-              <h3>Сейчас принимают</h3>
-              <span>цена самого короткого созвона</span>
-            </div>
-            {state.kind === "loading"
-              ? [0, 1, 2].map((i) => (
-                  <div key={i} className={s.specRow} aria-hidden>
-                    <Skeleton width={64} height={64} radius={32} />
-                    <div style={{ display: "grid", gap: 8 }}>
-                      <Skeleton width="50%" height={18} />
-                      <Skeleton width="70%" height={14} />
-                    </div>
-                  </div>
-                ))
-              : state.items.map((p) => (
-                  <article key={p.id} className={s.specRow}>
-                    <SpecialistPhoto url={p.photo_url} name={p.display_name} size={64} alt="" />
-                    <div>
-                      <div className={s.specName}>{p.display_name}</div>
-                      <div className={s.specMeta}>
-                        {p.experience_years > 0
-                          ? `Опыт ${p.experience_years} ${plural(p.experience_years, "год", "года", "лет")}`
-                          : "Начинающий специалист"}
-                      </div>
-                      {p.specializations.length > 0 && (
-                        <div className={s.specTags}>
-                          {p.specializations.slice(0, 3).map((t) => (
-                            <Badge key={t} tone={topicTone(t)}>
-                              {t}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <div className={s.specRate}>
-                      {rub(p.session_rate_rub)}
-                      <small>за созвон</small>
-                    </div>
-                  </article>
-                ))}
-          </div>
-        )}
+        <Link href="/match" className={s.more}>
+          Подобрать по анкете
+          <ArrowRight size={16} strokeWidth={2} aria-hidden />
+        </Link>
       </div>
+      <ul className={s.scroller} aria-busy={state.kind === "loading"}>
+        {state.kind === "loading"
+          ? [0, 1, 2, 3].map((i) => (
+              <li key={i} className={s.specCard} aria-hidden>
+                <Skeleton width={56} height={56} radius={28} />
+                <Skeleton width="70%" height={16} />
+                <Skeleton width="50%" height={12} />
+              </li>
+            ))
+          : state.items.map((p) => (
+              <li key={p.id} className={s.specCard}>
+                <SpecialistPhoto url={p.photo_url} name={p.display_name} size={56} alt="" />
+                <div className={s.specName}>{p.display_name}</div>
+                <div className={s.specMeta}>
+                  {p.experience_years > 0
+                    ? `Опыт ${p.experience_years} ${plural(p.experience_years, "год", "года", "лет")}`
+                    : "Начинающий специалист"}
+                  {p.specializations[0] ? ` · ${p.specializations[0].toLowerCase()}` : ""}
+                </div>
+                <div className={s.specRate}>от {rub(p.session_rate_rub)}</div>
+              </li>
+            ))}
+      </ul>
     </section>
   );
 }

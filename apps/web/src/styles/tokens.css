@@ -3,18 +3,17 @@
 :root {
   color-scheme: dark;
 
-  /* Neutrals: a deep dusk indigo (not black) so the dark theme feels warm and alive
-     next to the logo gradient; panels are lifted a step with a violet tint. */
-  --c-page: #0f1027;
-  --c-panel: #1a1c3a;
-  --c-raised: #24274b;
-  --c-raised-2: #2e3259;
-  --c-line: rgba(186, 194, 255, 0.09);
-  --c-line-strong: rgba(186, 194, 255, 0.17);
+  /* Neutrals carry a faint indigo tint so they sit well next to the logo gradient. */
+  --c-page: #0a0a10;
+  --c-panel: #17171f;
+  --c-raised: #21212b;
+  --c-raised-2: #2b2b37;
+  --c-line: rgba(255, 255, 255, 0.07);
+  --c-line-strong: rgba(255, 255, 255, 0.13);
 
-  --c-text: #f5f5fb;
-  --c-muted: #a5a9cc;
-  --c-faint: #6c7199;
+  --c-text: #f4f4f8;
+  --c-muted: #9c9cab;
+  --c-faint: #5f5f6e;
 
   /* Brand: the logo tile gradient #7AA5FF → #3A6DF0 → #6A4FE8 (periwinkle blue → violet).
      --c-primary is the solid mid-tone for fills with white text (AA 5:1 with #fff);
@@ -72,10 +71,9 @@
   --g-primary-hover: linear-gradient(120deg, #5a7bf6 0%, #5f68f2 50%, #7657f0 100%);
   /* Soft glow blobs behind hero areas and page backgrounds. */
   --g-glow:
-    radial-gradient(40% 44% at 10% 6%, rgba(122, 165, 255, 0.24), transparent 70%),
-    radial-gradient(36% 42% at 94% 12%, rgba(126, 92, 255, 0.26), transparent 70%),
-    radial-gradient(30% 36% at 78% 98%, rgba(255, 159, 133, 0.12), transparent 70%),
-    radial-gradient(28% 34% at 18% 88%, rgba(111, 216, 242, 0.1), transparent 70%);
+    radial-gradient(38% 42% at 12% 8%, rgba(122, 165, 255, 0.16), transparent 70%),
+    radial-gradient(34% 40% at 92% 14%, rgba(106, 79, 232, 0.16), transparent 70%),
+    radial-gradient(30% 34% at 70% 96%, rgba(111, 216, 242, 0.06), transparent 70%);
   /* Crayon-like grain, layer it on top of gradients: background: var(--tex-grain), var(--g-accent). */
   --tex-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 
@@ -108,9 +106,9 @@
 
   --font: "Onest Variable", "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  --shadow-float: 0 18px 50px rgba(4, 4, 20, 0.5);
+  --shadow-float: 0 18px 50px rgba(0, 0, 0, 0.45);
   /* quiet lift for tier-2 cards (dark: a hairline light edge on top) */
-  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 2px rgba(4, 4, 20, 0.3);
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-primary: 0 10px 26px -10px rgba(98, 96, 255, 0.75);
   --focus: 0 0 0 3px rgba(132, 142, 255, 0.6);
 

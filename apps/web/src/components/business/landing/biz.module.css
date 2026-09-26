@@ -462,3 +462,43 @@
     font-size: 36px;
   }
 }
+
+/* ROUND 7: minimal mobile — decorative mock hidden, cards scroll sideways, calmer type. */
+@media (max-width: 720px) {
+  .hero {
+    padding-block: 20px 8px;
+    gap: 0;
+  }
+  .heroVisual {
+    display: none;
+  }
+  .title {
+    font-size: 34px;
+  }
+  .cards {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: 78%;
+    gap: 10px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    margin-inline: -20px;
+    padding-inline: 20px;
+    scroll-padding-inline: 20px;
+  }
+  .cards::-webkit-scrollbar {
+    display: none;
+  }
+  .card {
+    scroll-snap-align: start;
+    padding: 18px;
+  }
+  .compareCol {
+    padding: 18px;
+  }
+  .sectionHead {
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+}

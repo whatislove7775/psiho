@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Flag, MessageSquareHeart, PenLine } from "lucide-react";
-import { Badge, Button, Card, CardHead, EmptyState, Modal, Select, Skeleton, Textarea, useToast } from "@/ui";
-import { EmptyArt } from "@/components/illustrations";
+import { Flag, PenLine } from "lucide-react";
+import { Badge, Button, Card, CardHead, Modal, Select, Skeleton, Textarea, useToast } from "@/ui";
 import { useAuth } from "@/lib/auth/store";
 import { REPORT_REASONS, type ReportReason } from "@/lib/api/staff";
 import { monthLabel, ratingText, reviewsApi, type Review, type ReviewSummary } from "@/lib/api/reviews";
@@ -136,23 +135,14 @@ export function ReviewsSection({ psychologistId, name }: { psychologistId: numbe
   return (
     <Card as="section">
       <span id="reviews" style={{ display: "block", scrollMarginTop: 16 }} />
-      <CardHead title="Отзывы" sub="Оставляют только клиенты после состоявшегося созвона. Имена скрыты" action={writeBtn} />
+      <CardHead title="Отзывы" action={writeBtn} />
       {!data ? (
         <div style={{ display: "grid", gap: 12 }}>
           <Skeleton height={120} radius={18} />
           <Skeleton height={64} />
         </div>
       ) : data.summary.count === 0 ? (
-        <EmptyState
-          art={<EmptyArt scene="heart" />}
-          icon={<MessageSquareHeart size={22} />}
-          title="Отзывов пока нет"
-          text={
-            canReview.can
-              ? "Вы можете стать первым: расскажите, как прошли созвоны. Это поможет другим выбрать специалиста."
-              : "Отзывы появятся после первых созвонов. Их пишут только клиенты, которые действительно занимались с этим специалистом."
-          }
-        />
+        <p className={s.headNote}>Отзывов пока нет</p>
       ) : (
         <>
           <ReviewSummaryBlock summary={data.summary} />

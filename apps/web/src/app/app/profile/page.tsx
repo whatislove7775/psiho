@@ -2,21 +2,17 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { Camera, ChevronRight, ShieldCheck, Smile } from "lucide-react";
-import { Button, Card, CardHead, Skeleton, Stat } from "@/ui";
-import { WithRail } from "@/components/shell/AppShell";
+import { Camera, ChevronRight, ShieldCheck, Smile, Users, Wallet } from "lucide-react";
+import { Skeleton } from "@/ui";
 import { AvatarThumb } from "@/components/avatar/AvatarThumb";
 import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import { useAuth } from "@/lib/auth/store";
 import { sessionsApi } from "@/lib/api/endpoints";
-import { dayLabel, plural, time, untilLabel } from "@/lib/format";
+import { dayLabel, plural, time } from "@/lib/format";
 import { useLoad } from "@/components/client/useLoad";
 import { splitSessions } from "@/components/client/sessions";
 import { ErrorBlock } from "@/components/client/ClientBits";
-import { NextSessionCard, SupportCard } from "@/components/client/NextSessionCard";
 import s from "./profile.module.css";
-import { illSize, SpecialistFriend } from "@/components/illustrations";
-import { SearchTrigger } from "@/components/search/SpecialistSearch";
 
 export default function ClientProfile() {
   const user = useAuth((st) => st.user);
@@ -43,134 +39,97 @@ export default function ClientProfile() {
 
   if (!user) return null;
   const loading = sessions.loading && !sessions.data;
+  const talk = minutes < 120 ? `${minutes} мин` : `${hours.toLocaleString("ru-RU")} ч`;
 
   return (
-    <WithRail
-      rail={
-        <>
-          <NextSessionCard session={next} loading={loading} />
-          <SupportCard />
-        </>
-      }
-    >
-      <Card as="section" className={s.head}>
+    <div className={s.page}>
+      <section className={s.head}>
         <Link href="/app/avatar" className={s.avatar} aria-label="Изменить аватар">
-          <AvatarThumb config={user.avatar_config} seed={user.id} size={112} />
+          <AvatarThumb config={user.avatar_config} seed={user.id} size={64} />
         </Link>
         <div className={s.who}>
-          <span className={s.label}>Ваш псевдоним</span>
           <h1 className={s.alias}>{user.alias}</h1>
-          <span className={s.since}>На aprosop с {new Date(user.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" }).replace(" г.", "")}</span>
-          <div className={s.actions}>
-            <Button variant="secondary" size="sm" href="/app/avatar" icon={<Smile size={16} strokeWidth={1.8} />}>
-              Изменить аватар
-            </Button>
-            <Button variant="ghost" size="sm" href="/app/avatar/privacy" icon={<ShieldCheck size={16} strokeWidth={1.8} />}>
-              Приватность
-            </Button>
-          </div>
+          <span className={s.since}>
+            с {new Date(user.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" }).replace(" г.", "")}
+          </span>
         </div>
-      </Card>
+      </section>
 
       {sessions.error && <ErrorBlock message={sessions.error} onRetry={sessions.reload} />}
 
-      <div className={s.stats}>
-        {loading ? (
-          [0, 1, 2, 3].map((i) => (
-            <div key={i} className={s.statSkel}>
-              <Skeleton width="70%" height={14} />
-              <Skeleton width="50%" height={32} />
-              <Skeleton width="80%" height={12} />
-            </div>
-          ))
-        ) : (
-          <>
-            <Stat
-              label="Ближайший созвон"
-              value={next ? time(next.scheduled_at) : "Нет"}
-              note={next ? `${dayLabel(next.scheduled_at)}, ${untilLabel(next.scheduled_at)}` : "Запишитесь, когда будете готовы"}
-              tone={next?.can_join ? "success" : undefined}
-            />
-            <Stat
-              label="Всего созвонов"
-              value={held}
-              note={
-                upcoming.length
-                  ? `${upcoming.length} ${plural(upcoming.length, "предстоит", "предстоят", "предстоят")}`
-                  : "Пока ничего не запланировано"
-              }
-            />
-            <Stat
-              label="Проведено"
-              value={completed.length}
-              note={
-                completed.length
-                  ? minutes < 120
-                    ? `${minutes} ${plural(minutes, "минута", "минуты", "минут")} разговора`
-                    : `${hours.toLocaleString("ru-RU")} ${Number.isInteger(hours) ? plural(hours, "час", "часа", "часов") : "часа"} разговора`
-                  : "Первая встреча ещё впереди"
-              }
-            />
-            <Stat label="Мы знаем о вас" value="2" tone="success" note="Псевдоним и аватар. Больше ничего" />
-          </>
-        )}
-      </div>
-
-      <Card as="section">
-        <CardHead title="Ваши специалисты" sub="С кем вы уже встречались или записаны" />
-        {loading ? (
-          <Skeleton height={64} radius={18} />
-        ) : people.length === 0 ? (
-          <div className={s.empty}>
-            <SpecialistFriend className={illSize.xs} />
-            <p>Здесь появятся специалисты, с которыми у вас будут диалоги.</p>
-            <SearchTrigger variant="primary" size="sm">
-              Выбрать специалиста
-            </SearchTrigger>
+      <dl className={s.stats} aria-busy={loading || undefined}>
+        <div>
+          <dt>Созвонов</dt>
+          <dd>{loading ? "·" : held}</dd>
+        </div>
+        <div>
+          <dt>Проведено</dt>
+          <dd>{loading ? "·" : completed.length}</dd>
+        </div>
+        <div>
+          <dt>Разговора</dt>
+          <dd>{loading ? "·" : completed.length ? talk : "0"}</dd>
+        </div>
+        {next && (
+          <div>
+            <dt>Ближайший</dt>
+            <dd>
+              {time(next.scheduled_at)} <small>{dayLabel(next.scheduled_at)}</small>
+            </dd>
           </div>
-        ) : (
-          <ul className={s.people}>
-            {people.map((p) => (
-              <li key={p.id}>
-                <Link href={`/app/specialists/${p.id}`} className={s.person}>
-                  <SpecialistPhoto url={p.photo} name={p.name} size={44} />
-                  <span className={s.personText}>
-                    <strong>{p.name}</strong>
-                    <span>
-                      {p.count} {plural(p.count, "созвон", "созвона", "созвонов")}
-                    </span>
-                  </span>
-                  <ChevronRight size={18} strokeWidth={1.8} className={s.go} aria-hidden />
-                </Link>
-              </li>
-            ))}
-          </ul>
         )}
-      </Card>
+      </dl>
 
-      <Card as="section">
-        <CardHead title="Настройки" />
-        <ul className={s.people}>
+      {(loading || people.length > 0) && (
+        <section className={s.section}>
+          <h2 className={s.sectionTitle}>Ваши специалисты</h2>
+          {loading ? (
+            <Skeleton height={56} radius={16} />
+          ) : (
+            <ul className={s.list}>
+              {people.map((p) => (
+                <li key={p.id}>
+                  <Link href={`/app/specialists/${p.id}`} className={s.row}>
+                    <SpecialistPhoto url={p.photo} name={p.name} size={36} />
+                    <span className={s.rowText}>
+                      <strong>{p.name}</strong>
+                      <span>
+                        {p.count} {plural(p.count, "созвон", "созвона", "созвонов")}
+                      </span>
+                    </span>
+                    <ChevronRight size={18} strokeWidth={1.8} className={s.go} aria-hidden />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
+      <section className={s.section}>
+        <h2 className={s.sectionTitle}>Настройки</h2>
+        <ul className={s.list}>
           {[
-            { href: "/app/avatar/privacy", icon: ShieldCheck, title: "Приватность и безопасность", text: "Пароль, ключ восстановления, удаление аккаунта" },
-            { href: "/app/avatar", icon: Smile, title: "Мой аватар", text: "Как вас видит специалист" },
-            { href: "/app/avatar/mirror", icon: Camera, title: "Проверка камеры", text: "Свет и мимика перед созвоном" },
+            { href: "/app/avatar", icon: Smile, title: "Аватар" },
+            { href: "/app/avatar/mirror", icon: Camera, title: "Проверка камеры" },
+            { href: "/app/balance", icon: Wallet, title: "Баланс" },
+            { href: "/app/circles", icon: Users, title: "Круги" },
+            { href: "/app/avatar/privacy", icon: ShieldCheck, title: "Приватность и безопасность" },
           ].map((row) => (
             <li key={row.href}>
-              <Link href={row.href} className={s.person}>
+              <Link href={row.href} className={s.row}>
                 <span className={s.rowIcon} aria-hidden>
-                  <row.icon size={20} strokeWidth={1.8} />
+                  <row.icon size={18} strokeWidth={1.8} />
                 </span>
-                <span className={s.personText}>
+                <span className={s.rowText}>
                   <strong>{row.title}</strong>
-                  <span>{row.text}</span>
                 </span>
                 <ChevronRight size={18} strokeWidth={1.8} className={s.go} aria-hidden />
               </Link>
             </li>
           ))}
         </ul>
-      </Card>
-    </WithRail>
+      </section>
+    </div>
   );
 }

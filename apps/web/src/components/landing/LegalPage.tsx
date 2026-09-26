@@ -64,11 +64,7 @@ export function LegalPage({
           {draft && (
             <p className={l.draftNote} role="note">
               <FileClock size={16} strokeWidth={2} aria-hidden />
-              <span>
-                Документ готовится вместе с юристом. Разделы, отмеченные «[будет заполнено]», пока пустые: мы не
-                придумываем юридические детали и реквизиты. Вопросы можно задать на{" "}
-                <a href="mailto:support@aprosop.ru">support@aprosop.ru</a>.
-              </span>
+              <span>Черновик: разделы с пометкой «[будет заполнено]» готовятся вместе с юристом.</span>
             </p>
           )}
           <div className={l.summary}>{summary}</div>

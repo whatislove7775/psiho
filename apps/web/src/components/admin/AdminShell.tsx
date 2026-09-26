@@ -36,6 +36,7 @@ import { LogoMark } from "@/components/shell/Logo";
 import { StaffGate } from "./StaffGate";
 import sh from "@/components/shell/AppShell.module.css";
 import s from "./staff.module.css";
+import isl from "@/components/shell/Island.module.css";
 import { EmptyArt } from "@/components/illustrations";
 
 type Badges = Partial<Record<"reports" | "specialists" | "support" | "credentials" | "circles", number>>;
@@ -204,6 +205,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const gated = me.must_change_password || (me.totp_required && !me.totp_enabled);
   const items = gated ? [] : ITEMS.filter((i) => ctx.can(i.perm));
   const tabs = items.slice(0, 3);
+  const activeTab = tabs.findIndex((t) => isActive(pathname, t.href));
 
   const navLinks = (onPick?: () => void) => {
     let lastGroup: string | undefined;
@@ -277,32 +279,47 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <main className={sh.main}>{gated ? <StaffGate me={me} onDone={reload} /> : children}</main>
 
         {!gated && (
-          <nav className={sh.tabbar} aria-label="Разделы">
+          <nav
+            className={isl.island}
+            aria-label="Разделы"
+            style={{
+              ["--n" as string]: tabs.length + 1,
+              ["--i" as string]: activeTab < 0 ? tabs.length : activeTab,
+            }}
+          >
+            <span className={isl.pill} aria-hidden />
             {tabs.map((item) => {
               const Icon = item.icon;
               const count = item.badge ? me.badges?.[item.badge] : undefined;
+              const label = item.short ?? item.label;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`${sh.tab} ${s.tab}`}
+                  className={isl.item}
                   aria-current={isActive(pathname, item.href) ? "page" : undefined}
+                  aria-label={count ? `${label}, ${count} новых` : label}
+                  title={label}
                 >
-                  <Icon size={22} strokeWidth={1.8} />
-                  {item.short ?? item.label}
-                  {count ? <span className={s.tabDot} aria-label={`${count} новых`} /> : null}
+                  <span className={isl.icon} aria-hidden>
+                    <Icon size={22} strokeWidth={1.8} />
+                    {count ? <span className={isl.badge}>{count > 9 ? "9+" : count}</span> : null}
+                  </span>
                 </Link>
               );
             })}
             <button
               type="button"
-              className={`${sh.tab} ${s.tab} ${s.tabButton}`}
+              className={`${isl.item} ${s.tabButton}`}
               onClick={() => setMore(true)}
               aria-haspopup="dialog"
+              aria-label="Все разделы"
+              title="Все разделы"
               aria-current={!tabs.some((t) => isActive(pathname, t.href)) ? "page" : undefined}
             >
-              <Menu size={22} strokeWidth={1.8} />
-              Ещё
+              <span className={isl.icon} aria-hidden>
+                <Menu size={22} strokeWidth={1.8} />
+              </span>
             </button>
           </nav>
         )}

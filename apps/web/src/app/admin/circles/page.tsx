@@ -60,7 +60,7 @@ function CirclesQueue() {
   const c = detail.data;
   return (
     <>
-      <PageHeader title="Круги" sub="Групповые встречи специалистов. Перед публикацией проверьте тему, описание, правила и расписание." />
+      <PageHeader title="Круги" />
       <Segmented
         ariaLabel="Статус"
         value={tab}

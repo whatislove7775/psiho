@@ -580,3 +580,17 @@ textarea.input {
   background: var(--c-danger);
   color: #fff;
 }
+
+/* Phones: tighter cards and headings (ROUND 7 — less scrolling). */
+@media (max-width: 560px) {
+  .card {
+    padding: var(--s-4);
+    border-radius: 18px;
+  }
+  .cardHead {
+    margin-bottom: var(--s-3);
+  }
+  .cardTitle {
+    font-size: var(--t-17);
+  }
+}

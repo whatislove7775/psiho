@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Search } from "lucide-react";
-import { ArticleCard, PracticeCard } from "@/components/content/Cards";
+import { ArticleCard } from "@/components/content/Cards";
 import { Breadcrumbs } from "@/components/public/Breadcrumbs";
 import { JsonLd } from "@/components/public/JsonLd";
 import { PublicShell } from "@/components/public/PublicShell";
@@ -35,11 +35,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 export default async function ArticlesPage({ searchParams }: Props) {
   const topic = typeof searchParams.topic === "string" ? searchParams.topic.slice(0, 32) : "";
   const q = typeof searchParams.q === "string" ? searchParams.q.trim().slice(0, 100) : "";
-  const [all, topics, practices] = await Promise.all([
-    serverContent.articles(),
-    serverContent.topics(),
-    serverContent.practices(),
-  ]);
+  const [all, topics] = await Promise.all([serverContent.articles(), serverContent.topics()]);
   const words = q.toLocaleLowerCase("ru").split(/\s+/).filter(Boolean);
   const articles = all.filter(
     (a) =>
@@ -79,8 +75,7 @@ export default async function ArticlesPage({ searchParams }: Props) {
         <div>
           <h1>Статьи</h1>
           <p>
-            Спокойно и по делу: о тревоге, выгорании, сне, отношениях и о том, как устроена терапия. У каждой статьи есть
-            проверенные источники и пометка о силе доказательств.
+            Спокойно и по делу, с источниками. <Link href="/practices">Практики</Link> — отдельно.
           </p>
         </div>
         <form action="/articles" method="get" role="search" className={s.search}>
@@ -132,22 +127,6 @@ export default async function ArticlesPage({ searchParams }: Props) {
             </li>
           ))}
         </ul>
-      )}
-
-      {practices.length > 0 && !q && (
-        <section aria-labelledby="practices-title">
-          <div className={s.sectionHead}>
-            <h2 id="practices-title">Практики на каждый день</h2>
-            <Link href="/practices">Все практики</Link>
-          </div>
-          <ul className={s.practiceGrid}>
-            {practices.slice(0, 4).map((p) => (
-              <li key={p.id}>
-                <PracticeCard p={p} base="" />
-              </li>
-            ))}
-          </ul>
-        </section>
       )}
 
       <StartCta />

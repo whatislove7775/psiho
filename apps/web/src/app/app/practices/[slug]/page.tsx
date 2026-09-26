@@ -7,7 +7,6 @@ import { WithRail } from "@/components/shell/AppShell";
 import { contentApi } from "@/lib/api/content";
 import { useLoad } from "@/components/client/useLoad";
 import { ErrorBlock } from "@/components/client/ClientBits";
-import { SupportCard } from "@/components/client/NextSessionCard";
 import { PracticeCard } from "@/components/content/Cards";
 import { BreathingCircle, StepPlayer } from "@/components/content/PracticePlayer";
 import { Cautions, EvidenceBadge, Mechanism, Sources } from "@/components/content/Evidence";
@@ -64,7 +63,6 @@ export default function PracticePage() {
                 ))}
               </section>
             )}
-            <SupportCard />
           </>
         }
       >
@@ -114,10 +112,6 @@ export default function PracticePage() {
               <Mechanism text={p.mechanism} />
               <Cautions text={p.cautions} />
               <Sources sources={p.sources} level={p.evidence_level} reviewedAt={p.reviewed_at} />
-              <p className={s.foot}>
-                Если во время практики становится хуже, остановитесь и вернитесь к обычному дыханию. Практики помогают
-                справляться с напряжением, но не заменяют помощь специалиста.
-              </p>
             </>
           )}
         </Card>

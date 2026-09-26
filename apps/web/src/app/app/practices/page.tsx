@@ -21,7 +21,6 @@ export default function PracticesPage() {
     <>
       <PageHeader
         title="Полезное"
-        sub="Короткие упражнения на каждый день: между созвонами, перед сном или когда накрывает тревога."
       />
       <UsefulTabs />
       {practices.error ? (

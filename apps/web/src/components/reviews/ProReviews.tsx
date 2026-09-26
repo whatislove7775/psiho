@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { MessageSquareReply } from "lucide-react";
-import { Button, Card, CardHead, EmptyState, Skeleton, Textarea, useToast } from "@/ui";
-import { EmptyArt } from "@/components/illustrations";
+import { Button, Card, CardHead, Skeleton, Textarea, useToast } from "@/ui";
 import { reviewsApi, type Review, type ReviewSummary } from "@/lib/api/reviews";
 import { ReportReviewModal, ReviewItem, ReviewSummaryBlock } from "./ReviewsSection";
 import s from "./reviews.module.css";
@@ -33,11 +32,7 @@ export function ProReviews() {
       ) : !data ? (
         <Skeleton height={120} radius={18} />
       ) : data.summary.count === 0 ? (
-        <EmptyState
-          art={<EmptyArt scene="heart" />}
-          title="Отзывов пока нет"
-          text="После созвона клиент увидит приглашение оставить отзыв. Отзывы появятся здесь и на вашей странице."
-        />
+        <p className={s.headNote}>Отзывов пока нет</p>
       ) : (
         <>
           <ReviewSummaryBlock summary={data.summary} />

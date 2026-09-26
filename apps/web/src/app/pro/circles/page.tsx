@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ChevronRight, Plus, Users } from "lucide-react";
-import { Badge, Button, Card, CardHead, EmptyState, Skeleton } from "@/ui";
+import { Badge, Button, Card, CollapsibleCard, EmptyState, Skeleton } from "@/ui";
 import { PageHeader } from "@/components/shell/AppShell";
 import { useLoad } from "@/components/client/useLoad";
 import { LoadError } from "@/components/pro/controls";
@@ -15,10 +15,9 @@ import s from "@/components/circles/circles.module.css";
 export default function ProCirclesPage() {
   const list = useLoad(() => circlesApi.proList(), []);
   return (
-    <>
+    <div className={s.page}>
       <PageHeader
         title="Круги"
-        sub="Группы поддержки на 5–8 человек, которые ведёте вы. Участники анонимны: вы видите только их псевдонимы и аватары."
         action={
           <Button variant="primary" href="/pro/circles/new" icon={<Plus size={18} />}>
             Новый круг
@@ -32,7 +31,7 @@ export default function ProCirclesPage() {
           <EmptyState
             art={<EmptyArt scene="cozy" />}
             title="У вас пока нет кругов"
-            text="Соберите небольшую группу по теме, с которой много работаете. Перед публикацией команда aprosop проверит описание и расписание."
+            text="Перед публикацией команда проверит описание и расписание."
             action={
               <Button variant="primary" href="/pro/circles/new">
                 Создать круг
@@ -42,7 +41,7 @@ export default function ProCirclesPage() {
         </Card>
       )}
       {list.data && list.data.results.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {list.data.results.map((c) => (
             <Link key={c.id} href={`/pro/circles/${c.id}`} className={`${s.proRow} ${topicClass(c.topic)}`}>
               <span className={s.proIcon}>
@@ -73,15 +72,14 @@ export default function ProCirclesPage() {
           ))}
         </div>
       )}
-      <Card tone="minor">
-        <CardHead title="Как это работает" />
+      <CollapsibleCard title="Как это работает" defaultOpen={false}>
         <p className={s.note}>
           Вы создаёте черновик и отправляете его на проверку. После одобрения круг появляется в каталоге, и клиенты записываются: оплата
           замораживается на их балансе и списывается после каждой встречи (или после первой, если цена за цикл). Если вы не придёте на
           встречу, деньги вернутся участникам. Встречи проходят в групповой комнате прямо на сайте: вы с камерой, участники — в аватарах и с
           маской голоса.
         </p>
-      </Card>
-    </>
+      </CollapsibleCard>
+    </div>
   );
 }

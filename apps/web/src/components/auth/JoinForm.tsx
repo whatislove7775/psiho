@@ -2,7 +2,6 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldCheck } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { authApi } from "@/lib/api/endpoints";
 import { useAuth } from "@/lib/auth/store";
@@ -106,19 +105,8 @@ export function JoinForm() {
     <AuthShell wide art={<SpecialistFriend />}>
       <AuthCard
         title="Анкета специалиста"
-        sub="Клиенты приходят к вам анонимно: вы увидите их аватар и имя вроде «тихий-кит-4821». Сессии идут по видео прямо в браузере."
+        sub="Клиенты приходят анонимно: вы увидите аватар и имя вроде «тихий-кит-4821». Профиль проверяем вручную, статус будет виден в кабинете."
       >
-        <div className={s.note}>
-          <span className={s.noteIcon} aria-hidden>
-            <ShieldCheck size={20} strokeWidth={1.8} />
-          </span>
-          <span>
-            <strong>Профиль проверяем вручную</strong>
-            После отправки анкеты откроется кабинет, где можно заполнить расписание. В каталоге профиль появится, когда
-            мы проверим его. Статус проверки виден в кабинете.
-          </span>
-        </div>
-
         <form className={s.form} onSubmit={submit} noValidate>
           <h2 className={s.sectionLabel}>Вход</h2>
           <div className={s.grid2}>

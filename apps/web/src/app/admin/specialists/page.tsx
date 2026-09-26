@@ -148,7 +148,6 @@ function SpecialistsPage() {
     <>
       <PageHeader
         title="Специалисты"
-        sub="Проверяйте анкету целиком перед решением: клиенты доверяют каталогу. Документы хранятся зашифрованными, здесь видно только, что они приложены."
       />
       <div className={s.tabsRow}>
         <Segmented<VerificationStatus>

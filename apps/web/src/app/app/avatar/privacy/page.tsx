@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Check, LogOut, Minus, Trash2 } from "lucide-react";
-import { Button, Card, CardHead, Input, Modal, useToast } from "@/ui";
+import { Button, Card, CardHead, CollapsibleCard, Input, Modal, useToast } from "@/ui";
 import { PageHeader, WithRail } from "@/components/shell/AppShell";
 import { ThemeToggle } from "@/components/shell/ThemeToggle";
 import { ApiError } from "@/lib/api/client";
@@ -12,7 +12,6 @@ import { errorText } from "@/components/client/useLoad";
 import { AliasCard } from "@/components/client/AliasCard";
 import { clientStyles as cs } from "@/components/client/ClientBits";
 import s from "./privacy.module.css";
-import { illSize, ShieldFriend } from "@/components/illustrations";
 import { PrivacySettings } from "@/components/privacy/PrivacySettings";
 
 const STORED = [
@@ -124,7 +123,6 @@ export default function PrivacyPage() {
     <>
       <PageHeader
         title="Приватность"
-        sub="Что мы знаем о вас, как защитить доступ и как удалить всё одним действием."
       />
       <WithRail
         rail={
@@ -135,17 +133,7 @@ export default function PrivacyPage() {
           ) : null
         }
       >
-        {user && (
-          <div className={s.narrowOnly}>
-            <AliasCard user={user} />
-          </div>
-        )}
-        <Card as="section">
-          <CardHead
-            title="Что мы храним"
-            sub="Ровно столько, чтобы сервис работал"
-            action={<ShieldFriend className={illSize.xs} />}
-          />
+        <CollapsibleCard title="Что мы храним" defaultOpen={false}>
           <div className={s.columns}>
             <div className={s.col}>
               <h3 className={s.colTitle}>Храним</h3>
@@ -180,16 +168,12 @@ export default function PrivacyPage() {
               </ul>
             </div>
           </div>
-        </Card>
+        </CollapsibleCard>
 
         {/* «Незаметный режим» и «Защита от скриншотов» */}
         <PrivacySettings />
 
-        <Card as="section">
-          <CardHead
-            title="Пароль"
-            sub="Если кто-то мог его увидеть, смените прямо сейчас"
-          />
+        <CollapsibleCard title="Сменить пароль" defaultOpen={false}>
           <form className={s.form} onSubmit={changePassword} noValidate>
             <Input
               label="Текущий пароль"
@@ -229,7 +213,7 @@ export default function PrivacyPage() {
               </Button>
             </div>
           </form>
-        </Card>
+        </CollapsibleCard>
 
         <Card as="section">
           <CardHead title="Это устройство" />
@@ -237,18 +221,12 @@ export default function PrivacyPage() {
             <div className={s.setting}>
               <span>
                 <strong>Тема оформления</strong>
-                <span>
-                  Светлая или тёмная, сохраняется только в этом браузере
-                </span>
               </span>
               <ThemeToggle />
             </div>
             <div className={s.setting}>
               <span>
                 <strong>Выйти из аккаунта</strong>
-                <span>
-                  На общем компьютере лучше выходить после каждого созвона
-                </span>
               </span>
               <Button
                 variant="secondary"
@@ -265,10 +243,7 @@ export default function PrivacyPage() {
         <section className={s.danger} aria-labelledby="danger-title">
           <div>
             <h2 id="danger-title">Удалить аккаунт и все данные</h2>
-            <p>
-              Псевдоним, аватар и история созвонов исчезнут навсегда. Восстановить
-              их будет нельзя, даже с ключом.
-            </p>
+            <p>Восстановить будет нельзя, даже с ключом.</p>
           </div>
           <Button
             variant="danger"

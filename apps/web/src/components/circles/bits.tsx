@@ -3,7 +3,7 @@
 /** Shared pieces of «Круги»: circle card, topic chips, seats meter, the anonymity banner, decorative ring. */
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CalendarDays, Clock, EyeOff, Mic, Repeat, UserRound, Users } from "lucide-react";
+import { CalendarDays, Clock, Repeat } from "lucide-react";
 import { Badge } from "@/ui";
 import { AvatarThumb } from "@/components/avatar/AvatarThumb";
 import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
@@ -145,37 +145,17 @@ export function TopicChips({
   );
 }
 
-/** The warm explanation of how anonymity works in a circle (brand surface). */
+/** One quiet line on how anonymity works in a circle. */
 export function AnonymityBanner({ title, children }: { title?: ReactNode; children?: ReactNode }) {
   return (
-    <section className={s.anon} aria-label="Как устроена анонимность в кругах">
-      <div className={s.anonFaces} aria-hidden>
+    <p className={s.anon}>
+      <span className={s.anonFaces} aria-hidden>
         {["круг-лиса", "круг-сова", "круг-кит"].map((seed) => (
-          <AvatarThumb key={seed} config={null} seed={seed} size={56} background="rgba(255,255,255,.25)" />
+          <AvatarThumb key={seed} config={null} seed={seed} size={26} />
         ))}
-      </div>
-      <div>
-        <h2>{title ?? "В круге вас знают только по псевдониму"}</h2>
-        <p>
-          {children ??
-            "Для каждого круга мы придумываем вам новое имя, например «Участник-Лиса». На встречах вы в 3D-аватаре, голос можно изменить фильтром. Ни другие участники, ни ведущий не видят ваш аккаунт, лицо или настоящий голос."}
-        </p>
-        <div className={s.anonPoints}>
-          <span>
-            <UserRound size={14} /> Новое имя в каждом круге
-          </span>
-          <span>
-            <EyeOff size={14} /> Только аватар, без камеры
-          </span>
-          <span>
-            <Mic size={14} /> Маска голоса
-          </span>
-          <span>
-            <Users size={14} /> 5–8 человек и психолог
-          </span>
-        </div>
-      </div>
-    </section>
+      </span>
+      <span>{children ?? title ?? "Новое имя в каждом круге, только аватар и маска голоса."}</span>
+    </p>
   );
 }
 

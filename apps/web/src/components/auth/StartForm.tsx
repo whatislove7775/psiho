@@ -2,7 +2,6 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldCheck } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { authApi } from "@/lib/api/endpoints";
 import type { AuthResponse } from "@/lib/api/types";
@@ -93,31 +92,7 @@ export function StartForm() {
           </Button>
           <ConsentNote kind="signup" action="Создать анонимный аккаунт" />
         </form>
-        <ol className={s.steps} aria-label="Что будет дальше">
-          <li>
-            <b>1</b>
-            <span>Мы создадим имя вроде «тихий-кит-4821» и ключ восстановления. Ключ покажем один раз.</span>
-          </li>
-          <li>
-            <b>2</b>
-            <span>Вы соберёте аватар, которым вас будет видеть специалист.</span>
-          </li>
-          <li>
-            <b>3</b>
-            <span>Выберете специалиста и время, когда будете готовы.</span>
-          </li>
-        </ol>
       </AuthCard>
-      <div className={s.note}>
-        <span className={s.noteIcon} aria-hidden>
-          <ShieldCheck size={20} strokeWidth={1.8} />
-        </span>
-        <span>
-          <strong>Что мы будем знать о вас</strong>
-          Только имя, зашифрованный пароль и настройки аватара. Удалить аккаунт и всё, что с ним связано, можно в
-          настройках в любой момент.
-        </span>
-      </div>
       <AuthLinks
         links={[
           { href: "/login", label: "Войти", prefix: "Уже есть аккаунт?" },

@@ -1,70 +1,38 @@
-import { Button } from "@/ui";
-import { Spot, type SpotName } from "@/components/illustrations";
-import a from "./art.module.css";
 import s from "./landing.module.css";
 
 const STEPS = [
   {
-    spot: "key" as SpotName,
-    title: "Придумайте пароль",
-    text: "Почта и телефон не нужны. Сохраните ключ восстановления, который мы покажем.",
+    title: "Только пароль",
+    text: "Без почты и телефона. Имя вроде «тихий-кит-4821» придумаем мы.",
   },
   {
-    spot: "mask" as SpotName,
-    title: "Соберите аватар",
-    text: "Форма лица, причёска, очки, одежда. Поменять можно в любой момент.",
-  },
-  {
-    spot: "specialist" as SpotName,
     title: "Выберите специалиста",
-    text: "Посмотрите, с чем он работает, и начните диалог: напишите ему или сразу выберите время созвона.",
+    text: "Напишите ему в чат или сразу назначьте созвон.",
   },
   {
-    spot: "card" as SpotName,
-    title: "Назначьте созвон",
-    text: "Прямо в диалоге, от 50 минут до 3 часов. Бесплатно отменить или перенести можно за 24 часа.",
-  },
-  {
-    spot: "video" as SpotName,
-    title: "Подключитесь к звонку",
-    text: "Кнопка «Присоединиться» появится в диалоге за 10 минут до начала. Понадобятся камера и микрофон.",
+    title: "Созвон с аватаром",
+    text: "Видео идёт напрямую и не записывается. Голос можно изменить.",
   },
 ];
 
+/** «Как это работает»: three steps in one row. */
 export function SessionSteps() {
   return (
     <section id="how" className={`${s.wrap} ${s.section}`} aria-labelledby="how-title">
-      <div className={s.howPanel}>
-        <div className={s.howHead}>
-          <div>
-            <h2 id="how-title" className={s.sectionTitle}>
-              Как проходит созвон
-            </h2>
-          </div>
-          <div className={s.howActions}>
-            <Button href="/match" variant="secondary">
-              Подобрать по анкете
-            </Button>
-            <Button href="/start" variant="primary">
-              Начать анонимно
-            </Button>
-          </div>
-        </div>
-        <ol className={s.steps}>
-          {STEPS.map((st, i) => (
-            <li key={st.title} className={s.step}>
-              <span className={s.stepNum} aria-hidden>
-                {i + 1}
-              </span>
-              <span className={a.stepSpot} aria-hidden>
-                <Spot name={st.spot} size={68} />
-              </span>
-              <h3>{st.title}</h3>
-              <p>{st.text}</p>
-            </li>
-          ))}
-        </ol>
-      </div>
+      <h2 id="how-title" className={s.kicker}>
+        Как это работает
+      </h2>
+      <ol className={s.steps}>
+        {STEPS.map((st, i) => (
+          <li key={st.title} className={s.step}>
+            <span className={s.stepNum} aria-hidden>
+              {i + 1}
+            </span>
+            <h3>{st.title}</h3>
+            <p>{st.text}</p>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }

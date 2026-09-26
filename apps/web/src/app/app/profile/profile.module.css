@@ -1,12 +1,19 @@
+/* Client profile — one calm column: who you are, three numbers, short lists. */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+  max-width: 680px;
+}
 .head {
   display: flex;
   align-items: center;
-  gap: var(--s-6);
+  gap: var(--s-4);
 }
 .avatar {
   flex: none;
-  width: 128px;
-  height: 128px;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -22,128 +29,132 @@
 .who {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   min-width: 0;
 }
-.label {
-  font-size: var(--t-13);
-  color: var(--c-muted);
-}
 .alias {
-  font-size: var(--t-32);
+  font-size: 28px;
   font-weight: 700;
   letter-spacing: -0.03em;
+  line-height: 1.15;
   overflow-wrap: anywhere;
 }
 .since {
   color: var(--c-muted);
-  font-size: var(--t-15);
-}
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-2);
-  margin-top: var(--s-3);
+  font-size: var(--t-13);
 }
 
 .stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--s-4);
-}
-.statSkel {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 20px 22px;
-  border-radius: var(--r-card);
-  background: var(--c-panel);
+  gap: var(--s-8);
+  margin: 0;
+}
+.stats > div {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+}
+.stats dt {
+  font-size: var(--t-12);
+  color: var(--c-muted);
+}
+.stats dd {
+  margin: 0;
+  font-size: var(--t-24);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.stats small {
+  font-size: var(--t-12);
+  font-weight: 500;
+  color: var(--c-muted);
+  letter-spacing: 0;
 }
 
-.people {
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+.sectionTitle {
+  font-size: var(--t-15);
+  font-weight: 650;
+  color: var(--c-muted);
+}
+.list {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-2);
+  border-radius: 18px;
+  background: var(--c-panel);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
 }
-.person {
+.list li + li {
+  box-shadow: inset 0 1px 0 var(--c-line);
+}
+.row {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 10px 14px 10px 10px;
-  border-radius: 18px;
-  background: var(--c-raised);
+  gap: 12px;
+  min-height: 52px;
+  padding: 8px 14px;
   transition: background var(--dur) var(--ease);
 }
-.person:hover {
-  background: var(--c-raised-2);
+.row:hover {
+  background: var(--c-raised);
 }
-.person:focus-visible {
+.row:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px var(--c-primary);
+  box-shadow: inset 0 0 0 2px var(--c-primary);
 }
-.personText {
+.rowText {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
 }
-.personText strong {
-  font-weight: 600;
+.rowText strong {
+  font-weight: 550;
+  font-size: var(--t-15);
 }
-.personText span {
+.rowText span {
   color: var(--c-muted);
   font-size: var(--t-13);
 }
 .rowIcon {
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   flex: none;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--c-panel);
+  background: var(--c-raised);
   color: var(--c-muted);
 }
 .go {
   flex: none;
   color: var(--c-faint);
 }
-.empty {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-3);
-  color: var(--c-muted);
-  font-size: var(--t-15);
-}
 
-@media (max-width: 1360px) and (min-width: 1181px) {
-  .stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-@media (max-width: 760px) {
-  .stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--s-3);
-  }
-}
-@media (max-width: 560px) {
-  .head {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--s-4);
-  }
-  .avatar {
-    width: 96px;
-    height: 96px;
+@media (max-width: 860px) {
+  .page {
+    gap: var(--s-6);
   }
   .alias {
-    font-size: var(--t-24);
+    font-size: var(--t-20);
+  }
+  .avatar {
+    width: 56px;
+    height: 56px;
+  }
+  .stats {
+    gap: var(--s-5);
+    flex-wrap: wrap;
+  }
+  .stats dd {
+    font-size: var(--t-20);
   }
 }

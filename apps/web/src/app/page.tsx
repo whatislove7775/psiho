@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Anonymity } from "@/components/landing/Anonymity";
 import { Faq } from "@/components/landing/Faq";
 import { faqLd } from "@/components/landing/faqLd";
 import { FeaturedContent } from "@/components/landing/FeaturedContent";
@@ -12,8 +11,6 @@ import { SiteHeader } from "@/components/landing/SiteHeader";
 import { Specialists } from "@/components/landing/Specialists";
 import { CirclesTeaser } from "@/components/landing/CirclesTeaser";
 import { Button } from "@/ui";
-import { Hello } from "@/components/illustrations";
-import a from "@/components/landing/art.module.css";
 import s from "@/components/landing/landing.module.css";
 import { ogMeta } from "@/lib/og/sections";
 
@@ -35,27 +32,17 @@ export default function LandingPage() {
       <SiteHeader />
       <main>
         <Hero />
-        <Anonymity />
         <SessionSteps />
         <Specialists />
         <CirclesTeaser />
         <FeaturedContent />
         <Faq />
-        <section className={`${s.wrap} ${s.section}`} aria-labelledby="closing-title">
-          <div className={s.closing}>
-            <div className={a.closingMain}>
-              <Hello className={a.closingArt} />
-              <div>
-                <h2 id="closing-title">Начать можно за минуту</h2>
-                <p>Понадобится только пароль. Аватар соберёте следом, специалиста выберете, когда будете готовы.</p>
-              </div>
-            </div>
-            <div className={s.closingActions}>
-              <Button href="/start" variant="primary" size="lg">
-                Начать анонимно
-              </Button>
-            </div>
-          </div>
+        <section className={`${s.wrap} ${s.closing}`} aria-labelledby="closing-title">
+          <h2 id="closing-title">Начать можно за минуту</h2>
+          <p>Нужен только пароль.</p>
+          <Button href="/start" variant="primary" size="lg">
+            Начать анонимно
+          </Button>
         </section>
       </main>
       <SiteFooter />

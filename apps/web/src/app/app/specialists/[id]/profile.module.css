@@ -127,3 +127,20 @@
   align-items: center;
   gap: 8px 14px;
 }
+
+/* ROUND 7: phones — facts as quiet inline numbers, smaller photo */
+@media (max-width: 560px) {
+  .facts {
+    gap: var(--s-5);
+    flex-wrap: nowrap;
+  }
+  .facts > div {
+    flex: none;
+    padding: 0;
+    background: none;
+    min-width: 0;
+  }
+  .facts dd {
+    font-size: var(--t-15);
+  }
+}

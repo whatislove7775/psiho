@@ -2,15 +2,15 @@
 
 import { useState } from "react";
 import { Banknote, CreditCard, Info, Landmark, Receipt, Send, Smartphone, Wallet } from "lucide-react";
-import { Badge, Button, Card, CardHead, EmptyState, Input, Modal, Segmented, Skeleton, Stat, useToast } from "@/ui";
+import { Badge, Button, Card, CardHead, CollapsibleCard, Input, Modal, Segmented, Skeleton, useToast } from "@/ui";
 import { PageHeader, WithRail } from "@/components/shell/AppShell";
 import { useLoad } from "@/components/client/useLoad";
 import { ErrorBlock } from "@/components/client/ClientBits";
-import { EmptyArt } from "@/components/illustrations";
 import { ApiError } from "@/lib/api/client";
 import { billingApi, rubK, type Earnings, type PayoutKind, type TaxStatus } from "@/lib/api/billing";
 import { dayShort, time } from "@/lib/format";
 import s from "@/components/billing/billing.module.css";
+import ov from "@/app/pro/overview.module.css";
 
 const CALL_STATUS: Record<string, { label: string; tone: "neutral" | "success" | "warning" | "primary" | "lilac" }> = {
   active: { label: "Впереди", tone: "primary" },
@@ -38,7 +38,6 @@ export default function EarningsPage() {
     <>
       <PageHeader
         title="Доходы"
-        sub="Деньги за созвоны, комиссия сервиса и выплаты. Клиенты видны только по псевдониму."
       />
       {data.error ? (
         <ErrorBlock message={data.error} onRetry={data.reload} />
@@ -67,36 +66,45 @@ export default function EarningsPage() {
                   </div>
                 ) : (
                   <div className={s.stack}>
-                    <p className={s.hint}>Укажите, куда переводить деньги. Реквизиты хранятся зашифрованными и видны только бухгалтерии при выплате.</p>
+                    <p className={s.hint}>Куда переводить деньги. Хранятся зашифрованными.</p>
                     <Button variant="primary" onClick={() => setMethodOpen(true)}>
                       Добавить реквизиты
                     </Button>
                   </div>
                 )}
               </Card>
-              <Card as="section">
-                <CardHead title="Налоги" icon={<Receipt size={18} />} />
+              <CollapsibleCard title="Налоги" icon={<Receipt size={18} />} defaultOpen={false}>
                 <ul className={s.rules}>
-                  <li>Самозанятым: после каждой выплаты сформируйте чек в приложении «Мой налог» (доход от юрлица/ИП).</li>
-                  <li>Когда включатся выплаты через ЮKassa, чек можно будет формировать автоматически.</li>
-                  <li>Комиссия сервиса — {e.fee_percent}% от стоимости созвона, она уже вычтена.</li>
+                  <li>Самозанятым: после выплаты сформируйте чек в «Мой налог».</li>
+                  <li>Комиссия сервиса {e.fee_percent}% уже вычтена.</li>
                 </ul>
-              </Card>
+              </CollapsibleCard>
             </>
           }
         >
           <Card as="section">
             <div className={s.stack}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(140px, 40%), 1fr))", gap: 12 }}>
-                <Stat label="Доступно к выплате" value={<span style={{ whiteSpace: "nowrap" }}>{rubK(e.available_kopecks)}</span>} tone="success" />
-                <Stat label="Ожидает" value={<span style={{ whiteSpace: "nowrap" }}>{rubK(e.pending_kopecks)}</span>} note={`${e.hold_hours} ч после созвона`} />
-                <Stat label="В выплате" value={<span style={{ whiteSpace: "nowrap" }}>{rubK(e.in_payout_kopecks)}</span>} />
-                <Stat label="Выплачено всего" value={<span style={{ whiteSpace: "nowrap" }}>{rubK(e.paid_kopecks)}</span>} />
-              </div>
+              <dl className={ov.nums}>
+                <div>
+                  <dt>Доступно</dt>
+                  <dd style={{ color: "var(--c-success)" }}>{rubK(e.available_kopecks)}</dd>
+                </div>
+                <div>
+                  <dt>Ожидает, {e.hold_hours} ч</dt>
+                  <dd>{rubK(e.pending_kopecks)}</dd>
+                </div>
+                <div>
+                  <dt>В выплате</dt>
+                  <dd>{rubK(e.in_payout_kopecks)}</dd>
+                </div>
+                <div>
+                  <dt>Выплачено</dt>
+                  <dd>{rubK(e.paid_kopecks)}</dd>
+                </div>
+              </dl>
               {e.upcoming_kopecks > 0 && (
                 <div className={s.hint} style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
-                  <Info size={14} aria-hidden style={{ flex: "none", marginTop: 2 }} /> Ещё {rubK(e.upcoming_kopecks)} — за оплаченные созвоны впереди. Деньги заморожены у клиента и
-                  придут после созвона.
+                  <Info size={14} aria-hidden style={{ flex: "none", marginTop: 2 }} /> Ещё {rubK(e.upcoming_kopecks)} придут после оплаченных созвонов.
                 </div>
               )}
               <div className={s.actions}>
@@ -111,18 +119,15 @@ export default function EarningsPage() {
                 </Button>
               </div>
               <div className={s.hint}>
-                Минимальная выплата — {rubK(e.payout_min_kopecks)}.{" "}
-                {e.payout_rail === "manual"
-                  ? "Пока выплаты делает бухгалтерия вручную, обычно в течение 3 рабочих дней."
-                  : "Выплата уходит через ЮKassa, обычно в течение часа."}
+                От {rubK(e.payout_min_kopecks)}, {e.payout_rail === "manual" ? "до 3 рабочих дней" : "обычно в течение часа"}.
               </div>
             </div>
           </Card>
 
           <Card as="section">
-            <CardHead title="По созвонам" icon={<Wallet size={18} />} sub="Сумма клиента, комиссия и ваша часть" />
+            <CardHead title="По созвонам" icon={<Wallet size={18} />} />
             {e.calls.length === 0 ? (
-              <EmptyState art={<EmptyArt scene="calendar" />} title="Пока нет оплаченных созвонов" text="Когда клиент оплатит созвон, он появится здесь." />
+              <p className={s.hint}>Пока нет оплаченных созвонов.</p>
             ) : (
               <div className={s.list}>
                 {e.calls.map((c) => {
@@ -263,7 +268,7 @@ function MethodModal({ open, current, onClose, onSaved }: { open: boolean; curre
         )}
         <Input label="ИНН (необязательно)" inputMode="numeric" value={f.inn ?? ""} onChange={set("inn")} placeholder="12 цифр" autoComplete="off" hint="Нужен для чеков самозанятого и отчётности." />
         {error && <div className={s.error} role="alert">{error}</div>}
-        <div className={s.hint}>Реквизиты шифруются. Сотрудник видит их целиком только при ручной выплате, и это записывается в журнал.</div>
+        <div className={s.hint}>Реквизиты шифруются, доступ к ним записывается в журнал.</div>
         <Button variant="primary" size="lg" block loading={busy} onClick={save}>
           Сохранить
         </Button>

@@ -5,23 +5,20 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   CalendarClock,
-  EyeOff,
   Gift,
   Plus,
-  ShieldCheck,
   Snowflake,
   Undo2,
-  UserX,
   Wallet,
 } from "lucide-react";
-import { Badge, Card, CardHead, EmptyState, Modal, Skeleton, useToast, Button } from "@/ui";
+import { Badge, Card, CardHead, CollapsibleCard, Modal, Skeleton, useToast, Button } from "@/ui";
 import { PageHeader, WithRail } from "@/components/shell/AppShell";
 import { useLoad } from "@/components/client/useLoad";
 import { ErrorBlock } from "@/components/client/ClientBits";
 import { TopUpForm } from "@/components/billing/TopUpForm";
 import { RedeemForm } from "@/components/billing/RedeemForm";
 import { CompanyAllowance } from "@/components/business/CompanyAllowance";
-import { EmptyArt, Spot } from "@/components/illustrations";
+import { Spot } from "@/components/illustrations";
 import { billingApi, notifyBalanceChanged, rubK, type HistoryItem } from "@/lib/api/billing";
 import { dayShort, time } from "@/lib/format";
 import s from "@/components/billing/billing.module.css";
@@ -92,7 +89,7 @@ export default function BalancePage() {
 
   return (
     <>
-      <PageHeader title="Баланс" sub="Анонимный кошелёк: пополняете, а созвоны оплачиваются с него. К балансу привязан только ваш псевдоним." />
+      <PageHeader title="Баланс" />
       {summary.error ? (
         <ErrorBlock message={summary.error} onRetry={summary.reload} />
       ) : (
@@ -100,25 +97,20 @@ export default function BalancePage() {
           rail={
             <>
               <CompanyAllowance onChanged={refresh} />
-              <Card as="section">
-                <CardHead title="Подарочный код" icon={<Gift size={18} />} sub="Подарок или предоплата от близкого человека" />
+              <CollapsibleCard title="Подарочный код" icon={<Gift size={18} />} defaultOpen={false}>
                 <RedeemForm onRedeemed={refresh} />
-              </Card>
+              </CollapsibleCard>
               {sm && (
-                <Card as="section">
-                  <CardHead title="Как возвращаются деньги" icon={<Undo2 size={18} />} />
+                <CollapsibleCard title="Как возвращаются деньги" icon={<Undo2 size={18} />} defaultOpen={false}>
                   <ul className={s.rules}>
-                    <li>Отмена не позже чем за {sm.cancel_rules.free_cancel_hours} ч до созвона — вся сумма на баланс.</li>
+                    <li>Отмена за {sm.cancel_rules.free_cancel_hours} ч и раньше — вся сумма на баланс.</li>
                     {sm.cancel_rules.late_cancel_penalty_percent > 0 && (
-                      <li>
-                        Отмена позже — возвращается {100 - sm.cancel_rules.late_cancel_penalty_percent}%, остальное получает
-                        специалист за забронированное время.
-                      </li>
+                      <li>Отмена позже — возвращается {100 - sm.cancel_rules.late_cancel_penalty_percent}%.</li>
                     )}
                     <li>Специалист отменил или не пришёл — возвращаем всё.</li>
-                    <li>Неиспользованный остаток можно вернуть на карту через поддержку.</li>
+                    <li>Остаток можно вернуть на карту через поддержку.</li>
                   </ul>
-                </Card>
+                </CollapsibleCard>
               )}
             </>
           }
@@ -145,39 +137,11 @@ export default function BalancePage() {
             </div>
           </section>
 
-          <div className={s.privacyRow}>
-            <div className={s.privacyItem}>
-              <span className={`${s.privacyIcon} ${s["tone-mint"]}`}>
-                <EyeOff size={18} />
-              </span>
-              <span>
-                <strong>Без имени</strong>
-                Мы не храним ни карту, ни имя плательщика — только сумму.
-              </span>
-            </div>
-            <div className={s.privacyItem}>
-              <span className={`${s.privacyIcon} ${s["tone-lilac"]}`}>
-                <UserX size={18} />
-              </span>
-              <span>
-                <strong>Специалист не видит</strong>
-                Кто и как платил — специалисту это неизвестно.
-              </span>
-            </div>
-            <div className={s.privacyItem}>
-              <span className={`${s.privacyIcon} ${s["tone-sun"]}`}>
-                <ShieldCheck size={18} />
-              </span>
-              <span>
-                <strong>Деньги в заморозке</strong>
-                Специалист получает оплату только после созвона.
-              </span>
-            </div>
-          </div>
+          <p className={s.quiet}>Мы храним только сумму — без имени и карты. Специалист получает оплату после созвона.</p>
 
           {hs && hs.holds.length > 0 && (
             <Card as="section">
-              <CardHead title="Оплаченные созвоны" sub="Деньги заморожены до окончания созвона" icon={<Snowflake size={18} />} />
+              <CardHead title="Оплаченные созвоны" icon={<Snowflake size={18} />} />
               <div className={s.list}>
                 {hs.holds.map((h) => (
                   <div key={h.id} className={s.item}>
@@ -206,16 +170,7 @@ export default function BalancePage() {
                 ))}
               </div>
             ) : hs.items.length === 0 ? (
-              <EmptyState
-                art={<EmptyArt scene="sparkles" />}
-                title="Операций пока нет"
-                text="Пополните баланс картой или по СБП, или активируйте подарочный код."
-                action={
-                  <Button variant="primary" icon={<Plus size={18} />} onClick={() => setTopupOpen(true)}>
-                    Пополнить баланс
-                  </Button>
-                }
-              />
+              <p className={s.quiet}>Операций пока нет.</p>
             ) : (
               <div className={s.list}>
                 {hs.items.map((x) => {

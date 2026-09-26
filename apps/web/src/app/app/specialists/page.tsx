@@ -103,7 +103,6 @@ function Specialists() {
     <>
       <PageHeader
         title="Специалисты"
-        sub="Каждый психолог прошёл проверку диплома и опыта. Выберите того, чей подход вам откликается."
         action={
           // H1: quiz-based matching
           <Button variant="soft" size="sm" href="/app/match" icon={<ListChecks size={16} strokeWidth={1.8} />}>

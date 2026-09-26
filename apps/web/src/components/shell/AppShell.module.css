@@ -236,9 +236,20 @@
   }
   .pageHead {
     flex-direction: column;
+    gap: var(--s-3);
+    margin-bottom: var(--s-4);
   }
   .pageTitle {
     font-size: var(--t-24);
+  }
+  .pageSub {
+    margin-top: 2px;
+    font-size: var(--t-13);
+  }
+  .withRail,
+  .rail,
+  .stack {
+    gap: var(--s-3);
   }
   .mobileTop {
     display: flex;

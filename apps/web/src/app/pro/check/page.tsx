@@ -117,7 +117,7 @@ export default function CheckPage() {
     <>
       <PageHeader
         title="Проверка камеры и микрофона"
-        sub="Клиент увидит ваше настоящее видео с камеры и услышит обычный голос. Проверьте кадр, свет и звук перед первым созвоном и после смены устройства."
+        sub="Клиент видит ваше настоящее видео"
         action={
           <Button variant="primary" icon={<RotateCw size={18} />} onClick={start} loading={state === "asking"}>
             Проверить снова

@@ -240,3 +240,41 @@ export function RecentDialogs({ items, role, loading }: { items: DialogItem[]; r
     </Card>
   );
 }
+
+/** Compact one-row «nearest call» strip for home pages. Renders nothing without a call. */
+export function NextCallStrip({ item, role }: { item: DialogItem | null; role: "client" | "specialist" }) {
+  const now = useNow(15_000);
+  const call = item?.next_call;
+  if (!item || !call) return null;
+  const live = isLive(call);
+  const who = item.counterpart;
+  const join = call.can_join;
+  return (
+    <section className={r.strip} aria-label={live ? "Созвон идёт" : "Ближайший созвон"}>
+      <span className={r.stripFace} aria-hidden>
+        {who.type === "specialist" ? (
+          <SpecialistPhoto url={who.photo_url ?? null} name={who.name} size={40} />
+        ) : (
+          <AvatarThumb config={who.avatar_config} seed={who.name} size={40} background="rgba(255,255,255,.18)" />
+        )}
+      </span>
+      <span className={r.stripText}>
+        <strong>{who.name}</strong>
+        <span>
+          {live ? "Созвон идёт" : `${weekdayDay(call.scheduled_at)}, ${hm(call.scheduled_at)}`}
+          {!join && !live ? ` · ${countdown(call.scheduled_at, call.duration_minutes, now)}` : ""}
+          {call.status === "awaiting_payment" ? " · ждёт оплаты" : ""}
+        </span>
+      </span>
+      {join ? (
+        <Button variant="white" size="sm" href={`/room/${call.id}`} icon={<Video size={16} strokeWidth={1.8} />}>
+          Войти
+        </Button>
+      ) : (
+        <Button variant="white" size="sm" href={dialogHref(role, item.id)}>
+          Открыть
+        </Button>
+      )}
+    </section>
+  );
+}

@@ -110,16 +110,22 @@ export function Island({ items }: { items: IslandItem[] }) {
         {items.map((it) => {
           const Icon = it.icon;
           return (
-            <Link key={it.href} href={it.href} className={s.item} aria-current={it.active ? "page" : undefined}>
-              <span className={s.icon}>
+            <Link
+              key={it.href}
+              href={it.href}
+              className={s.item}
+              aria-current={it.active ? "page" : undefined}
+              aria-label={it.badge ? `${it.label}, ${it.badge} непрочитанных` : it.label}
+              title={it.label}
+            >
+              <span className={s.icon} aria-hidden>
                 {it.art ? <span className={s.art}>{it.art}</span> : Icon ? <Icon size={22} strokeWidth={1.9} /> : null}
                 {it.badge ? (
-                  <span className={s.badge} aria-label={`${it.badge} непрочитанных`}>
+                  <span className={s.badge}>
                     {it.badge > 9 ? "9+" : it.badge}
                   </span>
                 ) : null}
               </span>
-              <span className={s.label}>{it.label}</span>
             </Link>
           );
         })}

@@ -110,7 +110,6 @@ function ContentCms() {
     <>
       <PageHeader
         title="Статьи и практики"
-        sub="Материалы для клиентов в разделах «Статьи» и «Практики». Черновики видны только сотрудникам."
         action={
           <Button variant="primary" onClick={() => go({ edit: "new" })} icon={<Plus size={18} strokeWidth={2} />}>
             {tab === "articles" ? "Новая статья" : "Новая практика"}

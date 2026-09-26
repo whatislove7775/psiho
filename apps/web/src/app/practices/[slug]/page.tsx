@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Clock } from "lucide-react";
 import { PracticeCard } from "@/components/content/Cards";
-import { Cautions, EvidenceBadge, Mechanism, SeekHelp, Sources } from "@/components/content/Evidence";
+import { Cautions, EvidenceBadge, Mechanism, Sources } from "@/components/content/Evidence";
 import { BreathingCircle, StepPlayer } from "@/components/content/PracticePlayer";
 import { TopicArt } from "@/components/illustrations/topics";
 import { Breadcrumbs } from "@/components/public/Breadcrumbs";
@@ -135,7 +135,6 @@ export default async function PracticePage({ params }: Props) {
 
           <Mechanism text={p.mechanism} />
           <Cautions text={p.cautions} />
-          <SeekHelp text="Если тревога, напряжение или бессонница держатся неделями и мешают жить, одних упражнений мало. Специалист поможет разобраться с причиной." />
           <Sources sources={p.sources} level={p.evidence_level} reviewedAt={p.reviewed_at} />
         </article>
 

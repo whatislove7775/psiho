@@ -3,17 +3,15 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Activity, BadgeCheck, Flag, Headset, ScrollText } from "lucide-react";
-import { Button, Card, CardHead, EmptyState, Skeleton, Stat } from "@/ui";
-import { PageHeader, WithRail } from "@/components/shell/AppShell";
+import { Button, Card, CardHead, Skeleton } from "@/ui";
+import { PageHeader } from "@/components/shell/AppShell";
 import { useStaff } from "@/components/admin/AdminShell";
 import { ago, actionLabel, HealthDot } from "@/components/admin/kit";
 import { LoadError } from "@/components/pro/controls";
 import { staffApi, type Dashboard } from "@/lib/api/staff";
 import { plural, rub } from "@/lib/format";
-import pro from "@/components/pro/pro.module.css";
-import ad from "@/components/admin/admin.module.css";
+import ov from "@/app/pro/overview.module.css";
 import s from "@/components/admin/staff.module.css";
-import { EmptyArt } from "@/components/illustrations";
 
 export default function AdminDashboard() {
   const { me, can } = useStaff();
@@ -31,51 +29,56 @@ export default function AdminDashboard() {
 
   const today = new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
 
-  const queue = !data ? (
-    <Skeleton height={300} radius={28} />
-  ) : (
-    <AttentionCard data={data} can={can} />
-  );
-
   return (
-    <>
-      <PageHeader title="Сводка" sub={`${today.charAt(0).toUpperCase() + today.slice(1)}. Вы вошли как ${me.role_label.toLowerCase()}.`} />
+    <div className={s.dash}>
+      <PageHeader title="Сводка" sub={today.charAt(0).toUpperCase() + today.slice(1)} />
       {!me.totp_enabled && (me.role === "owner" || me.role === "admin") && (
         <div className={s.notice}>
           <span>
-            <strong>Включите двухфакторную защиту.</strong> У вашей роли доступ к деньгам и аккаунтам команды: одного пароля мало.
+            <strong>Включите двухфакторную защиту</strong>
           </span>
           <Button size="sm" variant="primary" href="/admin/account">
             Настроить
           </Button>
         </div>
       )}
-      <WithRail rail={<div className={ad.railDesktop}>{queue}</div>}>
-        <div className={ad.railMobile}>{queue}</div>
         {error && <LoadError text={error} onRetry={load} />}
-        <div className={pro.stats}>
+        {data ? <AttentionCard data={data} can={can} /> : <Skeleton height={56} radius={16} />}
+        <dl className={ov.nums}>
           {data ? (
             <>
-              <Stat label="Клиентов" value={data.users.clients} note={`+${data.users.new_week} за неделю`} />
-              <Stat
-                label="Специалистов в каталоге"
-                value={data.specialists.active}
-                note={data.specialists.suspended ? `${data.specialists.suspended} приостановлено` : "Все активны"}
-              />
-              <Stat label="Созвонов сегодня" value={data.sessions.today} note={`${data.sessions.week} за 7 дней`} />
+              <div>
+                <dt>Клиентов</dt>
+                <dd>{data.users.clients}</dd>
+              </div>
+              <div>
+                <dt>Специалистов</dt>
+                <dd>{data.specialists.active}</dd>
+              </div>
+              <div>
+                <dt>Созвонов сегодня</dt>
+                <dd>{data.sessions.today}</dd>
+              </div>
               {data.revenue ? (
-                <Stat label="Оборот за месяц, ₽" value={new Intl.NumberFormat("ru-RU").format(data.revenue.month_rub)} note={`Комиссия ${rub(data.revenue.month_fee_rub)}`} />
+                <div>
+                  <dt>Оборот, месяц</dt>
+                  <dd>{rub(data.revenue.month_rub)}</dd>
+                </div>
               ) : (
-                <Stat label="Впереди" value={data.sessions.upcoming} note="Оплаченных созвонов" />
+                <div>
+                  <dt>Впереди</dt>
+                  <dd>{data.sessions.upcoming}</dd>
+                </div>
               )}
             </>
           ) : (
-            [0, 1, 2, 3].map((i) => <Skeleton key={i} height={116} radius={22} />)
+            <Skeleton height={52} radius={14} />
           )}
-        </div>
+        </dl>
 
+        <div className={s.dashGrid}>
         <Card as="section">
-          <CardHead title="Созвоны по дням" sub="Последние 14 дней, без черновиков" />
+          <CardHead title="Созвоны за 14 дней" />
           {data ? <SessionsChart series={data.series} /> : <Skeleton height={160} />}
         </Card>
 
@@ -84,7 +87,6 @@ export default function AdminDashboard() {
             <CardHead
               icon={<Activity size={20} />}
               title="Система"
-              sub={data.system.status === "ok" ? "Все сервисы отвечают" : "Есть проблемы, проверьте раздел «Система»"}
               action={
                 <Button size="sm" variant="ghost" href="/admin/system">
                   Подробнее
@@ -103,6 +105,8 @@ export default function AdminDashboard() {
           </Card>
         )}
 
+        </div>
+
         {data?.recent_audit && (
           <Card as="section">
             <CardHead
@@ -116,7 +120,7 @@ export default function AdminDashboard() {
             />
             {data.recent_audit.length ? (
               <ul className={s.feed}>
-                {data.recent_audit.map((e) => (
+                {data.recent_audit.slice(0, 5).map((e) => (
                   <li key={e.id}>
                     <span>
                       <strong>{e.actor.alias || "система"}</strong> {actionLabel(e.action).toLowerCase()}
@@ -127,12 +131,11 @@ export default function AdminDashboard() {
                 ))}
               </ul>
             ) : (
-              <EmptyState art={<EmptyArt scene="moon" />} title="Журнал пуст" text="Здесь появятся блокировки, решения по заявкам и другие действия сотрудников." />
+              <p className={s.muted}>Журнал пуст</p>
             )}
           </Card>
         )}
-      </WithRail>
-    </>
+    </div>
   );
 }
 
@@ -144,28 +147,20 @@ function AttentionCard({ data, can }: { data: Dashboard; can: ReturnType<typeof 
   if (can("support.inbox") && data.support)
     rows.push({ icon: <Headset size={18} />, label: "Непрочитанные обращения", n: data.support.unread, href: "/admin/support" });
   const total = rows.reduce((a, r) => a + r.n, 0);
+  if (!rows.length) return null;
   return (
-    <section className={pro.accent} aria-label="Требует внимания">
-      <div className={pro.accentKicker}>Требует внимания</div>
-      <div>
-        <div className={pro.accentBig}>{total}</div>
-        <div className={pro.accentText} style={{ marginTop: 6 }}>
-          {total ? "Очереди, которые ждут решения команды." : "Все очереди разобраны. Хорошая работа."}
-        </div>
-      </div>
-      {rows.length > 0 && (
-        <ul className={s.attention}>
-          {rows.map((r) => (
-            <li key={r.href}>
-              <Link href={r.href}>
-                {r.icon}
-                <span>{r.label}</span>
-                <strong>{r.n}</strong>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+    <section className={s.attentionCompact} aria-label="Требует внимания" data-calm={total ? undefined : ""}>
+      <ul className={s.attention}>
+        {rows.map((r) => (
+          <li key={r.href}>
+            <Link href={r.href} data-zero={r.n ? undefined : ""}>
+              {r.icon}
+              <span>{r.label}</span>
+              <strong>{r.n}</strong>
+            </Link>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -173,7 +168,7 @@ function AttentionCard({ data, can }: { data: Dashboard; can: ReturnType<typeof 
 function SessionsChart({ series }: { series: Dashboard["series"] }) {
   const max = Math.max(1, ...series.map((d) => d.sessions));
   const total = series.reduce((a, d) => a + d.sessions, 0);
-  if (!total) return <EmptyState art={<EmptyArt scene="calendar" />} title="Созвонов не было" text="Как только клиенты начнут назначать созвоны, здесь появится динамика." />;
+  if (!total) return <p className={s.muted}>Созвонов не было</p>;
   const label = (iso: string) => new Date(iso + "T12:00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
   return (
     <figure className={s.chart} aria-label={`Созвоны по дням, всего ${total}`}>

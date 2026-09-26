@@ -86,7 +86,7 @@ function AuditPage() {
     <>
       <PageHeader
         title="Журнал действий"
-        sub="Каждое изменение, сделанное командой: кто, что, когда и откуда. Записи нельзя изменить или удалить."
+        sub="Кто, что, когда и откуда"
       />
       <Toolbar>
         <SearchBox value={q} onChange={setQ} placeholder="Сотрудник, объект или ID" label="Поиск в журнале" />

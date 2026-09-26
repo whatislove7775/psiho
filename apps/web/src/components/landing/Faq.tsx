@@ -3,8 +3,6 @@
 import { useId, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { Together } from "@/components/illustrations";
-import a from "./art.module.css";
 import s from "./landing.module.css";
 
 const ITEMS: { q: string; a: ReactNode }[] = [
@@ -27,10 +25,6 @@ const ITEMS: { q: string; a: ReactNode }[] = [
     a: "Нет. Камера распознаёт мимику на вашем устройстве, а специалисту передаётся только анимированный аватар.",
   },
   {
-    q: "Можно ли изменить голос?",
-    a: "Да. Во время звонка можно включить фильтр голоса. Он работает на вашем устройстве, специалист слышит уже изменённый голос.",
-  },
-  {
     q: "Записываются ли созвоны?",
     a: "Нет. Видео и звук идут напрямую между вашим браузером и браузером специалиста в зашифрованном виде. На наш сервер они не попадают, поэтому записать их мы не можем.",
   },
@@ -39,17 +33,13 @@ const ITEMS: { q: string; a: ReactNode }[] = [
     a: "Оплата проходит через платёжный сервис. Мы получаем только подтверждение, что созвон оплачен, и сумму. Номер карты и имя плательщика к нам не приходят.",
   },
   {
-    q: "Как удалить аккаунт?",
-    a: "В настройках кабинета нажмите «Удалить аккаунт» и подтвердите паролем. Мы сотрём имя, аватар, записи на созвоны и историю оплат. Отменить удаление нельзя.",
-  },
-  {
     q: "Подойдёт ли сервис, если мне очень плохо прямо сейчас?",
     a: "Если вам угрожает опасность, звоните 112. Детский телефон доверия 8-800-2000-122 бесплатный и работает круглосуточно, туда могут звонить и подростки, и родители. Сессию с психологом у нас можно назначить не раньше чем через час.",
   },
 ];
 
 export function Faq() {
-  const [open, setOpen] = useState<number | null>(0);
+  const [open, setOpen] = useState<number | null>(null);
   const base = useId();
 
   return (
@@ -57,13 +47,11 @@ export function Faq() {
       <div className={s.faq}>
         <div className={s.faqIntro}>
           <h2 id="faq-title" className={s.sectionTitle}>
-            Вопросы, которые задают чаще всего
+            Вопросы
           </h2>
-          <p className={s.lead}>
-            Не нашли ответ? Напишите на <a href="mailto:support@aprosop.ru">support@aprosop.ru</a>. Представляться не
-            нужно.
+          <p className={s.sectionSub}>
+            Не нашли ответ? <a href="mailto:support@aprosop.ru">support@aprosop.ru</a>
           </p>
-          <Together className={a.faqArt} />
         </div>
         <div className={s.faqList}>
           {ITEMS.map((item, i) => {

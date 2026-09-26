@@ -24,10 +24,10 @@ export default function CirclesPage() {
   }, [list.data, topic]);
 
   return (
-    <>
+    <div className={s.page}>
       <PageHeader
         title="Круги"
-        sub="Небольшие группы поддержки на 5–8 человек с психологом. Встречи раз в неделю по одной теме, в кругу тех, кто понимает."
+        sub="Группы поддержки на 5–8 человек с психологом"
       />
       <AnonymityBanner />
 
@@ -80,7 +80,7 @@ export default function CirclesPage() {
           <EmptyState
             art={<EmptyArt scene="search" />}
             title={topic ? "По этой теме пока нет кругов" : "Круги скоро появятся"}
-            text="Психологи готовят новые группы. Загляните через несколько дней или выберите другую тему."
+            text="Загляните через несколько дней."
           />
         </Card>
       )}
@@ -91,6 +91,6 @@ export default function CirclesPage() {
           ))}
         </div>
       )}
-    </>
+    </div>
   );
 }

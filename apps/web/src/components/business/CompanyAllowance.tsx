@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Building2, KeyRound, ShieldCheck } from "lucide-react";
-import { Button, Card, CardHead, Input, Skeleton, useToast } from "@/ui";
+import { Button, CollapsibleCard, Input, Skeleton, useToast } from "@/ui";
 import { ApiError } from "@/lib/api/client";
 import { businessApi, dateRu, PERIOD_LABEL, type MyProgram } from "@/lib/api/business";
 import { notifyBalanceChanged, rubK } from "@/lib/api/billing";
@@ -83,12 +83,12 @@ export function CompanyAllowance({ onChanged }: { onChanged?: () => void }) {
   };
 
   return (
-    <Card as="section">
-      <CardHead
-        title="Программа компании"
-        icon={<Building2 size={18} />}
-        sub={programs.length ? "Оплачивает созвоны первой, потом — баланс" : "Если работодатель выдал код"}
-      />
+    <CollapsibleCard
+      key={programs.length ? "on" : "off"}
+      title={programs.length ? "Программа компании" : "Код от работодателя"}
+      icon={<Building2 size={18} />}
+      defaultOpen={programs.length > 0}
+    >
       <div className={b.stack}>
         {mine.loading && !mine.data ? (
           <Skeleton height={96} radius={16} />
@@ -113,9 +113,9 @@ export function CompanyAllowance({ onChanged }: { onChanged?: () => void }) {
         </form>
         <div className={s.anonNote}>
           <ShieldCheck size={16} aria-hidden />
-          <span>Компания не узнает, что код активировали именно вы. Она видит только общие цифры по всем сотрудникам.</span>
+          <span>Компания не узнает, что это вы.</span>
         </div>
       </div>
-    </Card>
+    </CollapsibleCard>
   );
 }

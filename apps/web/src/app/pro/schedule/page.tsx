@@ -236,7 +236,6 @@ export default function SchedulePage() {
     <>
       <PageHeader
         title="Расписание"
-        sub="Задайте постоянные часы приёма, меняйте отдельные дни вручную и выбирайте, сколько может длиться созвон. Клиенты увидят только то время, куда помещается выбранная длительность."
         action={dirty || saving ? saveButton("primary", false, c.headSave) : undefined}
       />
       <WithRail
@@ -358,7 +357,9 @@ export default function SchedulePage() {
                   </Button>
                 </div>
 
-                <WeekTimeline week={week} onChange={setWeek} minDuration={minDuration} />
+                <div className={c.timelineWrap}>
+                  <WeekTimeline week={week} onChange={setWeek} minDuration={minDuration} />
+                </div>
 
                 <div className={c.days}>
                   {week.map((d, i) => {

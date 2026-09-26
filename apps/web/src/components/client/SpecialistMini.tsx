@@ -10,16 +10,16 @@ import { dayLabel, rub, time } from "@/lib/format";
 import s from "./specialistMini.module.css";
 
 /** Compact specialist card for carousels: real photo if uploaded, else initials. */
-export function SpecialistMini({ p }: { p: PsychologistPublic }) {
+export function SpecialistMini({ p, compact }: { p: PsychologistPublic; compact?: boolean }) {
   const [broken, setBroken] = useState(false);
   return (
-    <Link href={`/app/specialists/${p.id}`} className={s.card}>
+    <Link href={`/app/specialists/${p.id}`} className={s.card} data-compact={compact || undefined}>
       <span className={s.photo}>
         {p.photo_url && !broken ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={p.photo_url} alt="" loading="lazy" onError={() => setBroken(true)} />
         ) : (
-          <SpecialistPhoto url={null} name={p.display_name} size={84} />
+          <SpecialistPhoto url={null} name={p.display_name} size={compact ? 64 : 84} />
         )}
       </span>
       <span className={s.body}>

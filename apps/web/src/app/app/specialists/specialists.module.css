@@ -292,3 +292,64 @@
     flex: 1 1 100%;
   }
 }
+
+/* ROUND 7: compact list items on phones */
+@media (max-width: 560px) {
+  .filters {
+    gap: var(--s-3);
+  }
+  .filterTop {
+    gap: var(--s-2);
+  }
+  .search {
+    min-height: 44px;
+  }
+  .search input {
+    height: 42px;
+  }
+  .item {
+    gap: var(--s-3);
+    padding: var(--s-4);
+  }
+  .item > span:first-child {
+    width: 56px !important;
+    height: 56px !important;
+    font-size: 20px !important;
+  }
+  .body {
+    gap: 6px;
+  }
+  .bio {
+    font-size: var(--t-13);
+    -webkit-line-clamp: 2;
+  }
+  .badges {
+    flex-wrap: nowrap;
+    overflow: hidden;
+    mask-image: linear-gradient(90deg, #000 85%, transparent);
+  }
+  .side {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--s-3);
+    row-gap: 2px;
+    padding-top: var(--s-3);
+  }
+  .side > .rate {
+    grid-column: 1;
+  }
+  .side > .slot {
+    grid-column: 1;
+    font-size: var(--t-12);
+  }
+  .side > :last-child {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    width: auto;
+    height: 40px;
+    padding: 0 16px;
+    font-size: var(--t-13);
+  }
+  .rate strong {
+    font-size: var(--t-17);
+  }
+}

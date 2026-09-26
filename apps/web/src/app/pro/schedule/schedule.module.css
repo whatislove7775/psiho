@@ -251,3 +251,12 @@
     transform: translate(-50%, 12px);
   }
 }
+
+/* ROUND 7: phones edit hours in the per-day list; the drag timeline and the
+   summary chart duplicate it and cost a screen of scrolling. */
+@media (max-width: 560px) {
+  .timelineWrap,
+  .chart {
+    display: none;
+  }
+}

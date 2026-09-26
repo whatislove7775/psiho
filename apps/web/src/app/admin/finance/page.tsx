@@ -65,7 +65,6 @@ function Finance() {
     <>
       <PageHeader
         title="Финансы"
-        sub="Анонимные балансы, заморозки за созвоны, выплаты специалистам и подарочные коды. Клиенты видны только по псевдониму."
       />
       <div className={s.tabsRow}>
         <Segmented<Tab>

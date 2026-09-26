@@ -227,3 +227,48 @@
   color: var(--c-text);
   font-weight: 650;
 }
+
+/* ── Compact nearest-call strip (home pages) ───────────────────────── */
+.strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px 10px 12px;
+  border-radius: 18px;
+  background: var(--tex-grain), var(--g-accent);
+  color: #fff;
+  min-width: 0;
+}
+.stripFace {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+.stripText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.stripText strong {
+  font-size: var(--t-15);
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stripText span {
+  font-size: var(--t-13);
+  opacity: 0.86;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.strip > :last-child {
+  flex: none;
+}

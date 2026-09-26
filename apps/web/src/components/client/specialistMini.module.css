@@ -68,3 +68,30 @@
   gap: 4px;
   color: var(--c-success);
 }
+
+/* compact variant for home rows */
+.card[data-compact] {
+  gap: 8px;
+  padding: 6px 6px 10px;
+  border-radius: 18px;
+  background: var(--c-panel);
+  box-shadow: var(--shadow-card);
+}
+.card[data-compact]:hover {
+  background: var(--c-raised);
+}
+.card[data-compact] .photo {
+  height: 116px;
+  border-radius: 13px;
+}
+.card[data-compact] .body {
+  gap: 2px;
+  padding: 0 6px;
+}
+.card[data-compact] .foot {
+  margin-top: 4px;
+  font-size: var(--t-12);
+}
+.card[data-compact] .tags {
+  font-size: var(--t-12);
+}

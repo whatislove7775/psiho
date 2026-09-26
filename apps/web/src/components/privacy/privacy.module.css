@@ -341,3 +341,28 @@ kbd.kbd {
     transition: none;
   }
 }
+
+/* ROUND 7: explanations fold away */
+.more {
+  margin-top: 4px;
+}
+.more > summary {
+  cursor: pointer;
+  width: fit-content;
+  font-size: var(--t-13);
+  font-weight: 600;
+  color: var(--c-muted);
+  border-radius: 8px;
+}
+.more > summary:hover {
+  color: var(--c-text);
+}
+.more[open] > summary {
+  margin-bottom: var(--s-3);
+}
+.honestLine {
+  margin-top: var(--s-3);
+  font-size: var(--t-12);
+  line-height: 1.45;
+  color: var(--c-faint);
+}

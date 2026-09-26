@@ -560,7 +560,8 @@ export function ConversationView({
         <div className={s.aiNotice}>
           <LifeBuoy size={16} />
           <span>
-            Тиша — ИИ, а не психолог. Если вам плохо прямо сейчас, звоните <a href="tel:112">112</a>.
+            Тиша — ИИ, а не психолог. Если очень тяжело: <a href="tel:88003334434" title="8-800-333-44-34">телефон доверия</a> или{" "}
+            <a href="tel:112">112</a>.
           </span>
         </div>
       )}

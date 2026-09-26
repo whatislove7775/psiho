@@ -38,7 +38,6 @@ function BusinessAdmin() {
     <>
       <PageHeader
         title="Компании"
-        sub="B2B-программы: бюджеты, программы, HR-доступы и заявки с лендинга. Данных сотрудников здесь нет — только агрегаты."
         action={
           can("business.manage") ? (
             <Button variant="primary" icon={<PlusCircle size={18} />} onClick={() => setCreateOpen(true)}>

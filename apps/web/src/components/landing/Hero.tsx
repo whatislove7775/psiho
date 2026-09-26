@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { AtSign, AudioLines, ListChecks, ShieldCheck, Shuffle, Smile, UserRound, Wallet, type LucideIcon } from "lucide-react";
-import { AvatarThumb } from "@/components/avatar/AvatarThumb";
+import { ArrowRight, Shuffle } from "lucide-react";
 import { AvatarView, type AvatarViewHandle } from "@/components/avatar/AvatarView";
 import { randomAvatar } from "@/lib/avatar/schema";
 import { Button } from "@/ui";
@@ -24,15 +23,6 @@ const EXTRA_ALIASES = [
   "лёгкий-ветер-9053",
   "мудрая-рысь-3378",
   "синий-клён-4410",
-];
-
-/** What stays anonymous: shown as chips right under the headline. */
-const TRUST: { icon: LucideIcon; label: string; tone: string }[] = [
-  { icon: AtSign, label: "Без почты и телефона", tone: "cyan" },
-  { icon: UserRound, label: "Псевдоним вместо имени", tone: "lilac" },
-  { icon: Smile, label: "Аватар вместо лица", tone: "sun" },
-  { icon: AudioLines, label: "Голос с фильтром", tone: "mint" },
-  { icon: Wallet, label: "Оплата без имени", tone: "coral" },
 ];
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -142,7 +132,12 @@ export function Hero() {
     };
   }, []);
 
+  // First walk through the presets, then generate fresh random faces.
   const shuffle = () => {
+    if (!extra && index < PRESETS.length - 1) {
+      setIndex(index + 1);
+      return;
+    }
     shuffles.current += 1;
     setExtra({
       seed: `aprosop-shuffle-${Date.now()}`,
@@ -153,45 +148,23 @@ export function Hero() {
   return (
     <section className={`${s.wrap} ${s.hero}`} aria-labelledby="hero-title">
       <div className={s.heroText}>
-        <span className={s.heroEyebrow}>
-          <ShieldCheck size={16} strokeWidth={2} aria-hidden />
-          Полностью анонимно
-        </span>
         <h1 id="hero-title" className={s.heroTitle}>
           Психолог онлайн, <span className={s.heroAccent}>и никто не узнает, кто вы</span>
         </h1>
-        <p className={s.heroLead}>
-          Ни специалист, ни мы не знаем вашего имени и лица. Вместо имени псевдоним, вместо лица 3D-аватар, который повторяет вашу
-          мимику.
-        </p>
-        <ul className={s.trustChips} aria-label="Что остаётся анонимным">
-          {TRUST.map(({ icon: Icon, label, tone }) => (
-            <li key={label} className={s.trustChip} data-tone={tone}>
-              <Icon size={16} strokeWidth={2} aria-hidden />
-              {label}
-            </li>
-          ))}
-        </ul>
+        <p className={s.heroLead}>Без почты и телефона. Вместо имени псевдоним, вместо лица 3D-аватар с вашей мимикой.</p>
         <div className={s.heroActions}>
           <Button href="/start" variant="primary" size="lg">
             Начать анонимно
           </Button>
-          <Button href="/join" variant="secondary" size="lg">
+          <Button href="/join" variant="ghost" size="lg" className={s.heroSecondary}>
             Я специалист
           </Button>
         </div>
         {/* H1: public matching quiz, works without login */}
         <Link href="/match" className={s.heroQuiz}>
-          <ListChecks size={18} strokeWidth={1.9} aria-hidden />
-          <span>
-            Не знаете, к кому идти? <strong>Подберём психолога по анкете</strong> — 5 вопросов, без регистрации
-          </span>
+          Не знаете, к кому идти? <span>Подобрать по анкете</span>
+          <ArrowRight size={15} strokeWidth={2} aria-hidden />
         </Link>
-        <p className={s.heroNote}>
-          <span>
-            Понадобится только пароль. Имя придумаем за вас, например <strong>тихий-кит-4821</strong>.
-          </span>
-        </p>
       </div>
 
       <figure className={s.heroFigure}>
@@ -199,40 +172,14 @@ export function Hero() {
           <div className={s.stageCanvas}>
             <AvatarView ref={viewRef} config={config} framing="portrait" interactive={false} deferLoad />
           </div>
-          <span className={s.nameTag} aria-live="polite">
+          <figcaption className={s.nameTag} aria-live="polite">
             <span className={s.liveDot} aria-hidden />
             {current.alias}
-          </span>
+          </figcaption>
+          <button type="button" className={s.shuffle} aria-label="Показать другой аватар" title="Другой аватар" onClick={shuffle}>
+            <Shuffle size={16} strokeWidth={2} aria-hidden />
+          </button>
         </div>
-        <figcaption className={s.picker}>
-          <span className={s.pickerCaption}>Так вас видит специалист. Аватар вы соберёте сами после регистрации.</span>
-          <span className={s.pickerRow} role="radiogroup" aria-label="Примеры аватаров">
-            {PRESETS.map((p, i) => (
-              <button
-                key={p.seed}
-                type="button"
-                role="radio"
-                aria-checked={!extra && index === i}
-                aria-label={`Показать аватар ${p.alias}`}
-                className={s.thumbBtn}
-                onClick={() => {
-                  setExtra(null);
-                  setIndex(i);
-                }}
-              >
-                <AvatarThumb config={null} seed={p.seed} size={44} />
-              </button>
-            ))}
-            <Button
-              variant="secondary"
-              iconOnly
-              aria-label="Показать случайный аватар"
-              title="Случайный аватар"
-              onClick={shuffle}
-              icon={<Shuffle size={20} strokeWidth={1.8} />}
-            />
-          </span>
-        </figcaption>
       </figure>
     </section>
   );

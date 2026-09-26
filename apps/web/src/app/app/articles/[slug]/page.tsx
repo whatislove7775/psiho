@@ -8,7 +8,6 @@ import { WithRail } from "@/components/shell/AppShell";
 import { contentApi } from "@/lib/api/content";
 import { useLoad } from "@/components/client/useLoad";
 import { ErrorBlock } from "@/components/client/ClientBits";
-import { SupportCard } from "@/components/client/NextSessionCard";
 import { ArticleCard } from "@/components/content/Cards";
 import { Markdown } from "@/components/content/Markdown";
 import { EvidenceBadge, KeyFacts, SeekHelp, Sources } from "@/components/content/Evidence";
@@ -61,17 +60,9 @@ export default function ArticlePage() {
       <WithRail
         rail={
           <>
-            <Card tone="accent" as="section">
-              <div className={s.railTitle} style={{ padding: 0, marginBottom: 8 }}>
-                Хочется обсудить это с кем-то?
-              </div>
-              <p style={{ opacity: 0.88, fontSize: 15, lineHeight: 1.5, marginBottom: 16 }}>
-                Специалист поможет разобраться именно в вашей ситуации. Анонимно, по видео, с аватаром вместо лица.
-              </p>
-              <SearchTrigger variant="white" block>
-                Выбрать специалиста
-              </SearchTrigger>
-            </Card>
+            <SearchTrigger variant="soft" block>
+              Обсудить со специалистом
+            </SearchTrigger>
             {related.data && related.data.length > 0 && (
               <section className={s.related} aria-label="Ещё по теме">
                 <div className={s.railTitle}>Ещё по теме</div>
@@ -80,7 +71,6 @@ export default function ArticlePage() {
                 ))}
               </section>
             )}
-            <SupportCard />
           </>
         }
       >
@@ -115,10 +105,7 @@ export default function ArticlePage() {
               <Markdown source={a.body} />
               <SeekHelp text={a.when_to_seek_help} />
               <Sources sources={a.sources} level={a.evidence_level} reviewedAt={a.reviewed_at} />
-              <p className={s.foot}>
-                {a.author_name ? `${a.author_name}. ` : ""}
-                Статья помогает сориентироваться, но не заменяет консультацию специалиста и не является диагнозом.
-              </p>
+              {a.author_name && <p className={s.foot}>{a.author_name}</p>}
             </>
           )}
         </Card>

@@ -544,32 +544,22 @@ function CrisisCard({
   const items = help?.length
     ? help
     : [
-        { label: "Экстренные службы", phone: "112", note: "Если есть непосредственная опасность — звоните сейчас" },
-        { label: "Телефон доверия", phone: "8-800-2000-122", note: "Бесплатно и анонимно, круглосуточно" },
+        { label: "Экстренные службы", phone: "112", note: "" },
+        { label: "Телефон доверия", phone: "8-800-333-44-34", note: "" },
       ];
   return (
     <section className={s.crisis} data-level={level} role="alert" aria-label="Помощь прямо сейчас">
-      <div className={s.crisisHead}>
-        <LifeBuoy size={22} strokeWidth={1.8} aria-hidden />
-        <div>
-          <strong>{level === "acute" ? "Пожалуйста, не оставайтесь с этим один на один" : "Спасибо, что сказали"}</strong>
-          <p>
-            {level === "acute"
-              ? "Если вы в опасности или думаете о том, чтобы навредить себе, позвоните прямо сейчас — там помогут сразу. Специалисты ниже — тоже рядом, но они не экстренная служба."
-              : "Такие мысли — повод не откладывать разговор. Если станет тяжелее, звоните — это бесплатно и анонимно."}
-          </p>
-        </div>
-      </div>
+      <p className={s.crisisText}>
+        <LifeBuoy size={16} strokeWidth={1.9} aria-hidden />
+        {level === "acute"
+          ? "Если вы в опасности, позвоните сейчас — там помогут сразу."
+          : "Если станет тяжелее, позвоните — бесплатно и анонимно."}
+      </p>
       <div className={s.crisisPhones}>
         {items.map((h) => (
-          <a key={h.phone} href={`tel:${h.phone.replace(/-/g, "")}`} className={s.phone}>
-            <Phone size={18} strokeWidth={1.8} aria-hidden />
-            <span>
-              <strong>{h.phone}</strong>
-              <small>
-                {h.label}. {h.note}
-              </small>
-            </span>
+          <a key={h.phone} href={`tel:${h.phone.replace(/-/g, "")}`} className={s.phone} title={h.phone}>
+            <Phone size={14} strokeWidth={1.9} aria-hidden />
+            {h.label}
           </a>
         ))}
       </div>

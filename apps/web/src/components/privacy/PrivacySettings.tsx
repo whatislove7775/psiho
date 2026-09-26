@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, DoorOpen, EyeOff, Keyboard, ScanEye, Smartphone, BellOff } from "lucide-react";
+import { DoorOpen, EyeOff, Keyboard, ScanEye, Smartphone, BellOff } from "lucide-react";
 import { Button, Card, CardHead, Segmented } from "@/ui";
 import { usePrivacyPrefs } from "@/lib/privacy/usePrivacy";
 import { EXIT_TARGETS, STEALTH_PRESETS, panicExit, type ExitTarget, type StealthPreset } from "@/lib/privacy/stealth";
@@ -25,10 +25,12 @@ export function PrivacySettings() {
       <Card as="section">
         <CardHead
           title="Незаметный режим"
-          sub="Если рядом может оказаться человек, которому не стоит знать, что вы здесь"
+          sub="Нейтральная вкладка и быстрый выход по двойному Esc"
           icon={<EyeOff size={20} />}
           action={<Switch checked={st.enabled} onChange={(v) => setStealth({ enabled: v })} label="Незаметный режим" />}
         />
+        <details className={s.more}>
+          <summary>Как это работает</summary>
         <ul className={s.how}>
           <li>
             <span className={s.howIcon}>
@@ -72,6 +74,8 @@ export function PrivacySettings() {
             </span>
           </li>
         </ul>
+          <p className={s.honestLine}>Адрес сайта останется в истории браузера — надёжнее открывать aprosop в режиме инкогнито.</p>
+        </details>
 
         {st.enabled && (
           <div style={{ marginTop: 16 }}>
@@ -106,24 +110,21 @@ export function PrivacySettings() {
               <div className={s.row}>
                 <span className={s.rowText}>
                   <strong>При выходе — выйти из аккаунта</strong>
-                  <span>
-                    Стираем вход и данные сайта в этом браузере. Если кто-то нажмёт «Назад», он увидит только страницу входа. Вернуться можно по
-                    псевдониму и паролю.
-                  </span>
+                  <span>Стираем вход и данные сайта в этом браузере.</span>
                 </span>
                 <Switch checked={st.wipe} onChange={(v) => setStealth({ wipe: v })} label="Выйти из аккаунта при быстром выходе" />
               </div>
               <div className={s.row}>
                 <span className={s.rowText}>
                   <strong>Запомнить в аккаунте</strong>
-                  <span>Режим включится сам и на другом устройстве, как только вы войдёте. Без этого — только в этом браузере.</span>
+                  <span>Режим включится и на других устройствах.</span>
                 </span>
                 <Switch checked={prefs.sync} onChange={(v) => update((p) => ({ ...p, sync: v }))} label="Запомнить настройку в аккаунте" />
               </div>
               <div className={s.row}>
                 <span className={s.rowText}>
                   <strong>Проверить</strong>
-                  <span>Откроется нейтральный сайт. Вернуться можно по обычной ссылке на aprosop.</span>
+                  <span>Откроется нейтральный сайт.</span>
                 </span>
                 <Button variant="secondary" size="sm" icon={<DoorOpen size={16} />} onClick={panicExit}>
                   Выйти сейчас
@@ -133,19 +134,12 @@ export function PrivacySettings() {
           </div>
         )}
 
-        <div className={s.honest} style={{ marginTop: 16 }}>
-          <AlertTriangle size={16} />
-          <span>
-            Режим не стирает историю браузера: адрес сайта в ней останется. Надёжнее всего открывать aprosop в режиме инкогнито (приватном
-            окне) — тогда после закрытия не останется ни истории, ни входа.
-          </span>
-        </div>
       </Card>
 
       <Card as="section">
         <CardHead
           title="Защита от скриншотов"
-          sub="Для всех моих переписок на этом устройстве"
+          sub="Размытие и запрет копирования в переписках"
           icon={<ScanEye size={20} />}
           action={
             <Switch
@@ -155,6 +149,8 @@ export function PrivacySettings() {
             />
           }
         />
+        <details className={s.more}>
+          <summary>Как это работает</summary>
         <ul className={s.how}>
           <li>
             <span className={s.howIcon}>
@@ -174,14 +170,8 @@ export function PrivacySettings() {
             </span>
           </li>
         </ul>
-        <div className={s.honest} style={{ marginTop: 16 }}>
-          <AlertTriangle size={16} />
-          <span>
-            Честно: браузер не может полностью запретить снимки экрана. Системный скриншот телефона или фото экрана другим устройством всё равно
-            сработают. Защита убирает случайные копии и напоминает собеседнику о бережности. Включить её для обеих сторон конкретного диалога
-            можно в меню диалога «⋮».
-          </span>
-        </div>
+          <p className={s.honestLine}>Системный скриншот или фото экрана браузер запретить не может. Для обеих сторон диалога — в меню «⋮».</p>
+        </details>
       </Card>
     </>
   );
