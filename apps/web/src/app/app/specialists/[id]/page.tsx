@@ -18,6 +18,9 @@ import { BookingPanel } from "@/components/booking/BookingPanel";
 import { durationLabel } from "@/lib/api/availability";
 import s from "./profile.module.css";
 import { EmptyArt } from "@/components/illustrations";
+import { PublicCredentials, VerifiedBadge } from "@/components/credentials/PublicCredentials";
+import { ReviewsSection } from "@/components/reviews/ReviewsSection";
+import { RatingPill } from "@/components/reviews/ReviewBits";
 
 export default function SpecialistProfile() {
   const params = useParams<{ id: string }>();
@@ -97,10 +100,16 @@ export default function SpecialistProfile() {
                 alt={`Фото: ${p.display_name}`}
               />
               <div className={s.heroText}>
-                <Badge tone="success">
-                  <BadgeCheck size={14} strokeWidth={2} aria-hidden /> Документы
-                  проверены
-                </Badge>
+                <div className={s.trust}>
+                  {p.verified_credentials ? (
+                    <VerifiedBadge count={p.verified_credentials} />
+                  ) : (
+                    <Badge tone="success">
+                      <BadgeCheck size={14} strokeWidth={2} aria-hidden /> Анкета проверена
+                    </Badge>
+                  )}
+                  <RatingPill rating={p.rating} count={p.reviews_count} href="#reviews" />
+                </div>
                 <h1 className={s.name}>{p.display_name}</h1>
                 <p className={s.bio}>{p.bio}</p>
                 <dl className={s.facts}>
@@ -194,6 +203,8 @@ export default function SpecialistProfile() {
             </div>
           </Card>
         )}
+        {p && <PublicCredentials psychologistId={p.id} />}
+        {p && <ReviewsSection psychologistId={p.id} name={p.display_name} />}
       </WithRail>
     </>
   );

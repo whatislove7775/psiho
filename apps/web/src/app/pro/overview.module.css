@@ -163,3 +163,8 @@ li[data-done] .stepLabel {
     display: none;
   }
 }
+.stepsSub {
+  margin: -4px 0 12px;
+  color: var(--c-muted);
+  font-size: var(--t-13);
+}

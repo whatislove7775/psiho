@@ -3,7 +3,7 @@ WebRTC Signaling Consumer (Django Channels)
 --------------------------------------------
 Сервер — только сигнальный брокер. Медиапоток (видео/аудио) идёт P2P
 между клиентом и психологом через WebRTC, минуя сервер.
-Сервер видит только: тип сигнала (offer/answer/ice-candidate), room_id.
+Сервер видит только: тип сигнала (offer/answer/ice-candidate/media), room_id.
 
 Доступ: ?token=<ws_token> из POST /api/v1/sessions/{id}/join/
 (django.core.signing, 3 часа, user_id + room_id + role). Невалидный → close 4001.
@@ -25,7 +25,9 @@ logger = logging.getLogger(__name__)
 MAX_ROOM_PARTICIPANTS = 2
 SLOT_TTL = 3 * 60 * 60
 ROLES = ("client", "psychologist")
-ALLOWED_TYPES = {"offer", "answer", "ice-candidate", "ready", "bye"}
+# "media": the client tells the specialist whether they show the avatar or (explicit
+# opt-in) their real camera — {"type": "media", "face": "avatar" | "real"}.
+ALLOWED_TYPES = {"offer", "answer", "ice-candidate", "ready", "bye", "media"}
 
 CLOSE_REPLACED = 4000
 CLOSE_UNAUTHORIZED = 4001
@@ -102,6 +104,10 @@ class SignalingConsumer(AsyncWebsocketConsumer):
             return
         if not isinstance(data, dict) or data.get("type") not in ALLOWED_TYPES:
             return
+        if data["type"] == "media":
+            # relay only the two known fields
+            data = {"type": "media", "face": "real" if data.get("face") == "real" else "avatar",
+                    "from": str(data.get("from") or "")[:64]}
         # Ретранслируем сигнал всем в комнате кроме отправителя
         await self.channel_layer.group_send(
             self.group_name,

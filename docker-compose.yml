@@ -213,6 +213,9 @@ services:
     environment:
       HOSTNAME: 0.0.0.0
       PORT: "3000"
+      # Server-side reads for public SEO pages (/articles, /practices, sitemap, llms.txt) go straight
+      # to Django inside the docker network (sent with Host: aprosop.ru, which ALLOWED_HOSTS accepts).
+      INTERNAL_API_URL: ${INTERNAL_API_URL:-http://api:8000/api/v1}
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"]
       interval: 15s

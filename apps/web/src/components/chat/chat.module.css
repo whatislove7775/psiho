@@ -244,6 +244,21 @@
 .retentionChip:hover {
   color: var(--c-text);
 }
+.retentionText {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.retentionShield {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: 8px;
+  margin-left: 2px;
+  border-left: 1px solid var(--c-line);
+}
 .retentionChip:focus-visible {
   outline: none;
   box-shadow: var(--focus);

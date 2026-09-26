@@ -25,6 +25,7 @@ PsychologistPublic {
   // session_rate_rub = цена самого короткого созвона специалиста («от …»), синхронизируется с ценой часа
   booking: { hourly_rate_rub: number; min_duration: number; max_duration: number;
              durations: { minutes: number; price_rub: number }[] }
+  gender: "" | "female" | "male";   // необязательно, задаёт специалист (PATCH psychologist/profile/); фильтр поиска
 }
 PsychologistPrivate = PsychologistPublic & {
   verification_status: "pending" | "approved" | "rejected" | "suspended"
@@ -61,7 +62,9 @@ Session {
 
 | Метод | Путь | Ответ |
 |---|---|---|
-| GET | `psychologists/?q=&specialization=&max_rate=` | `PsychologistPublic[]` (только approved) |
+| GET | `psychologists/?<фильтры поиска>` | `PsychologistPublic[]` (только approved). Фильтры — как у `search/` (без `limit`); старые `specialization`, `max_rate` работают |
+| GET | `psychologists/search/?q=&topic=&topic=&approach=&max_rate=&when=&duration=&min_experience=&gender=&language=&sort=&tz=&limit=8` | `{ count, results: PsychologistPublic[] }` — палитра поиска. `q` — слова ищутся по началу слов в имени, темах, подходе, «о себе», языках (грубый стемминг: «тревожность» → «Тревога»; аббревиатуры подходов «кпт»; забытая раскладка «nhtdjuf» → «тревога»), все слова обязательны. `topic` (повтор или `topics=a,b`) — любая из тем. `approach` — ключ из `popular-requests.approaches`. `max_rate` — цена самой короткой сессии или выбранной `duration`. `when`: `today` \| `3days` \| `evening` (начало ≥ 18:00) \| `weekend` — в ближайшие 14 дней по поясу клиента `tz` (IANA, по умолчанию Москва). `duration` — специалист разрешает эту длительность; `next_slot` тогда считается для неё. `gender`: `female` \| `male`. `sort`: `relevance` (по умолчанию) \| `soon` \| `price` \| `experience`. Ближайшее время для всех считается пакетно (число SQL-запросов не зависит от числа специалистов). Запросы не сохраняются. Троттлинг `SEARCH_THROTTLE_RATE` (240/min). 400 с `detail` на неверный параметр |
+| GET | `psychologists/popular-requests/` | `{ popular: {label,count}[] /* «Часто ищут»: частые запросы, с которыми работают специалисты */, topics: {label,count}[], approaches: {value,label,count}[], languages: {label,count}[], durations: number[], genders: {value,count}[], price: {min,max}, when: {value,label}[] }` — кэш 5 минут, только по одобренным специалистам |
 | GET | `psychologists/{id}/` | `PsychologistPublic` |
 | GET | `psychologists/{id}/available-starts/?duration=90&from=YYYY-MM-DD&to=YYYY-MM-DD` | `{ duration_minutes, price_rub, durations: {minutes, price_rub}[], horizon_until, starts: string[] /* UTC ISO */ }` — свободные начала для длительности: расписание (шаблоны, особые дни, отпуск) минус сессии ± буфер, с учётом минимального времени до записи и горизонта. Даты — в поясе специалиста; по умолчанию сегодня…горизонт, duration — самая короткая. 400 если длительность не разрешена |
 | GET | `psychologists/{id}/slots/?from=YYYY-MM-DD&days=14` | `Slot[]` — устарело: то же для самой короткой длительности |
@@ -202,10 +205,12 @@ TimeOff { id; start_date; end_date; note }
 | Метод | Путь | Описание |
 |---|---|---|
 | GET | `/content/topics/` | `[{ value, label, count }]` — темы, в которых есть статьи |
-| GET | `/content/articles/?topic=&tag=&limit=&exclude=<slug>` | Карточки статей без `body`: `id, slug, title, summary, topic, topic_label, tags, cover, emoji, reading_minutes, author_name, published_at` |
-| GET | `/content/articles/<slug>/` | Статья целиком, `body` в Markdown |
-| GET | `/content/practices/?kind=&limit=` | Карточки практик: `id, slug, title, summary, kind, kind_label, duration_minutes, cover, emoji` |
-| GET | `/content/practices/<slug>/` | + `steps: [{ title, text, seconds? }]`, `pattern: { inhale, hold, exhale, hold_after, cycles } \| null` |
+| GET | `/content/articles/?topic=&tag=&limit=&exclude=<slug>&q=` | Карточки статей без `body`: `id, slug, title, summary, topic, topic_label, tags, cover, emoji, reading_minutes, author_name, published_at, updated_at, evidence_level`. `q` — поиск по словам в заголовке, описании и тегах (без учёта регистра) |
+| GET | `/content/articles/<slug>/` | Статья целиком: `body` в Markdown + `key_facts: [{ text, refs: [int] }]`, `when_to_seek_help` (Markdown), `sources: [{ title, url, authors?, year?, publisher?, doi?, kind? }]`, `reviewed_at` (дата) |
+| GET | `/content/practices/?kind=&limit=` | Карточки практик: `id, slug, title, summary, kind, kind_label, duration_minutes, cover, emoji, evidence_level, updated_at` |
+| GET | `/content/practices/<slug>/` | + `steps: [{ title, text, seconds? }]`, `pattern: { inhale, hold, exhale, hold_after, cycles } \| null`, `mechanism`, `cautions` (Markdown), `sources`, `reviewed_at` |
+
+Доказательность: `evidence_level` — `strong | moderate | limited | practice | ""`. Метки `[1]`, `[1, 2]` в `body`, `when_to_seek_help`, `mechanism`, `cautions` и `key_facts[].refs` — номера (с 1) в списке `sources`. Ссылки источников — только `http(s)`; CMS отклоняет `refs`, которых нет в списке. Каждую ссылку редактор открывает и проверяет вручную.
 
 `cover` — пастель из токенов: `peach | butter | lime | mint | lilac | sky`.
 `topic`: `anxiety | mood | stress | sleep | relationships | self | loss | therapy`.
@@ -220,7 +225,9 @@ TimeOff { id; start_date; end_date; note }
 | GET, POST | `/content/manage/practices/` | Все практики (+ `order, is_published, …`) |
 | GET, PATCH, DELETE | `/content/manage/practices/<id>/` | |
 
-Стартовые материалы (12 статей, 8 практик) создаются миграцией `content/0002`; повторно — `manage.py seed_content [--overwrite]`.
+Стартовые материалы (12 статей, 8 практик) создаются миграцией `content/0002`; версии с источниками (`content/0004`) заменяют только нетронутые в CMS материалы (сверка по отпечаткам прежних стартовых текстов в `apps/content/seed_history.py`). Повторно — `manage.py seed_content [--overwrite]`. Проверенные источники — `apps/content/sources.py`.
+
+Публичные SEO-страницы Next.js (`/articles`, `/articles/<slug>`, `/practices`, `/practices/<slug>`, `/sitemap.xml`, `/llms.txt`, `/llms-full.txt`) читают этот API на сервере через `INTERNAL_API_URL` (в docker-compose — `http://api:8000/api/v1`, заголовок `Host: aprosop.ru`) и кэшируют ответы на 5 минут.
 
 ## Чаты — `/chat/`
 
@@ -232,7 +239,7 @@ TimeOff { id; start_date; end_date; note }
 |---|---|---|
 | GET | `conversations/` (`?scope=support` — входящие поддержки) | список `Conversation` |
 | POST | `conversations/` `{with:"support"}` \| `{with:"specialist",psychologist_id}` \| `{with:"client",client_alias}` | найти или создать (201/200) |
-| GET/PATCH | `conversations/{id}/` PATCH `{retention:"24h"\|"forever"}` | режим меняет клиент (в `specialist_support` — специалист); появится системное сообщение |
+| GET/PATCH | `conversations/{id}/` PATCH `{retention?:"forever"\|"24h"\|"1h", screen_protect?:bool}` | «Исчезающие сообщения» (выкл / 1 день / 1 час, только для новых сообщений; истёкшие API не отдаёт сразу, `purge_chats` удаляет физически) и «Защита от скриншотов» для обеих сторон. Меняет клиент (в `specialist_support` — специалист); обе стороны видят системное сообщение (`retention:*`, `screen:on\|off`) |
 | POST | `conversations/{id}/read/`, `conversations/{id}/clear/` | прочитано; очистить историю у себя |
 | GET | `conversations/{id}/messages/?before=<msg id>&limit=40` | `{results: Message[] (по возрастанию), has_more}` |
 | POST | `conversations/{id}/messages/` JSON `{text}` или multipart `{kind:"voice", file, duration_ms, peaks(JSON)}` / `{kind:"file", file}` | файлы — только специалист/поддержка: pdf, doc(x), xls(x), pptx, odt, rtf, txt, png, jpg, webp, gif, mp3, ≤20 МБ; голосовые webm/ogg/mp4 ≤10 мин. Лимит `CHAT_SEND_RATE` |
@@ -246,7 +253,7 @@ TimeOff { id; start_date; end_date; note }
 | POST | `ai/reply/` `{text}` | `text/event-stream`: `user_message` → `delta`* → `done` (или `replace` при отказе, `error`). 503 `ai_unavailable` без ключа, 403 `consent_required`, 429 `ai_limit` |
 
 `Conversation`: `{id, kind, my_role, counterpart{type,name,avatar_config,psychologist_id?}, retention, retention_changed_at,
-can_change_retention, can_send_files, unread, last_message{text,created_at,sender_role,kind}, last_message_at, peer_read_at}`.
+can_change_retention, screen_protect, can_send_files, unread, last_message{text,created_at,sender_role,kind}, last_message_at, peer_read_at}`.
 `Message`: `{id, conversation, kind: text|voice|file|system, sender_role, text, system_code, card (карточка созвона для system «call:*», иначе null), attachment{name,mime,size,duration_ms,peaks}, created_at, edited_at, deleted, expires_at, mine}`.
 
 WebSocket `/ws/chat/?token=…`: сервер шлёт `ready`, `message.new`, `message.updated`, `message.hidden`, `conversation.updated`,
@@ -341,6 +348,60 @@ Proposal { id, status: "pending" | "accepted" | "declined" | "withdrawn" | "expi
   `rating` — одна на автора (повторная перезаписывает), `problem` — каждая новая запись; для `problem` нужны `issues` или `comment`.
   `tech` — только цифры о связи по белому списку (`rttMs, lossIn, lossOut, sendKbps, recvKbps, capKbps, codec, recvFps, recvSize, sendFps, limitation, relay, status, backend, detectFps, detectMs, latencyMs, browser, voice, durationSec, reconnects`), остальное отбрасывается. → 201 `{ id, kind, rating }`. Просмотр — Django admin (CallFeedback). Лимит 30/час.
 - `GET calls/{session_id}/presence/` → `{ peer_in_room: bool }` — подключён ли собеседник к сигналингу комнаты (лобби: «Специалист уже в звонке»).
+
+## Личные настройки — `/me/`
+
+| Метод | Путь | Описание |
+|---|---|---|
+| GET | `settings/` | `{settings, updated_at}` — настройки текущего пользователя (клиент или специалист), `{}` если не сохранены |
+| PATCH | `settings/` | частичное обновление (сливается): `{stealth?:{enabled?,preset?:"notes"\|"weather"\|"calendar"\|"docs",exit?:"weather"\|"news"\|"search"\|"wiki",wipe?}, screen_protect?:bool, v?:int}`. Неизвестные ключи отбрасываются, неверные значения — 400 |
+| DELETE | `settings/` | стереть копию настроек из аккаунта |
+
+«Незаметный режим» и «Защита от скриншотов» работают из localStorage браузера (`aprosop.privacy`); аккаунт хранит копию,
+чтобы режим включался на других устройствах. `v` — время изменения на устройстве (мс): новее — побеждает.
+
+## Документы специалистов — `/psychologist/credentials/`, `/staff/credentials/`
+
+Пункт: `kind` (`diploma` · `retraining` · `method` · `supervision` · `membership` · `publication` · `course` · `other`),
+`title`, `issuer`, `year`, `year_end`, `supervisor`, `hours`, `url`, `doi`, `number` (хранится зашифрованным; публично — маска `№ •••• 1234`).
+Статусы: `pending` · `approved` · `rejected` (`reject_reason`) · `needs_info` (вопрос в `notes`).
+Любое существенное изменение подтверждённого пункта (данные, новый файл, файл стал публичным) → снова `pending` (`was_approved: true`).
+
+| Метод | Путь | Кто | Описание |
+|---|---|---|---|
+| GET/POST | `/psychologist/credentials/` | специалист | мои пункты (с файлами и перепиской) / создать |
+| PATCH/DELETE | `/psychologist/credentials/<uuid>/` | специалист | изменить / удалить |
+| POST | `/psychologist/credentials/<uuid>/files/` | специалист | multipart `file` (PDF/JPG/PNG/WebP ≤ 10 МБ, до 6 на пункт), `is_public` 1/0. EXIF удаляется |
+| PATCH/DELETE | `/psychologist/credentials/files/<uuid>/` | специалист | `{is_public}` / удалить файл |
+| POST | `/psychologist/credentials/<uuid>/notes/` | специалист | ответ сотруднику `{text}`; `needs_info`/`rejected` → `pending` |
+| GET | `/credentials/files/<uuid>/` | владелец или сотрудник с `specialists.verify` | содержимое файла (иначе 404) |
+| GET | `/psychologists/<id>/credentials/` | все | только подтверждённые пункты, только публичные файлы |
+| GET | `/psychologists/<id>/credentials/files/<uuid>/` | все | публичный файл подтверждённого пункта |
+| GET | `/staff/credentials/?status=&q=&specialist=&page=` | `specialists.verify` | очередь `{count, page, pages, results, counts}` |
+| GET/POST | `/staff/credentials/<uuid>/` | `specialists.verify` | пункт / решение `{decision: approve\|reject\|request_info, comment}` (comment обязателен для reject/request_info), пишется в журнал `credential.*` |
+
+Файлы хранятся зашифрованными в БД (как вложения чата), не в `/media`. `GET /staff/me/` → `badges.credentials` — число пунктов на проверке.
+
+## Отзывы — `/reviews/`
+
+Оставить отзыв может только клиент с завершённым созвоном у специалиста (`completed`, деньги не возвращены). Один отзыв на пару
+(повторный POST обновляет). Автор не показывается: `author_label` «Клиент, N созвонов», дата — месяц (`month: "2026-09"`).
+
+| Метод | Путь | Кто | Описание |
+|---|---|---|---|
+| GET | `/psychologists/<id>/reviews/?page=` | все | `{summary: {rating, count, distribution, top_tags}, count, page, pages, results}` |
+| GET | `/reviews/eligibility/?psychologist=<id>` | вошедший | `{can_review, completed_calls, review, tags}` |
+| POST | `/reviews/` | клиент | `{psychologist, rating 1–5, text?, tags?}` → 201 (новый) / 200 (обновлён); 403 `no_completed_calls` |
+| PATCH/DELETE | `/reviews/<id>/` | автор | изменить / удалить |
+| GET | `/reviews/about-me/` | специалист | отзывы о себе + сводка |
+| POST | `/reviews/<id>/reply/` | специалист | единственный ответ `{text}` (повторный POST правит его) |
+| POST | `/reports/` | вошедший | жалоба `{target_type: "review", target_id: "<id>", reason, comment}` |
+| GET | `/staff/reviews/?status=reported\|hidden\|all` | `reports.view` | отзывы с жалобами |
+| POST | `/staff/reviews/<id>/moderate/` | `reports.resolve` | `{action: hide\|restore\|keep, note}` (note обязателен для hide); закрывает жалобы, журнал `review.*` |
+
+Теги: `attentive` · `clarity` · `gentle` · `tools` · `progress` · `punctual` · `clear` · `safe`.
+В карточках специалистов (`/psychologists/`, `/psychologists/search/`, детальная) добавлены `rating` (среднее, null без отзывов),
+`reviews_count`, `verified_credentials` (> 0 → значок «Проверено aprosop»).
 
 ## Здоровье
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Flag, MessageSquare, UserRound, Video } from "lucide-react";
+import { Flag, MessageSquare, Star, UserRound, Video } from "lucide-react";
 import { Badge, Button, Card, EmptyState, Modal, Segmented, Skeleton, Textarea, useToast } from "@/ui";
 import { PageHeader } from "@/components/shell/AppShell";
 import { AvatarThumb } from "@/components/avatar/AvatarThumb";
@@ -30,8 +30,8 @@ const ACTION_LABEL: Record<ReportAction, string> = {
   cancel_session: "Отменить созвон",
 };
 
-const TARGET_ICON = { user: UserRound, specialist: UserRound, session: Video, message: MessageSquare };
-const TARGET_LABEL = { user: "Аккаунт", specialist: "Специалист", session: "Созвон", message: "Сообщение в чате" };
+const TARGET_ICON = { user: UserRound, specialist: UserRound, session: Video, message: MessageSquare, review: Star };
+const TARGET_LABEL = { user: "Аккаунт", specialist: "Специалист", session: "Созвон", message: "Сообщение в чате", review: "Отзыв" };
 
 export default function Page_() {
   return (
@@ -146,7 +146,10 @@ function ModerationPage() {
                         Созвон {dateTime(r.target.session.scheduled_at)}, {SESSION_STATUS[r.target.session.status]?.label.toLowerCase()}
                       </span>
                     )}
-                    {r.target.message_id && <span>Сообщение №{r.target.message_id.slice(0, 8)}</span>}
+                    {r.target.message_id && r.target_type === "review" && (
+                      <a href="/admin/reviews?status=reported">Отзыв №{r.target.message_id}, решить в разделе «Отзывы»</a>
+                    )}
+                    {r.target.message_id && r.target_type !== "review" && <span>Сообщение №{r.target.message_id.slice(0, 8)}</span>}
                     {r.assignee && <span>В работе у {r.assignee === me.alias ? "вас" : r.assignee}</span>}
                   </div>
                   {r.resolved_at && (

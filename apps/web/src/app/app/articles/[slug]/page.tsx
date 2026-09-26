@@ -11,11 +11,13 @@ import { ErrorBlock } from "@/components/client/ClientBits";
 import { SupportCard } from "@/components/client/NextSessionCard";
 import { ArticleCard } from "@/components/content/Cards";
 import { Markdown } from "@/components/content/Markdown";
+import { EvidenceBadge, KeyFacts, SeekHelp, Sources } from "@/components/content/Evidence";
 import c from "@/components/content/content.module.css";
 import s from "../articles.module.css";
 import { EmptyArt } from "@/components/illustrations";
 import { TopicArt } from "@/components/illustrations/topics";
 import art from "@/components/content/art.module.css";
+import { SearchTrigger } from "@/components/search/SpecialistSearch";
 
 export default function ArticlePage() {
   const params = useParams<{ slug: string }>();
@@ -66,9 +68,9 @@ export default function ArticlePage() {
               <p style={{ opacity: 0.88, fontSize: 15, lineHeight: 1.5, marginBottom: 16 }}>
                 Специалист поможет разобраться именно в вашей ситуации. Анонимно, по видео, с аватаром вместо лица.
               </p>
-              <Button variant="white" block href="/app/specialists">
+              <SearchTrigger variant="white" block>
                 Выбрать специалиста
-              </Button>
+              </SearchTrigger>
             </Card>
             {related.data && related.data.length > 0 && (
               <section className={s.related} aria-label="Ещё по теме">
@@ -104,11 +106,15 @@ export default function ArticlePage() {
                     <Clock size={14} strokeWidth={1.8} aria-hidden />
                     {a.reading_minutes} мин чтения
                   </span>
+                  <EvidenceBadge level={a.evidence_level} />
                 </div>
                 <h1 className={s.title}>{a.title}</h1>
                 {a.summary && <p className={s.lead}>{a.summary}</p>}
               </header>
+              <KeyFacts facts={a.key_facts} />
               <Markdown source={a.body} />
+              <SeekHelp text={a.when_to_seek_help} />
+              <Sources sources={a.sources} level={a.evidence_level} reviewedAt={a.reviewed_at} />
               <p className={s.foot}>
                 {a.author_name ? `${a.author_name}. ` : ""}
                 Статья помогает сориентироваться, но не заменяет консультацию специалиста и не является диагнозом.

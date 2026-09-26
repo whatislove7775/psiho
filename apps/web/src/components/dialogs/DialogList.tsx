@@ -10,6 +10,7 @@ import { EmptyArt } from "@/components/illustrations";
 import c from "@/components/chat/chat.module.css";
 import { cardPreview, hm, isLive, useNow, weekdayDay } from "./time";
 import s from "./dialogs.module.css";
+import { SearchTrigger } from "@/components/search/SpecialistSearch";
 
 type Filter = "all" | "calls" | "unread";
 
@@ -111,7 +112,7 @@ export function DialogList({
           </span>
           <span className={c.itemBottom}>
             <span className={c.itemPreview}>
-              {d.retention === "24h" && <Timer size={12} className={c.itemTimer} aria-label="24 часа" />}
+              {d.retention !== "forever" && <Timer size={12} className={c.itemTimer} aria-label="Исчезающие сообщения" />}
               {preview}
             </span>
             {d.unread > 0 && <span className={c.unread}>{d.unread > 99 ? "99+" : d.unread}</span>}
@@ -195,9 +196,9 @@ export function DialogList({
                 <p className={s.muted} style={{ marginBottom: 10 }}>
                   С каждым специалистом у вас будет один диалог: переписка, созвоны и файлы в одном месте.
                 </p>
-                <Button variant="secondary" size="sm" href="/app/specialists">
+                <SearchTrigger variant="secondary" size="sm">
                   Выбрать специалиста
-                </Button>
+                </SearchTrigger>
               </div>
             )}
           </>

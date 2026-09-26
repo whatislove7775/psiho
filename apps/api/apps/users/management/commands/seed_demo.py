@@ -30,6 +30,9 @@ PSYCHOLOGISTS = [
      "Мотивационное интервьюирование, схема-терапия."),
 ]
 
+# Пол специалиста — необязательное поле профиля (фильтр в поиске)
+GENDERS = {"Анна Соколова": "female", "Марк Литвинов": "male", "Вера Ким": "female", "Илья Громов": "male"}
+
 
 class Command(BaseCommand):
     help = "Заполняет базу демо-данными для локальной разработки"
@@ -48,6 +51,9 @@ class Command(BaseCommand):
         for email, name, specs, rate, years, bio, approach in PSYCHOLOGISTS:
             existing = PsychologistProfile.objects.filter(display_name=name).first()
             if existing:
+                if not existing.gender and name in GENDERS:
+                    existing.gender = GENDERS[name]
+                    existing.save(update_fields=["gender"])
                 profiles.append(existing)
                 continue
             user = User.objects.create_psychologist(email, PASSWORD)
@@ -59,6 +65,7 @@ class Command(BaseCommand):
                 specializations=specs,
                 languages=["Русский"],
                 experience_years=years,
+                gender=GENDERS.get(name, ""),
                 session_rate_rub=rate,
                 verification_status="approved",
                 verified_at=timezone.now(),

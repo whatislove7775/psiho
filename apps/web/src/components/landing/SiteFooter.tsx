@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LEGAL_DOCS } from "@/components/legal/docs";
 import { Brand } from "./SiteHeader";
 import s from "./landing.module.css";
 
@@ -40,17 +41,29 @@ export function SiteFooter() {
             </ul>
           </div>
           <div className={s.footerCol}>
-            <h3>Документы</h3>
+            <h3>Полезное</h3>
             <ul>
               <li>
-                <Link href="/legal/privacy">Конфиденциальность</Link>
+                <Link href="/articles">Статьи</Link>
               </li>
               <li>
-                <Link href="/legal/terms">Условия использования</Link>
+                <Link href="/practices">Практики</Link>
               </li>
               <li>
                 <a href="mailto:support@aprosop.ru">support@aprosop.ru</a>
               </li>
+            </ul>
+          </div>
+          <div className={s.footerCol}>
+            <h3>
+              <Link href="/legal">Документы</Link>
+            </h3>
+            <ul>
+              {LEGAL_DOCS.map((d) => (
+                <li key={d.slug}>
+                  <Link href={`/legal/${d.slug}`}>{d.short}</Link>
+                </li>
+              ))}
             </ul>
           </div>
         </div>

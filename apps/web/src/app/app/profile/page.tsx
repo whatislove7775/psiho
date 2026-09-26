@@ -16,6 +16,7 @@ import { ErrorBlock } from "@/components/client/ClientBits";
 import { NextSessionCard, SupportCard } from "@/components/client/NextSessionCard";
 import s from "./profile.module.css";
 import { illSize, SpecialistFriend } from "@/components/illustrations";
+import { SearchTrigger } from "@/components/search/SpecialistSearch";
 
 export default function ClientProfile() {
   const user = useAuth((st) => st.user);
@@ -123,9 +124,9 @@ export default function ClientProfile() {
           <div className={s.empty}>
             <SpecialistFriend className={illSize.xs} />
             <p>Здесь появятся специалисты, с которыми у вас будут диалоги.</p>
-            <Button variant="primary" size="sm" href="/app/specialists">
+            <SearchTrigger variant="primary" size="sm">
               Выбрать специалиста
-            </Button>
+            </SearchTrigger>
           </div>
         ) : (
           <ul className={s.people}>

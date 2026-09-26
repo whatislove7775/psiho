@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Room } from "@/components/room/Room";
 
 export const metadata: Metadata = {
-  title: "Сессия",
+  title: "Звонок",
+  description: "Защищённый видеозвонок aprosop без записи.",
   robots: { index: false, follow: false },
 };
 

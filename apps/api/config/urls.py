@@ -4,6 +4,9 @@ from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
 
+from apps.credentials import urls as credentials_urls
+from apps.reviews import urls as reviews_urls
+
 
 def health(request):
     from django.db import connection
@@ -35,6 +38,15 @@ urlpatterns = [
     path("api/v1/billing/", include("apps.billing.urls")),
     path("api/v1/dialogues/", include("apps.dialogs.urls")),
     path("api/v1/calls/", include("apps.calls.urls")),
+    path("api/v1/me/", include("apps.prefs.urls")),
+    # G2: документы специалистов и отзывы
+    path("api/v1/psychologist/credentials/", include(credentials_urls.urlpatterns_cabinet)),
+    path("api/v1/credentials/", include(credentials_urls.urlpatterns_files)),
+    path("api/v1/psychologists/", include(credentials_urls.urlpatterns_public)),
+    path("api/v1/psychologists/", include(reviews_urls.urlpatterns_public)),
+    path("api/v1/staff/credentials/", include(credentials_urls.urlpatterns_staff)),
+    path("api/v1/staff/reviews/", include(reviews_urls.urlpatterns_staff)),
+    path("api/v1/reviews/", include("apps.reviews.urls")),
 ]
 
 if settings.DEBUG:  # production: nginx serves /media/ from the "media" volume

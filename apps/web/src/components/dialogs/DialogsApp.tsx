@@ -18,6 +18,7 @@ import { DialogList } from "./DialogList";
 import { DialogThread } from "./DialogThread";
 import { DialogDetails, DialogSummary, type DetailsFocus } from "./InfoPanel";
 import s from "./dialogs.module.css";
+import { useSpecialistSearch } from "@/components/search/SpecialistSearch";
 
 type Mode = "client" | "specialist";
 
@@ -199,9 +200,12 @@ export function DialogsApp({ mode }: { mode: Mode }) {
     />
   );
 
+  const search = useSpecialistSearch();
   const openNew = async () => {
     if (mode === "client") {
-      router.push("/app/specialists");
+      // «Новый диалог» for a client = find a specialist: the search palette grows out of the button
+      if (search) search.open(document.activeElement instanceof HTMLElement ? document.activeElement : null);
+      else router.push("/app/specialists");
       return;
     }
     setNewOpen(true);
@@ -210,6 +214,13 @@ export function DialogsApp({ mode }: { mode: Mode }) {
 
   const showAIIntro = mode === "client" && item?.kind === "ai" && !ai?.consent;
   const open = !!selected;
+
+  // An open thread owns the bottom of a phone screen (composer): the mobile island hides (html[data-thread]).
+  useEffect(() => {
+    if (!open) return;
+    document.documentElement.setAttribute("data-thread", "");
+    return () => document.documentElement.removeAttribute("data-thread");
+  }, [open]);
 
   // ── Thread column ────────────────────────────────────────────────────
   let thread: React.ReactNode;
@@ -429,7 +440,7 @@ function Placeholder({ mode }: { mode: Mode }) {
           <Lock size={18} /> Сообщения и файлы хранятся в зашифрованном виде
         </li>
         <li>
-          <Timer size={18} /> Режим «24 часа»: новые сообщения исчезают сами через сутки
+          <Timer size={18} /> Исчезающие сообщения: новые исчезают сами через 1 час или 1 день
         </li>
         <li>
           <Mic size={18} /> Голосовые можно записать с маской голоса

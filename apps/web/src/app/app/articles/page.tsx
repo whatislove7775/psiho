@@ -11,6 +11,7 @@ import { ErrorBlock } from "@/components/client/ClientBits";
 import { ArticleCard, ArticleCardSkeleton } from "@/components/content/Cards";
 import c from "@/components/content/content.module.css";
 import s from "./articles.module.css";
+import { UsefulTabs } from "@/components/content/UsefulTabs";
 import { EmptyArt } from "@/components/illustrations";
 
 function Articles() {
@@ -25,11 +26,12 @@ function Articles() {
 
   return (
     <>
-      <PageHeader title="Статьи" sub="Спокойно и по делу: о тревоге, отношениях, сне и о том, как устроена терапия." />
+      <PageHeader title="Полезное" sub="Статьи о тревоге, отношениях, сне и о том, как устроена терапия. И короткие практики на каждый день." />
+      <UsefulTabs />
 
-      <div className={s.chips} role="group" aria-label="Темы">
+      <div className={s.chips} role="group" aria-label="Темы статей">
         <button type="button" className={s.chip} aria-pressed={!topic} onClick={() => pick("")}>
-          Все темы
+          Все
         </button>
         {(topics.data ?? []).map((t) => (
           <button key={t.value} type="button" className={s.chip} aria-pressed={topic === t.value} onClick={() => pick(t.value)}>

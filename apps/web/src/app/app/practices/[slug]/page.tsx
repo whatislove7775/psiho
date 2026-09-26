@@ -10,6 +10,7 @@ import { ErrorBlock } from "@/components/client/ClientBits";
 import { SupportCard } from "@/components/client/NextSessionCard";
 import { PracticeCard } from "@/components/content/Cards";
 import { BreathingCircle, StepPlayer } from "@/components/content/PracticePlayer";
+import { Cautions, EvidenceBadge, Mechanism, Sources } from "@/components/content/Evidence";
 import c from "@/components/content/content.module.css";
 import s from "../../articles/articles.module.css";
 import { EmptyArt } from "@/components/illustrations";
@@ -86,6 +87,7 @@ export default function PracticePage() {
                     <Clock size={14} strokeWidth={1.8} aria-hidden />
                     {p.duration_minutes} мин
                   </span>
+                  <EvidenceBadge level={p.evidence_level} />
                 </div>
                 <h1 className={s.title}>{p.title}</h1>
                 {p.summary && <p className={s.lead}>{p.summary}</p>}
@@ -109,6 +111,9 @@ export default function PracticePage() {
               ) : (
                 <StepPlayer practice={p} />
               )}
+              <Mechanism text={p.mechanism} />
+              <Cautions text={p.cautions} />
+              <Sources sources={p.sources} level={p.evidence_level} reviewedAt={p.reviewed_at} />
               <p className={s.foot}>
                 Если во время практики становится хуже, остановитесь и вернитесь к обычному дыханию. Практики помогают
                 справляться с напряжением, но не заменяют помощь специалиста.

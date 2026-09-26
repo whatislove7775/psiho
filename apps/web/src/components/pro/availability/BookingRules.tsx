@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardHead, Field, Input, Segmented } from "@/ui";
+import { Card, CardHead, Field, Input, Segmented, Select } from "@/ui";
 import { durationLabel, priceFor, type AvailabilitySettings } from "@/lib/api/availability";
 import { plural, rub } from "@/lib/format";
 import c from "./availability.module.css";
@@ -103,26 +103,14 @@ export function SessionRules({
             </span>
           </div>
           <div className={c.durLimits}>
-            <label>
+            <div>
               <span>Самая короткая</span>
-              <select className={c.selectBox} value={draft.min_duration} onChange={(e) => setMin(Number(e.target.value))}>
-                {all.map((d) => (
-                  <option key={d} value={d}>
-                    {durationLabel(d)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
+              <Select aria-label="Самая короткая" className={c.selectBox} value={draft.min_duration} onChange={setMin} options={all.map((d) => ({ value: d, label: durationLabel(d) }))} />
+            </div>
+            <div>
               <span>Самая длинная</span>
-              <select className={c.selectBox} value={draft.max_duration} onChange={(e) => setMax(Number(e.target.value))}>
-                {all.map((d) => (
-                  <option key={d} value={d}>
-                    {durationLabel(d)}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <Select aria-label="Самая длинная" className={c.selectBox} value={draft.max_duration} onChange={setMax} options={all.map((d) => ({ value: d, label: durationLabel(d) }))} />
+            </div>
           </div>
           <div className={c.durChips} role="group" aria-label="Варианты длительности для клиента">
             {all.map((d) => {
@@ -160,55 +148,43 @@ export function SessionRules({
 
         <div className={c.ruleGrid}>
           <Field label="Запись не позднее чем" htmlFor="rule-notice" hint="Чтобы не было неожиданных созвонов через полчаса">
-            <select
+            <Select
               id="rule-notice"
               className={c.selectBox}
               value={draft.min_notice_minutes}
-              onChange={(e) => onChange({ min_notice_minutes: Number(e.target.value) })}
-            >
-              {uniq([...options.min_notice_minutes, draft.min_notice_minutes]).map((m) => (
-                <option key={m} value={m}>
-                  {noticeLabel(m)} до начала
-                </option>
-              ))}
-            </select>
+              onChange={(v) => onChange({ min_notice_minutes: v })}
+              options={uniq([...options.min_notice_minutes, draft.min_notice_minutes]).map((m) => ({ value: m, label: `${noticeLabel(m)} до начала` }))}
+            />
           </Field>
           <Field label="Открывать запись на" htmlFor="rule-horizon" hint="Насколько вперёд клиенты видят свободное время">
-            <select
+            <Select
               id="rule-horizon"
               className={c.selectBox}
               value={draft.horizon_days}
-              onChange={(e) => onChange({ horizon_days: Number(e.target.value) })}
-            >
-              {uniq([...options.horizon_days, draft.horizon_days]).map((d) => (
-                <option key={d} value={d}>
-                  {horizonLabel(d)} вперёд
-                </option>
-              ))}
-            </select>
+              onChange={(v) => onChange({ horizon_days: v })}
+              options={uniq([...options.horizon_days, draft.horizon_days]).map((d) => ({ value: d, label: `${horizonLabel(d)} вперёд` }))}
+            />
           </Field>
           <Field label="Созвоны начинаются" htmlFor="rule-step" hint="А ещё сразу после другого созвона и перерыва">
-            <select
+            <Select
               id="rule-step"
               className={c.selectBox}
               value={draft.start_step_minutes}
-              onChange={(e) => onChange({ start_step_minutes: Number(e.target.value) })}
-            >
-              {options.start_step_minutes.map((m) => (
-                <option key={m} value={m}>
-                  {m === 60 ? "В начале каждого часа" : m === 30 ? "Каждые полчаса" : `Каждые ${m} минут`}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => onChange({ start_step_minutes: v })}
+              options={options.start_step_minutes.map((m) => ({
+                value: m,
+                label: m === 60 ? "В начале каждого часа" : m === 30 ? "Каждые полчаса" : `Каждые ${m} минут`,
+              }))}
+            />
           </Field>
           <Field label="Ваш часовой пояс" htmlFor="rule-tz" hint="Расписание задаётся в нём, клиенты видят своё время">
-            <select id="rule-tz" className={c.selectBox} value={draft.time_zone} onChange={(e) => onChange({ time_zone: e.target.value })}>
-              {zones.map(([z, name]) => (
-                <option key={z} value={z}>
-                  {name}, {utcOffset(z)}
-                </option>
-              ))}
-            </select>
+            <Select
+              id="rule-tz"
+              className={c.selectBox}
+              value={draft.time_zone}
+              onChange={(v) => onChange({ time_zone: v })}
+              options={zones.map(([z, name]) => ({ value: z, label: `${name}, ${utcOffset(z)}` }))}
+            />
           </Field>
         </div>
       </div>

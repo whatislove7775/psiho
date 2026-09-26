@@ -18,6 +18,8 @@ export type SignalMessage =
   | { type: "ice-candidate"; candidate: RTCIceCandidateInit; from?: string }
   | { type: "ready"; from?: string }
   | { type: "bye"; from?: string }
+  /** the client shows the avatar or (explicit opt-in) the real camera */
+  | { type: "media"; face: "avatar" | "real"; from?: string }
   | { type: "peer-joined" }
   | { type: "peer-left" };
 

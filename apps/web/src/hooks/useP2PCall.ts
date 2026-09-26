@@ -127,6 +127,11 @@ interface UseP2PCallOptions {
   onEnd?: () => void;
   /** Video encoder cap, bps. Default 900 kbps (avatar); a real camera wants more. */
   videoMaxBitrate?: number;
+  /**
+   * Client only: what the outgoing video shows. Announced to the peer
+   * (signaling "media") on change and whenever the call (re)connects.
+   */
+  faceMode?: "avatar" | "real";
 }
 
 /** Random id for one RTCPeerConnection instance (tags every signal we send). */
@@ -153,7 +158,7 @@ function newPcId(): string {
  *  - Local track changes (voice filter on/off → new MediaStream) are applied
  *    with RTCRtpSender.replaceTrack(): no teardown, no renegotiation.
  */
-export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrate = 900_000 }: UseP2PCallOptions) {
+export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrate = 900_000, faceMode }: UseP2PCallOptions) {
   const [status,      setStatus]      = useState<P2PStatus>("idle");
   const [isMuted,     setIsMuted]     = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
@@ -162,6 +167,12 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
   const [retryKey,    setRetryKey]    = useState(0);
   const [quality,     setQuality]     = useState<CallQuality>("unknown");
   const [stats,       setStats]       = useState<CallStats | null>(null);
+  /** what the peer's video shows (a client may switch to their real camera) */
+  const [remoteFace,  setRemoteFace]  = useState<"avatar" | "real">("avatar");
+  const faceModeRef    = useRef(faceMode);
+  faceModeRef.current  = faceMode;
+  /** announce our faceMode to the peer (set by the main effect while a call runs) */
+  const announceRef    = useRef<() => void>(() => {});
 
   const pcRef          = useRef<RTCPeerConnection | null>(null);
   const sigRef         = useRef<SignalingClient | null>(null);
@@ -237,6 +248,10 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
     let reconnectTimer:  ReturnType<typeof setTimeout> | undefined;
 
     const send = (msg: Parameters<SignalingClient["send"]>[0]) => sig.send({ ...msg, from: myId });
+    announceRef.current = () => {
+      const face = faceModeRef.current;
+      if (face && !cancelRef.current) send({ type: "media", face });
+    };
     const sendDesc = (type: "offer" | "answer", d: RTCSessionDescription) =>
       send({ type, sdp: { type: d.type, sdp: tuneSdp(d.sdp) } });
 
@@ -245,6 +260,7 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
         setStatus("connected");
         return;
       }
+      announceRef.current(); // a fresh peer PC starts from "avatar"
       hasRemoteRef.current = true;
       setHasRemote(true);
       setStatus("connected");
@@ -265,6 +281,7 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
     }
 
     function markDisconnected() {
+      setRemoteFace("avatar");
       hasRemoteRef.current = false;
       setHasRemote(false);
       stopElapsed();
@@ -527,6 +544,11 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
             break;
           }
 
+          case "media":
+            if (from && remoteId && from !== remoteId) break; // stale peer PC
+            setRemoteFace(msg.face === "real" ? "real" : "avatar");
+            break;
+
           case "peer-left":
           case "bye":
             // Start over with a clean PC so the next join negotiates from scratch.
@@ -674,6 +696,7 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
       clearTimeout(reconnectTimer);
       nav.connection?.removeEventListener("change", onNetChange);
       window.removeEventListener("online", onOnline);
+      announceRef.current = () => {};
       unsubscribe();
       unsubReconnect();
       sig.disconnect();
@@ -700,6 +723,11 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
       try { tr.sender.setStreams?.(localStream); } catch { /* optional API */ }
     }
   }, [localStream]);
+
+  // The client switched between avatar and real camera: tell the peer.
+  useEffect(() => {
+    announceRef.current();
+  }, [faceMode]);
 
   // ── Controls ──────────────────────────────────────────────────
   const toggleMute = useCallback(() => {
@@ -743,7 +771,7 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
   const retryNow = useCallback(() => setRetryKey(k => k + 1), []);
 
   return {
-    status, isMuted, isCameraOff, hasRemote, elapsed, quality, stats,
+    status, isMuted, isCameraOff, hasRemote, elapsed, quality, stats, remoteFace,
     remoteVideoRef, toggleMute, toggleCamera, hangUp, retryNow,
   };
 }

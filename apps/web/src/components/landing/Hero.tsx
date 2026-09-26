@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Shuffle } from "lucide-react";
+import { AtSign, AudioLines, ShieldCheck, Shuffle, Smile, UserRound, Wallet, type LucideIcon } from "lucide-react";
 import { AvatarThumb } from "@/components/avatar/AvatarThumb";
 import { AvatarView, type AvatarViewHandle } from "@/components/avatar/AvatarView";
 import { randomAvatar } from "@/lib/avatar/schema";
@@ -25,7 +25,75 @@ const EXTRA_ALIASES = [
   "синий-клён-4410",
 ];
 
+/** What stays anonymous: shown as chips right under the headline. */
+const TRUST: { icon: LucideIcon; label: string; tone: string }[] = [
+  { icon: AtSign, label: "Без почты и телефона", tone: "cyan" },
+  { icon: UserRound, label: "Псевдоним вместо имени", tone: "lilac" },
+  { icon: Smile, label: "Аватар вместо лица", tone: "sun" },
+  { icon: AudioLines, label: "Голос с фильтром", tone: "mint" },
+  { icon: Wallet, label: "Оплата без имени", tone: "coral" },
+];
+
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const rand = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
+
+type LookApi = { lookAt(yaw: number, pitch: number): void; setExpression(w: Record<string, number>): void };
+
+/**
+ * Scripted "alive" motion for touch screens: the head glides between points of interest
+ * (eased, with holds and a slight drift), often returns to eye contact, and smiles now and then.
+ * Blinks come from the renderer's own idle loop. Returns a cleanup function.
+ */
+function scriptedIdle(get: () => LookApi | null) {
+  let raf = 0;
+  let from = { x: 0, y: 0 };
+  let to = { x: 0, y: 0 };
+  let moveStart = 0;
+  let moveDur = 1;
+  let holdUntil = 0;
+  let smileAt = performance.now() + rand(2500, 4500);
+  let smileEnd = 0;
+  const pick = (now: number, cur: { x: number; y: number }) => {
+    from = cur;
+    // ~40%: back to the viewer; otherwise glance somewhere (more sideways than up/down)
+    to = Math.random() < 0.4 ? { x: rand(-0.08, 0.08), y: rand(-0.05, 0.05) } : { x: rand(-0.85, 0.85), y: rand(-0.35, 0.45) };
+    moveStart = now;
+    moveDur = rand(900, 1700);
+    holdUntil = now + moveDur + rand(900, 2600);
+  };
+  const tick = (now: number) => {
+    raf = requestAnimationFrame(tick);
+    const r = get();
+    if (!r) return;
+    const p = clamp((now - moveStart) / moveDur, 0, 1);
+    const e = ease(p);
+    const drift = now / 1000;
+    const x = from.x + (to.x - from.x) * e + Math.sin(drift * 0.9) * 0.04;
+    const y = from.y + (to.y - from.y) * e + Math.sin(drift * 0.7 + 1.3) * 0.03;
+    r.lookAt(x, y);
+    if (now > holdUntil) pick(now, { x: from.x + (to.x - from.x) * e, y: from.y + (to.y - from.y) * e });
+    // a soft smile: ramp in, hold, ramp out
+    if (now > smileAt && !smileEnd) smileEnd = now + rand(1400, 2400);
+    if (smileEnd) {
+      const len = smileEnd - smileAt;
+      const t = clamp((now - smileAt) / len, 0, 1);
+      const w = Math.sin(Math.PI * t) ** 0.6 * 0.55;
+      r.setExpression({ mouthSmileLeft: w, mouthSmileRight: w, cheekSquintLeft: w * 0.35, cheekSquintRight: w * 0.35 });
+      if (now > smileEnd) {
+        r.setExpression({});
+        smileEnd = 0;
+        smileAt = now + rand(4500, 9000);
+      }
+    }
+  };
+  pick(performance.now(), { x: 0, y: 0 });
+  raf = requestAnimationFrame(tick);
+  return () => {
+    cancelAnimationFrame(raf);
+    get()?.setExpression({});
+  };
+}
 
 export function Hero() {
   const [index, setIndex] = useState(0);
@@ -37,9 +105,13 @@ export function Hero() {
   const current = extra ?? PRESETS[index];
   const config = useMemo(() => randomAvatar(current.seed), [current.seed]);
 
-  // The head follows the pointer anywhere on the page, not only over the stage.
+  // Desktop (fine pointer with hover): the head follows the cursor anywhere on the page.
+  // Touch devices: the canvas ignores touches entirely (so scrolling is never hijacked) and the
+  // head drifts along gentle scripted trajectories instead: looks around, back at you, smiles.
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    if (!finePointer) return scriptedIdle(() => viewRef.current?.renderer ?? null);
     let frame = 0;
     let last: PointerEvent | null = null;
     const apply = () => {
@@ -55,6 +127,7 @@ export function Hero() {
       r.lookAt(nx * 0.95, ny * 0.7);
     };
     const onMove = (e: PointerEvent) => {
+      if (e.pointerType === "touch") return;
       last = e;
       if (!frame) frame = requestAnimationFrame(apply);
     };
@@ -79,13 +152,25 @@ export function Hero() {
   return (
     <section className={`${s.wrap} ${s.hero}`} aria-labelledby="hero-title">
       <div className={s.heroText}>
+        <span className={s.heroEyebrow}>
+          <ShieldCheck size={16} strokeWidth={2} aria-hidden />
+          Полностью анонимно
+        </span>
         <h1 id="hero-title" className={s.heroTitle}>
-          Говорите свободно. Ваше лицо остаётся при вас.
+          Психолог онлайн, <span className={s.heroAccent}>и никто не узнает, кто вы</span>
         </h1>
         <p className={s.heroLead}>
-          Диалоги и видеосозвоны с психологом, где вместо вас на экране 3D-аватар. Он повторяет вашу мимику, а специалист не видит
-          ни лица, ни имени.
+          Ни специалист, ни мы не знаем вашего имени и лица. Вместо имени псевдоним, вместо лица 3D-аватар, который повторяет вашу
+          мимику.
         </p>
+        <ul className={s.trustChips} aria-label="Что остаётся анонимным">
+          {TRUST.map(({ icon: Icon, label, tone }) => (
+            <li key={label} className={s.trustChip} data-tone={tone}>
+              <Icon size={16} strokeWidth={2} aria-hidden />
+              {label}
+            </li>
+          ))}
+        </ul>
         <div className={s.heroActions}>
           <Button href="/start" variant="primary" size="lg">
             Начать анонимно
@@ -104,7 +189,7 @@ export function Hero() {
       <figure className={s.heroFigure}>
         <div ref={stageRef} className={s.stage}>
           <div className={s.stageCanvas}>
-            <AvatarView ref={viewRef} config={config} framing="portrait" interactive={false} />
+            <AvatarView ref={viewRef} config={config} framing="portrait" interactive={false} deferLoad />
           </div>
           <span className={s.nameTag} aria-live="polite">
             <span className={s.liveDot} aria-hidden />

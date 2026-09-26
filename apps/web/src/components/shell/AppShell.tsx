@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FocusEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import {
   BookOpen,
-  Leaf,
   Camera,
   Wallet,
   Banknote,
@@ -18,6 +17,7 @@ import {
   UserRound,
   Users,
   BadgeCheck,
+  Search,
   type LucideIcon,
 } from "lucide-react";
 import { chatApi } from "@/lib/api/chat";
@@ -31,6 +31,9 @@ import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import { ThemeToggle } from "@/components/shell/ThemeToggle";
 import { BalanceChip } from "@/components/billing/BalanceChip";
 import { LogoMark } from "@/components/shell/Logo";
+import { SearchTrigger } from "@/components/search/SpecialistSearch";
+import { Island, islandItems } from "@/components/shell/Island";
+import { syncPrivacyPrefs } from "@/lib/privacy/usePrivacy";
 import s from "./AppShell.module.css";
 
 export interface NavItem {
@@ -55,8 +58,8 @@ export const NAV: Record<Role, { items: NavItem[]; cta: { label: string; href: s
       { href: "/app", label: "Главная", icon: LayoutGrid, tab: true },
       { href: "/app/specialists", label: "Специалисты", icon: Users, tab: true },
       { href: "/app/dialogs", label: "Диалоги", icon: MessagesSquare, tab: true, unread: true },
-      { href: "/app/practices", label: "Практики", icon: Leaf, group: "Для себя", tab: true, tabLabel: "Для себя", also: ["/app/articles"] },
-      { href: "/app/articles", label: "Статьи", icon: BookOpen, group: "Для себя" },
+      // «Полезное»: статьи (первыми) и практики — одна страница с вкладками
+      { href: "/app/articles", label: "Полезное", icon: BookOpen, tab: true, also: ["/app/practices"] },
       // Аватар, зеркало и приватность — одна страница с вкладками
       { href: "/app/avatar", label: "Аватар", icon: Smile, tab: true, group: "Анонимность" },
       { href: "/app/balance", label: "Баланс", icon: Wallet, group: "Анонимность" },
@@ -165,6 +168,11 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
     return () => document.removeEventListener("keydown", esc);
   }, [menuOpen]);
 
+  // «Незаметный режим» / «Защита от скриншотов»: подтянуть настройки из аккаунта (новее — побеждает)
+  useEffect(() => {
+    if (status === "authed" && user?.role === role) syncPrivacyPrefs();
+  }, [status, user, role]);
+
   useEffect(() => {
     if (status === "guest") router.replace(`/login?next=${encodeURIComponent(pathname)}`);
     else if (status === "authed" && user && user.role !== role) router.replace(homeFor(user.role));
@@ -251,7 +259,7 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
                 <Link
                   href={item.href}
                   className={s.navItem}
-                  aria-current={isActive(pathname, item.href, root) ? "page" : undefined}
+                  aria-current={isActive(pathname, item.href, root, item.also) ? "page" : undefined}
                   aria-label={rail ? item.label : undefined}
                   data-tip={item.label}
                 >
@@ -279,9 +287,16 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
           </button>
         </nav>
 
-        <Button variant="primary" size="lg" block href={nav.cta.href} className={s.cta}>
-          {nav.cta.label}
-        </Button>
+        {role === "client" ? (
+          // opens the specialist search palette (morphs out of this button); ⌘K / Ctrl+K anywhere
+          <SearchTrigger variant="primary" size="lg" block className={s.cta} fallbackHref={nav.cta.href} hotkeyHint>
+            {nav.cta.label}
+          </SearchTrigger>
+        ) : (
+          <Button variant="primary" size="lg" block href={nav.cta.href} className={s.cta}>
+            {nav.cta.label}
+          </Button>
+        )}
       </aside>
       {rail && tip && (
         <div className={s.tip} role="tooltip" style={{ top: tip.top, left: tip.left }}>
@@ -296,14 +311,11 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
         </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           {role === "client" && <BalanceChip compact />}
+          {role === "client" && (
+            <SearchTrigger variant="ghost" size="md" iconOnly aria-label="Найти специалиста" icon={<Search size={21} strokeWidth={1.9} />} />
+          )}
           <ThemeToggle />
-          <Link href={PROFILE_HREF[role]} className={s.mobileProfile} aria-label={`${name}, открыть профиль`} title={name}>
-            {user.psychologist ? (
-              <SpecialistPhoto url={user.psychologist.photo_url} name={name} size={36} alt="" />
-            ) : (
-              <AvatarThumb config={user.avatar_config} seed={user.id} size={36} />
-            )}
-          </Link>
+          {/* profile lives in the bottom island on phones */}
           <Button
             variant="ghost"
             size="md"
@@ -332,7 +344,7 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
                   href={item.href}
                   tabIndex={menuOpen ? 0 : -1}
                   className={s.navItem}
-                  aria-current={isActive(pathname, item.href, root) ? "page" : undefined}
+                  aria-current={isActive(pathname, item.href, root, item.also) ? "page" : undefined}
                 >
                   <Icon size={20} strokeWidth={1.8} />
                   {item.label}
@@ -350,23 +362,19 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
 
       <main className={s.main}>{children}</main>
 
-      <nav className={s.tabbar} aria-label="Разделы">
-        {nav.items
-          .filter((i) => i.tab)
-          .slice(0, 5)
-          .map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link key={item.href} href={item.href} className={s.tab} aria-current={isActive(pathname, item.href, root, item.also) ? "page" : undefined}>
-                <span className={s.tabIcon}>
-                  <Icon size={22} strokeWidth={1.8} />
-                  {countOf(item, unread) ? <span className={s.tabDot} aria-label={`${countOf(item, unread)} непрочитанных`} /> : null}
-                </span>
-                {item.tabLabel ?? item.label}
-              </Link>
-            );
-          })}
-      </nav>
+      {/* Mobile: floating «island» navigation (+ quick-exit button of the stealth mode) */}
+      <Island
+        items={islandItems(
+          role,
+          (href, also) => isActive(pathname, href, root, also),
+          unread,
+          user.psychologist ? (
+            <SpecialistPhoto url={user.psychologist.photo_url} name={name} size={26} alt="" />
+          ) : (
+            <AvatarThumb config={user.avatar_config} seed={user.id} size={26} />
+          ),
+        )}
+      />
     </div>
   );
 }

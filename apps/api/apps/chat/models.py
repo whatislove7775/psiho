@@ -5,8 +5,9 @@
 - текст сообщений, имена файлов и сами файлы хранятся зашифрованными (crypto.py);
 - файлы и голосовые лежат в БД (не в /media) и отдаются только через API
   участникам разговора;
-- у каждого сообщения есть expires_at: в режиме «24 часа» оно удаляется
-  командой purge_chats (сервис scheduler в docker-compose);
+- исчезающие сообщения (1 час / 1 день): у каждого сообщения есть expires_at;
+  API перестаёт отдавать сообщение сразу после этого момента, а физически его
+  удаляет команда purge_chats (сервис scheduler в docker-compose, раз в 5 минут);
 - «удалить у всех» оставляет только надгробие (без текста и файла).
 """
 import uuid
@@ -23,8 +24,10 @@ class Conversation(models.Model):
         AI = "ai", "Клиент и ИИ-помощник"
 
     class Retention(models.TextChoices):
-        DAY = "24h", "24 часа"
-        FOREVER = "forever", "Бессрочно"
+        # «Исчезающие сообщения»: выкл (хранить всегда) / 1 день / 1 час
+        HOUR = "1h", "1 час"
+        DAY = "24h", "1 день"
+        FOREVER = "forever", "Выкл — хранить всегда"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     kind = models.CharField(max_length=24, choices=Kind.choices)
@@ -40,6 +43,8 @@ class Conversation(models.Model):
     )
     retention = models.CharField(max_length=8, choices=Retention.choices, default=Retention.FOREVER)
     retention_changed_at = models.DateTimeField(null=True, blank=True)
+    # «Защита от скриншотов» для обеих сторон (включает клиент; best effort на клиенте)
+    screen_protect = models.BooleanField(default=False)
     # Когда поддержка в последний раз прочитала разговор (общая отметка для всех сотрудников)
     support_read_at = models.DateTimeField(null=True, blank=True)
     # Согласие на обработку сообщений ИИ-провайдером (только kind=ai)

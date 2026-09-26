@@ -208,7 +208,6 @@
 .search input::placeholder {
   color: var(--c-faint);
 }
-.select,
 .dateField {
   min-height: 48px;
   padding: 0 14px;
@@ -219,11 +218,17 @@
   font: inherit;
   font-size: var(--t-15);
 }
-.select {
-  cursor: pointer;
+/* styled Select trigger (ui/Select) placed on the page background */
+.select.select {
+  width: auto;
+  min-width: 170px;
   max-width: 100%;
+  background: var(--c-panel);
 }
-.rowMeta .select {
+.select.select:not(:focus-visible):not([aria-expanded="true"]) {
+  border-color: var(--c-line);
+}
+.rowMeta .select.select {
   min-height: 36px;
   font-size: var(--t-13);
   background: var(--c-raised);

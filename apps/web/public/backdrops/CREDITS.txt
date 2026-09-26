@@ -1,0 +1,25 @@
+Фоны для звонков aprosop — фотографии пейзажей
+================================================
+
+Файлы в этой папке — уменьшенные и слегка размытые копии фотографий
+(540×720 для аватара, 112×112 превью, 320×180 размытый фон экрана).
+Источник файлов: набор обоев elementary OS (https://github.com/elementary/wallpapers),
+лицензии перечислены в https://github.com/elementary/wallpapers/blob/deb-packaging/debian/copyright
+
+lake.webp      «A Large Body of Water Surrounded By Mountains», Peter Thomas
+               https://unsplash.com/photos/Dxod5pdRtsk — Unsplash License
+dunes.webp     «A Trail of Footprints In The Sand», David Emrich
+               https://unsplash.com/photos/A9mr3TPoj0k — Unsplash License
+fern.webp      «Morskie Oko» (папоротник)
+               https://unsplash.com/photos/_1UF_3TlKcQ — Unsplash License
+sea.webp       Nattu Adnan
+               https://unsplash.com/photos/Ai2TRdvI6gM — Unsplash License
+pier.webp      «Sunset by the Pier»
+               https://unsplash.com/photos/ces8_Bo7bhQ — CC0 (опубликовано на Unsplash до 08.06.2017)
+evening.webp   «Photo of Snow-Capped Mountain During Evening»
+               https://www.pexels.com/photo/photo-of-snow-capped-mountain-during-evening-2440024/ — Pexels License
+
+Unsplash License (https://unsplash.com/license) и Pexels License (https://www.pexels.com/license/)
+разрешают бесплатное использование, изменение и распространение без обязательной атрибуции;
+авторов указываем из уважения к их работе. Нельзя продавать сами фотографии без изменений
+и собирать из них конкурирующий фотосток.

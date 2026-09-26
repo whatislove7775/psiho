@@ -1,7 +1,8 @@
 "use client";
 
-import { CalendarCheck2, CalendarClock, CalendarX2, CircleCheckBig, PhoneCall, Sparkles, Video } from "lucide-react";
-import type { ReactNode } from "react";
+import { CalendarCheck2, CalendarClock, CalendarX2, CircleCheckBig, PenLine, PhoneCall, Sparkles, Video } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { ReviewModal } from "@/components/reviews/ReviewModal";
 import { Badge, Button } from "@/ui";
 import type { ChatMessage, DialogCard } from "@/lib/api/chat";
 import { rub } from "@/lib/format";
@@ -24,6 +25,8 @@ export function CallCard({ msg }: { msg: ChatMessage }) {
   const ctx = useDialogActions();
   const card = msg.card as DialogCard;
   const role = ctx?.role;
+  const [reviewing, setReviewing] = useState(false);
+  const reviewFor = ctx?.detail?.counterpart.psychologist_id ?? null;
   const at = new Date(msg.created_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 
   const snapshot = card.call;
@@ -105,6 +108,14 @@ export function CallCard({ msg }: { msg: ChatMessage }) {
       iconTone = "mint";
       title = "Созвон завершён";
       sub = card.minutes ? `Длился ${card.minutes} мин` : call ? when : null;
+      // G2: клиенту — приглашение оставить отзыв (модалка сама проверит, что созвон засчитан)
+      if (role === "client" && reviewFor) {
+        actions = (
+          <Button variant="soft" size="sm" icon={<PenLine size={16} strokeWidth={1.8} />} onClick={() => setReviewing(true)}>
+            Оставить отзыв
+          </Button>
+        );
+      }
       break;
     case "proposed": {
       const p = card.proposal;
@@ -161,6 +172,9 @@ export function CallCard({ msg }: { msg: ChatMessage }) {
         </div>
         {actions && <div className={s.cardActions}>{actions}</div>}
       </div>
+      {reviewFor && reviewing && (
+        <ReviewModal open psychologistId={reviewFor} name={ctx?.detail?.counterpart.name} onClose={() => setReviewing(false)} />
+      )}
     </div>
   );
 }

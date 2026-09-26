@@ -5,10 +5,25 @@ import s from "./content.module.css";
 /**
  * Small, safe Markdown renderer for articles (no HTML passthrough, builds React nodes).
  * Supports: # ## ### headings, paragraphs, - / * / 1. lists, > quotes, ---,
- * **bold**, *italic*, `code`, [links](https://… or /path).
+ * **bold**, *italic*, `code`, [links](https://… or /path), citations [1] / [1, 2] → links to #source-N.
  */
-export function Markdown({ source }: { source: string }) {
-  return <div className={s.prose}>{renderBlocks(source)}</div>;
+export function Markdown({ source, className }: { source: string; className?: string }) {
+  return <div className={className ? `${s.prose} ${className}` : s.prose}>{renderBlocks(source)}</div>;
+}
+
+/** Superscript citation links: [1, 3] → ¹ ³ pointing to the sources list (#source-1). */
+export function Cite({ refs }: { refs: number[] }) {
+  if (!refs.length) return null;
+  return (
+    <sup className={s.cite}>
+      {refs.map((n, i) => (
+        <a key={n} href={`#source-${n}`} aria-label={`Источник ${n}`}>
+          {i > 0 ? ", " : ""}
+          {n}
+        </a>
+      ))}
+    </sup>
+  );
 }
 
 type Block =
@@ -113,7 +128,7 @@ function renderBlocks(src: string): ReactNode[] {
   });
 }
 
-const INLINE = /(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|_[^_\s][^_]*_|`[^`]+`|\[[^\]]+\]\([^)\s]+\))/g;
+const INLINE = /(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|_[^_\s][^_]*_|`[^`]+`|\[[^\]]+\]\([^)\s]+\)|\s?\[\d{1,2}(?:,\s*\d{1,2})*\](?!\())/g;
 
 function safeHref(href: string): string | null {
   if (href.startsWith("/") && !href.startsWith("//")) return href;
@@ -135,6 +150,8 @@ export function inline(text: string): ReactNode[] {
     if ((part.startsWith("*") && part.endsWith("*")) || (part.startsWith("_") && part.endsWith("_")))
       return <em key={i}>{part.slice(1, -1)}</em>;
     if (part.startsWith("`") && part.endsWith("`")) return <code key={i}>{part.slice(1, -1)}</code>;
+    const cite = /^\s?\[(\d{1,2}(?:,\s*\d{1,2})*)\]$/.exec(part);
+    if (cite) return <Cite key={i} refs={cite[1].split(",").map((n) => parseInt(n, 10))} />;
     const link = /^\[([^\]]+)\]\(([^)\s]+)\)$/.exec(part);
     if (link) {
       const href = safeHref(link[2]);

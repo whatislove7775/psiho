@@ -1,0 +1,17 @@
+{
+  "name": "Документы",
+  "short_name": "Документы",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "/stealth/docs.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

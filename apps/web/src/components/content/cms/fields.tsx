@@ -1,7 +1,7 @@
 "use client";
 
-import { useId, type ReactNode } from "react";
-import { Field } from "@/ui";
+import type { ReactNode } from "react";
+import { Field, Select as UiSelect } from "@/ui";
 import { COVERS, type Cover } from "@/lib/api/content";
 import c from "../content.module.css";
 import s from "./cms.module.css";
@@ -50,18 +50,7 @@ export function Select({
   options: { value: string; label: string }[];
   error?: ReactNode;
 }) {
-  const id = useId();
-  return (
-    <Field label={label} error={error} htmlFor={id}>
-      <select id={id} className={s.select} value={value} onChange={(e) => onChange(e.target.value)}>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </Field>
-  );
+  return <UiSelect label={label} error={error} value={value} onChange={onChange} options={options} />;
 }
 
 export function Switch({ checked, onChange, label, hint }: { checked: boolean; onChange: (v: boolean) => void; label: ReactNode; hint?: ReactNode }) {

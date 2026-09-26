@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, Trash2 } from "lucide-react";
-import { Button } from "@/ui";
+import { Button, Select } from "@/ui";
 import { TIME_OPTIONS, toHHMM, toMin, type Range } from "@/components/pro/schedule";
 import c from "./availability.module.css";
 
@@ -66,12 +66,6 @@ export function RangesEditor({
 export function TimeSelect({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
   const opts = TIME_OPTIONS.includes(value) ? TIME_OPTIONS : [...TIME_OPTIONS, value].sort();
   return (
-    <select className={c.select} value={value} aria-label={label} onChange={(e) => onChange(e.target.value)}>
-      {opts.map((t) => (
-        <option key={t} value={t}>
-          {t}
-        </option>
-      ))}
-    </select>
+    <Select size="sm" className={c.select} value={value} aria-label={label} onChange={onChange} options={opts.map((t) => ({ value: t, label: t }))} />
   );
 }

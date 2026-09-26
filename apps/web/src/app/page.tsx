@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { Anonymity } from "@/components/landing/Anonymity";
 import { Faq } from "@/components/landing/Faq";
+import { faqLd } from "@/components/landing/faqLd";
+import { FeaturedContent } from "@/components/landing/FeaturedContent";
+import { JsonLd } from "@/components/public/JsonLd";
+import { alternates } from "@/lib/seo";
 import { Hero } from "@/components/landing/Hero";
 import { SessionSteps } from "@/components/landing/SessionSteps";
 import { SiteFooter } from "@/components/landing/SiteFooter";
@@ -10,13 +14,19 @@ import { Button } from "@/ui";
 import { Hello } from "@/components/illustrations";
 import a from "@/components/landing/art.module.css";
 import s from "@/components/landing/landing.module.css";
+import { ogMeta } from "@/lib/og/sections";
 
 export const metadata: Metadata = {
   title: { absolute: "aprosop — анонимный психолог онлайн, вместо лица 3D-аватар" },
   description:
     "Диалоги и видеосозвоны с проверенными психологами без почты и телефона. Вместо лица 3D-аватар, который повторяет мимику; видео идёт напрямую и не записывается.",
-  alternates: { canonical: "/" },
+  alternates: alternates("/"),
+  ...ogMeta("/", "Анонимный психолог онлайн", "Без почты и телефона. Вместо лица — 3D-аватар, видео не записывается."),
 };
+
+// Featured articles come from the 5-minute content cache; render per request so a deploy never
+// freezes an empty section into the static page.
+export const dynamic = "force-dynamic";
 
 export default function LandingPage() {
   return (
@@ -27,6 +37,7 @@ export default function LandingPage() {
         <Anonymity />
         <SessionSteps />
         <Specialists />
+        <FeaturedContent />
         <Faq />
         <section className={`${s.wrap} ${s.section}`} aria-labelledby="closing-title">
           <div className={s.closing}>
@@ -46,6 +57,7 @@ export default function LandingPage() {
         </section>
       </main>
       <SiteFooter />
+      <JsonLd data={faqLd} />
     </div>
   );
 }

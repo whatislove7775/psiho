@@ -3,8 +3,11 @@
 /**
  * The call screen (/room/[id]): lobby → call → end, for both sides.
  *
- *  - A client is only ever seen as their avatar (useAvatarCamera) with an
- *    optional voice filter; their camera picture never leaves the device.
+ *  - A client is seen as their avatar (useAvatarCamera) with an optional
+ *    voice filter; their camera picture never leaves the device — unless they
+ *    deliberately opt in to «Показать настоящее лицо» (RealFace.tsx): then the
+ *    outgoing video track is swapped to the camera with replaceTrack (no
+ *    renegotiation), a badge stays on screen, and one tap switches back.
  *  - A specialist sends real camera video (useRealCamera).
  *  - The in-call chat is the dialogue's thread (C1's <DialogThread compact />).
  *
@@ -16,6 +19,7 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Check,
+  Eye,
   FlaskConical,
   Lock,
   MessageCircle,
@@ -41,7 +45,7 @@ import { when } from "@/lib/format";
 import { AvatarThumb } from "@/components/avatar/AvatarThumb";
 import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import { BackdropPicker } from "@/components/avatar/BackdropPicker";
-import { loadBackdrop, saveBackdrop, type BackdropId } from "@/lib/avatar/backdrops";
+import { getBackdrop, loadAmbient, loadBackdrop, saveAmbient, saveBackdrop, type BackdropId } from "@/lib/avatar/backdrops";
 import { useAvatarCamera } from "@/hooks/useAvatarCamera";
 import { useRealCamera } from "@/hooks/useRealCamera";
 import { useP2PCall } from "@/hooks/useP2PCall";
@@ -56,8 +60,11 @@ import { CallMore, canPickSpeaker, useDevices, type DeviceChoice } from "./CallM
 import { VoicePicker, loadVoice, saveVoice } from "./VoicePicker";
 import { IssueChips, ReportProblem } from "./ReportProblem";
 import { DebugOverlay } from "./DebugOverlay";
+import { FaceBadge, FaceChoice, RealFaceConfirm, loadRealFacePref, saveRealFacePref } from "./RealFace";
 import art from "./art.module.css";
 import s from "./Room.module.css";
+import { PanicButton } from "@/components/privacy/PanicButton";
+import { ReviewPrompt } from "@/components/reviews/ReviewPrompt";
 
 type Panel = null | "chat" | "voice" | "more" | "notes" | "breath";
 
@@ -125,6 +132,11 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
     setDebug(/[?&]debug=1\b/.test(window.location.search));
     setVoiceState(loadVoice());
   }, [bootstrap]);
+  // the specialist never uses the avatar pipeline, so this only matters for clients
+  const isProUser = user?.role === "psychologist";
+  useEffect(() => {
+    if (!isProUser && !labToken && loadRealFacePref()) setRealFace(true);
+  }, [isProUser, labToken]);
   useEffect(() => {
     if (authStatus === "guest" && !isLab) router.replace(`/login?next=${encodeURIComponent(`/room/${sessionId}`)}`);
   }, [authStatus, router, sessionId, isLab]);
@@ -175,7 +187,29 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
     setVoiceState(v);
     saveVoice(v);
   };
-  const avatarCam = useAvatarCamera(myAvatar, { backdrop });
+  // Blurred landscape behind the call screen (per-device setting).
+  const [ambient, setAmbientState] = useState(true);
+  useEffect(() => setAmbientState(loadAmbient()), []);
+  const toggleAmbient = () =>
+    setAmbientState((on) => {
+      saveAmbient(!on);
+      return !on;
+    });
+  // Opt-in real camera (clients only). Never on by default; the only memory is
+  // an explicit "remember on this device" choice in localStorage.
+  const [realFace, setRealFace] = useState(false);
+  const [faceAsk, setFaceAsk] = useState(false);
+  const avatarCam = useAvatarCamera(myAvatar, { backdrop, realFace: !isPro && realFace });
+  const showingFace = realFace && !!avatarCam.faceStream;
+  const confirmRealFace = (remember: boolean) => {
+    setFaceAsk(false);
+    setRealFace(true);
+    if (remember) saveRealFacePref(true);
+  };
+  const backToAvatar = () => {
+    setRealFace(false);
+    saveRealFacePref(false);
+  };
   const realCam = useRealCamera();
   const cam = isPro ? realCam : avatarCam;
   const camState = cam.state;
@@ -208,8 +242,10 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
     if (!avatarCam.videoStream) return null;
     // With a filter chosen, never fall back to the raw voice (not even while the filter starts up).
     const audio = voice === "off" ? (avatarCam.audioStream?.getAudioTracks() ?? []) : (transformedStream?.getAudioTracks() ?? []);
-    return new MediaStream([...avatarCam.videoStream.getVideoTracks(), ...audio]);
-  }, [isPro, realCam.stream, avatarCam.videoStream, avatarCam.audioStream, transformedStream, voice, phase]);
+    // The real camera only after the explicit opt-in; the avatar otherwise (and while it starts).
+    const video = realFace && avatarCam.faceStream ? avatarCam.faceStream : avatarCam.videoStream;
+    return new MediaStream([...video.getVideoTracks(), ...audio]);
+  }, [isPro, realCam.stream, avatarCam.videoStream, avatarCam.faceStream, realFace, avatarCam.audioStream, transformedStream, voice, phase]);
 
   const onEnd = useCallback(() => setPhase("ended"), []);
   const call = useP2PCall({
@@ -218,11 +254,24 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
     localStream,
     onEnd,
     videoMaxBitrate: isPro ? 1_500_000 : 900_000,
+    faceMode: isPro ? undefined : showingFace ? "real" : "avatar",
   });
 
   useEffect(() => {
     if (call.status === "reconnecting") setReconnects((n) => n + 1);
   }, [call.status]);
+
+  // Specialist: a short, quiet note when the client switches between avatar and real camera.
+  const [faceNote, setFaceNote] = useState<string | null>(null);
+  const prevRemoteFace = useRef(call.remoteFace);
+  useEffect(() => {
+    if (prevRemoteFace.current === call.remoteFace) return;
+    prevRemoteFace.current = call.remoteFace;
+    if (!isPro) return;
+    setFaceNote(call.remoteFace === "real" ? "Клиент включил настоящую камеру" : "Клиент вернулся к аватару");
+    const t = setTimeout(() => setFaceNote(null), 5000);
+    return () => clearTimeout(t);
+  }, [call.remoteFace, isPro]);
 
   // Lobby: keep can_join fresh and show whether the other side is already in the room.
   useEffect(() => {
@@ -424,6 +473,7 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
             cam.start();
           }}
           tech={tech}
+          reviewFor={!isPro && !isLab && session.psychologist.id ? { id: session.psychologist.id, name: session.psychologist.display_name } : null}
         />
       </div>
     );
@@ -443,11 +493,14 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
           ? "Лицо не видно. Сядьте ближе к свету"
           : !avatarCam.tracking
             ? "Подключаем распознавание мимики"
-            : avatarCam.calibrating
-              ? "Запоминаем спокойное лицо. Расслабьтесь и смотрите в камеру"
-              : "Так вас увидит специалист";
+            : showingFace
+              ? "Специалист увидит ваше настоящее лицо"
+              : avatarCam.calibrating
+                ? "Запоминаем спокойное лицо. Расслабьтесь и смотрите в камеру"
+                : "Так вас увидит специалист";
     return (
       <div className={s.room} ref={rootRef}>
+        <PanicButton />
         <header className={s.lobbyHead}>
           <Button variant="ghost" size="sm" href={dialogueHref} icon={<ArrowLeft size={18} />}>
             {isLab ? "В лабораторию" : "К диалогу"}
@@ -458,7 +511,16 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
         </header>
         <div className={s.lobby}>
           <div className={`${s.preview} ${isPro ? s.previewWide : ""}`}>
-            <div className={s.fill}>{isPro ? <SelfVideo stream={realCam.videoStream} /> : <CanvasSlot canvas={avatarCam.canvas} />}</div>
+            <div className={s.fill}>
+              {isPro ? (
+                <SelfVideo stream={realCam.videoStream} />
+              ) : showingFace ? (
+                <SelfVideo stream={avatarCam.faceStream} />
+              ) : (
+                <CanvasSlot canvas={avatarCam.canvas} />
+              )}
+            </div>
+            {!isPro && showingFace && <FaceBadge className={s.previewFace} onBack={backToAvatar} />}
             {!camReady && (
               <div className={s.previewEmpty}>
                 {isPro ? (
@@ -516,6 +578,17 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
 
             {!isPro && (
               <section className={s.block}>
+                <div className={s.label}>Как вас увидит специалист</div>
+                <FaceChoice real={realFace} onAsk={() => setFaceAsk(true)} onAvatar={backToAvatar} />
+                <p className={s.note}>
+                  {realFace
+                    ? "Специалист увидит ваше лицо с камеры. Вернуться к аватару можно в любой момент."
+                    : "По умолчанию только аватар. Лицо можно показать, если захотите."}
+                </p>
+              </section>
+            )}
+            {!isPro && (
+              <section className={s.block}>
                 <div className={s.label}>Фон за аватаром</div>
                 <BackdropPicker value={backdrop} onChange={setBackdrop} size="sm" />
               </section>
@@ -548,6 +621,7 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
             )}
           </div>
         </div>
+        <RealFaceConfirm open={faceAsk} onClose={() => setFaceAsk(false)} onConfirm={confirmRealFace} />
       </div>
     );
   }
@@ -567,9 +641,13 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
 
   return (
     <div className={`${s.room} ${s.dark}`} ref={rootRef}>
+      {/* «Незаметный режим»: быстрый выход на телефоне (двойной Esc работает везде) */}
+      <PanicButton />
       <div className={`${s.call} ${panel ? s.callWithPanel : ""}`}>
         <div className={s.stage}>
+          {ambient && !isPro && <div className={s.ambient} style={{ background: getBackdrop(backdrop).ambient }} aria-hidden />}
           <RemoteVideo
+            blur={isPro && ambient}
             attach={(el) => {
               remoteEl.current = el;
               call.remoteVideoRef(el);
@@ -639,6 +717,12 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
                   <FlaskConical size={14} /> Тест
                 </span>
               )}
+              {isPro && connected && call.remoteFace === "real" && (
+                <span className={s.pill} title="Клиент сам решил показать лицо вместо аватара">
+                  <Eye size={14} />
+                  <span className={s.pillText}>Камера клиента</span>
+                </span>
+              )}
               {connected && (
                 <span className={s.pill} title={QUALITY_LABEL[call.quality]}>
                   <QualityBars quality={call.quality} />
@@ -652,12 +736,25 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
             </div>
           </header>
 
-          {!isPro && avatarCam.faceLost && !videoOff && <div className={s.toast}>Лицо не видно, аватар замер. Сядьте ближе к свету</div>}
-          {remaining && remaining.left === 5 && connected && <div className={s.toast}>До конца звонка 5 минут</div>}
+          {!isPro && showingFace && <FaceBadge className={s.callFace} onBack={backToAvatar} />}
+          {!isPro && avatarCam.faceLost && !videoOff && !showingFace && <div className={s.toast}>Лицо не видно, аватар замер. Сядьте ближе к свету</div>}
+          {remaining && remaining.left === 5 && connected && <div className={`${s.toast} ${showingFace ? s.toastLow : ""}`}>До конца звонка 5 минут</div>}
+          {isPro && faceNote && (
+            <div className={s.toast} role="status">
+              {faceNote}
+            </div>
+          )}
 
-          <DraggablePip label={isPro ? "Ваша камера" : "Ваш аватар"} wide={false}>
-            {isPro ? <SelfVideo stream={realCam.videoStream} /> : <CanvasSlot canvas={avatarCam.canvas} />}
-            {videoOff && <div className={s.pipOff}>{isPro ? "Камера выключена" : "Аватар скрыт"}</div>}
+          <DraggablePip label={isPro || showingFace ? "Ваша камера" : "Ваш аватар"} wide={false}>
+            {isPro ? (
+              <SelfVideo stream={realCam.videoStream} />
+            ) : showingFace ? (
+              <SelfVideo stream={avatarCam.faceStream} />
+            ) : (
+              <CanvasSlot canvas={avatarCam.canvas} />
+            )}
+            {!isPro && showingFace && <span className={s.pipFace} aria-hidden />}
+            {videoOff && <div className={s.pipOff}>{isPro || showingFace ? "Камера выключена" : "Аватар скрыт"}</div>}
             {call.isMuted && (
               <span className={s.pipMuted} aria-label="Микрофон выключен">
                 <Morph icon={MI.MicOff} size={14} />
@@ -672,8 +769,10 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
               <Morph icon={call.isMuted ? MI.MicOff : MI.Mic} size={22} />
             </CtrlButton>
             <CtrlButton
-              label={isPro ? (videoOff ? "Включить камеру" : "Выключить камеру") : videoOff ? "Показать аватар" : "Скрыть аватар"}
-              caption={isPro ? "Камера" : "Аватар"}
+              label={
+                isPro || showingFace ? (videoOff ? "Включить камеру" : "Выключить камеру") : videoOff ? "Показать аватар" : "Скрыть аватар"
+              }
+              caption={isPro || showingFace ? "Камера" : "Аватар"}
               off={videoOff}
               onClick={call.toggleCamera}
             >
@@ -735,6 +834,10 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
                   onRecalibrate={isPro ? undefined : avatarCam.recalibrate}
                   recalibrating={!isPro && avatarCam.calibrating}
                   onBreath={() => setPanel("breath")}
+                  ambient={ambient}
+                  onAmbient={toggleAmbient}
+                  realFace={isPro ? undefined : realFace}
+                  onRealFace={isPro ? undefined : () => (realFace ? backToAvatar() : setFaceAsk(true))}
                   onNotes={isPro ? () => setPanel("notes") : undefined}
                   onReport={() => setReportOpen(true)}
                 />
@@ -761,6 +864,14 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
           </Button>
         </div>
       </Modal>
+      <RealFaceConfirm
+        open={faceAsk}
+        onClose={() => setFaceAsk(false)}
+        onConfirm={(remember) => {
+          confirmRealFace(remember);
+          setPanel(null);
+        }}
+      />
       <ReportProblem open={reportOpen} onClose={() => setReportOpen(false)} sessionId={sessionId} isClient={!isPro} tech={tech} disabled={isLab} />
     </div>
   );
@@ -809,7 +920,7 @@ function CtrlButton({
 }
 
 /** Remote video with a blurred copy behind when its shape doesn't match the screen. */
-function RemoteVideo({ attach, portrait }: { attach: (el: HTMLVideoElement | null) => void; portrait: boolean }) {
+function RemoteVideo({ attach, portrait, blur = true }: { attach: (el: HTMLVideoElement | null) => void; portrait: boolean; blur?: boolean }) {
   const back = useRef<HTMLVideoElement>(null);
   const [fit, setFit] = useState<"cover" | "contain">("cover");
   const main = useRef<HTMLVideoElement | null>(null);
@@ -841,7 +952,7 @@ function RemoteVideo({ attach, portrait }: { attach: (el: HTMLVideoElement | nul
   }, []);
   return (
     <>
-      {fit === "contain" && <video ref={back} className={s.remoteBlur} muted playsInline autoPlay aria-hidden />}
+      {fit === "contain" && blur && <video ref={back} className={s.remoteBlur} muted playsInline autoPlay aria-hidden />}
       <video
         ref={(el) => {
           main.current = el;
@@ -871,6 +982,7 @@ function EndScreen({
   canRejoin,
   onRejoin,
   tech,
+  reviewFor,
 }: {
   peerPic: React.ReactNode;
   peerName: string;
@@ -882,6 +994,8 @@ function EndScreen({
   canRejoin: boolean;
   onRejoin: () => void;
   tech: () => CallTech;
+  /** G2: client's end-of-call prompt to review the specialist */
+  reviewFor?: { id: number; name: string } | null;
 }) {
   const toast = useToast();
   const [rating, setRating] = useState(0);
@@ -972,6 +1086,8 @@ function EndScreen({
             <Check size={18} /> Спасибо за оценку
           </p>
         )}
+
+        {reviewFor && <ReviewPrompt psychologistId={reviewFor.id} name={reviewFor.name} />}
 
         <div className={s.endActions}>
           <Button variant="primary" block href={dialogueHref}>

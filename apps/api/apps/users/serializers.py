@@ -48,9 +48,29 @@ class PsychologistPublicSerializer(serializers.ModelSerializer):
         fields = [
             "id", "display_name", "bio", "approach", "specializations", "languages",
             "experience_years", "session_rate_rub", "avatar_config", "photo_url", "sessions_count",
-            "next_slot", "booking",
+            "next_slot", "booking", "gender", "rating", "reviews_count", "verified_credentials",
         ]
         read_only_fields = ["id"]
+
+    # G2: средняя оценка по опубликованным отзывам и число подтверждённых документов
+    rating = serializers.SerializerMethodField()
+    reviews_count = serializers.SerializerMethodField()
+    verified_credentials = serializers.SerializerMethodField()
+
+    def get_rating(self, obj):
+        from apps.reviews.services import rating_of
+
+        return rating_of(obj)[0]
+
+    def get_reviews_count(self, obj):
+        from apps.reviews.services import rating_of
+
+        return rating_of(obj)[1]
+
+    def get_verified_credentials(self, obj):
+        from apps.credentials.services import verified_count
+
+        return verified_count(obj)
 
     def validate_specializations(self, value):
         return _clean_tags(value)
@@ -78,7 +98,12 @@ class PsychologistPublicSerializer(serializers.ModelSerializer):
     def get_next_slot(self, obj):
         from apps.sessions.scheduling import next_slot
 
-        slot = next_slot(obj)
+        # Списки считают ближайшее время пакетно (apps.users.search) и передают сюда
+        known = self.context.get("next_starts") if hasattr(self, "context") else None
+        if known is not None and obj.id in known:
+            slot = known[obj.id]
+        else:
+            slot = next_slot(obj)
         return serializers.DateTimeField().to_representation(slot) if slot else None
 
     def get_booking(self, obj):

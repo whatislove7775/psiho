@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Camera, Mic, MonitorSpeaker, Play, RefreshCw, Square, Volume2 } from "lucide-react";
-import { Badge, Button, Card, CardHead } from "@/ui";
+import { Badge, Button, Card, CardHead, Select } from "@/ui";
 import { Meter, StatGrid, StreamVideo, Switch } from "./shared";
 import s from "./lab.module.css";
 
@@ -142,17 +142,14 @@ export function DevicesPanel() {
   const canPickOutput = typeof HTMLMediaElement !== "undefined" && "setSinkId" in HTMLMediaElement.prototype;
 
   const select = (label: string, value: string, onChange: (v: string) => void, items: MediaDeviceInfo[], def: string) => (
-    <label className={s.selectLabel}>
-      <span className={s.label}>{label}</span>
-      <select className={s.select} value={value} onChange={(e) => onChange(e.target.value)}>
-        <option value="">{def}</option>
-        {items.map((d, i) => (
-          <option key={d.deviceId || i} value={d.deviceId}>
-            {d.label || `${label} ${i + 1}`}
-          </option>
-        ))}
-      </select>
-    </label>
+    <div className={s.selectLabel}>
+      <Select
+        label={label}
+        value={value}
+        onChange={onChange}
+        options={[{ value: "", label: def }, ...items.map((d, i) => ({ value: d.deviceId, label: d.label || `${label} ${i + 1}` }))]}
+      />
+    </div>
   );
 
   return (

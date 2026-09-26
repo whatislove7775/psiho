@@ -15,7 +15,7 @@ import {
   CircleAlert,
   MessagesSquare,
 } from "lucide-react";
-import { Button, Card, CardHead, EmptyState, QuickAction, Skeleton, Stat } from "@/ui";
+import { Badge, Button, Card, CardHead, CollapsibleCard, EmptyState, QuickAction, Skeleton, Stat } from "@/ui";
 import { InlineEmpty } from "@/components/illustrations";
 import { PageHeader, WithRail } from "@/components/shell/AppShell";
 import { AvatarThumb } from "@/components/avatar/AvatarThumb";
@@ -148,16 +148,18 @@ export default function ProOverview() {
         {status && status !== "approved" && <StatusCard status={status} />}
 
         {data && doneCount < steps.length && (
-          <Card as="section">
-            <CardHead
-              title="Первые шаги"
-              sub="Когда всё будет готово, вы появитесь в каталоге специалистов"
-              action={
-                <span className={p.progress} aria-label={`Готово ${doneCount} из ${steps.length}`}>
+          <CollapsibleCard
+            title="Первые шаги"
+            storageKey="pro-steps"
+            badge={
+              <Badge tone="warning">
+                <span aria-label={`Готово ${doneCount} из ${steps.length}`}>
                   {doneCount} из {steps.length}
                 </span>
-              }
-            />
+              </Badge>
+            }
+          >
+            <p className={p.stepsSub}>Когда всё будет готово, вы появитесь в каталоге специалистов</p>
             <ul className={p.steps}>
               {steps.map((st) => {
                 const inner = (
@@ -187,7 +189,7 @@ export default function ProOverview() {
                 );
               })}
             </ul>
-          </Card>
+          </CollapsibleCard>
         )}
 
         <Card as="section">

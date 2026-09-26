@@ -1,3 +1,26 @@
+.picker {
+  display: grid;
+  gap: 10px;
+}
+.group {
+  display: grid;
+  gap: 6px;
+}
+.groupLabel {
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--c-muted);
+}
+.credit {
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--c-muted);
+  text-decoration: none;
+  justify-self: start;
+}
+.credit:hover {
+  text-decoration: underline;
+}
 .row {
   display: flex;
   flex-wrap: wrap;
@@ -17,7 +40,7 @@
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 0 0 0 var(--c-primary);
   transition: box-shadow var(--dur), transform var(--dur);
 }
-.row[data-size="sm"] .swatch {
+.picker[data-size="sm"] .swatch {
   --sz: 32px;
 }
 .swatch:hover {

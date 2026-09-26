@@ -123,3 +123,75 @@ def test_write_access_follows_staff_roles(db):
     assert auth_client(editor).post("/api/v1/content/manage/articles/", body, format="json").status_code == 201
     assert auth_client(support).post("/api/v1/content/manage/articles/", {**body, "slug": "rol-2"},
                                      format="json").status_code == 403
+
+
+# ── Evidence-based layer ───────────────────────────────────────────────────
+
+@pytest.mark.django_db
+def test_seeded_articles_have_consistent_citations(api):
+    import re
+
+    for item in api.get("/api/v1/content/articles/").json():
+        assert item["evidence_level"] in ("strong", "moderate", "limited", "practice")
+        d = api.get(f"/api/v1/content/articles/{item['slug']}/").json()
+        n = len(d["sources"])
+        assert n >= 1 and d["when_to_seek_help"].strip() and d["key_facts"] and d["reviewed_at"]
+        for src in d["sources"]:
+            assert src["url"].startswith("https://") and src["title"]
+        markers = re.findall(r"\[(\d+(?:,\s*\d+)*)\](?!\()", d["body"] + d["when_to_seek_help"])
+        refs = [int(r) for m in markers for r in m.split(",")] + [r for f in d["key_facts"] for r in f["refs"]]
+        assert refs and all(1 <= r <= n for r in refs), d["slug"]
+    p = api.get("/api/v1/content/practices/dyhanie-4-6/").json()
+    assert p["mechanism"] and p["cautions"] and p["sources"] and p["evidence_level"] == "moderate"
+
+
+@pytest.mark.django_db
+def test_upgrade_replaces_only_untouched_seeded_items(monkeypatch):
+    from apps.content import seed as seed_mod
+
+    old_body = "Старый стартовый текст"
+    untouched = Article.objects.get(slug="vygoranie")
+    edited = Article.objects.get(slug="odinochestvo")
+    for a in (untouched, edited):
+        Article.objects.filter(pk=a.pk).update(body=old_body, sources=[], key_facts=[], evidence_level="")
+    Article.objects.filter(pk=edited.pk).update(title="Правка редактора")
+    fps = {
+        "vygoranie": {seed_mod.fingerprint_article(untouched.title, untouched.summary, old_body)},
+        "odinochestvo": {seed_mod.fingerprint_article(edited.title, edited.summary, old_body)},
+    }
+    monkeypatch.setattr(seed_mod, "ARTICLE_FINGERPRINTS", fps)
+
+    seed_mod.seed_content(Article, Practice, upgrade=True)
+
+    untouched.refresh_from_db()
+    edited.refresh_from_db()
+    assert untouched.body != old_body and untouched.sources and untouched.evidence_level == "moderate"
+    assert edited.body == old_body and edited.title == "Правка редактора" and edited.sources == []
+
+
+@pytest.mark.django_db
+def test_cms_validates_sources_and_facts(admin_user):
+    a = auth_client(admin_user)
+    base = {"title": "С источниками", "slug": "s-istochnikami", "body": "Текст [1]"}
+    bad_url = {**base, "sources": [{"title": "X", "url": "javascript:alert(1)"}]}
+    assert a.post("/api/v1/content/manage/articles/", bad_url, format="json").status_code == 400
+    bad_ref = {**base, "sources": [{"title": "X", "url": "https://example.org/x"}],
+               "key_facts": [{"text": "Факт", "refs": [2]}]}
+    assert a.post("/api/v1/content/manage/articles/", bad_ref, format="json").status_code == 400
+    ok = {**base, "evidence_level": "limited", "when_to_seek_help": "- Если плохо",
+          "sources": [{"title": "X", "url": "https://example.org/x", "year": "2020", "junk": 1}],
+          "key_facts": [{"text": "Факт", "refs": ["1", 1]}]}
+    resp = a.post("/api/v1/content/manage/articles/", ok, format="json")
+    assert resp.status_code == 201, resp.content
+    body = resp.json()
+    assert body["sources"] == [{"title": "X", "url": "https://example.org/x", "year": 2020}]
+    assert body["key_facts"] == [{"text": "Факт", "refs": [1]}]
+    assert a.patch(f"/api/v1/content/manage/articles/{body['id']}/", {"evidence_level": "great"},
+                   format="json").status_code == 400
+
+
+@pytest.mark.django_db
+def test_article_search(api):
+    found = api.get("/api/v1/content/articles/?q=ВЫГОРАНИЕ").json()
+    assert [a["slug"] for a in found] == ["vygoranie"]
+    assert api.get("/api/v1/content/articles/?q=несуществующее слово").json() == []

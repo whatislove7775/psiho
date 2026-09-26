@@ -56,6 +56,15 @@ class ArticleListView(generics.ListAPIView):
         exclude = self.request.query_params.get("exclude")
         if exclude:
             qs = qs.exclude(slug=exclude)
+        q = (self.request.query_params.get("q") or "").strip().casefold()[:100]
+        if q:
+            # Python-side match: SQLite's LIKE doesn't case-fold Cyrillic; the catalogue is small
+            words = q.split()
+            ids = [
+                a.id for a in qs.only("id", "title", "summary", "tags")
+                if all(w in f"{a.title} {a.summary} {' '.join(a.tags or [])}".casefold() for w in words)
+            ]
+            qs = qs.filter(id__in=ids)
         limit = _limit(self.request)
         return qs[:limit] if limit else qs
 

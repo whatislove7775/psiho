@@ -6,6 +6,7 @@ import { Button, useToast } from "@/ui";
 import { chatApi, type AIStatus } from "@/lib/api/chat";
 import { Tisha } from "./Tisha";
 import s from "./chat.module.css";
+import { SearchTrigger } from "@/components/search/SpecialistSearch";
 
 /** Знакомство с Тишей + явное согласие перед первым использованием. */
 export function AIIntro({
@@ -131,9 +132,9 @@ export function AIIntro({
           </div>
         ) : (
           <div className={s.consent}>
-            <Button variant="secondary" size="lg" href="/app/specialists">
+            <SearchTrigger variant="secondary" size="lg">
               Выбрать специалиста
-            </Button>
+            </SearchTrigger>
           </div>
         )}
       </div>

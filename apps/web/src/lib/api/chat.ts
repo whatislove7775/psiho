@@ -5,7 +5,8 @@ import { API_BASE, ApiError, api, tokens } from "./client";
 export type ConversationKind = "specialist" | "client_support" | "specialist_support" | "ai";
 export type ChatRole = "client" | "specialist" | "support";
 export type SenderRole = "client" | "specialist" | "support" | "ai" | "system";
-export type Retention = "24h" | "forever";
+/** «Исчезающие сообщения»: forever — выкл (хранить всегда), 24h — 1 день, 1h — 1 час */
+export type Retention = "1h" | "24h" | "forever";
 
 export interface Counterpart {
   type: "specialist" | "client" | "support" | "ai";
@@ -79,6 +80,8 @@ export interface Conversation {
   retention: Retention;
   retention_changed_at: string | null;
   can_change_retention: boolean;
+  /** «Защита от скриншотов» для обеих сторон (включает клиент) */
+  screen_protect?: boolean;
   can_send_files: boolean;
   unread: number;
   last_message: { text: string; created_at: string; sender_role: SenderRole; kind: string } | null;
@@ -118,6 +121,8 @@ export const chatApi = {
   unread: () => api<{ total: number; support: number }>("/chat/unread/"),
   setRetention: (id: string, retention: Retention) =>
     api<Conversation>(`/chat/conversations/${id}/`, { method: "PATCH", body: { retention } }),
+  setScreenProtect: (id: string, screen_protect: boolean) =>
+    api<Conversation>(`/chat/conversations/${id}/`, { method: "PATCH", body: { screen_protect } }),
   clear: (id: string) => api<Conversation>(`/chat/conversations/${id}/clear/`, { method: "POST" }),
   read: (id: string) => api<{ read_at: string }>(`/chat/conversations/${id}/read/`, { method: "POST" }),
   messages: (id: string, before?: string, limit = 40) =>

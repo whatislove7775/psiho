@@ -224,3 +224,20 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Citation markers inside article text: small, quiet, but tappable */
+.cite {
+  font-size: 0.68em;
+  line-height: 0;
+  margin-left: 1px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.cite a {
+  color: var(--c-primary-ink);
+  text-decoration: none;
+  padding: 0 1px;
+}
+.cite a:hover {
+  text-decoration: underline;
+}

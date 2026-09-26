@@ -6,6 +6,7 @@ import { Button, Input } from "@/ui";
 import { ApiError } from "@/lib/api/client";
 import { billingApi, rubK, type TopUp, type TopUpSettings } from "@/lib/api/billing";
 import s from "./billing.module.css";
+import { ConsentNote } from "@/components/legal/ConsentNote";
 
 type ReceiptMode = "none" | "email" | "phone";
 
@@ -243,6 +244,7 @@ export function TopUpForm({
       <div className={s.hint}>
         Платёжный сервис видит только сумму. Имя, карта и псевдоним к балансу не привязываются.
       </div>
+      <ConsentNote kind="payment" action="Пополнить" />
     </div>
   );
 }

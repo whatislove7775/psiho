@@ -16,7 +16,7 @@ export function AuthShell({ children, wide, art }: { children: ReactNode; wide?:
       </header>
       <main className={s.main}>
         {art ? (
-          <div className={a.withArt}>
+          <div className={a.withArt} data-wide={wide ? "" : undefined}>
             <div className={a.art}>{art}</div>
             {column}
           </div>

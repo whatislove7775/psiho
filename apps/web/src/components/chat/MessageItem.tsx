@@ -151,7 +151,7 @@ export function MessageItem({
         )}
         <span className={s.meta}>
           {msg.expires_at && !msg.deleted && (
-            <span title="Удалится через 24 часа после отправки" className={s.metaIcon}>
+            <span title={expiryTitle(msg.expires_at)} className={s.metaIcon}>
               <Timer size={12} />
             </span>
           )}
@@ -194,4 +194,13 @@ export function MessageItem({
       )}
     </div>
   );
+}
+
+/** «Исчезнет в 14:05» / «Исчезнет завтра в 09:30» for disappearing messages. */
+function expiryTitle(iso: string): string {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return "Исчезающее сообщение";
+  const d = new Date(t);
+  const hm = d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  return d.toDateString() === new Date().toDateString() ? `Исчезнет в ${hm}` : `Исчезнет завтра в ${hm}`;
 }

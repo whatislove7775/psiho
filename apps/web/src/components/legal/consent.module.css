@@ -1,0 +1,14 @@
+.note {
+  margin-top: 10px;
+  font-size: var(--t-12);
+  line-height: 1.5;
+  color: var(--c-muted);
+  text-align: center;
+  text-wrap: pretty;
+}
+.note a {
+  color: var(--c-primary-ink);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--c-primary-ink) 40%, transparent);
+  text-underline-offset: 2px;
+}

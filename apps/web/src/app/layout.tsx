@@ -2,11 +2,13 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
 import { THEME_SCRIPT } from "@/components/shell/ThemeToggle";
+import { STEALTH_SCRIPT } from "@/lib/privacy/stealth";
+import { ldJson, ORG_ID, organizationLd, websiteLd } from "@/lib/seo";
 
 const SITE_URL = "https://aprosop.ru";
 const SITE_NAME = "aprosop";
 const DESCRIPTION =
-  "Анонимные диалоги и видеосозвоны с психологом. Регистрация без почты и телефона, вместо лица — ваш 3D-аватар, который повторяет мимику. Видео идёт напрямую между вами и специалистом в зашифрованном виде.";
+  "Анонимные диалоги и видеозвонки с психологом: без почты и телефона, вместо лица — 3D-аватар. Видео идёт напрямую и не записывается.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -34,15 +36,14 @@ export const metadata: Metadata = {
     locale: "ru_RU",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: "aprosop — говорите свободно. Ваше лицо остаётся при вас",
-    description: DESCRIPTION,
-    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "aprosop — анонимная психологическая помощь" }],
+    title: "Анонимный психолог онлайн",
+    description: "Без почты и телефона. Вместо лица — 3D-аватар, видео не записывается.",
+    // images: file-based opengraph-image.tsx per section (lib/og)
   },
   twitter: {
     card: "summary_large_image",
-    title: "aprosop — анонимная психологическая помощь",
-    description: DESCRIPTION,
-    images: ["/og-image.png"],
+    title: "Анонимный психолог онлайн",
+    description: "Без почты и телефона. Вместо лица — 3D-аватар, видео не записывается.",
   },
   icons: {
     icon: [
@@ -54,7 +55,6 @@ export const metadata: Metadata = {
     apple: { url: "/apple-touch-icon.png", sizes: "180x180" },
   },
   manifest: "/manifest.json",
-  alternates: { canonical: SITE_URL },
 };
 
 export const viewport: Viewport = {
@@ -62,63 +62,27 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#09090b" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f1027" },
     { media: "(prefers-color-scheme: light)", color: "#f2f2f5" },
   ],
 };
 
 function StructuredData() {
-  const organization = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: SITE_NAME,
-    url: SITE_URL,
-    logo: `${SITE_URL}/favicon.svg`,
-    description: DESCRIPTION,
-  };
+  // Site-wide entities only; page-specific data (FAQPage, Article, HowTo, BreadcrumbList) lives on its page.
   const service = {
     "@context": "https://schema.org",
     "@type": "Service",
     name: "Анонимная психологическая консультация онлайн",
-    provider: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
+    serviceType: "Онлайн-консультация психолога",
+    provider: { "@id": ORG_ID },
     areaServed: "RU",
     availableLanguage: "ru",
     description: DESCRIPTION,
   };
-  const faq = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: [
-      {
-        "@type": "Question",
-        name: "Нужны ли почта или телефон для регистрации?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Нет. Вы придумываете только пароль, а имя-псевдоним и ключ восстановления создаются автоматически.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "Увидит ли психолог моё лицо?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Нет. Камера распознаёт мимику прямо на вашем устройстве, а специалист видит только ваш 3D-аватар. Голос можно изменить фильтром.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "Записываются ли созвоны?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Нет. Видео передаётся напрямую между вами и специалистом в зашифрованном виде и нигде не сохраняется.",
-        },
-      },
-    ],
-  };
   return (
     <>
-      {[organization, service, faq].map((schema, i) => (
-        <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      {[organizationLd(), websiteLd(), service].map((schema, i) => (
+        <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: ldJson(schema) }} />
       ))}
     </>
   );
@@ -129,6 +93,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ru" dir="ltr" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        {/* «Незаметный режим»: нейтральная вкладка и выход по двойному Esc — до загрузки React */}
+        <script dangerouslySetInnerHTML={{ __html: STEALTH_SCRIPT }} />
+        <link rel="preload" href="/fonts/onest-cyrillic.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/onest-latin.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
         <StructuredData />
       </head>
       <body>

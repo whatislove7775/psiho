@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   CalendarDays,
+  ChevronDown,
   Headphones,
   Lamp,
   LifeBuoy,
@@ -16,6 +17,7 @@ import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import type { Session } from "@/lib/api/types";
 import { dayLabel, rub, time, untilLabel } from "@/lib/format";
 import s from "./rail.module.css";
+import { SearchTrigger } from "@/components/search/SpecialistSearch";
 
 function Row({
   icon,
@@ -88,9 +90,9 @@ export function NextSessionCard({
             sub="Отменить можно до начала созвона"
           />
         </div>
-        <Button variant="white" size="lg" block href="/app/specialists">
+        <SearchTrigger variant="white" size="lg" block>
           Выбрать специалиста
-        </Button>
+        </SearchTrigger>
       </section>
     );
   }
@@ -136,8 +138,11 @@ export function NextSessionCard({
             sub="Ваше лицо не передаётся, звонок зашифрован"
           />
         ) : (
-          <div className={s.tips}>
-            <strong>Как подготовиться</strong>
+          <details className={s.tips}>
+            <summary>
+              <strong>Как подготовиться</strong>
+              <ChevronDown size={16} strokeWidth={2} aria-hidden className={s.tipsChevron} />
+            </summary>
             <ul>
               <li>
                 <Lamp size={16} strokeWidth={1.8} aria-hidden /> Свет спереди,
@@ -152,7 +157,7 @@ export function NextSessionCard({
                 о том, с чем хотите прийти
               </li>
             </ul>
-          </div>
+          </details>
         )}
       </div>
 

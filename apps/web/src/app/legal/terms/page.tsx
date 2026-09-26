@@ -1,14 +1,24 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage, type LegalSection } from "@/components/landing/LegalPage";
+import { DRAFT_UPDATED, legalMetadata } from "@/components/legal/meta";
+import { Tbd, TbdBlock } from "@/components/legal/Placeholder";
 
-export const metadata: Metadata = {
-  title: "Условия использования",
-  description: "Правила aprosop для клиентов и специалистов простым языком: запись, оплата, отмена, безопасность.",
-  alternates: { canonical: "/legal/terms" },
-};
+export const metadata = legalMetadata("terms");
 
 const SECTIONS: LegalSection[] = [
+  {
+    id: "parties",
+    title: "Стороны и предмет соглашения",
+    body: (
+      <>
+        <p>
+          Соглашение заключается между оператором сервиса (<Tbd what="наименование" />, сведения — на странице{" "}
+          <Link href="/legal/requisites">«Реквизиты»</Link>) и пользователем сайта aprosop.ru.
+        </p>
+        <TbdBlock>Порядок принятия соглашения (акцепт) и момент его заключения.</TbdBlock>
+      </>
+    ),
+  },
   {
     id: "what",
     title: "Что такое aprosop",
@@ -95,6 +105,18 @@ const SECTIONS: LegalSection[] = [
     ),
   },
   {
+    id: "paid",
+    title: "Платные услуги",
+    body: (
+      <p>
+        Условия оплаты созвонов и пополнения баланса описаны в <Link href="/legal/offer">публичной оферте</Link> и{" "}
+        <Link href="/legal/refunds">правилах возврата</Link>.
+      </p>
+    ),
+  },
+  { id: "liability", title: "Ответственность сторон", body: <TbdBlock /> },
+  { id: "disputes", title: "Порядок разрешения споров", body: <TbdBlock /> },
+  {
     id: "changes",
     title: "Изменения и контакты",
     body: (
@@ -110,8 +132,10 @@ const SECTIONS: LegalSection[] = [
 export default function TermsPage() {
   return (
     <LegalPage
-      title="Условия использования"
-      updated="24 сентября 2026"
+      slug="terms"
+      draft
+      title="Пользовательское соглашение"
+      updated={DRAFT_UPDATED}
       summary={
         <p>
           <strong>Коротко.</strong> Вы общаетесь с проверенным специалистом под анонимным именем и аватаром. Цена видна

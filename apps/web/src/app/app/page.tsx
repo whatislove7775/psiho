@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronRight, Search, Wind } from "lucide-react";
-import { Badge, Button, Card, CardHead } from "@/ui";
+import { Check, ChevronRight, Leaf, Search, Wind } from "lucide-react";
+import { Badge, Button, Card, CardHead, CollapsibleCard } from "@/ui";
 import { WithRail } from "@/components/shell/AppShell";
 import { useAuth } from "@/lib/auth/store";
 import { psychologistsApi } from "@/lib/api/endpoints";
@@ -17,6 +17,7 @@ import { SpecialistMini, SpecialistMiniSkeleton } from "@/components/client/Spec
 import { AvatarThumb } from "@/components/avatar/AvatarThumb";
 import { ArticleCard, ArticleCardSkeleton, PracticeCard, PracticeCardSkeleton } from "@/components/content/Cards";
 import { Celestial } from "@/components/illustrations";
+import { SearchTrigger } from "@/components/search/SpecialistSearch";
 import h from "./homeArt.module.css";
 import s from "./home.module.css";
 
@@ -32,9 +33,8 @@ export default function ClientHome() {
   const user = useAuth((st) => st.user);
   const dialogs = useDialogsSummary();
   const specialists = useLoad(() => psychologistsApi.list());
-  const articles = useLoad(() => contentApi.articles({ limit: 6 }));
-  const practices = useLoad(() => contentApi.practices({ limit: 6 }));
-  const topics = useLoad(() => contentApi.topics());
+  const articles = useLoad(() => contentApi.articles({ limit: 4 }));
+  const practices = useLoad(() => contentApi.practices({ limit: 3 }));
   const [checked, setChecked] = useState(false);
   const [hello, setHello] = useState("Здравствуйте");
   const [night, setNight] = useState(false);
@@ -66,6 +66,14 @@ export default function ClientHome() {
           <div className={s.wideOnly}>
             <NextCallCard item={next} loading={dialogs.loading} role="client" />
           </div>
+          <CollapsibleCard title="Практики на пару минут" icon={<Leaf size={18} strokeWidth={1.8} />} storageKey="home-practices">
+            <div className={s.practiceList}>
+              {practices.loading && !practices.data
+                ? [0, 1, 2].map((i) => <PracticeCardSkeleton key={i} />)
+                : (practices.data ?? []).map((p) => <PracticeCard key={p.id} p={p} />)}
+            </div>
+            <SeeAll href="/app/practices" label="Все практики" />
+          </CollapsibleCard>
           <SupportCard />
         </>
       }
@@ -80,9 +88,9 @@ export default function ClientHome() {
             Здесь можно говорить свободно. Специалист видит только ваш аватар и псевдоним.
           </p>
           <div className={s.heroActions}>
-            <Button variant="white" size="lg" href="/app/specialists" icon={<Search size={18} strokeWidth={2} />}>
+            <SearchTrigger variant="white" size="lg" icon={<Search size={18} strokeWidth={2} />}>
               Найти специалиста
-            </Button>
+            </SearchTrigger>
             <Link href="/app/practices/dyhanie-4-6" className={s.heroLink}>
               <Wind size={18} strokeWidth={1.8} aria-hidden />
               Дыхательная пауза
@@ -105,11 +113,11 @@ export default function ClientHome() {
       </div>
 
       {showSteps && (
-        <Card as="section">
-          <CardHead
-            title="Первые шаги"
-            action={<Badge tone="warning">{doneCount} из {steps.length}</Badge>}
-          />
+        <CollapsibleCard
+          title="Первые шаги"
+          storageKey="home-steps"
+          badge={<Badge tone="warning">{doneCount} из {steps.length}</Badge>}
+        >
           <ul className={s.steps}>
             {steps.map((st) => (
               <li key={st.title}>
@@ -126,7 +134,7 @@ export default function ClientHome() {
               </li>
             ))}
           </ul>
-        </Card>
+        </CollapsibleCard>
       )}
 
       {hasAny && <RecentDialogs items={dialogs.recent} role="client" />}
@@ -161,40 +169,16 @@ export default function ClientHome() {
 
       <Card as="section">
         <CardHead
-          title="Практики"
-          sub="Короткие упражнения, когда нужно успокоиться или собраться"
-          action={<SeeAll href="/app/practices" label="Все практики" />}
+          title="Статьи"
+          sub="О чувствах, отношениях и о том, как устроена терапия"
+          action={<SeeAll href="/app/articles" label="Все статьи" />}
         />
-        <div className={s.practiceGrid}>
-          {practices.loading && !practices.data
-            ? [0, 1, 2, 3].map((i) => <PracticeCardSkeleton key={i} />)
-            : (practices.data ?? []).map((p) => <PracticeCard key={p.id} p={p} />)}
-        </div>
-      </Card>
-
-      <section className={s.section}>
-        <div className={s.sectionHead}>
-          <div>
-            <h2 className={s.sectionTitle}>Статьи</h2>
-            <p className={s.muted}>О чувствах, отношениях и о том, как устроена терапия</p>
-          </div>
-          <SeeAll href="/app/articles" label="Все статьи" />
-        </div>
-        {topics.data && topics.data.length > 0 && (
-          <div className={s.topics}>
-            {topics.data.map((t) => (
-              <Link key={t.value} href={`/app/articles?topic=${t.value}`} className={s.topic}>
-                {t.label}
-              </Link>
-            ))}
-          </div>
-        )}
         <div className={s.articleGrid}>
           {articles.loading && !articles.data
-            ? [0, 1, 2].map((i) => <ArticleCardSkeleton key={i} />)
+            ? [0, 1].map((i) => <ArticleCardSkeleton key={i} />)
             : (articles.data ?? []).map((a) => <ArticleCard key={a.id} a={a} />)}
         </div>
-      </section>
+      </Card>
     </WithRail>
   );
 }

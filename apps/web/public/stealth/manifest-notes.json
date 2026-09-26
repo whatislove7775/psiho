@@ -1,0 +1,17 @@
+{
+  "name": "Заметки",
+  "short_name": "Заметки",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "/stealth/notes.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

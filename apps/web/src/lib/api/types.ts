@@ -27,6 +27,13 @@ export interface PsychologistPublic {
   next_slot: string | null;
   /** durations & prices set by the specialist (see lib/api/availability.ts); session_rate_rub = shortest session price */
   booking?: import("./availability").BookingInfo;
+  /** optional, set by the specialist; clients can filter by it in search */
+  gender?: "" | "female" | "male";
+  /** average of published reviews (1 decimal), null — no reviews yet (lib/api/reviews.ts) */
+  rating?: number | null;
+  reviews_count?: number;
+  /** approved credentials (lib/api/credentials.ts); > 0 → «Проверено aprosop» */
+  verified_credentials?: number;
 }
 
 export interface PsychologistPrivate extends PsychologistPublic {

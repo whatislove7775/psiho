@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from "react";
-import { CalendarDays, Headphones, Lamp, MessagesSquare, ShieldCheck, Sparkles, Video } from "lucide-react";
+import { CalendarDays, ChevronDown, Headphones, Lamp, MessagesSquare, ShieldCheck, Sparkles, Video } from "lucide-react";
 import { Button, Card, CardHead, Skeleton } from "@/ui";
 import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import { AvatarThumb } from "@/components/avatar/AvatarThumb";
@@ -14,6 +14,7 @@ import { rub } from "@/lib/format";
 import { cardPreview, countdown, hm, isLive, range, useNow, weekdayDay } from "./time";
 import r from "@/components/client/rail.module.css";
 import s from "./dialogs.module.css";
+import { SearchTrigger } from "@/components/search/SpecialistSearch";
 
 /** Dialogues for home pages: the nearest call across all dialogues + the most recent ones. */
 export function useDialogsSummary() {
@@ -105,9 +106,15 @@ export function NextCallCard({ item, loading, role }: { item: DialogItem | null;
             sub="Длительность выбирается при записи, цена зависит от неё"
           />
         </div>
-        <Button variant="white" size="lg" block href={role === "client" ? "/app/specialists" : "/pro/schedule"}>
-          {role === "client" ? "Выбрать специалиста" : "Открыть расписание"}
-        </Button>
+        {role === "client" ? (
+          <SearchTrigger variant="white" size="lg" block>
+            Выбрать специалиста
+          </SearchTrigger>
+        ) : (
+          <Button variant="white" size="lg" block href="/pro/schedule">
+            Открыть расписание
+          </Button>
+        )}
       </section>
     );
   }
@@ -149,8 +156,11 @@ export function NextCallCard({ item, loading, role }: { item: DialogItem | null;
             sub="Лицо клиента не передаётся, звонок зашифрован"
           />
         ) : role === "client" ? (
-          <div className={r.tips}>
-            <strong>Как подготовиться</strong>
+          <details className={r.tips}>
+            <summary>
+              <strong>Как подготовиться</strong>
+              <ChevronDown size={16} strokeWidth={2} aria-hidden className={r.tipsChevron} />
+            </summary>
             <ul>
               <li>
                 <Lamp size={16} strokeWidth={1.8} aria-hidden /> Свет спереди, чтобы аватар точнее повторял мимику
@@ -162,7 +172,7 @@ export function NextCallCard({ item, loading, role }: { item: DialogItem | null;
                 <Sparkles size={16} strokeWidth={1.8} aria-hidden /> Пара мыслей о том, с чем хотите прийти
               </li>
             </ul>
-          </div>
+          </details>
         ) : null}
       </div>
       {call.can_join ? (

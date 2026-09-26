@@ -23,6 +23,51 @@ export const PRACTICE_KINDS: { value: PracticeKind; label: string }[] = [
   { value: "mindfulness", label: "Осознанность" },
 ];
 
+export type EvidenceLevel = "strong" | "moderate" | "limited" | "practice" | "";
+
+export const EVIDENCE_LEVELS: { value: Exclude<EvidenceLevel, "">; label: string; short: string; hint: string }[] = [
+  {
+    value: "strong",
+    label: "Сильная доказательная база",
+    short: "Сильные доказательства",
+    hint: "Клинические руководства, метаанализы и обзоры многих исследований.",
+  },
+  {
+    value: "moderate",
+    label: "Умеренная доказательная база",
+    short: "Умеренные доказательства",
+    hint: "Есть обзоры и хорошие исследования, но данных меньше или они неоднородны.",
+  },
+  {
+    value: "limited",
+    label: "Ограниченные данные",
+    short: "Данных пока мало",
+    hint: "Отдельные исследования или небольшие эффекты. Относитесь как к мягкой поддержке.",
+  },
+  {
+    value: "practice",
+    label: "Практический опыт",
+    short: "Опыт практики",
+    hint: "Распространённые рекомендации специалистов; отдельных исследований мало.",
+  },
+];
+
+/** A verified source. `[n]` markers in texts point to the 1-based position in the list. */
+export interface Source {
+  title: string;
+  url: string;
+  authors?: string;
+  year?: number;
+  publisher?: string;
+  doi?: string;
+  kind?: "guideline" | "review" | "study" | "org" | "book" | "other";
+}
+
+export interface KeyFact {
+  text: string;
+  refs: number[];
+}
+
 export interface ArticleCard {
   id: number;
   slug: string;
@@ -36,10 +81,16 @@ export interface ArticleCard {
   reading_minutes: number;
   author_name: string;
   published_at: string | null;
+  updated_at?: string;
+  evidence_level?: EvidenceLevel;
 }
 
 export interface Article extends ArticleCard {
   body: string;
+  key_facts?: KeyFact[];
+  when_to_seek_help?: string;
+  sources?: Source[];
+  reviewed_at?: string | null;
 }
 
 export interface ArticleDraft extends Article {
@@ -74,11 +125,17 @@ export interface PracticeCard {
   duration_minutes: number;
   cover: Cover;
   emoji: string;
+  evidence_level?: EvidenceLevel;
+  updated_at?: string;
 }
 
 export interface Practice extends PracticeCard {
   steps: PracticeStep[];
   pattern: BreathPattern | null;
+  mechanism?: string;
+  cautions?: string;
+  sources?: Source[];
+  reviewed_at?: string | null;
 }
 
 export interface PracticeDraft extends Practice {
@@ -96,7 +153,7 @@ export interface TopicCount {
 
 export const contentApi = {
   topics: () => api<TopicCount[]>("/content/topics/", { auth: false }),
-  articles: (q: { topic?: string; limit?: number; exclude?: string } = {}) =>
+  articles: (q: { topic?: string; limit?: number; exclude?: string; q?: string } = {}) =>
     api<ArticleCard[]>("/content/articles/", { query: { ...q }, auth: false }),
   article: (slug: string) => api<Article>(`/content/articles/${encodeURIComponent(slug)}/`, { auth: false }),
   practices: (q: { kind?: string; limit?: number } = {}) =>

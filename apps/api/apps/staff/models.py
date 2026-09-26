@@ -108,6 +108,7 @@ class Report(models.Model):
         SPECIALIST = "specialist", "Специалист"
         SESSION = "session", "Сессия"
         MESSAGE = "message", "Сообщение"
+        REVIEW = "review", "Отзыв"  # id отзыва (apps.reviews) хранится в target_message_id
 
     class Reason(models.TextChoices):
         ABUSE = "abuse", "Оскорбления или угрозы"

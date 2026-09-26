@@ -1,0 +1,17 @@
+{
+  "name": "Погода",
+  "short_name": "Погода",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "/stealth/weather.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

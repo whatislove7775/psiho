@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Camera, Check, Copy, Dices, Eye, Gauge, RefreshCw, ScanFace, Shuffle, Square, Upload, UserRound } from "lucide-react";
-import { Badge, Button, Card, CardHead, Segmented, Textarea, useToast } from "@/ui";
+import { Badge, Button, Card, CardHead, Segmented, Select, Textarea, useToast } from "@/ui";
 import { useAuth } from "@/lib/auth/store";
 import { normalizeAvatar, randomAvatar, type AvatarConfig } from "@/lib/avatar/schema";
 import { BACKDROPS, type BackdropId } from "@/lib/avatar/backdrops";
@@ -328,17 +328,17 @@ export function AvatarPlayground() {
             </div>
             <Switch checked={idle} onChange={setIdle} label="Живая анимация без лица" hint="Моргание и дыхание, пока лицо не найдено." />
             {cams.length > 1 && (
-              <label className={s.selectLabel}>
-                <span className={s.label}>Камера</span>
-                <select className={s.select} value={deviceId} onChange={(e) => setDeviceId(e.target.value)}>
-                  <option value="">По умолчанию (фронтальная)</option>
-                  {cams.map((c, i) => (
-                    <option key={c.deviceId || i} value={c.deviceId}>
-                      {c.label || `Камера ${i + 1}`}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <div className={s.selectLabel}>
+                <Select
+                  label="Камера"
+                  value={deviceId}
+                  onChange={setDeviceId}
+                  options={[
+                    { value: "", label: "По умолчанию (фронтальная)" },
+                    ...cams.map((c, i) => ({ value: c.deviceId, label: c.label || `Камера ${i + 1}` })),
+                  ]}
+                />
+              </div>
             )}
             <div>
               <div className={s.label}>Фон</div>

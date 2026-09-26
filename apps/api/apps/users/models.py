@@ -126,6 +126,15 @@ class PsychologistProfile(models.Model):
     experience_years = models.PositiveSmallIntegerField(default=0)
     session_rate_rub = models.DecimalField(max_digits=8, decimal_places=2)
 
+    class Gender(models.TextChoices):
+        UNSPECIFIED = "", "Не указан"
+        FEMALE = "female", "Женщина"
+        MALE = "male", "Мужчина"
+
+    # Необязательно: клиенты могут искать по полу специалиста (фильтр в поиске)
+    # db_default: rows inserted by older code (and historical migration states) get "" too
+    gender = models.CharField(max_length=10, choices=Gender.choices, blank=True, default="", db_default="")
+
     verification_status = models.CharField(
         max_length=20,
         choices=VerificationStatus.choices,

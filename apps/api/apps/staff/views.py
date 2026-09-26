@@ -120,6 +120,10 @@ def _nav_badges(user) -> dict:
         badges["reports"] = Report.objects.filter(status=Report.Status.OPEN).count()
     if has_staff_perm(user, "specialists.view"):
         badges["specialists"] = PsychologistProfile.objects.filter(verification_status=V.PENDING).count()
+    if has_staff_perm(user, "specialists.verify"):
+        from apps.credentials.models import Credential
+
+        badges["credentials"] = Credential.objects.filter(status=Credential.Status.PENDING).count()
     if has_staff_perm(user, "support.inbox"):
         queue = _support_queue()
         if queue:
@@ -696,6 +700,13 @@ def _resolve_report_target(reporter, target_type, target_id):
         return not_found
     if target_type == T.MESSAGE:
         return _resolve_message(reporter, target_id, not_found)
+    if target_type == T.REVIEW:
+        # Отзывы публичные — пожаловаться может любой вошедший; целевой аккаунт — автор отзыва
+        from apps.reviews.models import Review
+
+        review = Review.objects.select_related("client").filter(
+            pk=target_id if target_id.isdigit() else -1, status=Review.Status.PUBLISHED).first()
+        return (review.client, None, str(review.pk)) if review else not_found
     return not_found
 
 

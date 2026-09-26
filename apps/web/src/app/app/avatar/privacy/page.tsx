@@ -13,6 +13,7 @@ import { AliasCard } from "@/components/client/AliasCard";
 import { clientStyles as cs } from "@/components/client/ClientBits";
 import s from "./privacy.module.css";
 import { illSize, ShieldFriend } from "@/components/illustrations";
+import { PrivacySettings } from "@/components/privacy/PrivacySettings";
 
 const STORED = [
   { title: "Псевдоним", text: "Случайное имя, по нему вы входите" },
@@ -180,6 +181,9 @@ export default function PrivacyPage() {
             </div>
           </div>
         </Card>
+
+        {/* «Незаметный режим» и «Защита от скриншотов» */}
+        <PrivacySettings />
 
         <Card as="section">
           <CardHead

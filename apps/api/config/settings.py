@@ -44,6 +44,9 @@ INSTALLED_APPS = [
     "apps.billing",
     "apps.dialogs",
     "apps.calls",
+    "apps.prefs",
+    "apps.credentials",
+    "apps.reviews",
 ]
 
 MIDDLEWARE = [
@@ -152,6 +155,8 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         # Регистрация / вход / восстановление — защита от перебора
         "auth": env("AUTH_THROTTLE_RATE", default="20/min"),
+        # Живой поиск специалистов (палитра): запрос на каждую паузу в наборе
+        "search": env("SEARCH_THROTTLE_RATE", default="240/min"),
     },
 }
 

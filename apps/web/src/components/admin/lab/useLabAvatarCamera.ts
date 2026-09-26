@@ -18,7 +18,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { AvatarConfig } from "@/lib/avatar/schema";
 import type { Framing } from "@/lib/avatar/kit/types";
 import { FaceTracker, type LandmarkerResult } from "@/lib/tracking/FaceTracker";
-import { paintBackdrop, type BackdropId } from "@/lib/avatar/backdrops";
+import { backdropCanvas, paintBackdrop, type BackdropId } from "@/lib/avatar/backdrops";
 
 const MP_VERSION = "0.10.14";
 const SOURCES = [
@@ -103,7 +103,9 @@ export function useLabAvatarCamera(config: AvatarConfig, options: LabCameraOptio
     rendererRef.current?.setConfig(config);
   }, [config]);
   useEffect(() => {
-    if (options.backdrop) rendererRef.current?.setBackground(paintBackdrop(options.backdrop));
+    const r = rendererRef.current;
+    if (!r || !options.backdrop) return;
+    return backdropCanvas(options.backdrop, (c) => r.setBackground(c));
   }, [options.backdrop, canvas]);
   useEffect(() => {
     if (options.framing) rendererRef.current?.setFraming(options.framing);

@@ -20,7 +20,9 @@ export const AvatarView = forwardRef<AvatarViewHandle, {
   className?: string;
   style?: React.CSSProperties;
   onReady?: (r: AvatarRendererApi) => void;
-}>(function AvatarView({ config, framing = "portrait", expression, interactive = true, className, style, onReady }, ref) {
+  /** Load three.js only after the page has loaded and the browser is idle (keeps LCP/TBT low on the landing). */
+  deferLoad?: boolean;
+}>(function AvatarView({ config, framing = "portrait", expression, interactive = true, className, style, onReady, deferLoad }, ref) {
   const hostRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<AvatarRendererApi | null>(null);
   const cfgRef = useRef(config);
@@ -36,13 +38,15 @@ export const AvatarView = forwardRef<AvatarViewHandle, {
     let disposed = false;
     let ro: ResizeObserver | null = null;
     const host = hostRef.current!;
-    import("@/lib/avatar/kit/KitRenderer").then(({ KitRenderer }) => {
+    const whenReady = deferLoad ? afterLoadIdle() : Promise.resolve();
+    whenReady.then(() => import("@/lib/avatar/kit/KitRenderer")).then(({ KitRenderer }) => {
       if (disposed) return;
       const canvas = document.createElement("canvas");
       canvas.style.width = "100%";
       canvas.style.height = "100%";
       canvas.style.display = "block";
-      canvas.style.touchAction = "none";
+      // Only an interactive (draggable) avatar may capture touches; otherwise let the page scroll.
+      canvas.style.touchAction = interactive ? "none" : "auto";
       host.appendChild(canvas);
       const r = new KitRenderer(canvas, { framing, idle: true, background: null });
       r.setConfig(cfgRef.current);
@@ -111,3 +115,17 @@ export const AvatarView = forwardRef<AvatarViewHandle, {
 
   return <div ref={hostRef} className={className} style={{ position: "relative", width: "100%", height: "100%", ...style }} />;
 });
+
+/** Resolves after window "load" and then an idle slot (or 1.5 s), whichever comes first. */
+function afterLoadIdle(): Promise<void> {
+  return new Promise((resolve) => {
+    const idle = () => {
+      const ric = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number })
+        .requestIdleCallback;
+      if (ric) ric(() => resolve(), { timeout: 1500 });
+      else setTimeout(resolve, 200);
+    };
+    if (document.readyState === "complete") idle();
+    else window.addEventListener("load", idle, { once: true });
+  });
+}

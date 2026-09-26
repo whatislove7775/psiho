@@ -71,7 +71,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 interface CardProps {
   children: ReactNode;
   className?: string;
-  tone?: "default" | "raised" | "accent";
+  /** default = tier 2 content block; minor = tier 3 side info (quieter, compact); accent = tier 1 brand surface */
+  tone?: "default" | "raised" | "accent" | "minor";
   onClick?: () => void;
   as?: "div" | "section" | "article";
   padded?: boolean;
@@ -85,6 +86,7 @@ export function Card({ children, className, tone = "default", onClick, as: Tag =
         s.card,
         tone === "raised" && s.cardRaised,
         tone === "accent" && s.cardAccent,
+        tone === "minor" && s.cardMinor,
         onClick && s.cardInteractive,
         className,
       )}
@@ -413,3 +415,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 export const useToast = () => useContext(ToastCtx);
+
+// ── Select (styled listbox; replaces native <select>) ─────────────────────────
+
+export { Select } from "./Select";
+export type { SelectOption, SelectProps } from "./Select";
+export { CollapsibleCard } from "./Collapsible";

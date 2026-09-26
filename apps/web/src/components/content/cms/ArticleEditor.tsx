@@ -4,7 +4,8 @@ import { useRef, useState } from "react";
 import { Bold, Eye, Heading2, Italic, Link2, List, ListOrdered, Quote, Trash2 } from "lucide-react";
 import { Badge, Button, Card, Input, Segmented, Textarea, useToast } from "@/ui";
 import { ApiError } from "@/lib/api/client";
-import { contentAdminApi, slugify, TOPICS, type ArticleDraft, type Cover } from "@/lib/api/content";
+import { contentAdminApi, slugify, TOPICS, type ArticleDraft, type Cover, type EvidenceLevel, type KeyFact, type Source } from "@/lib/api/content";
+import { cleanFacts, cleanSources, EvidenceFields } from "./EvidenceFields";
 import { ArticleCard } from "../Cards";
 import { Markdown } from "../Markdown";
 import { CoverPicker, fieldError, Select, Switch } from "./fields";
@@ -22,6 +23,10 @@ type Form = {
   reading_minutes: number;
   author_name: string;
   is_published: boolean;
+  evidence_level: EvidenceLevel;
+  when_to_seek_help: string;
+  sources: Source[];
+  key_facts: KeyFact[];
 };
 
 function toForm(a: ArticleDraft | null): Form {
@@ -37,6 +42,10 @@ function toForm(a: ArticleDraft | null): Form {
     reading_minutes: a?.reading_minutes ?? 5,
     author_name: a?.author_name ?? "Редакция aprosop",
     is_published: a?.is_published ?? false,
+    evidence_level: a?.evidence_level ?? "",
+    when_to_seek_help: a?.when_to_seek_help ?? "",
+    sources: a?.sources ?? [],
+    key_facts: a?.key_facts ?? [],
   };
 }
 
@@ -119,6 +128,10 @@ export function ArticleEditor({
       reading_minutes: Number(f.reading_minutes) || estimateMinutes(f.body),
       author_name: f.author_name.trim(),
       is_published: publish ?? f.is_published,
+      evidence_level: f.evidence_level,
+      when_to_seek_help: f.when_to_seek_help,
+      sources: cleanSources(f.sources),
+      key_facts: cleanFacts(f.key_facts),
     };
     try {
       const saved = article
@@ -180,7 +193,7 @@ export function ArticleEditor({
                 set("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"));
               }}
               error={err("slug")}
-              hint={`/app/articles/${f.slug || "…"}`}
+              hint={`/articles/${f.slug || "…"}`}
             />
             <div className={s.full}>
               <Textarea
@@ -261,6 +274,24 @@ export function ArticleEditor({
             </button>
           </div>
         </Card>
+        <EvidenceFields
+          level={f.evidence_level}
+          onLevel={(v) => set("evidence_level", v)}
+          sources={f.sources}
+          onSources={(v) => set("sources", v)}
+          facts={f.key_facts}
+          onFacts={(v) => set("key_facts", v)}
+          errors={err}
+        >
+          <Textarea
+            label="Когда нужен специалист"
+            value={f.when_to_seek_help}
+            onChange={(e) => set("when_to_seek_help", e.target.value)}
+            error={err("when_to_seek_help")}
+            rows={5}
+            hint="Markdown-список признаков. Строка про 112 добавляется автоматически."
+          />
+        </EvidenceFields>
       </div>
 
       <aside className={s.side}>
@@ -292,7 +323,7 @@ export function ArticleEditor({
               </>
             )}
             {article?.is_published && (
-              <Button variant="ghost" block href={`/app/articles/${article.slug}`} icon={<Eye size={18} strokeWidth={1.8} />}>
+              <Button variant="ghost" block href={`/articles/${article.slug}`} icon={<Eye size={18} strokeWidth={1.8} />}>
                 Открыть на сайте
               </Button>
             )}

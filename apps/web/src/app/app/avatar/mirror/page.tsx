@@ -230,7 +230,7 @@ export default function CheckPage() {
       >
         <Card as="section" className={s.stageCard}>
           <div className={s.layout}>
-            <div className={s.stage} style={{ background: getBackdrop(backdrop).css }}>
+            <div className={s.stage} style={{ background: getBackdrop(backdrop).cover }}>
               {live && <CanvasSlot canvas={cam.canvas} />}
               {live && status && (
                 <span className={s.status} data-tone={status.tone}>

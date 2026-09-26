@@ -108,21 +108,6 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--s-3);
 }
-.select {
-  width: 100%;
-  min-height: 48px;
-  padding: 0 14px;
-  border-radius: var(--r-control);
-  border: 1px solid transparent;
-  background: var(--c-raised);
-  color: var(--c-text);
-  font: inherit;
-  font-size: var(--t-15);
-}
-.select:focus {
-  outline: none;
-  border-color: var(--c-primary);
-}
 .swatches {
   display: flex;
   flex-wrap: wrap;

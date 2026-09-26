@@ -1,58 +1,101 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { CalendarClock, Search, SearchX, X } from "lucide-react";
+import { RatingPill } from "@/components/reviews/ReviewBits";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { ArrowDownUp, CalendarClock, Search, SearchX, X } from "lucide-react";
 import { topicTone } from "@/lib/topicTone";
-import { Badge, Button, Card, EmptyState, Segmented, Skeleton } from "@/ui";
+import { Badge, Button, Card, EmptyState, Select, Skeleton } from "@/ui";
 import { PageHeader } from "@/components/shell/AppShell";
 import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
-import { psychologistsApi } from "@/lib/api/endpoints";
 import { durationLabel } from "@/lib/api/availability";
+import {
+  activeFilters,
+  queryToSearchParams,
+  searchApi,
+  searchParamsToQuery,
+  type SearchFacets,
+  type SortOrder,
+  type SpecialistQuery,
+} from "@/lib/api/search";
 import { plural, rub, when } from "@/lib/format";
 import { useLoad } from "@/components/client/useLoad";
 import { ErrorBlock } from "@/components/client/ClientBits";
+import { FilterBar } from "@/components/search/FilterBar";
 import s from "./specialists.module.css";
 import { EmptyArt } from "@/components/illustrations";
 
-type Price = "any" | "3000" | "4000" | "5000";
+const SORTS: { value: SortOrder; label: string }[] = [
+  { value: "relevance", label: "Сначала подходящие" },
+  { value: "soon", label: "Сначала свободные раньше" },
+  { value: "price", label: "Сначала дешевле" },
+  { value: "experience", label: "Сначала опытнее" },
+];
 
 export default function SpecialistsPage() {
-  const [q, setQ] = useState("");
-  const [query, setQuery] = useState("");
-  const [price, setPrice] = useState<Price>("any");
-  const [spec, setSpec] = useState<string | null>(null);
+  // useSearchParams needs a Suspense boundary in the App Router
+  return (
+    <Suspense fallback={null}>
+      <Specialists />
+    </Suspense>
+  );
+}
 
-  // debounce typing
+/** Filters live in the URL (?q=&topic=&when=…), so «Показать всех» from the search palette lands here as is. */
+function Specialists() {
+  const router = useRouter();
+  const pathname = usePathname() ?? "/app/specialists";
+  const params = useSearchParams();
+  const urlKey = params?.toString() ?? "";
+  const query = useMemo(() => searchParamsToQuery(new URLSearchParams(urlKey)), [urlKey]);
+  const [q, setQ] = useState(query.q ?? "");
+  const [facets, setFacets] = useState<SearchFacets | null>(null);
+  const typing = useRef(false);
+
+  const apply = (next: SpecialistQuery) => {
+    const qs = queryToSearchParams(next).toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
+
   useEffect(() => {
-    const t = setTimeout(() => setQuery(q.trim()), 300);
+    searchApi.facets().then(setFacets).catch(() => undefined);
+  }, []);
+
+  // URL → input (back/forward, palette), unless the person is typing
+  useEffect(() => {
+    if (!typing.current) setQ(query.q ?? "");
+  }, [query.q]);
+
+  // input → URL (debounced)
+  useEffect(() => {
+    if (!typing.current) return;
+    const t = setTimeout(() => {
+      typing.current = false;
+      if ((query.q ?? "") !== q.trim()) apply({ ...query, q: q.trim() || undefined });
+    }, 300);
     return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
 
-  const res = useLoad(
-    () =>
-      psychologistsApi.list({
-        q: query || undefined,
-        max_rate: price === "any" ? undefined : Number(price),
-      }),
-    [query, price],
-  );
+  const res = useLoad(() => searchApi.list(query), [urlKey]);
+  const list = res.data ?? [];
 
-  const all = res.data ?? [];
-  // Chips come from the current results so every chip leads somewhere.
-  const specs = useMemo(() => {
-    const set = new Set<string>();
-    all.forEach((p) => p.specializations.forEach((x) => set.add(x)));
-    if (spec) set.add(spec);
-    return Array.from(set).sort((a, b) => a.localeCompare(b, "ru"));
-  }, [all, spec]);
-  const list = spec ? all.filter((p) => p.specializations.includes(spec)) : all;
+  const selectedTopics = query.topics ?? [];
+  // Chips: chosen topics first, then the popular ones, then the rest — every chip leads somewhere
+  const chips = useMemo(() => {
+    const names = [...selectedTopics, ...(facets?.popular ?? []).map((x) => x.label), ...(facets?.topics ?? []).map((x) => x.label)];
+    return Array.from(new Set(names)).slice(0, Math.max(12, selectedTopics.length));
+  }, [facets, selectedTopics]);
+  const toggleTopic = (t: string) => {
+    const next = selectedTopics.includes(t) ? selectedTopics.filter((x) => x !== t) : [...selectedTopics, t];
+    apply({ ...query, topics: next.length ? next : undefined });
+  };
 
-  const filtered = !!(query || spec || price !== "any");
+  const filtered = !!(query.q || activeFilters(query));
   const reset = () => {
+    typing.current = false;
     setQ("");
-    setQuery("");
-    setSpec(null);
-    setPrice("any");
+    apply(query.sort ? { sort: query.sort } : {});
   };
 
   return (
@@ -69,7 +112,10 @@ export default function SpecialistsPage() {
             <input
               type="search"
               value={q}
-              onChange={(e) => setQ(e.target.value)}
+              onChange={(e) => {
+                typing.current = true;
+                setQ(e.target.value);
+              }}
               placeholder="Тревога, отношения, имя специалиста"
               aria-label="Поиск специалиста"
             />
@@ -77,48 +123,38 @@ export default function SpecialistsPage() {
               <button
                 type="button"
                 className={s.clear}
-                onClick={() => setQ("")}
+                onClick={() => {
+                  typing.current = true;
+                  setQ("");
+                }}
                 aria-label="Очистить поиск"
               >
                 <X size={16} strokeWidth={2} />
               </button>
             )}
           </label>
-          <div className={s.price}>
-            <span className={s.priceLabel} id="price-label">
-              Цена созвона
-            </span>
-            <Segmented<Price>
-              ariaLabel="Цена самого короткого созвона"
-              value={price}
-              onChange={setPrice}
-              options={[
-                { value: "any", label: "Любая" },
-                { value: "3000", label: "до 3000" },
-                { value: "4000", label: "до 4000" },
-                { value: "5000", label: "до 5000" },
-              ]}
+          <div className={s.sort}>
+            <Select<SortOrder>
+              size="sm"
+              aria-label="Порядок"
+              icon={<ArrowDownUp size={15} strokeWidth={1.9} />}
+              value={query.sort ?? "relevance"}
+              options={SORTS}
+              onChange={(v) => apply({ ...query, sort: v === "relevance" ? undefined : v })}
             />
           </div>
         </div>
-        {specs.length > 0 && (
+        <FilterBar value={query} onChange={apply} facets={facets} />
+        {chips.length > 0 && (
           <div className={s.chips} role="group" aria-label="С чем работает">
-            <button
-              type="button"
-              className={s.chip}
-              aria-pressed={!spec}
-              onClick={() => setSpec(null)}
-            >
-              Все темы
-            </button>
-            {specs.map((x) => (
+            {chips.map((x) => (
               <button
                 key={x}
                 type="button"
                 className={s.chip}
                 data-tone={topicTone(x)}
-                aria-pressed={spec === x}
-                onClick={() => setSpec(spec === x ? null : x)}
+                aria-pressed={selectedTopics.includes(x)}
+                onClick={() => toggleTopic(x)}
               >
                 {x}
               </button>
@@ -159,7 +195,7 @@ export default function SpecialistsPage() {
           <EmptyState art={<EmptyArt scene="search" />}
             icon={<SearchX size={24} strokeWidth={1.8} />}
             title="Никого не нашли"
-            text="Попробуйте другое слово, уберите тему или поднимите верхнюю границу цены."
+            text="Попробуйте другое слово или уберите один из фильтров: тему, время или цену."
             action={
               <Button variant="primary" onClick={reset}>
                 Показать всех специалистов
@@ -179,11 +215,12 @@ export default function SpecialistsPage() {
                     Опыт {p.experience_years}{" "}
                     {plural(p.experience_years, "год", "года", "лет")}
                   </span>
+                  <RatingPill rating={p.rating} count={p.reviews_count} />
                 </div>
                 <p className={s.bio}>{p.bio}</p>
                 <div className={s.badges}>
                   {p.specializations.map((x) => (
-                    <Badge key={x} tone={x === spec ? "primary" : topicTone(x)}>
+                    <Badge key={x} tone={selectedTopics.includes(x) ? "primary" : topicTone(x)}>
                       {x}
                     </Badge>
                   ))}
@@ -191,8 +228,15 @@ export default function SpecialistsPage() {
               </div>
               <div className={s.side}>
                 <div className={s.rate}>
-                  <strong>от {rub(p.session_rate_rub)}</strong>
-                  <span>за {durationLabel(p.booking?.min_duration ?? 50)}</span>
+                  {(() => {
+                    const d = query.duration ? p.booking?.durations.find((x) => x.minutes === query.duration) : undefined;
+                    return (
+                      <>
+                        <strong>{d ? rub(d.price_rub) : `от ${rub(p.session_rate_rub)}`}</strong>
+                        <span>за {durationLabel(d?.minutes ?? p.booking?.min_duration ?? 50)}</span>
+                      </>
+                    );
+                  })()}
                 </div>
                 <div className={s.slot}>
                   <CalendarClock size={16} strokeWidth={1.8} aria-hidden />

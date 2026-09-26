@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Eraser, LifeBuoy, MoreVertical, ShieldOff, Timer, Infinity as InfinityIcon } from "lucide-react";
+import { ArrowLeft, Eraser, LifeBuoy, MoreVertical, ScanEye, ShieldOff, Timer, Infinity as InfinityIcon } from "lucide-react";
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Button, Modal, Spinner, useToast } from "@/ui";
 import { ApiError } from "@/lib/api/client";
@@ -20,6 +20,9 @@ import { ConvAvatar } from "./ConvAvatar";
 import { MessageItem, type MessageActions } from "./MessageItem";
 import { RetentionModal } from "./RetentionModal";
 import { Tisha } from "./Tisha";
+import { ScreenShield } from "@/components/privacy/ScreenShield";
+import { PanicButton } from "@/components/privacy/PanicButton";
+import { usePrivacyPrefs } from "@/lib/privacy/usePrivacy";
 import type { VoiceClip } from "./useVoiceRecorder";
 import s from "./chat.module.css";
 
@@ -43,6 +46,9 @@ function dayLabel(iso: string) {
     year: d.getFullYear() === today.getFullYear() ? undefined : "numeric",
   });
 }
+
+/** «Исчезающие сообщения»: short label of the mode for chips and toasts. */
+export const RETENTION_LABEL: Record<Retention, string> = { forever: "выкл", "24h": "1 день", "1h": "1 час" };
 
 function upsert(list: ChatMessage[], msg: ChatMessage): ChatMessage[] {
   const i = list.findIndex((m) => m.id === msg.id);
@@ -117,6 +123,28 @@ export function ConversationView({
   const headMenuRef = useRef<HTMLDivElement>(null);
   const convRef = useRef(conv);
   convRef.current = conv;
+  const [privacy] = usePrivacyPrefs();
+  const shielded = privacy.screen_protect || !!conv.screen_protect;
+
+  // Disappearing messages leave the screen right when they expire (the server hides them from then on too).
+  useEffect(() => {
+    const now = Date.now();
+    let next = Infinity;
+    for (const m of messages) {
+      if (!m.expires_at || m.pending) continue;
+      const t = Date.parse(m.expires_at);
+      if (Number.isFinite(t) && t < next) next = t;
+    }
+    if (next === Infinity) return;
+    const timer = setTimeout(
+      () => {
+        const t = Date.now();
+        setMessages((xs) => xs.filter((m) => m.pending || !m.expires_at || !(Date.parse(m.expires_at) <= t)));
+      },
+      Math.max(0, Math.min(next - now + 50, 2 ** 31 - 1)),
+    );
+    return () => clearTimeout(timer);
+  }, [messages]);
 
   const markRead = useCallback(() => {
     if (document.visibilityState !== "visible") return;
@@ -303,7 +331,7 @@ export function ConversationView({
     const optimistic: ChatMessage = {
       id: tempId, conversation: conv.id, kind: "text", sender_role: conv.my_role, text, system_code: null,
       attachment: null, created_at: new Date().toISOString(), edited_at: null, deleted: false,
-      expires_at: conv.retention === "24h" ? "pending" : null, mine: true, pending: true,
+      expires_at: conv.retention !== "forever" ? "pending" : null, mine: true, pending: true,
     };
     stickBottom.current = true;
     setMessages((xs) => [...xs, optimistic]);
@@ -385,9 +413,24 @@ export function ConversationView({
       onChange(updated);
       const page = await chatApi.messages(conv.id);
       setMessages(page.results);
-      toast(r === "24h" ? "Новые сообщения будут удаляться через 24 часа" : "Сообщения будут храниться бессрочно");
+      toast(
+        r === "forever"
+          ? "Исчезающие сообщения выключены"
+          : `Исчезающие сообщения: ${RETENTION_LABEL[r]}. Новые сообщения исчезнут у обоих`,
+      );
     } catch (e) {
       toast(e instanceof ApiError ? e.message : "Не получилось изменить режим", { error: true });
+    }
+  };
+
+  const toggleScreenProtect = async () => {
+    const next = !conv.screen_protect;
+    try {
+      const updated = await chatApi.setScreenProtect(conv.id, next);
+      onChange(updated);
+      toast(next ? "Защита от скриншотов включена для обеих сторон" : "Защита от скриншотов выключена");
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Не получилось изменить настройку", { error: true });
     }
   };
 
@@ -454,6 +497,7 @@ export function ConversationView({
             </div>
           </>
         )}
+        <PanicButton inline />
         {headerActions}
         <div className={s.headMenuWrap} ref={headMenuRef}>
           <button
@@ -473,8 +517,13 @@ export function ConversationView({
                 </button>
               ))}
               <button type="button" role="menuitem" onClick={() => { setHeadMenu(false); setRetentionOpen(true); }}>
-                <Timer size={16} /> Хранение сообщений
+                <Timer size={16} /> Исчезающие сообщения
               </button>
+              {conv.can_change_retention && !isAI && (
+                <button type="button" role="menuitemcheckbox" aria-checked={!!conv.screen_protect} onClick={() => { setHeadMenu(false); void toggleScreenProtect(); }}>
+                  <ScanEye size={16} /> {conv.screen_protect ? "Выключить защиту от скриншотов" : "Защита от скриншотов"}
+                </button>
+              )}
               <button type="button" role="menuitem" onClick={() => { setHeadMenu(false); setClearOpen(true); }}>
                 <Eraser size={16} /> Очистить чат у себя
               </button>
@@ -491,8 +540,17 @@ export function ConversationView({
 
       {!compact && (
         <button type="button" className={s.retentionChip} onClick={() => setRetentionOpen(true)}>
-          {conv.retention === "24h" ? <Timer size={14} /> : <InfinityIcon size={14} />}
-          {conv.retention === "24h" ? "Новые сообщения удаляются через 24 часа" : "Сообщения хранятся, пока вы их не удалите"}
+          {conv.retention !== "forever" ? <Timer size={14} /> : <InfinityIcon size={14} />}
+          <span className={s.retentionText}>
+            {conv.retention !== "forever"
+              ? `Исчезают через ${RETENTION_LABEL[conv.retention]}`
+              : "Сообщения хранятся, пока вы их не удалите"}
+          </span>
+          {shielded && (
+            <span className={s.retentionShield} title="Защита от скриншотов включена">
+              <ScanEye size={14} aria-label="Защита от скриншотов включена" />
+            </span>
+          )}
         </button>
       )}
 
@@ -507,6 +565,7 @@ export function ConversationView({
         </div>
       )}
 
+      <ScreenShield active={shielded}>
       <div className={s.scroller} ref={scroller} onScroll={onScroll}>
         {loading ? (
           <div className={s.center}>
@@ -577,6 +636,8 @@ export function ConversationView({
           </>
         )}
       </div>
+
+      </ScreenShield>
 
       {isAI && ai && (
         <div className={s.aiLimit}>

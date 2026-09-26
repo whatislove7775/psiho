@@ -14,6 +14,7 @@ import { FormError } from "./FormError";
 import { PasswordInput } from "./PasswordInput";
 import { RecoveryKeyReveal } from "./RecoveryKeyReveal";
 import s from "./auth.module.css";
+import { ConsentNote } from "@/components/legal/ConsentNote";
 
 export function StartForm() {
   const router = useRouter();
@@ -88,6 +89,7 @@ export function StartForm() {
           <Button type="submit" variant="primary" size="lg" block loading={busy}>
             Создать анонимный аккаунт
           </Button>
+          <ConsentNote kind="signup" action="Создать анонимный аккаунт" />
         </form>
         <ol className={s.steps} aria-label="Что будет дальше">
           <li>

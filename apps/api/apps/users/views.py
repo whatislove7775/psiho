@@ -165,9 +165,11 @@ class DeleteAccountView(APIView):
 # ── Публичный каталог специалистов ───────────────────────────────
 
 def approved_psychologists():
+    from apps.credentials.services import annotate_credentials
+    from apps.reviews.services import annotate_rating
     from apps.sessions.models import ConsultationSession
 
-    return (
+    return annotate_credentials(annotate_rating(
         PsychologistProfile.objects.filter(
             verification_status=PsychologistProfile.VerificationStatus.APPROVED,
             user__is_active=True,
@@ -180,37 +182,66 @@ def approved_psychologists():
             )
         )
         .order_by("-completed_sessions_count", "id")
-    )
+    ))
 
 
 class PsychologistListView(APIView):
+    """Каталог: совместимый массив. Фильтры — см. apps.users.search.parse (q, topic, approach,
+    max_rate, when, duration, min_experience, gender, language, sort, tz)."""
+
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        qs = approved_psychologists()
-        max_rate = request.query_params.get("max_rate")
-        if max_rate:
-            try:
-                qs = qs.filter(session_rate_rub__lte=int(max_rate))
-            except ValueError:
-                return Response({"detail": "max_rate должен быть числом."}, status=400)
-        profiles = list(qs)
+        from . import search
 
-        q = (request.query_params.get("q") or "").strip().casefold()
-        if q:
-            profiles = [
-                p for p in profiles
-                if q in p.display_name.casefold()
-                or q in (p.bio or "").casefold()
-                or any(q in str(s).casefold() for s in p.specializations or [])
-            ]
-        spec = (request.query_params.get("specialization") or "").strip().casefold()
-        if spec:
-            profiles = [
-                p for p in profiles
-                if any(spec == str(s).casefold() for s in p.specializations or [])
-            ]
-        return Response(PsychologistPublicSerializer(profiles, many=True).data)
+        try:
+            query = search.parse(request.query_params)
+        except search.BadQuery as exc:
+            return Response({"detail": str(exc)}, status=400)
+        hits = search.search(approved_psychologists(), query)
+        context = {"request": request, "next_starts": {h.profile.id: h.next_start for h in hits}}
+        return Response(PsychologistPublicSerializer([h.profile for h in hits], many=True, context=context).data)
+
+
+class PsychologistSearchView(APIView):
+    """Палитра поиска: те же фильтры + `limit`, ответ `{count, results}`."""
+
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "search"
+
+    def get(self, request):
+        from . import search
+
+        try:
+            query = search.parse(request.query_params)
+            limit = search._int(request.query_params, "limit", 1, 50) or 8
+        except search.BadQuery as exc:
+            return Response({"detail": str(exc)}, status=400)
+        hits = search.search(approved_psychologists(), query)
+        top = hits[:limit]
+        context = {"request": request, "next_starts": {h.profile.id: h.next_start for h in top}}
+        return Response({
+            "count": len(hits),
+            "results": PsychologistPublicSerializer([h.profile for h in top], many=True, context=context).data,
+        })
+
+
+class PsychologistFacetsView(APIView):
+    """«Часто ищут» и значения фильтров для палитры поиска."""
+
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        from django.core.cache import cache
+
+        from . import search
+
+        data = cache.get("psychologists:facets")
+        if data is None:
+            data = search.facets(approved_psychologists())
+            cache.set("psychologists:facets", data, 300)
+        return Response(data)
 
 
 class PsychologistDetailView(generics.RetrieveAPIView):

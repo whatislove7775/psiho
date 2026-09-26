@@ -13,6 +13,7 @@ import { ChipsInput } from "./ChipsInput";
 import { FormError } from "./FormError";
 import { PasswordInput } from "./PasswordInput";
 import s from "./auth.module.css";
+import { ConsentNote } from "@/components/legal/ConsentNote";
 
 const TOPICS = [
   "Тревога",
@@ -217,6 +218,7 @@ export function JoinForm() {
           <Button type="submit" variant="primary" size="lg" block loading={busy}>
             Отправить анкету
           </Button>
+          <ConsentNote kind="specialist" action="Отправить анкету" />
         </form>
       </AuthCard>
       <AuthLinks

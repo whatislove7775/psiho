@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
-import { Badge, Button, Modal, Textarea } from "@/ui";
+import { Badge, Button, Modal, Select, Textarea } from "@/ui";
 import { STAFF_ROLE_LABEL, type StaffRole } from "@/lib/api/staff";
 import { plural } from "@/lib/format";
 import s from "./staff.module.css";
@@ -84,13 +84,7 @@ export function SelectBox<T extends string>({
   label: string;
 }) {
   return (
-    <select className={s.select} value={value} onChange={(e) => onChange(e.target.value as T)} aria-label={label}>
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </select>
+    <Select className={s.select} value={value} onChange={onChange} options={options} aria-label={label} />
   );
 }
 

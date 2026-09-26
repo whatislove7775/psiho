@@ -17,6 +17,10 @@
  * The real camera image never leaves this hook: only the rendered avatar video
  * and the microphone audio are exposed. Frames go to the worker as transferred
  * ImageBitmaps and are closed right after detection.
+ *
+ * The one exception is an explicit opt-in: with `realFace: true` (the client
+ * pressed «Показать настоящее лицо» and confirmed) `faceStream` carries a
+ * clone of the camera track. It is stopped as soon as the option goes false.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AvatarConfig } from "@/lib/avatar/schema";
@@ -24,7 +28,7 @@ import type { AvatarRendererApi } from "@/lib/avatar/kit/types";
 import { FaceTracker, type LandmarkerResult } from "@/lib/tracking/FaceTracker";
 import { createFaceDetector, type FaceDetector } from "@/lib/tracking/FaceDetector";
 import { avatarPerf } from "@/lib/tracking/perf";
-import { paintBackdrop, type BackdropId } from "@/lib/avatar/backdrops";
+import { backdropCanvas, paintBackdrop, type BackdropId } from "@/lib/avatar/backdrops";
 
 export type CameraState = "idle" | "starting" | "ready" | "denied" | "error";
 
@@ -52,6 +56,12 @@ export interface AvatarCamera {
   /** average brightness of the camera picture, 0…255 (null until measured). Only this number leaves the hook. */
   light: number | null;
   tracking: boolean;
+  /**
+   * The real camera picture — only while `options.realFace` is true (explicit
+   * client opt-in), otherwise always null. An independent clone of the camera
+   * track: disabling or stopping it never affects face tracking.
+   */
+  faceStream: MediaStream | null;
   /** true while the user's neutral face is being captured (~1.5 s of a still face) */
   calibrating: boolean;
   /** capture the neutral face again (ask the user to relax and look at the camera) */
@@ -67,6 +77,8 @@ export interface AvatarCamera {
 export interface AvatarCameraOptions {
   /** background painted behind the avatar (part of the outgoing video) */
   backdrop?: BackdropId;
+  /** expose the real camera as `faceStream` (explicit client opt-in only) */
+  realFace?: boolean;
 }
 
 type RequestFrameTrack = MediaStreamTrack & { requestFrame?: () => void };
@@ -84,6 +96,9 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
   const [calibrating, setCalibrating] = useState(false);
   const [runId, setRunId] = useState(0);
   const [devices, setDevices] = useState<{ videoinput: string | null; audioinput: string | null }>({ videoinput: null, audioinput: null });
+  /** the live camera video track (changes on device switch); never exposed as is */
+  const [camTrack, setCamTrack] = useState<MediaStreamTrack | null>(null);
+  const [faceStream, setFaceStream] = useState<MediaStream | null>(null);
 
   const rendererRef = useRef<AvatarRendererApi | null>(null);
   const trackerRef = useRef<FaceTracker | null>(null);
@@ -100,8 +115,31 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
 
   useEffect(() => {
     const r = rendererRef.current;
-    if (r && options.backdrop) r.setBackground?.(paintBackdrop(options.backdrop));
+    if (!r || !options.backdrop) return;
+    // photos arrive a moment later (placeholder gradient first)
+    return backdropCanvas(options.backdrop, (c) => r.setBackground?.(c));
   }, [options.backdrop, canvas]);
+
+  // Opt-in real camera: a clone of the camera track, stopped when switched off.
+  const realFace = !!options.realFace;
+  useEffect(() => {
+    if (!realFace || !camTrack || camTrack.readyState !== "live") {
+      setFaceStream(null);
+      return;
+    }
+    const clone = camTrack.clone();
+    clone.enabled = true;
+    try {
+      (clone as MediaStreamTrack & { contentHint: string }).contentHint = "motion";
+    } catch {
+      /* ignore */
+    }
+    setFaceStream(new MediaStream([clone]));
+    return () => {
+      clone.stop();
+      setFaceStream(null);
+    };
+  }, [realFace, camTrack]);
 
   useEffect(() => {
     if (runId === 0) return;
@@ -144,6 +182,7 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
       video.srcObject = new MediaStream(cam.getVideoTracks());
       await video.play().catch(() => undefined);
       camRef.current = { video, cam };
+      setCamTrack(cam.getVideoTracks()[0] ?? null);
       setDevices({
         videoinput: cam.getVideoTracks()[0]?.getSettings().deviceId ?? null,
         audioinput: cam.getAudioTracks()[0]?.getSettings().deviceId ?? null,
@@ -374,6 +413,7 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
       setFaceLost(false);
       setFaceVisible(false);
       setLight(null);
+      setCamTrack(null);
     };
   }, [runId]);
 
@@ -406,6 +446,7 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
       cur.video.srcObject = new MediaStream([next]);
       await cur.video.play().catch(() => undefined);
       trackerRef.current?.resetFilters();
+      setCamTrack(next);
       setDevices((d) => ({ ...d, videoinput: next.getSettings().deviceId ?? deviceId }));
     } else {
       const ms = await navigator.mediaDevices.getUserMedia({ audio: { ...MIC_CONSTRAINTS, deviceId: { exact: deviceId } } });
@@ -433,6 +474,7 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
     faceVisible,
     light,
     tracking,
+    faceStream,
     calibrating,
     recalibrate,
     switchDevice,

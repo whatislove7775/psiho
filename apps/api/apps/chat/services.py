@@ -214,6 +214,7 @@ def serialize_conversation(conv: Conversation, user, role: str | None = None) ->
         "retention": conv.retention,
         "retention_changed_at": conv.retention_changed_at.isoformat() if conv.retention_changed_at else None,
         "can_change_retention": can_change_retention(role, conv),
+        "screen_protect": conv.screen_protect,
         "can_send_files": can_send_files(role, conv),
         "unread": unread_count(conv, user, role, m),
         "last_message": preview(last),
@@ -224,8 +225,11 @@ def serialize_conversation(conv: Conversation, user, role: str | None = None) ->
 
 
 SYSTEM_TEXTS = {
-    "retention:24h": "Сообщения теперь хранятся 24 часа — новые будут удаляться автоматически через сутки.",
-    "retention:forever": "Сообщения теперь хранятся бессрочно — пока их не удалят участники.",
+    "retention:1h": "Исчезающие сообщения: 1 час. Новые сообщения исчезнут у обоих через час после отправки.",
+    "retention:24h": "Исчезающие сообщения: 1 день. Новые сообщения исчезнут у обоих через сутки после отправки.",
+    "retention:forever": "Исчезающие сообщения выключены. Новые сообщения хранятся, пока их не удалят участники.",
+    "screen:on": "Включена защита от скриншотов: переписка скрывается, когда окно не активно, копирование отключено.",
+    "screen:off": "Защита от скриншотов выключена.",
     "support:hello": "Здравствуйте! Это поддержка aprosop. Опишите, что случилось, — ответим как можно скорее.",
 }
 
@@ -282,10 +286,16 @@ def serialize_message(msg: Message, viewer_id=None) -> dict:
 
 # ── Создание сообщений ────────────────────────────────────────────────────────
 
+RETENTION_TTL = {
+    Conversation.Retention.HOUR: timedelta(hours=1),
+    Conversation.Retention.DAY: timedelta(hours=24),
+}
+
+
 def expiry_for(conv: Conversation):
-    if conv.retention == Conversation.Retention.DAY:
-        return timezone.now() + timedelta(hours=24)
-    return None
+    """Исчезающие сообщения: срок считается от отправки и действует только для новых сообщений."""
+    ttl = RETENTION_TTL.get(conv.retention)
+    return timezone.now() + ttl if ttl else None
 
 
 def create_message(conv: Conversation, *, sender, sender_role: str, kind: str = Message.Kind.TEXT,

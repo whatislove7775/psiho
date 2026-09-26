@@ -10,11 +10,14 @@ import {
   slugify,
   type BreathPattern,
   type Cover,
+  type EvidenceLevel,
+  type Source,
   type PracticeDraft,
   type PracticeKind,
   type PracticeStep,
 } from "@/lib/api/content";
 import { PracticeCard } from "../Cards";
+import { cleanSources, EvidenceFields } from "./EvidenceFields";
 import { CoverPicker, fieldError, Select, Switch } from "./fields";
 import s from "./cms.module.css";
 
@@ -30,6 +33,10 @@ type Form = {
   is_published: boolean;
   steps: (PracticeStep & { key: number })[];
   pattern: BreathPattern | null;
+  evidence_level: EvidenceLevel;
+  mechanism: string;
+  cautions: string;
+  sources: Source[];
 };
 
 let keySeq = 1;
@@ -48,6 +55,10 @@ function toForm(p: PracticeDraft | null): Form {
     is_published: p?.is_published ?? false,
     steps: (p?.steps ?? [{ title: "", text: "" }]).map((st) => ({ ...st, key: keySeq++ })),
     pattern: p?.pattern ?? null,
+    evidence_level: p?.evidence_level ?? "",
+    mechanism: p?.mechanism ?? "",
+    cautions: p?.cautions ?? "",
+    sources: p?.sources ?? [],
   };
 }
 
@@ -104,6 +115,10 @@ export function PracticeEditor({
         .filter((st) => st.text.trim() || st.title.trim())
         .map(({ key: _k, ...st }) => ({ ...st, seconds: st.seconds ? Number(st.seconds) : undefined })),
       pattern: f.pattern,
+      evidence_level: f.evidence_level,
+      mechanism: f.mechanism,
+      cautions: f.cautions,
+      sources: cleanSources(f.sources),
     };
     try {
       const saved = practice
@@ -159,7 +174,7 @@ export function PracticeEditor({
                 set("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"));
               }}
               error={err("slug")}
-              hint={`/app/practices/${f.slug || "…"}`}
+              hint={`/practices/${f.slug || "…"}`}
             />
             <div className={s.full}>
               <Textarea label="Короткое описание" value={f.summary} rows={2} maxLength={400} onChange={(e) => set("summary", e.target.value)} error={err("summary")} />
@@ -234,6 +249,31 @@ export function PracticeEditor({
             Добавить шаг
           </Button>
         </Card>
+
+        <EvidenceFields
+          level={f.evidence_level}
+          onLevel={(v) => set("evidence_level", v)}
+          sources={f.sources}
+          onSources={(v) => set("sources", v)}
+          errors={err}
+        >
+          <Textarea
+            label="Почему это может помочь"
+            value={f.mechanism}
+            onChange={(e) => set("mechanism", e.target.value)}
+            error={err("mechanism")}
+            rows={4}
+            hint="Механизм простыми словами, со ссылками [1] на источники"
+          />
+          <Textarea
+            label="Когда остановиться или пропустить"
+            value={f.cautions}
+            onChange={(e) => set("cautions", e.target.value)}
+            error={err("cautions")}
+            rows={4}
+            hint="Markdown-список предостережений"
+          />
+        </EvidenceFields>
       </div>
 
       <aside className={s.side}>
@@ -252,7 +292,7 @@ export function PracticeEditor({
                 <Button variant="secondary" block disabled={busy} onClick={() => save(false)}>
                   Снять с публикации
                 </Button>
-                <Button variant="ghost" block href={`/app/practices/${practice.slug}`} icon={<Eye size={18} strokeWidth={1.8} />}>
+                <Button variant="ghost" block href={`/practices/${practice.slug}`} icon={<Eye size={18} strokeWidth={1.8} />}>
                   Открыть на сайте
                 </Button>
               </>

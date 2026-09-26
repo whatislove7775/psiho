@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { Button, Card, CardHead, Field, Input, Skeleton, Textarea, useToast } from "@/ui";
+import { Button, Card, CardHead, Field, Input, Select, Skeleton, Textarea, useToast } from "@/ui";
+import { PrivacySettings } from "@/components/privacy/PrivacySettings";
+import { CredentialsSection } from "@/components/credentials/CredentialsSection";
+import { ProReviews } from "@/components/reviews/ProReviews";
 import { PageHeader, WithRail } from "@/components/shell/AppShell";
 import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import { PhotoUploader } from "@/components/pro/PhotoUploader";
@@ -40,6 +43,7 @@ interface Form {
   languages: string[];
   experience_years: string;
   session_rate_rub: string;
+  gender: "" | "female" | "male";
 }
 type Errors = Partial<Record<keyof Form, string>>;
 
@@ -51,6 +55,7 @@ const fromProfile = (p: PsychologistPrivate): Form => ({
   languages: p.languages ?? [],
   experience_years: String(p.experience_years ?? ""),
   session_rate_rub: String(p.session_rate_rub ?? ""),
+  gender: p.gender ?? "",
 });
 
 function validate(f: Form): Errors {
@@ -122,6 +127,7 @@ export default function ProfilePage() {
         specializations: form.specializations,
         languages: form.languages,
         experience_years: Number(form.experience_years),
+        gender: form.gender,
       });
       const f = fromProfile(p);
       setInitial(f);
@@ -225,6 +231,17 @@ export default function ProfilePage() {
                 <Field label="Языки созвонов" error={errors.languages}>
                   <ChipsField value={form.languages} onChange={(v) => set("languages", v)} suggestions={LANGS} placeholder="Другой язык" addLabel="Добавить" max={6} />
                 </Field>
+                <Select<"" | "female" | "male">
+                  label="Пол"
+                  hint="Необязательно. Некоторым клиентам важно выбрать специалиста определённого пола."
+                  value={form.gender}
+                  onChange={(v) => set("gender", v)}
+                  options={[
+                    { value: "", label: "Не указывать" },
+                    { value: "female", label: "Женщина" },
+                    { value: "male", label: "Мужчина" },
+                  ]}
+                />
               </div>
             </Card>
 
@@ -270,6 +287,11 @@ export default function ProfilePage() {
             </div>
           </form>
         )}
+        {/* G2: документы на проверку и отзывы клиентов — отдельно от формы профиля, сохраняются сразу */}
+        {form && <CredentialsSection />}
+        {form && <ProReviews />}
+        {/* Приватность специалиста: «Незаметный режим» и «Защита от скриншотов» (только это устройство / аккаунт) */}
+        {form && <PrivacySettings />}
       </WithRail>
     </>
   );

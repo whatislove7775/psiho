@@ -13,6 +13,7 @@ const LINKS = [
   { href: "/#how", label: "Как проходит созвон" },
   { href: "/#specialists", label: "Специалисты" },
   { href: "/#faq", label: "Вопросы" },
+  { href: "/articles", label: "Полезное" },
 ];
 
 export function Brand() {

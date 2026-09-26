@@ -252,7 +252,7 @@ def test_retention_and_purge(pair):
     temp = c.post(url, {"text": "на сутки"}, format="json").json()
     assert temp["expires_at"]
     texts = [m["text"] for m in p.get(url).json()["results"]]
-    assert any("24 часа" in t for t in texts)  # системное сообщение видно обоим
+    assert any("1 день" in t for t in texts)  # системное сообщение видно обоим
 
     # Через сутки: временные исчезают сразу из выдачи и физически после purge
     Message.objects.filter(expires_at__isnull=False).update(expires_at=timezone.now() - timedelta(seconds=1))

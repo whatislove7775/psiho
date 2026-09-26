@@ -174,7 +174,7 @@ export interface StaffSpecialist {
 
 export type SpecialistDecision = "approve" | "reject" | "suspend" | "reinstate";
 
-export type ReportTarget = "user" | "specialist" | "session" | "message";
+export type ReportTarget = "user" | "specialist" | "session" | "message" | "review";
 export type ReportReason =
   | "abuse"
   | "harassment"

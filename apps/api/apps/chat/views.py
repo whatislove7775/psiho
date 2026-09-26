@@ -204,18 +204,30 @@ class ConversationDetailView(APIView):
         return Response(services.serialize_conversation(conv, request.user, role))
 
     def patch(self, request, pk):
+        """Настройки разговора: «Исчезающие сообщения» (retention) и «Защита от скриншотов»."""
         conv, role = get_conversation(request, pk)
         retention = request.data.get("retention")
-        if retention not in Conversation.Retention.values:
-            raise ValidationError({"retention": "Выберите 24h или forever."})
+        screen = request.data.get("screen_protect")
+        if retention is None and screen is None:
+            raise ValidationError({"retention": "Нечего менять."})
+        if retention is not None and retention not in Conversation.Retention.values:
+            raise ValidationError({"retention": "Выберите forever, 24h или 1h."})
+        if screen is not None and not isinstance(screen, bool):
+            raise ValidationError({"screen_protect": "Ожидается true или false."})
         if not services.can_change_retention(role, conv):
-            raise PermissionDenied("Режим хранения выбирает клиент.")
-        if retention != conv.retention:
+            raise PermissionDenied("Эти настройки выбирает клиент.")
+        events = []
+        if retention is not None and retention != conv.retention:
             conv.retention = retention
             conv.retention_changed_at = timezone.now()
-            conv.save(update_fields=["retention", "retention_changed_at"])
-            msg = services.add_system_message(conv, f"retention:{retention}")
-            services.broadcast_message(conv, msg)
+            events.append(f"retention:{retention}")
+        if screen is not None and screen != conv.screen_protect:
+            conv.screen_protect = screen
+            events.append("screen:on" if screen else "screen:off")
+        if events:
+            conv.save(update_fields=["retention", "retention_changed_at", "screen_protect"])
+            for code in events:
+                services.broadcast_message(conv, services.add_system_message(conv, code))
             services.broadcast(conv, {"type": "conversation.updated", "conversation": str(conv.id),
                                       "retention": conv.retention})
         return Response(services.serialize_conversation(conv, request.user, role))

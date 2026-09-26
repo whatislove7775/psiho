@@ -119,3 +119,11 @@
     flex: 1 1 100%;
   }
 }
+
+/* G2: «Проверено aprosop» + рейтинг над именем */
+.trust {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}

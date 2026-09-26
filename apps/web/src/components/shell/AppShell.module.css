@@ -1,6 +1,10 @@
 .root {
   --rail-w-collapsed: 72px;
   min-height: 100dvh;
+  /* Large screens: the whole cabinet is a centred column instead of stretching edge to edge. */
+  width: 100%;
+  max-width: 1680px;
+  margin-inline: auto;
   display: grid;
   grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
   gap: var(--s-6);
@@ -170,9 +174,10 @@
   margin-bottom: var(--s-6);
 }
 .pageTitle {
-  font-size: var(--t-32);
+  font-size: 28px;
   font-weight: 700;
   letter-spacing: -0.03em;
+  line-height: 1.15;
 }
 .pageSub {
   margin-top: 6px;
@@ -417,6 +422,7 @@
 
 @media (min-width: 861px) {
   .root[data-rail] {
+    max-width: 1920px;
     grid-template-columns: var(--rail-w-collapsed) minmax(0, 1fr);
     column-gap: var(--s-4);
   }

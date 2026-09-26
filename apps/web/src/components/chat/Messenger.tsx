@@ -14,6 +14,7 @@ import { fmtTime } from "./MessageItem";
 import s from "./chat.module.css";
 import { ChatBubbles, EmptyArt } from "@/components/illustrations";
 import art from "./art.module.css";
+import { SearchTrigger } from "@/components/search/SpecialistSearch";
 
 export type MessengerMode = "client" | "specialist" | "support";
 
@@ -285,7 +286,7 @@ export function Messenger({ mode }: { mode: MessengerMode }) {
                     </span>
                     <span className={s.itemBottom}>
                       <span className={s.itemPreview}>
-                        {e.conv?.retention === "24h" && <Timer size={12} className={s.itemTimer} aria-label="24 часа" />}
+                        {e.conv && e.conv.retention !== "forever" && <Timer size={12} className={s.itemTimer} aria-label="Исчезающие сообщения" />}
                         {e.preview || (e.conv ? "Нет сообщений" : "")}
                       </span>
                       {e.unread > 0 && <span className={s.unread}>{e.unread > 99 ? "99+" : e.unread}</span>}
@@ -348,7 +349,7 @@ export function Messenger({ mode }: { mode: MessengerMode }) {
                 <PencilLine size={18} /> Любое своё сообщение можно изменить или удалить — у себя или у всех
               </li>
               <li>
-                <Timer size={18} /> Режим «24 часа»: новые сообщения исчезают сами через сутки
+                <Timer size={18} /> Исчезающие сообщения: новые исчезают сами через 1 час или 1 день
               </li>
               <li>
                 <Mic size={18} /> Голосовые можно записать с маской голоса — она применяется ещё на устройстве
@@ -373,9 +374,9 @@ export function Messenger({ mode }: { mode: MessengerMode }) {
               <>
                 <p>Написать специалисту можно после записи на созвон. Пока можно поговорить с Тишей или написать в поддержку.</p>
                 <div className={s.modalActions}>
-                  <Button variant="primary" href="/app/specialists">
+                  <SearchTrigger variant="primary">
                     Выбрать специалиста
-                  </Button>
+                  </SearchTrigger>
                 </div>
               </>
             ) : (

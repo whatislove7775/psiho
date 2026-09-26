@@ -1,12 +1,14 @@
 "use client";
 
-import { Card, CardHead } from "@/ui";
+import { Card } from "@/ui";
 import { PageHeader } from "@/components/shell/AppShell";
 import { contentApi, PRACTICE_KINDS } from "@/lib/api/content";
 import { useLoad } from "@/components/client/useLoad";
 import { ErrorBlock } from "@/components/client/ClientBits";
 import { PracticeCard, PracticeCardSkeleton } from "@/components/content/Cards";
 import c from "@/components/content/content.module.css";
+import { UsefulTabs } from "@/components/content/UsefulTabs";
+import u from "@/components/content/usefulTabs.module.css";
 
 export default function PracticesPage() {
   const practices = useLoad(() => contentApi.practices());
@@ -18,9 +20,10 @@ export default function PracticesPage() {
   return (
     <>
       <PageHeader
-        title="Практики"
-        sub="Короткие упражнения на каждый день. Их можно делать между созвонами, перед сном или когда накрывает тревога."
+        title="Полезное"
+        sub="Короткие упражнения на каждый день: между созвонами, перед сном или когда накрывает тревога."
       />
+      <UsefulTabs />
       {practices.error ? (
         <ErrorBlock message={practices.error} onRetry={practices.reload} />
       ) : practices.loading && !practices.data ? (
@@ -32,16 +35,19 @@ export default function PracticesPage() {
           </div>
         </Card>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div className={u.groups}>
           {groups.map((g) => (
-            <Card as="section" key={g.value}>
-              <CardHead title={g.label} />
+            <section key={g.value} className={u.group} aria-labelledby={`pg-${g.value}`}>
+              <h2 id={`pg-${g.value}`} className={u.groupTitle}>
+                {g.label}
+                <span>{g.items.length}</span>
+              </h2>
               <div className={c.practiceGrid}>
                 {g.items.map((p) => (
                   <PracticeCard key={p.id} p={p} />
                 ))}
               </div>
-            </Card>
+            </section>
           ))}
         </div>
       )}
