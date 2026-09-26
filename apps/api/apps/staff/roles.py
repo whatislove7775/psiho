@@ -161,7 +161,8 @@ def role_has_perm(role: str | None, perm: str) -> bool:
         return False
     if perm not in PERMISSIONS:
         raise KeyError(f"Неизвестное право персонала: {perm}")
-    return role in PERMISSIONS[perm]
+    # Владельцу доступно всё — в том числе права, добавленные позже.
+    return role == OWNER or role in PERMISSIONS[perm]
 
 
 def has_staff_perm(user, perm: str) -> bool:
@@ -171,7 +172,7 @@ def has_staff_perm(user, perm: str) -> bool:
 
 def staff_permissions(user) -> list[str]:
     role = get_staff_role(user)
-    return sorted(p for p, roles in PERMISSIONS.items() if role in roles) if role else []
+    return sorted(p for p, roles in PERMISSIONS.items() if role == OWNER or role in roles) if role else []
 
 
 def can_manage_role(actor_role: str | None, target_role: str | None) -> bool:

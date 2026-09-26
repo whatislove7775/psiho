@@ -75,3 +75,22 @@ export function homeFor(role: Role | undefined): string {
   if (role === "business") return "/business/portal";
   return "/app";
 }
+
+// Another tab logged in/out (e.g. owner in one tab, test specialist in another):
+// the tokens here now belong to a different account — reload so every page
+// re-checks who is signed in instead of silently sending the other account's token.
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key !== "aprosop.access" || e.oldValue === e.newValue) return;
+    // Silent token refreshes of the same account also land here; only react
+    // when the account changed (or the user logged out).
+    const who = (t: string | null) => {
+      try {
+        return t ? JSON.parse(atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).user_id ?? null : null;
+      } catch {
+        return null;
+      }
+    };
+    if (who(e.oldValue) !== who(e.newValue)) window.location.reload();
+  });
+}

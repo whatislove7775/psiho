@@ -44,9 +44,15 @@ class _StaffPermission(BasePermission):
 
     def has_permission(self, request, view):
         user = request.user
+        if not (user and user.is_authenticated):
+            return False  # DRF answers 401: not signed in at all
         role = get_staff_role(user)
         if role is None:
-            return False
+            _deny(
+                "Этот раздел для команды сервиса, а сейчас вы вошли как клиент или специалист "
+                "(возможно, в другой вкладке). Войдите заново под аккаунтом сотрудника.",
+                "not_staff",
+            )
         if self.perm and not role_has_perm(role, self.perm):
             _deny("У вашей роли нет доступа к этому разделу.", "staff_forbidden")
         if not self.setup:
