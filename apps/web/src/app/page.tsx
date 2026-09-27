@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   description:
     "Диалоги и\u00a0видеосозвоны с\u00a0проверенными психологами без\u00a0почты и\u00a0телефона. Вместо лица 3D-аватар, который повторяет мимику; видео идёт напрямую и\u00a0не\u00a0записывается.",
   alternates: alternates("/"),
-  ...ogMeta("/", "Психолог онлайн, и\u00a0никто не\u00a0узнает, кто вы", "Без\u00a0почты и\u00a0телефона. Вместо лица\u00a0— 3D-аватар, видео не\u00a0записывается."),
+  ...ogMeta("/", "Психолог онлайн, и\u00a0никто не\u00a0узнает, кто вы", "Без\u00a0почты, телефона и\u00a0лица."),
 };
 
 // Featured articles come from the 5-minute content cache; render per request so a deploy never
@@ -45,7 +45,7 @@ export default function LandingPage() {
               <p>Нужен только пароль.</p>
             </div>
             <div className={s.closingActions}>
-              <Button href="/start" variant="primary" size="lg">
+              <Button href="/start" variant="primary" size="md">
                 Начать анонимно
               </Button>
             </div>

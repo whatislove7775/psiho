@@ -127,6 +127,12 @@
   color: var(--c-muted);
   font-size: var(--t-13);
 }
+/* right under «Источники» (a <details> with its own top rule): one divider is enough */
+details + .byline {
+  margin-top: var(--s-4);
+  padding-top: 0;
+  border-top: 0;
+}
 .byline > * + *::before {
   content: "·";
   margin: 0 8px;

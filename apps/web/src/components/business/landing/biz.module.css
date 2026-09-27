@@ -46,9 +46,14 @@
   max-width: 15ch;
 }
 .titleAccent {
+  /* room for the last glyph and descenders: tight tracking pushes them past the clipped box */
+  padding: 0 0.08em 0.1em 0;
+  margin: 0 -0.08em -0.1em 0;
   background: var(--g-primary);
   -webkit-background-clip: text;
   background-clip: text;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
   color: transparent;
 }
 :global([data-theme="dark"]) .titleAccent,

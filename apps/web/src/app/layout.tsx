@@ -36,14 +36,14 @@ export const metadata: Metadata = {
     locale: "ru_RU",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: "Анонимный психолог онлайн",
-    description: "Без\u00a0почты и\u00a0телефона. Вместо лица\u00a0— 3D-аватар, видео не\u00a0записывается.",
+    title: "Психолог онлайн, и\u00a0никто не\u00a0узнает, кто вы",
+    description: "Без\u00a0почты, телефона и\u00a0лица.",
     // images: file-based opengraph-image.tsx per section (lib/og)
   },
   twitter: {
     card: "summary_large_image",
-    title: "Анонимный психолог онлайн",
-    description: "Без\u00a0почты и\u00a0телефона. Вместо лица\u00a0— 3D-аватар, видео не\u00a0записывается.",
+    title: "Психолог онлайн, и\u00a0никто не\u00a0узнает, кто вы",
+    description: "Без\u00a0почты, телефона и\u00a0лица.",
   },
   icons: {
     icon: [

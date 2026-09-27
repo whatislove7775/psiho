@@ -88,7 +88,7 @@ const spark = (x: number, y: number, k: number, fill = "#FFE17C") => (
 );
 
 /** Small flat illustrations in the logo palette (320×320 viewBox). */
-function Art({ art }: { art: OgArt }) {
+function Art({ art, size = 300 }: { art: OgArt; size?: number }) {
   const g = (
     <defs>
       <linearGradient id="gBlue" x1="0.15" y1="0" x2="0.85" y2="1">
@@ -246,7 +246,7 @@ function Art({ art }: { art: OgArt }) {
       );
   }
   return (
-    <svg width={300} height={300} viewBox="0 0 320 320">
+    <svg width={size} height={size} viewBox="0 0 320 320">
       {g}
       {body}
     </svg>
@@ -291,10 +291,18 @@ export async function ogCard({ title, subtitle, art, kicker, lines }: OgCardProp
             background: "radial-gradient(closest-side, rgba(106,79,232,0.38), rgba(106,79,232,0))",
           }}
         />
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "64px 0 60px 76px", width: 800 }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            padding: lines ? "60px 0 76px 72px" : "64px 0 60px 76px",
+            width: lines ? 1000 : 800,
+          }}
+        >
           <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-            <Mark size={64} />
-            <span style={{ fontSize: 38, fontWeight: 700, letterSpacing: -0.5 }}>Aprosop</span>
+            <Mark size={lines ? 52 : 64} />
+            <span style={{ fontSize: lines ? 32 : 38, fontWeight: 700, letterSpacing: -0.5 }}>Aprosop</span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             {kicker && (
@@ -305,7 +313,7 @@ export async function ogCard({ title, subtitle, art, kicker, lines }: OgCardProp
                 {lines.map((l) => (
                   <span
                     key={l.text}
-                    style={{ fontSize: 76, fontWeight: 700, lineHeight: 1.04, letterSpacing: -2.5, color: l.accent ? "#B3A6FF" : "#F4F6FF" }}
+                    style={{ fontSize: 92, fontWeight: 700, lineHeight: 1.08, letterSpacing: -2.5, color: l.accent ? "#B3A6FF" : "#F4F6FF" }}
                   >
                     {l.text}
                   </span>
@@ -318,22 +326,29 @@ export async function ogCard({ title, subtitle, art, kicker, lines }: OgCardProp
               </>
             )}
           </div>
-          <span style={{ fontSize: 24, fontWeight: 500, color: "#8990B5" }}>aprosop.ru</span>
+          {/* the landing card is headline-only: no captions */}
+          {!lines && <span style={{ fontSize: 24, fontWeight: 500, color: "#8990B5" }}>aprosop.ru</span>}
         </div>
-        <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "center", paddingRight: 40 }}>
+        <div
+          style={
+            lines
+              ? { display: "flex", position: "absolute", right: 56, bottom: 64 }
+              : { display: "flex", flex: 1, alignItems: "center", justifyContent: "center", paddingRight: 40 }
+          }
+        >
           <div
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              width: 340,
-              height: 340,
+              width: lines ? 230 : 340,
+              height: lines ? 230 : 340,
               borderRadius: 9999,
               background: "linear-gradient(145deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03))",
               border: "2px solid rgba(255,255,255,0.08)",
             }}
           >
-            <Art art={art} />
+            <Art art={art} size={lines ? 200 : 300} />
           </div>
         </div>
       </div>

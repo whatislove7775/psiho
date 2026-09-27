@@ -149,7 +149,12 @@ export function Hero() {
     <section className={`${s.wrap} ${s.hero}`} aria-labelledby="hero-title">
       <div className={s.heroText}>
         <h1 id="hero-title" className={s.heroTitle}>
-          Психолог онлайн, <span className={s.heroAccent}>и&nbsp;никто не&nbsp;узнает, кто вы</span>
+          {/* three fixed lines; spaces between the line spans keep the text readable for bots/copy */}
+          <span className={s.heroLine}>Психолог онлайн,</span>{" "}
+          <span className={s.heroAccent}>
+            <span className={`${s.heroLine} ${s.heroLineWrap}`}>и&nbsp;никто не&nbsp;узнает,</span>{" "}
+            <span className={s.heroLine}>кто&nbsp;вы</span>
+          </span>
         </h1>
         <p className={s.heroLead}>Без&nbsp;почты и&nbsp;телефона. Вместо имени псевдоним, вместо лица 3D-аватар с&nbsp;вашей мимикой.</p>
         <div className={s.heroActions}>

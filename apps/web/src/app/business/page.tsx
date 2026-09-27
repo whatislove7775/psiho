@@ -264,10 +264,10 @@ export default function BusinessLanding() {
               <p>Запустим пилот за&nbsp;неделю: договор, счёт, коды для&nbsp;первого отдела.</p>
             </div>
             <div className={l.closingActions}>
-              <Button href="#calc" variant="primary" size="lg">
+              <Button href="#calc" variant="primary" size="md">
                 Рассчитать для&nbsp;компании
               </Button>
-              <Button href="/login" variant="ghost" size="lg">
+              <Button href="/login" variant="ghost" size="md">
                 Вход для&nbsp;HR
               </Button>
             </div>
