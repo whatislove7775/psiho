@@ -4,7 +4,7 @@ import {
   Check, CheckCheck, Clock3, Copy, Download, FileAudio, FileText, FileType2, Image as ImageIcon, ImageOff,
   MoreHorizontal, Pencil, Timer, Trash2,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AttachmentViewer, saveAttachment, viewKind } from "./AttachmentViewer";
 import { attachmentUrl, type ChatMessage } from "@/lib/api/chat";
 import { VoicePlayer } from "./VoicePlayer";
@@ -21,7 +21,7 @@ function fmtSize(bytes: number) {
 }
 
 /** Image: thumbnail from the authenticated endpoint (cached object URL) + compact file row; click → viewer. */
-function ImageCard({ msg }: { msg: ChatMessage }) {
+function ImageCard({ msg, meta }: { msg: ChatMessage; meta?: ReactNode }) {
   const att = msg.attachment!;
   const [url, setUrl] = useState<string | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
@@ -45,27 +45,31 @@ function ImageCard({ msg }: { msg: ChatMessage }) {
   }, [msg.id, attempt]);
 
   return (
-    <div className={s.fileWrap} style={{ width }}>
-      <button
-        type="button"
-        className={s.imageThumb}
-        data-state={state}
-        style={{ aspectRatio: att.width ? `${w} / ${h}` : "4 / 3" }}
-        onClick={() => (state === "error" ? setAttempt((n) => n + 1) : state === "ready" && setOpen(true))}
-        aria-label={state === "error" ? "Не\u00a0загрузилось\u00a0— повторить" : `Посмотреть ${att.name}`}
-      >
-        {url && state !== "error" && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={url} alt="" onLoad={() => setState("ready")} onError={() => setState("error")} />
-        )}
-        {state === "loading" && <span className={s.thumbSkeleton} aria-hidden />}
-        {state === "error" && (
-          <span className={s.thumbError}>
-            <ImageOff size={20} />
-            <span>Не&nbsp;загрузилось. Повторить</span>
-          </span>
-        )}
-      </button>
+    <div className={`${s.fileWrap} ${s.imageWrap}`} style={{ width }}>
+      <div className={s.imageBox}>
+        <button
+          type="button"
+          className={s.imageThumb}
+          data-state={state}
+          style={{ aspectRatio: att.width ? `${w} / ${h}` : "4 / 3" }}
+          onClick={() => (state === "error" ? setAttempt((n) => n + 1) : state === "ready" && setOpen(true))}
+          aria-label={state === "error" ? "Не\u00a0загрузилось\u00a0— повторить" : `Посмотреть ${att.name}`}
+        >
+          {url && state !== "error" && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={url} alt="" onLoad={() => setState("ready")} onError={() => setState("error")} />
+          )}
+          {state === "loading" && <span className={s.thumbSkeleton} aria-hidden />}
+          {state === "error" && (
+            <span className={s.thumbError}>
+              <ImageOff size={20} />
+              <span>Не&nbsp;загрузилось. Повторить</span>
+            </span>
+          )}
+        </button>
+        {/* time/status sits on the picture's bottom-right corner over a soft scrim */}
+        {meta}
+      </div>
       <FileRow msg={msg} onOpen={() => setOpen(true)} compact />
       {open && <AttachmentViewer msgId={msg.id} name={att.name} mime={att.mime} onClose={() => setOpen(false)} />}
     </div>
@@ -185,6 +189,23 @@ export function MessageItem({
   const bubbleTone = own ? s.mine : msg.sender_role === "ai" ? s.ai : s.theirs;
   const isImage = msg.kind === "file" && !msg.deleted && !!msg.attachment?.mime.startsWith("image/");
 
+  const meta = (
+    <span className={s.meta}>
+      {msg.expires_at && !msg.deleted && (
+        <span title={expiryTitle(msg.expires_at)} className={s.metaIcon}>
+          <Timer size={12} />
+        </span>
+      )}
+      {msg.edited_at && !msg.deleted && <span>изменено</span>}
+      <span>{fmtTime(msg.created_at)}</span>
+      {own && !msg.deleted && msg.sender_role !== "ai" && (
+        <span className={s.metaIcon} aria-label={msg.pending ? "Отправляется" : read ? "Прочитано" : "Доставлено"}>
+          {msg.pending ? <Clock3 size={13} /> : read ? <CheckCheck size={14} /> : <Check size={14} />}
+        </span>
+      )}
+    </span>
+  );
+
   return (
     <div className={`${s.row} ${own ? s.rowMine : ""}`} ref={ref}>
       <div
@@ -209,7 +230,7 @@ export function MessageItem({
             tone={own ? "mine" : "theirs"}
           />
         ) : isImage ? (
-          <ImageCard msg={msg} />
+          <ImageCard msg={msg} meta={meta} />
         ) : msg.kind === "file" && msg.attachment ? (
           <FileCard msg={msg} />
         ) : (
@@ -218,20 +239,7 @@ export function MessageItem({
             {msg.streaming && <span className={s.caret} aria-hidden />}
           </span>
         )}
-        <span className={s.meta}>
-          {msg.expires_at && !msg.deleted && (
-            <span title={expiryTitle(msg.expires_at)} className={s.metaIcon}>
-              <Timer size={12} />
-            </span>
-          )}
-          {msg.edited_at && !msg.deleted && <span>изменено</span>}
-          <span>{fmtTime(msg.created_at)}</span>
-          {own && !msg.deleted && msg.sender_role !== "ai" && (
-            <span className={s.metaIcon} aria-label={msg.pending ? "Отправляется" : read ? "Прочитано" : "Доставлено"}>
-              {msg.pending ? <Clock3 size={13} /> : read ? <CheckCheck size={14} /> : <Check size={14} />}
-            </span>
-          )}
-        </span>
+        {!isImage && meta}
       </div>
       {canMenu && (
         <button

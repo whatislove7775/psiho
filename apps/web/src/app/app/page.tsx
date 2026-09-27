@@ -1,25 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Camera, ChevronRight, ListChecks, Search, Smile, Users, Wind } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { ChevronRight, Search, Users, Video } from "lucide-react";
 import { useAuth } from "@/lib/auth/store";
 import { psychologistsApi } from "@/lib/api/endpoints";
 import { contentApi } from "@/lib/api/content";
-import { circlesApi, type CircleCard, type MyCircleRow } from "@/lib/api/circles";
+import type { PsychologistPublic } from "@/lib/api/types";
 import { dialogHref } from "@/lib/api/dialogs";
-import { dayLabel, time } from "@/lib/format";
+import { rub, when } from "@/lib/format";
+import { typo } from "@/lib/typography";
 import { useLoad } from "@/components/client/useLoad";
-import { checkDone } from "@/components/client/sessions";
 import { ErrorBlock } from "@/components/client/ClientBits";
-import { NextCallStrip, useDialogsSummary } from "@/components/dialogs/HomeWidgets";
-import { SpecialistMini, SpecialistMiniSkeleton } from "@/components/client/SpecialistMini";
+import { useDialogsSummary } from "@/components/dialogs/HomeWidgets";
+import { isLive } from "@/components/dialogs/time";
 import { AvatarThumb } from "@/components/avatar/AvatarThumb";
-import { ConvAvatar } from "@/components/chat/ConvAvatar";
 import { TopicArt } from "@/components/illustrations/topics";
-import { topicClass } from "@/components/circles/bits";
 import { SearchTrigger } from "@/components/search/SpecialistSearch";
-import { ScrollRow, Skeleton } from "@/ui";
+import { Button, ScrollRow, Skeleton } from "@/ui";
 import c from "@/components/content/content.module.css";
 import s from "./home.module.css";
 
@@ -37,82 +35,33 @@ export default function ClientHome() {
   const specialists = useLoad(() => psychologistsApi.list());
   const articles = useLoad(() => contentApi.articles({ limit: 6 }));
   const practices = useLoad(() => contentApi.practices({ limit: 4 }));
-  const circles = useLoad(() => circlesApi.list());
-  const myCircles = useLoad(() => circlesApi.mine());
-  const [checked, setChecked] = useState(true);
   const [hello, setHello] = useState("Здравствуйте");
 
-  useEffect(() => {
-    setChecked(checkDone.get());
-    setHello(greeting());
-  }, []);
+  useEffect(() => setHello(greeting()), []);
 
-  const hasAny = useMemo(() => (dialogs.items ?? []).some((d) => d.kind === "specialist"), [dialogs.items]);
   const featured = (specialists.data ?? []).slice(0, 10);
-
-  // Circles row: mine first (with their next meeting), then open ones.
-  const circleRow = useMemo(() => {
-    const mine = myCircles.data?.results ?? [];
-    const ids = new Set(mine.map((x) => x.id));
-    const open = (circles.data?.results ?? []).filter((x) => !ids.has(x.id));
-    return [...mine, ...open].slice(0, 8) as (CircleCard | MyCircleRow)[];
-  }, [circles.data, myCircles.data]);
 
   return (
     <div className={s.home}>
-      <header className={s.greet}>
+      <header className={s.hero}>
         <h1 className={s.greetTitle}>
-          {hello}, <span className={s.alias}>{user?.alias ?? ""}</span>
+          {hello},<br />
+          <span className={s.alias} style={{ ["--len" as string]: Math.max(8, (user?.alias ?? "").length) }}>
+            {user?.alias ?? ""}
+          </span>
         </h1>
         <Link href="/app/avatar" className={s.greetAvatar} aria-label="Мой аватар">
-          <AvatarThumb config={user?.avatar_config} seed={user?.id} size={40} />
+          <AvatarThumb config={user?.avatar_config} seed={user?.id} size={160} framing="portrait" />
         </Link>
+        <div className={s.heroBody}>
+          <CallsLine dialogs={dialogs} />
+          <SearchTrigger variant="primary" size="lg" className={s.find} icon={<Search size={20} strokeWidth={2} />}>
+            Найти специалиста
+          </SearchTrigger>
+        </div>
       </header>
 
-      <div className={s.actions}>
-        <SearchTrigger variant="primary" size="md" icon={<Search size={17} strokeWidth={2} />}>
-          Найти специалиста
-        </SearchTrigger>
-        {!dialogs.loading && !hasAny && (
-          <Chip href="/app/match" icon={<ListChecks size={16} strokeWidth={1.8} />}>
-            Подбор по&nbsp;анкете
-          </Chip>
-        )}
-        {!user?.avatar_config && (
-          <Chip href="/app/avatar" icon={<Smile size={16} strokeWidth={1.8} />}>
-            Создать аватар
-          </Chip>
-        )}
-        {!checked && (
-          <Chip href="/app/avatar/mirror" icon={<Camera size={16} strokeWidth={1.8} />}>
-            Проверить камеру
-          </Chip>
-        )}
-        <Chip href="/app/practices/dyhanie-4-6" icon={<Wind size={16} strokeWidth={1.8} />}>
-          Дыхательная пауза
-        </Chip>
-      </div>
-
       {dialogs.error && <ErrorBlock message={dialogs.error} onRetry={dialogs.reload} />}
-
-      <NextCallStrip item={dialogs.next} role="client" />
-
-      {hasAny && dialogs.recent.length > 0 && (
-        <Section title="Диалоги" href="/app/dialogs">
-          <div className={s.dialogs}>
-            {dialogs.recent.slice(0, 3).map((d) => (
-              <Link key={d.id} href={dialogHref("client", d.id)} className={s.dialog}>
-                <ConvAvatar who={d.counterpart} size={36} />
-                <span className={s.dialogText}>
-                  <strong>{d.counterpart.name}</strong>
-                  <span>{d.last_message?.text || (d.last_message?.card ? "Созвон" : "Нет сообщений")}</span>
-                </span>
-                {d.unread > 0 && <span className={s.unread}>{d.unread}</span>}
-              </Link>
-            ))}
-          </div>
-        </Section>
-      )}
 
       <Section title="Специалисты" href="/app/specialists">
         {specialists.error ? (
@@ -121,45 +70,26 @@ export default function ClientHome() {
           <ScrollRow trackClassName={s.scroller}>
             {specialists.loading && !specialists.data
               ? [0, 1, 2, 3].map((i) => (
-                  <div role="listitem" key={i} className={s.specItem}>
-                    <SpecialistMiniSkeleton />
+                  <div role="listitem" key={i} className={s.spec} aria-hidden>
+                    <span className={s.specPhoto}>
+                      <Skeleton height="100%" radius={20} />
+                    </span>
+                    <Skeleton width="70%" height={16} />
+                    <Skeleton width="50%" height={12} />
                   </div>
                 ))
-              : featured.map((p) => (
-                  <div role="listitem" key={p.id} className={s.specItem}>
-                    <SpecialistMini p={p} compact />
-                  </div>
-                ))}
+              : featured.map((p) => <SpecCard key={p.id} p={p} />)}
           </ScrollRow>
         )}
       </Section>
 
-      {circleRow.length === 0 && circles.data && (
-        <Link href="/app/circles" className={s.entry}>
-          <Users size={18} strokeWidth={1.8} aria-hidden />
-          <span>
-            <strong>Круги</strong> · группы поддержки с&nbsp;психологом
-          </span>
-          <ChevronRight size={16} strokeWidth={2} aria-hidden />
-        </Link>
-      )}
-      {circleRow.length > 0 && (
-        <Section title="Круги" href="/app/circles">
-          <ScrollRow trackClassName={s.scroller}>
-            {circleRow.map((x) => {
-              const next = "next_meeting" in x ? x.next_meeting?.starts_at : x.next_meeting_at ?? x.first_meeting_at;
-              const mine = "me" in x;
-              return (
-                <Link role="listitem" key={x.id} href={`/app/circles/${x.id}`} className={`${s.circle} ${topicClass(x.topic)}`}>
-                  <span className={s.circleTopic}>{mine ? "Вы\u00a0в\u00a0круге" : x.topic_label}</span>
-                  <strong className={s.circleTitle}>{x.title}</strong>
-                  <span className={s.circleMeta}>{next ? `${dayLabel(next)}, ${time(next)}` : "Скоро"}</span>
-                </Link>
-              );
-            })}
-          </ScrollRow>
-        </Section>
-      )}
+      <Link href="/app/circles" className={s.entry}>
+        <Users size={20} strokeWidth={1.8} aria-hidden />
+        <span>
+          <strong>Круги</strong> · группы поддержки с&nbsp;психологом
+        </span>
+        <ChevronRight size={18} strokeWidth={2} aria-hidden />
+      </Link>
 
       <Section title="Полезное" href="/app/articles">
         <ScrollRow trackClassName={s.scroller}>
@@ -171,7 +101,7 @@ export default function ClientHome() {
                     <TopicArt topic={a.topic} />
                   </span>
                   <span className={s.articleText}>
-                    <strong>{a.title}</strong>
+                    <strong>{typo(a.title)}</strong>
                     <span>{a.reading_minutes} мин</span>
                   </span>
                 </Link>
@@ -195,6 +125,73 @@ export default function ClientHome() {
   );
 }
 
+/** «Запланированные звонки: …» — the nearest call as one bold line (+ a join button when live). */
+function CallsLine({ dialogs }: { dialogs: ReturnType<typeof useDialogsSummary> }) {
+  const item = dialogs.next;
+  const call = item?.next_call;
+  if (dialogs.loading) return <Skeleton width="80%" height={20} />;
+  if (!item || !call) {
+    return (
+      <p className={s.calls}>
+        Запланированные звонки: <span className={s.callsValue}>нет звонков</span>
+      </p>
+    );
+  }
+  const live = isLive(call);
+  const w = when(call.scheduled_at);
+  const text = `${live ? "идёт сейчас" : w.charAt(0).toLowerCase() + w.slice(1)} · ${item.counterpart.name}`;
+  return (
+    <div className={s.callsRow}>
+      <Link href={dialogHref("client", item.id)} className={s.calls}>
+        Запланированные звонки: <span className={s.callsValue}>{text}</span>
+        {call.status === "awaiting_payment" && <span className={s.callsNote}> · ждёт оплаты</span>}
+      </Link>
+      {call.can_join && (
+        <Button variant="soft" size="sm" href={`/room/${call.id}`} icon={<Video size={16} strokeWidth={1.9} />}>
+          Присоединиться
+        </Button>
+      )}
+    </div>
+  );
+}
+
+const TINTS = [
+  ["var(--p-sky)", "var(--p-lilac)"],
+  ["var(--p-mint)", "var(--p-sky)"],
+  ["var(--p-peach)", "var(--p-butter)"],
+  ["var(--p-lilac)", "var(--p-peach)"],
+  ["var(--p-lime)", "var(--p-mint)"],
+];
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase() || "?";
+}
+
+/** Tall specialist card for the home carousel: photo (or initials on a pastel gradient), name, topics, price. */
+function SpecCard({ p }: { p: PsychologistPublic }) {
+  const [broken, setBroken] = useState(false);
+  const [a, b] = TINTS[p.id % TINTS.length];
+  const topics = p.specializations.join(", ") || p.approach || "Психолог";
+  return (
+    <Link role="listitem" href={`/app/specialists/${p.id}`} className={s.spec}>
+      <span className={s.specPhoto} style={{ background: `linear-gradient(160deg, ${a}, ${b})` }}>
+        {p.photo_url && !broken ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={p.photo_url} alt="" loading="lazy" onError={() => setBroken(true)} />
+        ) : (
+          <span className={s.specInitials} aria-hidden>
+            {initials(p.display_name)}
+          </span>
+        )}
+      </span>
+      <span className={s.specName}>{p.display_name}</span>
+      <span className={s.specTopics}>{topics}</span>
+      <span className={s.specPrice}>{rub(p.session_rate_rub)}</span>
+    </Link>
+  );
+}
+
 function Section({ title, href, children }: { title: string; href: string; children: ReactNode }) {
   return (
     <section className={s.section}>
@@ -207,14 +204,5 @@ function Section({ title, href, children }: { title: string; href: string; child
       </div>
       {children}
     </section>
-  );
-}
-
-function Chip({ href, icon, children }: { href: string; icon: ReactNode; children: ReactNode }) {
-  return (
-    <Link href={href} className={s.chip}>
-      {icon}
-      {children}
-    </Link>
   );
 }

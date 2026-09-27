@@ -1504,12 +1504,39 @@
   outline: none;
   box-shadow: var(--focus);
 }
+/* Image message: an even 4px frame all round; picture radius = bubble radius − frame,
+   so both contours stay concentric; time/status overlays the picture (bottom-right). */
 .bubbleImage {
-  padding: 3px !important;
+  --frame: 4px;
+  padding: var(--frame) !important;
 }
-.bubbleImage .meta {
-  margin-top: 2px;
-  padding: 0 6px 3px;
+.imageWrap {
+  gap: 0;
+  max-width: 100%;
+}
+.imageBox {
+  position: relative;
+}
+.bubbleImage .imageThumb {
+  border-radius: calc(20px - var(--frame));
+}
+.imageBox .meta {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  float: none;
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(10, 10, 20, 0.5);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: #fff;
+  opacity: 1;
+  pointer-events: none;
+}
+.imageWrap .fileCardCompact {
+  padding: 6px 8px 4px;
 }
 
 

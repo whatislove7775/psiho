@@ -17,7 +17,6 @@ import {
   UserRound,
   Users,
   BadgeCheck,
-  Search,
   KeyRound,
   SlidersHorizontal,
   FileText,
@@ -332,11 +331,9 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
           Aprosop
         </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          {role === "client" && <BalanceChip compact />}
-          {role === "client" && (
-            <SearchTrigger variant="ghost" size="md" iconOnly aria-label="Найти специалиста" icon={<Search size={21} strokeWidth={1.9} />} />
-          )}
+          {/* search lives in the island on phones */}
           <ThemeToggle />
+          {role === "client" && <BalanceChip compact />}
           {/* profile lives in the bottom island on phones */}
           <Button
             variant="ghost"
@@ -386,16 +383,7 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
 
       {/* Mobile: floating «island» navigation (+ quick-exit button of the stealth mode) */}
       <Island
-        items={islandItems(
-          role,
-          (href, also) => isActive(pathname, href, root, also),
-          unread,
-          user.psychologist ? (
-            <SpecialistPhoto url={user.psychologist.photo_url} name={name} size={26} alt="" />
-          ) : (
-            <AvatarThumb config={user.avatar_config} seed={user.id} size={26} />
-          ),
-        )}
+        items={islandItems(role, (href, also) => isActive(pathname, href, root, also), unread)}
       />
     </div>
   );

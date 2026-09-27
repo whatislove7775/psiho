@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { BookOpen, CalendarClock, FileText, KeyRound, LayoutGrid, MessagesSquare, Search, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import { BookOpen, CalendarClock, CircleUser, FileText, KeyRound, LayoutGrid, MessagesSquare, Search, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import { PanicButton } from "@/components/privacy/PanicButton";
 import s from "./Island.module.css";
 
@@ -21,7 +21,6 @@ export function islandItems(
   role: "client" | "psychologist" | "admin" | "business",
   isActive: (href: string, also?: string[]) => boolean,
   unread: number,
-  avatar: ReactNode,
 ): IslandItem[] {
   if (role === "client") {
     return [
@@ -32,7 +31,7 @@ export function islandItems(
       {
         href: "/app/profile",
         label: "Профиль",
-        art: avatar,
+        icon: CircleUser,
         active: isActive("/app/profile", ["/app/avatar", "/app/balance"]),
       },
     ];
@@ -45,7 +44,7 @@ export function islandItems(
       {
         href: "/pro/profile",
         label: "Профиль",
-        art: avatar,
+        icon: CircleUser,
         active: isActive("/pro/profile", ["/pro/earnings", "/pro/check", "/pro/avatar"]),
       },
     ];
