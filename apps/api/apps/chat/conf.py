@@ -96,7 +96,14 @@ def gigachat_base_url() -> str:
 
 def gigachat_ca_bundle() -> str:
     """Путь к сертификату «Russian Trusted Root CA» (НУЦ Минцифры) в формате PEM."""
-    return _get("GIGACHAT_CA_BUNDLE", "")
+    explicit = _get("GIGACHAT_CA_BUNDLE", "")
+    if explicit:
+        return explicit
+    # Сертификаты НУЦ Минцифры лежат в репозитории (deploy/certs → /app/certs).
+    import os
+
+    bundled = "/app/certs/russian_trusted_ca.pem"
+    return bundled if os.path.exists(bundled) else ""
 
 
 # ── OpenAI-совместимые (OpenRouter, YandexGPT, Ollama…) ──
