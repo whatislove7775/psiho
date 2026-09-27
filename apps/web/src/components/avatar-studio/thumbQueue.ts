@@ -36,7 +36,7 @@ let running = false;
 type SnapshotFn = (cfg: AvatarConfig, o: ThumbOpts) => Promise<string>;
 let snapshotFn: Promise<SnapshotFn> | null = null;
 const loadSnapshot = () =>
-  (snapshotFn ??= import("@/lib/avatar/kit/snapshot").then((m) => m.renderAvatarSnapshot as SnapshotFn));
+  (snapshotFn ??= import("@/lib/avatar/headz/snapshot").then((m) => m.renderAvatarSnapshot as SnapshotFn));
 
 export function thumbKey(cfg: AvatarConfig, o: ThumbOpts): string {
   return `${o.size}|${o.framing}|${o.yaw ?? 0}|${JSON.stringify(o.expression ?? {})}|${avatarKey(cfg)}`;

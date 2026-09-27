@@ -3,7 +3,7 @@
  * (see tools/avatar-kit/build.py IDENTITY). Categorical studio options are
  * presets over a handful of continuous morphs, like Apple's sliders.
  */
-import type { AvatarConfig } from "../schema";
+import type { AvatarConfig } from "./legacySchema";
 
 type W = Record<string, number>;
 

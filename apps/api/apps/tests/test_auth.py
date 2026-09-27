@@ -133,6 +133,25 @@ def test_me_patch_avatar(client_user):
 
 
 @pytest.mark.django_db
+def test_me_patch_avatar_v3(client_user):
+    """v3 (HEADZ characters) is validated for shape; legacy v1 configs stay accepted as-is."""
+    c = auth_client(client_user)
+    cfg = {"version": 3, "base": "woman-medium", "hair": "004", "beard": "none", "eyewear": "glasses-001",
+           "headwear": "none", "earrings": "earrings", "hairColor": "#5A3B28", "eyeColor": None, "skin": None}
+    resp = c.patch("/api/v1/auth/me/", {"avatar_config": cfg}, format="json")
+    assert resp.status_code == 200, resp.content
+    assert resp.json()["avatar_config"] == cfg
+
+    for bad in ({**cfg, "base": "../../etc"}, {**cfg, "hairColor": "red"}, {**cfg, "hair": 5}, {**cfg, "base": None}):
+        resp = c.patch("/api/v1/auth/me/", {"avatar_config": bad}, format="json")
+        assert resp.status_code == 400, bad
+
+    legacy = {"version": 1, "skin": {"tone": "#EDB98D"}, "hair": {"style": "bob", "color": "#5A3B28"}}
+    resp = c.patch("/api/v1/auth/me/", {"avatar_config": legacy}, format="json")
+    assert resp.status_code == 200 and resp.json()["avatar_config"] == legacy
+
+
+@pytest.mark.django_db
 def test_change_password_and_delete(client_user, psychologist):
     c = auth_client(client_user)
     assert c.post("/api/v1/auth/me/password/", {"old_password": "bad", "new_password": "newpass1234"}, format="json").status_code == 400

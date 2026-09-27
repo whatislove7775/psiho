@@ -12,8 +12,8 @@ import * as THREE from "three";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
-import { normalizeAvatar, type AvatarConfig } from "../schema";
-import type { AvatarRendererApi, FaceResult, Framing, RendererOptions } from "./types";
+import { normalizeAvatar, type AvatarConfig } from "./legacySchema";
+import type { FaceResult, Framing, RendererOptions } from "./types";
 import { irisTexture } from "./iris";
 import { identityWeights } from "./identity";
 
@@ -192,7 +192,8 @@ const HAT_CLIP: Record<string, [number, number]> = {
   bandana: [0.45, 0.05], turban: [0.38, -0.05],
 };
 
-export class KitRenderer implements AvatarRendererApi {
+/** Legacy engine (config v1) — kept for reference; the app uses headz/HeadzRenderer. */
+export class KitRenderer {
   readonly canvas: HTMLCanvasElement;
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();

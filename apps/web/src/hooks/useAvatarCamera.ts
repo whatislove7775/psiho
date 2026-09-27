@@ -6,7 +6,7 @@
  *   getUserMedia ─► hidden <video> ─► (requestVideoFrameCallback, one call per
  *   camera frame) ─► FaceDetector: MediaPipe FaceLandmarker in a Web Worker
  *   (main-thread fallback) ─► FaceTracker (neutral calibration, landmark-refined
- *   expressions, One-Euro filtering) ─► KitRenderer.renderNow() ─►
+ *   expressions, One-Euro filtering) ─► HeadzRenderer.renderNow() ─►
  *   canvas.captureStream(0) + requestFrame()
  *
  * Latency budget: the avatar is rendered as soon as a camera frame has been
@@ -191,11 +191,11 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
       // The avatar is the only picture that may ever be shown. If it can't be
       // rendered (no WebGL, driver crash) we stop the camera and explain —
       // never fall back to the raw video.
-      let r: InstanceType<typeof import("@/lib/avatar/kit/KitRenderer").KitRenderer>;
+      let r: InstanceType<typeof import("@/lib/avatar/headz/HeadzRenderer").HeadzRenderer>;
       let stream: MediaStream;
       const c = document.createElement("canvas");
       try {
-        const { KitRenderer } = await import("@/lib/avatar/kit/KitRenderer");
+        const { HeadzRenderer } = await import("@/lib/avatar/headz/HeadzRenderer");
         if (cancelled) return;
         c.width = 540;
         c.height = 720;
@@ -203,7 +203,7 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
         c.style.height = "100%";
         c.style.display = "block";
         c.style.objectFit = "cover";
-        r = new KitRenderer(c, { framing: "portrait", background: "#1d1d22", idle: true, preserveDrawingBuffer: true, maxPixelRatio: 1, fps: 30 });
+        r = new HeadzRenderer(c, { framing: "portrait", background: "#1d1d22", idle: true, preserveDrawingBuffer: true, maxPixelRatio: 1, fps: 30 });
         r.resize(540, 720);
         r.setConfig(cfgRef.current);
         if (backdropRef.current) r.setBackground(paintBackdrop(backdropRef.current));

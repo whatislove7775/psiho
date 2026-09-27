@@ -5,7 +5,8 @@ import { ChevronLeft, ChevronRight, Redo2, Shuffle, Smile, Undo2 } from "lucide-
 import { Button } from "@/ui";
 import { AvatarView, type AvatarViewHandle } from "@/components/avatar/AvatarView";
 import { avatarKey, normalizeAvatar, randomAvatar, type AvatarConfig } from "@/lib/avatar/schema";
-import { CATEGORIES, withField, type SetField } from "./categories";
+import { CATEGORIES, withBase, type SetField } from "./categories";
+import { headzBase } from "@/lib/avatar/headz/catalog";
 import { useHistory } from "./useHistory";
 import s from "./AvatarStudio.module.css";
 
@@ -60,8 +61,9 @@ export function AvatarStudio({ initial, seed, onSave, saving = false, variant = 
   const canSave = !saving && (hasChanges || savedKey === null);
 
   const set: SetField = useCallback(
-    (g, k, v, coalesce) => {
-      const next = withField(cfgRef.current, g, k, v);
+    (k, v, coalesce) => {
+      const cur = cfgRef.current;
+      const next = k === "base" ? withBase(cur, v as string) : { ...cur, [k]: v };
       cfgRef.current = next;
       hist.set(next, coalesce);
     },
@@ -219,7 +221,7 @@ export function AvatarStudio({ initial, seed, onSave, saving = false, variant = 
   return (
     <div className={s.studio}>
       <div className={s.previewCol}>
-        <div className={s.stage} style={{ ["--glow" as string]: cfg.outfit.color, ["--skin" as string]: cfg.skin.tone }}>
+        <div className={s.stage} style={{ ["--glow" as string]: cfg.hairColor ?? headzBase(cfg.base).hair, ["--skin" as string]: cfg.skin ?? headzBase(cfg.base).skin }}>
           <AvatarView ref={viewRef} config={cfg} framing="portrait" interactive className={s.view} />
           <p className={s.caption}>{CAPTION[variant]}</p>
         </div>

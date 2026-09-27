@@ -39,7 +39,7 @@ export const AvatarView = forwardRef<AvatarViewHandle, {
     let ro: ResizeObserver | null = null;
     const host = hostRef.current!;
     const whenReady = deferLoad ? afterLoadIdle() : Promise.resolve();
-    whenReady.then(() => import("@/lib/avatar/kit/KitRenderer")).then(({ KitRenderer }) => {
+    whenReady.then(() => import("@/lib/avatar/headz/HeadzRenderer")).then(({ HeadzRenderer }) => {
       if (disposed) return;
       const canvas = document.createElement("canvas");
       canvas.style.width = "100%";
@@ -48,7 +48,7 @@ export const AvatarView = forwardRef<AvatarViewHandle, {
       // Only an interactive (draggable) avatar may capture touches; otherwise let the page scroll.
       canvas.style.touchAction = interactive ? "none" : "auto";
       host.appendChild(canvas);
-      const r = new KitRenderer(canvas, { framing, idle: true, background: null });
+      const r = new HeadzRenderer(canvas, { framing, idle: true, background: null });
       r.setConfig(cfgRef.current);
       const fit = () => r.resize(host.clientWidth, host.clientHeight);
       fit();

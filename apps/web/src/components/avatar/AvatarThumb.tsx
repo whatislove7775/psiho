@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { normalizeAvatar, randomAvatar, type AvatarConfig } from "@/lib/avatar/schema";
+import { headzBase } from "@/lib/avatar/headz/catalog";
 
 /**
  * Static picture of an avatar (rendered once by a shared offscreen WebGL
@@ -32,7 +33,7 @@ export function AvatarThumb({
   useEffect(() => {
     let alive = true;
     // Engine is loaded lazily — three.js stays out of the first paint bundle.
-    import("@/lib/avatar/kit/snapshot")
+    import("@/lib/avatar/headz/snapshot")
       .then(({ renderAvatarSnapshot }) => renderAvatarSnapshot(cfg, { size: Math.min(512, Math.round(size * 2)), framing }))
       .then((url) => alive && setSrc(url))
       .catch(() => alive && setSrc(null));
@@ -63,7 +64,7 @@ export function AvatarThumb({
             display: "block",
             width: "100%",
             height: "100%",
-            background: `radial-gradient(circle at 50% 42%, ${cfg.skin.tone} 0 34%, transparent 35%)`,
+            background: `radial-gradient(circle at 50% 42%, ${cfg.skin ?? headzBase(cfg.base).skin} 0 34%, transparent 35%)`,
             opacity: 0.55,
           }}
         />

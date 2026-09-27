@@ -7,6 +7,7 @@ Psychologist: верифицированный специалист. ФИО и �
               в зашифрованном виде, доступ — только администраторам.
 """
 import json
+import re
 import uuid
 
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
@@ -25,6 +26,29 @@ def validate_avatar_config(value):
     size = len(json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
     if size > AVATAR_CONFIG_MAX_BYTES:
         raise ValidationError("Конфигурация аватара слишком большая (максимум 8 КБ).")
+    if value.get("version") == 3:
+        _validate_avatar_v3(value)
+
+
+_AVATAR_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$")
+_AVATAR_HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+AVATAR_V3_SLOTS = ("hair", "beard", "eyewear", "headwear", "earrings")
+AVATAR_V3_COLORS = ("hairColor", "eyeColor", "skin")
+
+
+def _validate_avatar_v3(value):
+    """v3 = HEADZ character + parts (see apps/web/src/lib/avatar/schema.ts). Option ids are
+    checked for shape only — the catalogue lives in the web app and old ids degrade gracefully."""
+    if not isinstance(value.get("base"), str) or not _AVATAR_ID.match(value["base"]):
+        raise ValidationError("Аватар: неизвестный персонаж.")
+    for k in AVATAR_V3_SLOTS:
+        v = value.get(k, "none")
+        if not isinstance(v, str) or not (v == "none" or _AVATAR_ID.match(v)):
+            raise ValidationError(f"Аватар: некорректное значение «{k}».")
+    for k in AVATAR_V3_COLORS:
+        v = value.get(k)
+        if v is not None and (not isinstance(v, str) or not _AVATAR_HEX.match(v)):
+            raise ValidationError(f"Аватар: цвет «{k}» должен быть в формате #RRGGBB.")
 
 
 class UserManager(BaseUserManager):

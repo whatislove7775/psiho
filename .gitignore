@@ -36,3 +36,12 @@ __pycache__/
 
 # Uploaded media (dev)
 apps/api/media/
+
+# HEADZ 2.0 purchased sources — licence forbids redistributing them; only derived
+# runtime GLBs in apps/web/public/avatar/headz/ are committed (see tools/headz/README.md)
+tools/headz/src/
+tools/headz/out/
+headz-src/
+*.blend
+*.blend1
+*.psd

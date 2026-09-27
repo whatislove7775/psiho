@@ -56,7 +56,7 @@ Session {
 | POST | `recover/` | `{ alias, recovery_key, new_password }` | `{ access, refresh, user, recovery_key }` (новый ключ) |
 | POST | `token/refresh/` | `{ refresh }` | `{ access, refresh }` |
 | GET | `me/` | — | `User` |
-| PATCH | `me/` | `{ avatar_config? }` | `User` |
+| PATCH | `me/` | `{ avatar_config? }` — объект ≤ 8 КБ; v3 (`{version:3, base, hair, beard, eyewear, headwear, earrings, hairColor, eyeColor, skin}`: id вида `[a-z0-9-]`, цвета `#RRGGBB` или `null`) проверяется по форме → `400`; старые v1 принимаются как есть и мигрируются на клиенте | `User` |
 | POST | `me/password/` | `{ old_password, new_password }` | `204` |
 | GET | `me/alias/` | — | `{ alias, next_change_at /* ISO или null */ }` |
 | POST | `me/alias/` | `{ alias }` | только клиенты (иначе 403); раз в сутки (иначе `429 { detail, alias, next_change_at }`); `400 { alias: [...] }` на неверный/занятый; успех → `{ alias, next_change_at, user }`. Ник = логин: вход по новому нику. Прежний ник нигде не хранится (специалисты видят только текущий) |

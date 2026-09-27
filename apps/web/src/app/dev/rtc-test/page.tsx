@@ -50,8 +50,8 @@ function Loopback() {
         stopDraw = () => cancelAnimationFrame(raf);
         stream = c.captureStream(30);
       } else {
-        const { KitRenderer } = await import("@/lib/avatar/kit/KitRenderer");
-        const r = new KitRenderer(c, { framing: "portrait", background: "#1d1d22", idle: true, preserveDrawingBuffer: true, maxPixelRatio: 1, fps: 30 });
+        const { HeadzRenderer } = await import("@/lib/avatar/headz/HeadzRenderer");
+        const r = new HeadzRenderer(c, { framing: "portrait", background: "#1d1d22", idle: true, preserveDrawingBuffer: true, maxPixelRatio: 1, fps: 30 });
         r.resize(540, 720);
         r.setConfig(DEFAULT_AVATAR);
         r.start();

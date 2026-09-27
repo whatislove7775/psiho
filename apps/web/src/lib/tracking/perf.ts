@@ -1,6 +1,6 @@
 /**
  * Live performance counters of the avatar pipeline
- * (camera frame → face detection → FaceTracker → KitRenderer → outgoing video).
+ * (camera frame → face detection → FaceTracker → HeadzRenderer → outgoing video).
  *
  * Cheap enough to be always on: a few numbers per frame in fixed-size ring
  * buffers. Read by the hidden call overlay (/room/…?debug=1) and exposed as

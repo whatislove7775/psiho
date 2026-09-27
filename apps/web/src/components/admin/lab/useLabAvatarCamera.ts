@@ -2,7 +2,7 @@
 
 /**
  * Staff-lab twin of hooks/useAvatarCamera: the same pipeline
- * (camera → MediaPipe FaceLandmarker → FaceTracker → KitRenderer → captureStream)
+ * (camera → MediaPipe FaceLandmarker → FaceTracker → HeadzRenderer → captureStream)
  * plus debug taps the production hook deliberately doesn't have:
  *
  *  - live raw and processed blendshapes, 478 landmarks, head pose
@@ -29,7 +29,7 @@ const SOURCES = [
   },
 ];
 
-type KitRendererT = InstanceType<typeof import("@/lib/avatar/kit/KitRenderer").KitRenderer>;
+type RendererT = InstanceType<typeof import("@/lib/avatar/headz/HeadzRenderer").HeadzRenderer>;
 
 export interface LabDebug {
   /** model output, name → 0…1 */
@@ -92,7 +92,7 @@ export function useLabAvatarCamera(config: AvatarConfig, options: LabCameraOptio
     videoHeight: 0,
     delegate: "",
   });
-  const rendererRef = useRef<KitRendererT | null>(null);
+  const rendererRef = useRef<RendererT | null>(null);
   const trackerRef = useRef<FaceTracker | null>(null);
   const cfgRef = useRef(config);
   cfgRef.current = config;
@@ -152,15 +152,15 @@ export function useLabAvatarCamera(config: AvatarConfig, options: LabCameraOptio
       v.srcObject = new MediaStream(cam.getVideoTracks());
       await v.play().catch(() => undefined);
 
-      let r: KitRendererT;
+      let r: RendererT;
       const c = document.createElement("canvas");
       try {
-        const { KitRenderer } = await import("@/lib/avatar/kit/KitRenderer");
+        const { HeadzRenderer } = await import("@/lib/avatar/headz/HeadzRenderer");
         if (cancelled) return;
         c.width = 540;
         c.height = 720;
         Object.assign(c.style, { width: "100%", height: "100%", display: "block", objectFit: "cover" });
-        r = new KitRenderer(c, {
+        r = new HeadzRenderer(c, {
           framing: optsRef.current.framing ?? "portrait",
           background: "#1d1d22",
           idle: optsRef.current.idle ?? true,
