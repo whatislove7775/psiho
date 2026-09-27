@@ -312,7 +312,7 @@ class QuoteView(APIView):
         })
 
 
-def _company_preview(user, amount: int) -> int:
+def _company_preview(user, amount: int, scheduled_at=None) -> int:
     """Сколько из суммы оплатит программа компании (apps.business), если она есть."""
     from django.apps import apps as django_apps
 
@@ -320,7 +320,7 @@ def _company_preview(user, amount: int) -> int:
         return 0
     from apps.business.funding import preview_call
 
-    return preview_call(user, amount)
+    return preview_call(user, amount, scheduled_at)
 
 
 def _client_session(request, pk):
@@ -335,7 +335,7 @@ def call_payload(request, session) -> dict:
 
     hold = Hold.objects.filter(session_ref=session.pk).first()
     balance = balance_of(request.user, K.CLIENT)
-    company = _company_preview(request.user, session.amount_kopecks) if hold is None else 0
+    company = _company_preview(request.user, session.amount_kopecks, session.scheduled_at) if hold is None else 0
     profile = session.psychologist_profile
     return {
         "session_id": str(session.pk),

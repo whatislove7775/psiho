@@ -45,9 +45,18 @@ def codes_for(c, program, n=1):
     return svc.generate_codes(c, program, count=n)[1]
 
 
-def make_call(client, psychologist, *, hours=48, amount_rub=3000):
+def _anchor():
+    """Точка отсчёта для созвонов теста: все они должны попасть в один месячный период лимита
+    (иначе в конце месяца тест превращается в «лимит обновился»)."""
+    now = timezone.now()
+    if (now + timedelta(days=5)).month == now.month:
+        return now
+    return (now.replace(day=1) + timedelta(days=32)).replace(day=2, hour=12, minute=0, second=0, microsecond=0)
+
+
+def make_call(client, psychologist, *, hours=48, amount_rub=3000, base=None):
     s = ConsultationSession(client=client, psychologist_profile=psychologist, status="awaiting_payment",
-                            scheduled_at=timezone.now() + timedelta(hours=hours), duration_minutes=50,
+                            scheduled_at=(base or _anchor()) + timedelta(hours=hours), duration_minutes=50,
                             amount_kopecks=amount_rub * 100)
     s.compute_split(20.0)
     s.save()
@@ -135,14 +144,14 @@ def test_allowance_pays_first_then_personal_balance(client_user, psychologist):
     assert balance_of(client_user) == 10_000 * 100  # целиком за счёт компании
     assert budget_balance(c) == start_budget - 3000 * 100
 
-    s2 = make_call(client_user, psychologist, hours=72)
+    s2 = make_call(client_user, psychologist, hours=50)
     q = auth_client(client_user).get(f"/api/v1/billing/calls/{s2.pk}/").json()
     assert q["company_kopecks"] == 2000 * 100
     B.hold_for_call(s2)  # 2000 — компания (остаток лимита), 1000 — личные
     assert balance_of(client_user) == 9000 * 100
     assert budget_balance(c) == start_budget - 5000 * 100
 
-    s3 = make_call(client_user, psychologist, hours=96)
+    s3 = make_call(client_user, psychologist, hours=52)
     B.hold_for_call(s3)  # лимит исчерпан — всё с личного
     assert balance_of(client_user) == 6000 * 100
     assert budget_balance(c) == start_budget - 5000 * 100
@@ -165,10 +174,11 @@ def test_calls_limit_and_late_cancel_and_refund(client_user, psychologist):
     c, p = make_company(amount_rub=None, calls_limit=1)
     svc.redeem(client_user, codes_for(c, p)[0])
     credit(client_user, 5000)
-    s1 = make_call(client_user, psychologist, hours=5)
+    now = timezone.now()  # поздняя отмена считается от текущего момента
+    s1 = make_call(client_user, psychologist, hours=5, base=now)
     B.hold_for_call(s1)
     assert balance_of(client_user) == 5000 * 100
-    s2 = make_call(client_user, psychologist, hours=50)
+    s2 = make_call(client_user, psychologist, hours=7, base=now)
     assert auth_client(client_user).get(f"/api/v1/billing/calls/{s2.pk}/").json()["company_kopecks"] == 0
     # Поздняя отмена клиентом: штраф 50% уходит специалисту из денег компании, остаток — компании
     before = budget_balance(c)

@@ -155,8 +155,9 @@ def preview(user, amount: int, *, service: str = "calls", when: date | None = No
     return 0
 
 
-def preview_call(user, amount: int) -> int:
-    return preview(user, amount, service="calls")
+def preview_call(user, amount: int, scheduled_at=None) -> int:
+    when = _local_date(scheduled_at) if scheduled_at else None
+    return preview(user, amount, service="calls", when=when)
 
 
 def allowances_for(user) -> list[dict]:
