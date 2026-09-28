@@ -8,6 +8,7 @@ import { LeadForm } from "@/components/business/landing/LeadForm";
 import { bizFaqLd } from "@/components/business/landing/content";
 import { Button } from "@/ui";
 import { HeartHands, PaperPlane } from "@/components/illustrations";
+import { AvatarDecor } from "@/components/decor/AvatarDecor";
 import { abs, alternates, ORG_ID } from "@/lib/seo";
 import { ogMeta } from "@/lib/og/sections";
 import l from "@/components/landing/landing.module.css";
@@ -161,13 +162,14 @@ export default function BusinessLanding() {
 
         {/* 3. Why */}
         <section className={`${l.wrap} ${l.section}`} aria-labelledby="biz-why">
-          <div className={s.sectionHead}>
+          <div className={`${s.sectionHead} ${s.decorHost}`}>
             <h2 id="biz-why" className={l.sectionTitle}>
               Зачем это&nbsp;компании
             </h2>
             <p className={l.lead}>
               Мы&nbsp;не&nbsp;обещаем волшебных процентов. Считайте эффект на&nbsp;своих метриках&nbsp;— текучесть, больничные, вовлечённость&nbsp;— до&nbsp;и&nbsp;после пилота.
             </p>
+            <AvatarDecor pics={["thumbs", "peace"]} size={200} from={1200} className={s.whyDecor} />
           </div>
           <div className={s.cards}>
             <div className={s.card}>
@@ -251,6 +253,7 @@ export default function BusinessLanding() {
               <p className={l.lead}>
                 Не&nbsp;нашли ответ? Напишите на <a href="mailto:b2b@aprosop.ru">b2b@aprosop.ru</a>.
               </p>
+              <AvatarDecor pics={["hello"]} size={180} from={1200} className={l.faqDecor} />
             </div>
             <BizFaq />
           </div>

@@ -3,6 +3,7 @@
 import { useId, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
+import { AvatarDecor } from "@/components/decor/AvatarDecor";
 import s from "./landing.module.css";
 
 const ITEMS: { q: string; a: ReactNode }[] = [
@@ -52,6 +53,7 @@ export function Faq() {
           <p className={s.sectionSub}>
             Не&nbsp;нашли ответ? <a href="mailto:support@aprosop.ru">support@aprosop.ru</a>
           </p>
+          <AvatarDecor pics={["wave"]} size={190} from={1200} className={s.faqDecor} />
         </div>
         <div className={s.faqList}>
           {ITEMS.map((item, i) => {

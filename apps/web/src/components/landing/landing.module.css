@@ -524,9 +524,15 @@
 }
 
 .faqIntro {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+/* decorative avatar under the FAQ intro (the column is empty below it) */
+.faqDecor {
+  top: calc(100% + 40px);
+  left: -12px;
 }
 
 .faqList {

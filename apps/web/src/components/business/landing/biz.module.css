@@ -202,6 +202,15 @@
   max-width: 22ch;
 }
 
+/* decorative avatars (components/decor/AvatarDecor) in empty corners */
+.decorHost {
+  position: relative;
+}
+.whyDecor {
+  right: 24px;
+  bottom: -20px;
+}
+
 .compare {
   display: grid;
   grid-template-columns: 1fr 1fr;

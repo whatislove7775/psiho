@@ -11,6 +11,7 @@ import { abs, alternates, ORG_ID, WEBSITE_ID } from "@/lib/seo";
 import s from "@/components/public/public.module.css";
 import { ogMeta } from "@/lib/og/sections";
 import { Breathing } from "@/components/illustrations";
+import { AvatarDecor } from "@/components/decor/AvatarDecor";
 
 // Data comes from the 5-minute content cache; rendering per request keeps the list fresh after deploys.
 export const dynamic = "force-dynamic";
@@ -31,6 +32,8 @@ export default async function PracticesPage() {
   const groups = PRACTICE_KINDS.map((k) => ({ ...k, items: practices.filter((p) => p.kind === k.value) })).filter(
     (g) => g.items.length > 0,
   );
+  // a decorative avatar in the empty grid columns of a short group (not the first one: the intro has art)
+  const decorAt = groups.findIndex((g, i) => i > 0 && g.items.length === 1);
 
   return (
     <PublicShell>
@@ -71,7 +74,7 @@ export default async function PracticesPage() {
         </p>
       ) : (
         groups.map((g, i) => (
-          <section key={g.value} aria-labelledby={`kind-${g.value}`}>
+          <section key={g.value} aria-labelledby={`kind-${g.value}`} className={i === decorAt ? s.decorHost : undefined}>
             <div className={s.sectionHead} style={i === 0 ? { marginTop: 0 } : undefined}>
               <h2 id={`kind-${g.value}`}>{g.label}</h2>
             </div>
@@ -82,6 +85,7 @@ export default async function PracticesPage() {
                 </li>
               ))}
             </ul>
+            {i === decorAt && <AvatarDecor pics={["yay"]} size={170} from={1200} className={s.groupDecor} />}
           </section>
         ))
       )}
