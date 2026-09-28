@@ -15,7 +15,7 @@
  *  - face-shape sliders deform face + parts; brow style / lash length;
  *  - procedural eyes (iris colour + style for every base, wet cornea);
  *  - skin details and make-up; hair-coloured scalp under the hair; two-tone hair;
- *  - a short neck that fades out (no open or pointed head bottom);
+ *  - floating head, no neck (WITH_NECK=false);
  *  - conjugate gaze, lids following the gaze, micro-saccades, natural blinks.
  */
 import * as THREE from "three";
@@ -120,6 +120,8 @@ const BROW_SHAPES: Record<BrowStyle, { arch: number; tilt: number; lift: number 
 
 const srgb = (hex: string) => new THREE.Color(hex);
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+const WITH_NECK = false;
 
 export class HeadzRenderer implements AvatarRendererApi {
   readonly canvas: HTMLCanvasElement;
@@ -659,7 +661,8 @@ export class HeadzRenderer implements AvatarRendererApi {
       this.neck.geometry.dispose();
       this.neck = null;
     }
-    if (this.lod) return;
+    // Owner: avatars are floating heads — no neck anywhere.
+    if (this.lod || !WITH_NECK) return;
     const lm = b.lm ?? {};
     const jaw = lm.jaw ?? 0.55;
     const chinZ = lm.chin?.[2] ?? 0.48;
