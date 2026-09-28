@@ -115,3 +115,26 @@ def test_consumer_auth_and_relay(settings):
         await client.disconnect()
 
     async_to_sync(scenario)()
+
+
+def test_consumer_relays_sanitized_reactions(settings):
+    """👍/👎 reactions: only the kind is relayed, unknown kinds dropped, bursts rate-limited."""
+    settings.CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
+
+    async def scenario():
+        client = _connect(make_ws_token("c", ROOM, "client"))
+        assert (await client.connect())[0]
+        psy = _connect(make_ws_token("p", ROOM, "psychologist"))
+        assert (await psy.connect())[0]
+        assert await client.receive_json_from() == {"type": "peer-joined"}
+
+        await client.send_json_to({"type": "reaction", "kind": "up", "from": "x", "extra": "<b>"})
+        assert await psy.receive_json_from() == {"type": "reaction", "kind": "up"}
+        await client.send_json_to({"type": "reaction", "kind": "down"})  # < 0.5 s later: dropped
+        await client.send_json_to({"type": "reaction", "kind": "heart"})
+        assert await psy.receive_nothing()
+
+        await psy.disconnect()
+        await client.disconnect()
+
+    async_to_sync(scenario)()

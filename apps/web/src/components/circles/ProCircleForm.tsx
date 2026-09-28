@@ -2,7 +2,7 @@
 
 /** Specialist: create / edit a circle. After publication only the text, rules and room settings can change. */
 import { useMemo, useState } from "react";
-import { Button, Input, Segmented, Select, Textarea } from "@/ui";
+import { Button, Input, NumberInput, Segmented, Select, Textarea } from "@/ui";
 import { ApiError } from "@/lib/api/client";
 import {
   TOPIC_LABEL,
@@ -159,8 +159,8 @@ export function ProCircleForm({
           value={f.capacity}
           disabled={live}
           onChange={(v) => set("capacity", v)}
-          options={[5, 6, 7, 8].map((n) => ({ value: n, label: `${n} участников` }))}
-          hint="Плюс вы. Больше 8&nbsp;— уже не&nbsp;круг"
+          options={[5, 6, 7, 8, 9, 10, 11, 12].map((n) => ({ value: n, label: `${n} участников` }))}
+          hint="Плюс вы и&nbsp;ко-терапевт. Больше 12&nbsp;— уже не&nbsp;круг"
         />
       </div>
       <div className={s.formRow}>
@@ -180,15 +180,14 @@ export function ProCircleForm({
             />
           </div>
         )}
-        <Input
+        <NumberInput
           label={f.billing === "series" && f.format === "series" ? "Цена за\u00a0цикл, ₽" : "Цена за\u00a0встречу, ₽"}
-          type="number"
           min={300}
           max={60000}
           step={50}
           value={f.price_rub}
           disabled={live}
-          onChange={(e) => set("price_rub", Number(e.target.value))}
+          onChange={(v) => set("price_rub", v ?? 0)}
           error={err("price_rub")}
           hint={`Участник заплатит ${total.toLocaleString("ru-RU")} ₽ за\u00a0${f.format === "single" ? "встречу" : "весь круг"}`}
         />

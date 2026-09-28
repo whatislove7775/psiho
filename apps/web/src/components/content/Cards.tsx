@@ -7,6 +7,7 @@ import { byline } from "./byline";
 import art from "./art.module.css";
 import s from "./content.module.css";
 import { typo } from "@/lib/typography";
+import { RatingBadge } from "./ArticleRating";
 
 export function ArticleCard({ a, base = "/app", compact }: { a: TArticle; base?: string; compact?: boolean }) {
   return (
@@ -34,6 +35,7 @@ export function ArticleCard({ a, base = "/app", compact }: { a: TArticle; base?:
               <Clock size={14} strokeWidth={1.8} aria-hidden />
               {a.reading_minutes}&nbsp;мин
             </span>
+            <RatingBadge rating={a.rating} className={s.metaItem} />
             {byline(a).map((x) => (
               <span key={x} className={s.metaItem}>
                 {x}

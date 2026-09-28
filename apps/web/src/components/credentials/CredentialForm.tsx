@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Eye, EyeOff, Paperclip, ShieldCheck, X } from "lucide-react";
-import { Button, Input, Modal, Select } from "@/ui";
+import { Button, Combobox, Input, Modal, Select } from "@/ui";
+import { UNIVERSITIES } from "@/lib/universities";
 import { ApiError } from "@/lib/api/client";
 import {
   CREDENTIAL_MAX_BYTES,
@@ -29,9 +30,10 @@ interface Form {
   url: string;
   doi: string;
   number: string;
+  number_public: boolean;
 }
 
-const EMPTY: Form = { kind: "diploma", title: "", issuer: "", year: "", year_end: "", supervisor: "", hours: "", url: "", doi: "", number: "" };
+const EMPTY: Form = { kind: "diploma", title: "", issuer: "", year: "", year_end: "", supervisor: "", hours: "", url: "", doi: "", number: "", number_public: false };
 
 const fromItem = (c: Credential): Form => ({
   kind: c.kind,
@@ -44,6 +46,7 @@ const fromItem = (c: Credential): Form => ({
   url: c.url,
   doi: c.doi,
   number: c.number,
+  number_public: c.number_public,
 });
 
 export interface PickedFile {
@@ -127,7 +130,7 @@ export function CredentialForm({
       hours: fields.hours ? hours : null,
       url: fields.links ? f.url.trim() : "",
       doi: f.kind === "publication" ? f.doi.trim() : "",
-      ...(fields.number ? { number: f.number.trim() } : {}),
+      ...(fields.number ? { number: f.number.trim(), number_public: f.number_public && !!f.number.trim() } : {}),
     };
     setBusy(true);
     try {
@@ -175,7 +178,7 @@ export function CredentialForm({
           onChange={(e) => set("title", e.target.value)}
           error={errors.title}
         />
-        {fields.issuer && (
+        {fields.issuer && (f.kind === "publication" ? (
           <Input
             label={fields.issuer}
             value={f.issuer}
@@ -184,7 +187,18 @@ export function CredentialForm({
             onChange={(e) => set("issuer", e.target.value)}
             error={errors.issuer}
           />
-        )}
+        ) : (
+          // universities, institutes and associations are suggested while typing; any text is accepted
+          <Combobox
+            label={fields.issuer}
+            value={f.issuer}
+            options={UNIVERSITIES}
+            maxLength={200}
+            placeholder={fields.issuerPlaceholder}
+            onChange={(v) => set("issuer", v)}
+            error={errors.issuer}
+          />
+        ))}
         {fields.supervisor && (
           <Input
             label="Супервизор"
@@ -246,9 +260,19 @@ export function CredentialForm({
             value={f.number}
             maxLength={60}
             placeholder="Необязательно"
-            hint="Клиенты увидят только последние 4&nbsp;символа. Полный номер знает только сотрудник, который проверяет документ."
+            hint={
+              f.number_public
+                ? "Клиенты увидят номер полностью и смогут сами проверить документ."
+                : "Клиенты увидят только последние 4 символа. Полный номер знает сотрудник, который проверяет документ."
+            }
             onChange={(e) => set("number", e.target.value)}
           />
+        )}
+        {fields.number && f.number.trim() && (
+          <label className={s.check}>
+            <input type="checkbox" checked={f.number_public} onChange={(e) => set("number_public", e.target.checked)} />
+            Показывать номер клиентам полностью
+          </label>
         )}
         {fields.links && (
           <Input

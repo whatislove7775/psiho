@@ -37,7 +37,10 @@ def _only_known(model, data: dict) -> dict:
 
 
 def _article_defaults(data):
-    d = {**data, "is_published": True, "reading_minutes": reading_minutes(data["body"])}
+    from .richtext import markdown_to_html
+
+    d = {**data, "is_published": True, "reading_minutes": reading_minutes(data["body"]),
+         "content": markdown_to_html(data["body"]), "topics": [data["topic"]]}
     d.setdefault("reviewed_at", REVIEWED_AT)
     if isinstance(d.get("reviewed_at"), str):
         d["reviewed_at"] = datetime.date.fromisoformat(d["reviewed_at"])
@@ -79,6 +82,11 @@ def seed_content(Article, Practice, *, overwrite=False, upgrade=False) -> tuple[
             known = set(ARTICLE_FINGERPRINTS.get(data["slug"], ()))
             known.add(fingerprint_article(data["title"], data["summary"], data["body"]))
             untouched = fingerprint_article(obj.title, obj.summary, obj.body) in known
+            if untouched and getattr(obj, "content", ""):
+                # После 0007 текст правят в визуальном редакторе (content), body — резервная копия
+                from .richtext import markdown_to_html
+
+                untouched = obj.content == markdown_to_html(obj.body)
         if overwrite or untouched:
             for k, v in defaults.items():
                 setattr(obj, k, v)

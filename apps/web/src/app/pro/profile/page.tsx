@@ -1,7 +1,8 @@
 "use client";
 
+import { ageLabel } from "@/lib/specialistFacts";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { Button, Card, CardHead, Field, Input, Select, Skeleton, Textarea, useToast } from "@/ui";
+import { Button, Card, CardHead, Field, Input, NumberInput, Select, Skeleton, Textarea, useToast } from "@/ui";
 import { PrivacySettings } from "@/components/privacy/PrivacySettings";
 import { ChatFilesSetting } from "@/components/chat/ChatFilesSetting";
 import { describeContacts, findContacts } from "@/lib/chat/contacts";
@@ -47,6 +48,7 @@ interface Form {
   experience_years: string;
   session_rate_rub: string;
   gender: "" | "female" | "male";
+  birth_year: string;
 }
 type Errors = Partial<Record<keyof Form, string>>;
 
@@ -59,6 +61,7 @@ const fromProfile = (p: PsychologistPrivate): Form => ({
   experience_years: String(p.experience_years ?? ""),
   session_rate_rub: String(p.session_rate_rub ?? ""),
   gender: p.gender ?? "",
+  birth_year: p.birth_year ? String(p.birth_year) : "",
 });
 
 function validate(f: Form): Errors {
@@ -73,6 +76,9 @@ function validate(f: Form): Errors {
   if (!f.languages.length) e.languages = "Добавьте язык, на\u00a0котором проводите созвоны";
   const exp = Number(f.experience_years);
   if (f.experience_years === "" || !Number.isInteger(exp) || exp < 0 || exp > 70) e.experience_years = "Целое число лет, от\u00a00\u00a0до\u00a070";
+  const by = Number(f.birth_year);
+  const year = new Date().getFullYear();
+  if (f.birth_year !== "" && (!Number.isInteger(by) || by < year - 90 || by > year - 18)) e.birth_year = `Год от\u00a0${year - 90}\u00a0до\u00a0${year - 18}`;
   return e;
 }
 
@@ -135,6 +141,7 @@ export default function ProfilePage() {
         languages: form.languages,
         experience_years: Number(form.experience_years),
         gender: form.gender,
+        birth_year: form.birth_year === "" ? null : Number(form.birth_year),
       });
       const f = fromProfile(p);
       setInitial(f);
@@ -250,20 +257,32 @@ export default function ProfilePage() {
                     { value: "male", label: "Мужчина" },
                   ]}
                 />
+                <NumberInput
+                  label="Год рождения"
+                  hint={
+                    form.birth_year
+                      ? `Клиенты увидят возраст: ${ageLabel(new Date().getFullYear() - Number(form.birth_year)) ?? "—"}. Год не\u00a0показываем.`
+                      : "Необязательно. Клиенты увидят только возраст, например «32\u00a0года»."
+                  }
+                  placeholder="Не указан"
+                  min={new Date().getFullYear() - 90}
+                  max={new Date().getFullYear() - 18}
+                  value={form.birth_year === "" ? null : Number(form.birth_year)}
+                  onChange={(v) => set("birth_year", v == null ? "" : String(v))}
+                  error={errors.birth_year}
+                />
               </div>
             </Card>
 
             <Card as="section">
               <CardHead title="Опыт и&nbsp;стоимость" />
               <div className={c.pair}>
-                <Input
+                <NumberInput
                   label="Опыт, лет"
-                  type="number"
-                  inputMode="numeric"
                   min={0}
                   max={70}
-                  value={form.experience_years}
-                  onChange={(e) => set("experience_years", e.target.value)}
+                  value={form.experience_years === "" ? null : Number(form.experience_years)}
+                  onChange={(v) => set("experience_years", v == null ? "" : String(v))}
                   error={errors.experience_years}
                 />
                 <Field label="Цена часа">

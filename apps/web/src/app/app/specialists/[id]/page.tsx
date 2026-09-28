@@ -1,5 +1,6 @@
 "use client";
 
+import { ageLabel, tenureShort } from "@/lib/specialistFacts";
 import { useParams } from "next/navigation";
 import { ArrowLeft, BadgeCheck, MessageCircle, UserX } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -123,6 +124,18 @@ export default function SpecialistProfile() {
                       {plural(p.experience_years, "год", "года", "лет")}
                     </dd>
                   </div>
+                  {ageLabel(p.age) && (
+                    <div>
+                      <dt>Возраст</dt>
+                      <dd>{ageLabel(p.age)}</dd>
+                    </div>
+                  )}
+                  {tenureShort(p.on_service_since) && (
+                    <div>
+                      <dt>На&nbsp;сервисе</dt>
+                      <dd>{tenureShort(p.on_service_since)}</dd>
+                    </div>
+                  )}
                   <div>
                     <dt>Созвон</dt>
                     <dd>

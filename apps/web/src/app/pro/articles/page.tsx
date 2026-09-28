@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Plus } from "lucide-react";
 import { Badge, Button, Card, EmptyState, Skeleton } from "@/ui";
@@ -30,28 +30,35 @@ function MyArticles() {
   const name = user?.psychologist?.display_name || "Вы";
   const photo = user?.psychologist?.photo_url ?? null;
 
-  const go = (e: string | null) => router.push(e ? `${pathname}?edit=${e}` : pathname, { scroll: true });
+  // A new article gets its id on the first autosave; the editor must not remount then
+  const [created, setCreated] = useState<number | null>(null);
+  const go = (e: string | null) => {
+    setCreated(null);
+    router.push(e ? `${pathname}?edit=${e}` : pathname, { scroll: true });
+  };
 
   if (edit) {
     const isNew = edit === "new";
     const article = isNew ? null : list.data?.find((a) => a.id === Number(edit)) ?? null;
     const onSaved = (a: MyArticle) => {
       list.setData([a, ...(list.data ?? []).filter((x) => x.id !== a.id)]);
-      if (isNew) router.replace(`${pathname}?edit=${a.id}`);
+      if (isNew) {
+        setCreated(a.id);
+        router.replace(`${pathname}?edit=${a.id}`, { scroll: false });
+      }
     };
     return (
       <>
         <Button variant="ghost" size="sm" onClick={() => go(null)} icon={<ArrowLeft size={18} strokeWidth={1.8} />} style={{ marginLeft: -8, marginBottom: 12 }}>
           Мои статьи
         </Button>
-        <PageHeader title={isNew ? "Новая статья" : article?.title || "Статья"} />
         {!isNew && !list.data ? (
           <Skeleton height={420} radius={22} />
         ) : !isNew && !article ? (
           <EmptyState art={<EmptyArt scene="lost" />} title="Статья не&nbsp;найдена" text="Возможно, её&nbsp;уже удалили." action={<Button onClick={() => go(null)}>К&nbsp;списку</Button>} />
         ) : (
           <SpecialistArticleEditor
-            key={edit}
+            key={created !== null && Number(edit) === created ? "new" : edit}
             article={article}
             name={name}
             photo={photo}

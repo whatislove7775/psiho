@@ -40,7 +40,7 @@ export default async function ArticlesPage({ searchParams }: Props) {
   const words = q.toLocaleLowerCase("ru").split(/\s+/).filter(Boolean);
   const articles = all.filter(
     (a) =>
-      (!topic || a.topic === topic) &&
+      (!topic || (a.topics?.length ? a.topics : [a.topic]).includes(topic)) &&
       (!fromPros || Boolean(a.specialist)) &&
       (!words.length ||
         words.every((w) => `${a.title} ${a.summary} ${a.tags.join(" ")}`.toLocaleLowerCase("ru").includes(w))),

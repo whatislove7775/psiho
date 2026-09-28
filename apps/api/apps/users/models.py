@@ -28,9 +28,13 @@ def validate_avatar_config(value):
         raise ValidationError("Конфигурация аватара слишком большая (максимум 8 КБ).")
     if value.get("version") == 3:
         _validate_avatar_v3(value)
+    elif value.get("version") == 4:
+        _validate_avatar_v4(value)
 
 
 _AVATAR_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$")
+# v4 options may come from another group of characters: "<group>.<id>"
+_AVATAR_OPT = re.compile(r"^([a-z]{2,12}\.)?[a-z0-9][a-z0-9-]{0,39}$")
 _AVATAR_HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 AVATAR_V3_SLOTS = ("hair", "beard", "eyewear", "headwear", "earrings")
 AVATAR_V3_COLORS = ("hairColor", "eyeColor", "skin")
@@ -49,6 +53,74 @@ def _validate_avatar_v3(value):
         v = value.get(k)
         if v is not None and (not isinstance(v, str) or not _AVATAR_HEX.match(v)):
             raise ValidationError(f"Аватар: цвет «{k}» должен быть в формате #RRGGBB.")
+
+
+AVATAR_V4_SLOTS = AVATAR_V3_SLOTS + ("mask",)
+AVATAR_V4_COLORS = AVATAR_V3_COLORS + ("hairTip", "beardColor")
+AVATAR_V4_FACE = (
+    "headWidth", "faceLength", "jaw", "chin", "cheeks", "noseSize", "noseWidth", "noseLength",
+    "eyeSize", "eyeSpacing", "browHeight", "lips", "mouthWidth", "ears",
+)
+# group → {key: ("num", lo, hi) | ("hex",) | ("enum", {...}) | ("list", {...})}
+AVATAR_V4_GROUPS = {
+    "skinFx": {"blush": ("num", 0, 1), "freckles": ("num", 0, 1), "moles": ("num", 0, 3), "age": ("num", 0, 1)},
+    "eyes": {"style": ("enum", {"natural", "ring", "cartoon", "bright"}), "lashes": ("num", -1, 1)},
+    "brows": {
+        "style": ("enum", {"natural", "straight", "arched", "angled", "soft", "raised"}),
+        "thickness": ("num", -1, 1),
+        "color": ("hex",),
+    },
+    "makeup": {
+        "lip": ("hex",), "lipAmount": ("num", 0, 1), "shadow": ("hex",), "shadowAmount": ("num", 0, 1),
+        "liner": ("num", 0, 1),
+    },
+    "acc": {"frame": ("hex",), "lens": ("hex",), "hat": ("hex",), "piercings": ("list", {"nose", "brow", "lip", "septum"})},
+}
+
+
+def _is_num(v, lo, hi):
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and lo <= v <= hi
+
+
+def _validate_avatar_v4(value):
+    """v4 = v3 + mask slot, cross-group options, face-shape sliders and style groups
+    (see apps/web/src/lib/avatar/schema.ts). Unknown keys are rejected so the JSON stays small and typed."""
+    err = ValidationError("Аватар: некорректные настройки.")
+    if not isinstance(value.get("base"), str) or not _AVATAR_ID.match(value["base"]):
+        raise ValidationError("Аватар: неизвестный персонаж.")
+    for k in AVATAR_V4_SLOTS:
+        v = value.get(k, "none")
+        if not isinstance(v, str) or not (v == "none" or _AVATAR_OPT.match(v)):
+            raise ValidationError(f"Аватар: некорректное значение «{k}».")
+    for k in AVATAR_V4_COLORS:
+        v = value.get(k)
+        if v is not None and (not isinstance(v, str) or not _AVATAR_HEX.match(v)):
+            raise ValidationError(f"Аватар: цвет «{k}» должен быть в формате #RRGGBB.")
+    if value.get("hairTipStyle", "tips") not in ("tips", "streaks"):
+        raise err
+    face = value.get("face", {})
+    if not isinstance(face, dict) or any(k not in AVATAR_V4_FACE or not _is_num(v, -1, 1) for k, v in face.items()):
+        raise ValidationError("Аватар: некорректная форма лица.")
+    for group, spec in AVATAR_V4_GROUPS.items():
+        g = value.get(group, {})
+        if not isinstance(g, dict):
+            raise err
+        for k, v in g.items():
+            rule = spec.get(k)
+            if rule is None:
+                raise err
+            kind = rule[0]
+            ok = (
+                (kind == "num" and _is_num(v, rule[1], rule[2]))
+                or (kind == "hex" and (v is None or (isinstance(v, str) and _AVATAR_HEX.match(v))))
+                or (kind == "enum" and v in rule[1])
+                or (kind == "list" and isinstance(v, list) and len(v) <= len(rule[1]) and all(x in rule[1] for x in v))
+            )
+            if not ok:
+                raise err
+    known = {"version", "base", "hairTipStyle", "face", *AVATAR_V4_SLOTS, *AVATAR_V4_COLORS, *AVATAR_V4_GROUPS}
+    if any(k not in known for k in value):
+        raise err
 
 
 class UserManager(BaseUserManager):
@@ -162,6 +234,20 @@ class PsychologistProfile(models.Model):
     # Необязательно: клиенты могут искать по полу специалиста (фильтр в поиске)
     # db_default: rows inserted by older code (and historical migration states) get "" too
     gender = models.CharField(max_length=10, choices=Gender.choices, blank=True, default="", db_default="")
+    # Необязательно: год рождения — на карточках показываем только возраст («32 года»), если указан
+    birth_year = models.PositiveSmallIntegerField(null=True, blank=True)
+
+    @property
+    def age(self) -> int | None:
+        """Возраст по году рождения (точность ±1 год — дата рождения не хранится)."""
+        from django.utils import timezone
+
+        return timezone.now().year - self.birth_year if self.birth_year else None
+
+    @property
+    def on_service_since(self):
+        """С какого момента специалист на сервисе: дата одобрения анкеты, иначе дата регистрации."""
+        return self.verified_at or self.created_at
 
     verification_status = models.CharField(
         max_length=20,

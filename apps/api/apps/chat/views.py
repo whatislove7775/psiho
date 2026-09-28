@@ -21,8 +21,8 @@ from . import conf, services
 from .crypto import decrypt_bytes, decrypt_text, encrypt_bytes, encrypt_text
 from .images import IMAGE_EXTS, sanitize_image
 from .models import Attachment, Conversation, Message, SpecialistChatSettings
-from .rules import check_contacts, file_policy
-from .uploads import validate_file, validate_voice
+from .rules import ContactsBlocked, check_contacts, file_policy
+from .uploads import clean_transcript, validate_file, validate_voice
 
 Kind = Conversation.Kind
 MAX_TEXT = 4000
@@ -306,12 +306,26 @@ class MessageListView(APIView):
             if upload is None:
                 raise ValidationError({"file": "Прикрепите файл."})
             width = height = None
+            caption, ttl, view_once = "", None, False
+            if kind == Message.Kind.FILE:
+                # Подпись, «Исчезнет через …» (1m/1h/1d) и «Просмотр один раз» — только для файлов
+                caption = (request.data.get("text") or "").strip()
+                if len(caption) > MAX_TEXT:
+                    raise ValidationError({"text": f"Не больше {MAX_TEXT} символов."})
+                ttl_code = (request.data.get("ttl") or "").strip()
+                if ttl_code and ttl_code not in services.ATTACHMENT_TTL:
+                    raise ValidationError({"ttl": "Срок: 1m, 1h или 1d."})
+                ttl = services.ATTACHMENT_TTL.get(ttl_code)
+                view_once = str(request.data.get("view_once") or "").lower() in ("1", "true", "yes", "on")
+            elif request.data.get("view_once") or request.data.get("ttl"):
+                raise ValidationError({"detail": "Эти настройки доступны только для файлов."})
             if kind == Message.Kind.FILE:
                 allowed, reason = file_policy(role, conv)
                 if not allowed:
                     raise PermissionDenied(reason or "В этот чат нельзя отправлять файлы.")
                 data, mime, name = validate_file(upload)
                 check_contacts(conv, name.rsplit(".", 1)[0], field="file")
+                check_contacts(conv, caption)
                 ext = name.rsplit(".", 1)[-1].lower()
                 if ext in IMAGE_EXTS:
                     data, width, height = sanitize_image(data, ext)
@@ -320,8 +334,16 @@ class MessageListView(APIView):
                 data, mime, duration, peaks = validate_voice(
                     upload, request.data.get("duration_ms"), request.data.get("peaks"))
                 name = "voice"
+                # Расшифровка с устройства отправителя → текст сообщения (зашифрован, удаляется вместе с ним).
+                # Похожа на контакт — просто не прикладываем её: голосовое всё равно уйдёт.
+                caption = clean_transcript(request.data.get("transcript"))
+                try:
+                    check_contacts(conv, caption)
+                except ContactsBlocked:
+                    caption = ""
             with transaction.atomic():
-                msg = services.create_message(conv, sender=user, sender_role=sender_role, kind=kind)
+                msg = services.create_message(conv, sender=user, sender_role=sender_role, kind=kind,
+                                              text=caption, ttl=ttl, view_once=view_once)
                 Attachment.objects.create(
                     message=msg, name_enc=encrypt_text(name), mime=mime, size=len(data),
                     duration_ms=duration, peaks=peaks, width=width, height=height, data_enc=encrypt_bytes(data),
@@ -395,17 +417,58 @@ class AttachmentView(APIView):
         msg, conv, role = get_message(request, pk)
         if msg.deleted_at:
             raise Http404
+        if msg.view_once:
+            # Такие файлы открываются только один раз через POST /open/
+            raise PermissionDenied("Этот файл можно открыть только один раз.")
         att = get_object_or_404(Attachment, message=msg)
-        data = decrypt_bytes(att.data_enc)
-        name = decrypt_text(att.name_enc) or "file"
-        inline = att.mime.startswith(("audio/", "image/"))
-        resp = HttpResponse(data, content_type=att.mime)
-        resp["Content-Disposition"] = (
-            f"{'inline' if inline else 'attachment'}; filename*=UTF-8''{quote(name)}"
-        )
-        resp["Cache-Control"] = "private, no-store"
-        resp["X-Content-Type-Options"] = "nosniff"
-        resp["Content-Security-Policy"] = "default-src 'none'; sandbox"
+        return _file_response(att, decrypt_bytes(att.data_enc), decrypt_text(att.name_enc) or "file")
+
+
+def _file_response(att: Attachment, data: bytes, name: str) -> HttpResponse:
+    inline = att.mime.startswith(("audio/", "image/"))
+    resp = HttpResponse(data, content_type=att.mime)
+    resp["Content-Disposition"] = (
+        f"{'inline' if inline else 'attachment'}; filename*=UTF-8''{quote(name)}"
+    )
+    resp["Cache-Control"] = "private, no-store"
+    resp["X-Content-Type-Options"] = "nosniff"
+    resp["Content-Security-Policy"] = "default-src 'none'; sandbox"
+    return resp
+
+
+class ViewOnceOpenView(APIView):
+    """POST /chat/messages/<id>/open/ — получатель открывает файл «на один просмотр».
+
+    Отдаёт файл (имя и подпись — в заголовках X-File-Name / X-Caption, URL-кодированные) и в той же
+    транзакции стирает его и подпись: у обоих остаётся заглушка «Фото просмотрено». Повторно — 410.
+    """
+
+    def post(self, request, pk):
+        msg, conv, role = get_message(request, pk)
+        if not msg.view_once or msg.deleted_at:
+            raise Http404
+        if msg.sender_id == request.user.id:
+            raise PermissionDenied("Файл «на один просмотр» может открыть только получатель.")
+        with transaction.atomic():
+            locked = Message.objects.select_for_update().get(pk=msg.pk)
+            att = Attachment.objects.filter(message=locked).first()
+            if locked.viewed_at or att is None or not att.data_enc:
+                return Response({"detail": "Файл уже просмотрен."}, status=status.HTTP_410_GONE)
+            data = decrypt_bytes(att.data_enc)
+            name = decrypt_text(att.name_enc) or "file"
+            caption = decrypt_text(locked.text_enc)
+            att.data_enc = b""
+            att.name_enc = b""
+            att.save(update_fields=["data_enc", "name_enc"])
+            locked.viewed_at = timezone.now()
+            locked.text_enc = b""
+            locked.save(update_fields=["viewed_at", "text_enc"])
+        resp = _file_response(att, data, name)
+        resp["X-File-Name"] = quote(name)
+        resp["X-Caption"] = quote(caption)
+        resp["Access-Control-Expose-Headers"] = "X-File-Name, X-Caption"
+        msg = Message.objects.select_related("attachment").get(pk=msg.pk)
+        services.broadcast_message(conv, msg, "message.updated")
         return resp
 
 

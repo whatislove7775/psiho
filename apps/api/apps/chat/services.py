@@ -191,7 +191,13 @@ def preview(msg: Message | None) -> dict | None:
     elif msg.kind == Message.Kind.VOICE:
         text = "Голосовое сообщение"
     elif msg.kind == Message.Kind.FILE:
-        text = "Файл"
+        a = getattr(msg, "attachment", None)
+        noun = "Фото" if a is not None and a.mime.startswith("image/") else "Файл"
+        if msg.view_once:
+            text = f"{noun} просмотрено" if msg.viewed_at and noun == "Фото" else (
+                f"{noun} просмотрен" if msg.viewed_at else f"{noun} · один просмотр")
+        else:
+            text = noun
     elif msg.kind == Message.Kind.SYSTEM:
         code = decrypt_text(msg.text_enc)
         text = system_text(code)
@@ -269,11 +275,14 @@ def serialize_message(msg: Message, viewer_id=None) -> dict:
     """viewer_id=None — «нейтральная» форма для рассылки; mine вычисляет консьюмер."""
     deleted = msg.deleted_at is not None
     att = None
+    # «Один просмотр»: имя файла не показываем до открытия (оно приходит вместе с файлом), после — стёрто
+    hide_name = msg.view_once
     if not deleted and msg.kind in (Message.Kind.VOICE, Message.Kind.FILE):
         a = getattr(msg, "attachment", None)
         if a is not None:
             att = {
-                "name": decrypt_text(a.name_enc) or ("voice" if msg.kind == Message.Kind.VOICE else "file"),
+                "name": "" if hide_name else (
+                    decrypt_text(a.name_enc) or ("voice" if msg.kind == Message.Kind.VOICE else "file")),
                 "mime": a.mime,
                 "size": a.size,
                 "duration_ms": a.duration_ms,
@@ -281,7 +290,8 @@ def serialize_message(msg: Message, viewer_id=None) -> dict:
                 "width": a.width,
                 "height": a.height,
             }
-    raw = "" if deleted else decrypt_text(msg.text_enc)
+    # Подпись к файлу «на один просмотр» приходит только вместе с файлом (POST /open/)
+    raw = "" if deleted or msg.view_once else decrypt_text(msg.text_enc)
     data = {
         "id": str(msg.id),
         "conversation": str(msg.conversation_id),
@@ -295,6 +305,8 @@ def serialize_message(msg: Message, viewer_id=None) -> dict:
         "edited_at": msg.edited_at.isoformat() if msg.edited_at else None,
         "deleted": deleted,
         "expires_at": msg.expires_at.isoformat() if msg.expires_at else None,
+        "view_once": msg.view_once,
+        "viewed_at": msg.viewed_at.isoformat() if msg.viewed_at else None,
     }
     if viewer_id is not None:
         data["mine"] = msg.sender_id is not None and str(msg.sender_id) == str(viewer_id)
@@ -315,11 +327,19 @@ def expiry_for(conv: Conversation):
     return timezone.now() + ttl if ttl else None
 
 
+# «Исчезнет через …» для отдельного вложения
+ATTACHMENT_TTL = {"1m": timedelta(minutes=1), "1h": timedelta(hours=1), "1d": timedelta(days=1)}
+
+
 def create_message(conv: Conversation, *, sender, sender_role: str, kind: str = Message.Kind.TEXT,
-                   text: str = "") -> Message:
+                   text: str = "", ttl: timedelta | None = None, view_once: bool = False) -> Message:
+    expires = expiry_for(conv)
+    if ttl is not None:
+        own = timezone.now() + ttl
+        expires = min(expires, own) if expires else own
     msg = Message.objects.create(
         conversation=conv, sender=sender, sender_role=sender_role, kind=kind,
-        text_enc=encrypt_text(text), expires_at=expiry_for(conv),
+        text_enc=encrypt_text(text), expires_at=expires, view_once=view_once,
     )
     Conversation.objects.filter(pk=conv.pk).update(last_message_at=msg.created_at)
     conv.last_message_at = msg.created_at

@@ -494,6 +494,11 @@
   font-weight: 650;
   color: var(--c-muted);
 }
+.sectionName {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
 .rows {
   display: grid;
   gap: 2px;
@@ -602,6 +607,8 @@ button.row:focus-visible {
 }
 .picker {
   display: grid;
+  /* minmax(0): the day/duration scrollers must not widen the modal past the screen (content was cut off) */
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
 }
 .pickerFoot {

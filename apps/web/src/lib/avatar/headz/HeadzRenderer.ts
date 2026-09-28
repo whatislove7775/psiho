@@ -1,23 +1,34 @@
 /**
- * HeadzRenderer — renders an AvatarConfig (v3) with the HEADZ 2.0 characters
+ * HeadzRenderer — renders an AvatarConfig (v4) with the HEADZ 2.0 characters
  * (public/avatar/headz/*, built by tools/headz from the purchased sources).
  * Drop-in replacement for the older KitRenderer: same public API
  * (setConfig / applyFaceResult / setExpression / lookAt / renderNow …).
  *
  * Face GLB: one mesh per part (skin, eyes, brows, lashes, teeth, tongue, ears)
  * with ARKit-named morph targets; MediaPipe blendshape names map 1:1.
- * Parts (hair, beard, eyewear, headwear, earrings) are separate GLBs in the
- * same normalised head space (neck ≈ −1, crown ≈ +1, +Z front).
- * Materials are named by role in the GLB and restyled here.
+ * Parts (hair, beard, eyewear, headwear, earrings, mask) are separate GLBs in
+ * the same normalised head space (chin ≈ −1, crown ≈ +1, +Z front).
+ *
+ * On top of the GLBs, at runtime (see deform.ts / shaders.ts / gaze.ts):
+ *  - parts made for another base are re-seated on this head (radius maps);
+ *  - beards / moustaches / masks / piercings get the face's jaw + mouth morphs;
+ *  - face-shape sliders deform face + parts; brow style / lash length;
+ *  - procedural eyes (iris colour + style for every base, wet cornea);
+ *  - skin details and make-up; hair-coloured scalp under the hair; two-tone hair;
+ *  - a short neck that fades out (no open or pointed head bottom);
+ *  - conjugate gaze, lids following the gaze, micro-saccades, natural blinks.
  */
 import * as THREE from "three";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
-import { normalizeAvatar, type AvatarConfig } from "../schema";
+import { normalizeAvatar, type AvatarConfig, type BrowStyle } from "../schema";
 import type { AvatarRendererApi, FaceResult, Framing, RendererOptions } from "../kit/types";
-import { headzBase, headzPart, headzRim } from "./catalog";
-import type { HeadzSlot } from "./types";
+import { headzBase, headzRimQ, resolvePart } from "./catalog";
+import type { HeadzBase, HeadzSlot } from "./types";
+import { deformFace, deformedEye, fitRadial, frameOf, radiusAt, radiusMap, transferMorphs, type RadiusMap } from "./deform";
+import { combineEyes, gazeOf, gazeWeights, withLidFollow, type Weights } from "./gaze";
+import { eyeUniforms, hairUniforms, patchEye, patchFade, patchHair, patchSkin, skinUniforms } from "./shaders";
 
 const loader = new GLTFLoader();
 loader.setMeshoptDecoder(MeshoptDecoder);
@@ -28,6 +39,22 @@ function loadGLTF(url: string): Promise<GLTF> {
     p = loader.loadAsync(url);
     gltfCache.set(url, p);
     p.catch(() => gltfCache.delete(url));
+  }
+  return p;
+}
+const mapCache = new Map<string, Promise<RadiusMap | null>>();
+function loadMap(b: HeadzBase): Promise<RadiusMap | null> {
+  if (!b.fit) return Promise.resolve(null);
+  let p = mapCache.get(b.id);
+  if (!p) {
+    p = fetch(b.fit)
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(String(r.status)))))
+      .then((buf) => radiusMap(buf))
+      .catch(() => {
+        mapCache.delete(b.id);
+        return null;
+      });
+    mapCache.set(b.id, p);
   }
   return p;
 }
@@ -60,10 +87,39 @@ interface Driven {
   slots: [number, number][];
 }
 
+/** A mesh whose geometry we own: head-space rest positions + its node transform. */
+interface Owned {
+  mesh: THREE.Mesh;
+  role: string;
+  /** rest positions in head space (after any cross-base fit, before the shape sliders) */
+  rest: Float32Array;
+  toLocal: THREE.Matrix4;
+}
+
+interface PartState {
+  key: string;
+  group: THREE.Group | null;
+  owned: Owned[];
+  driven: Driven[];
+}
+
 const SHAPE_INDEX = new Map<string, number>(SHAPES.map((s, i) => [s, i]));
-const SLOTS: HeadzSlot[] = ["hair", "beard", "eyewear", "headwear", "earrings"];
+const SLOTS: HeadzSlot[] = ["hair", "beard", "eyewear", "headwear", "earrings", "mask"];
+/** face morphs worth giving to things worn on the lower face */
+const LOWER_FACE = /^(jaw|mouth|cheek|noseSneer)/;
+const FOLLOW_SLOTS = new Set<string>(["beard", "mask"]);
+
+const BROW_SHAPES: Record<BrowStyle, { arch: number; tilt: number; lift: number }> = {
+  natural: { arch: 0, tilt: 0, lift: 0 },
+  straight: { arch: -0.9, tilt: 0, lift: -0.2 },
+  arched: { arch: 1, tilt: -0.2, lift: 0.2 },
+  angled: { arch: 0.5, tilt: 0.8, lift: 0 },
+  soft: { arch: 0.35, tilt: -0.5, lift: 0 },
+  raised: { arch: 0.4, tilt: 0.3, lift: 1 },
+};
 
 const srgb = (hex: string) => new THREE.Color(hex);
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 export class HeadzRenderer implements AvatarRendererApi {
   readonly canvas: HTMLCanvasElement;
@@ -79,25 +135,38 @@ export class HeadzRenderer implements AvatarRendererApi {
 
   private cfg: AvatarConfig | null = null;
   private faceKey = "";
+  private base: HeadzBase | null = null;
+  private map: RadiusMap | null = null;
   private faceGroup: THREE.Group | null = null;
   private driven: Driven[] = [];
-  private parts: Partial<Record<HeadzSlot, { key: string; group: THREE.Group | null }>> = {};
+  private owned: Owned[] = [];
+  private parts: Partial<Record<HeadzSlot, PartState>> = {};
+  private extras: PartState = { key: "", group: null, owned: [], driven: [] };
+  private neck: THREE.Mesh | null = null;
+  private shapeKey = "";
   private loading: Promise<void> = Promise.resolve();
   /** hair is clipped above the hat rim (plane in head space, copied to world space every frame) */
   private hatPlaneLocal: THREE.Plane | null = null;
   private hatPlane = new THREE.Plane();
 
-  // restylable materials; skin and iris are per source material (some bases carry textures)
+  private eyeU = eyeUniforms();
+  private skinU = skinUniforms();
+  private hairU = hairUniforms();
+  private beardU = hairUniforms();
+  // restylable materials
   private mats = {
-    eyeWhite: new THREE.MeshPhysicalMaterial({ color: "#f3efea", roughness: 0.25, clearcoat: 1, clearcoatRoughness: 0.04 }),
-    pupil: new THREE.MeshPhysicalMaterial({ color: "#050505", roughness: 0.25, clearcoat: 1, clearcoatRoughness: 0.03 }),
+    // double-sided: some sources ship eyeballs with inverted normals (their front would be culled)
+    eye: new THREE.MeshPhysicalMaterial({ roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.025, ior: 1.38, specularIntensity: 0.7, side: THREE.DoubleSide }),
     brows: new THREE.MeshStandardMaterial({ roughness: 0.85 }),
-    lashes: new THREE.MeshStandardMaterial({ color: "#1a1412", roughness: 0.7, side: THREE.DoubleSide }),
+    lashes: new THREE.MeshStandardMaterial({ color: "#2a1f1b", roughness: 0.75, side: THREE.DoubleSide }),
     teeth: new THREE.MeshPhysicalMaterial({ color: "#f5f0e6", roughness: 0.35, clearcoat: 0.5 }),
     gums: new THREE.MeshStandardMaterial({ color: "#d9636a", roughness: 0.55 }),
-    hair: new THREE.MeshPhysicalMaterial({ roughness: 0.55, sheen: 0.7, sheenRoughness: 0.4, side: THREE.DoubleSide }),
+    hair: new THREE.MeshPhysicalMaterial({ roughness: 0.55, sheen: 0.7, sheenRoughness: 0.4, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
+    beard: new THREE.MeshPhysicalMaterial({ roughness: 0.6, sheen: 0.6, sheenRoughness: 0.45, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
+    metal: new THREE.MeshPhysicalMaterial({ color: "#d9d9de", metalness: 1, roughness: 0.22, clearcoat: 0.6 }),
+    neck: new THREE.MeshPhysicalMaterial({ roughness: 0.55, sheen: 0.4, sheenRoughness: 0.55, transparent: true }),
   };
-  /** per-face materials that depend on the source (skin, iris, mouth) — rebuilt for every base */
+  /** per-face materials that depend on the source (skin, mouth) — rebuilt for every base */
   private faceMats: { mat: THREE.MeshPhysicalMaterial; role: string; src: THREE.Color; mapped: boolean }[] = [];
   /** materials cloned from part GLBs (frames, hats…) — disposed with the part */
   private partMats = new Set<THREE.Material>();
@@ -113,7 +182,7 @@ export class HeadzRenderer implements AvatarRendererApi {
   private headCurrent = new THREE.Quaternion();
   private lastTrack = -1e9;
   private look = { yaw: 0, pitch: 0 };
-  private idle = { nextBlink: 1.5, blinkT: -1, glanceAt: 2, gx: 0, gy: 0 };
+  private idle = { nextBlink: 1.5, blinkT: -1, double: false, glanceAt: 2, gx: 0, gy: 0, sacAt: 0.5, sx: 0, sy: 0 };
 
   constructor(canvas: HTMLCanvasElement, opts: RendererOptions & { lod?: boolean } = {}) {
     this.canvas = canvas;
@@ -160,6 +229,10 @@ export class HeadzRenderer implements AvatarRendererApi {
     this.headPivot.add(this.head);
     this.root.add(this.headPivot);
     this.scene.add(this.root);
+    patchEye(this.mats.eye, this.eyeU);
+    patchHair(this.mats.hair, this.hairU);
+    patchHair(this.mats.beard, this.beardU);
+    patchFade(this.mats.neck, -1.08, -1.5);
     this.fitCamera();
     // QA hook (dev builds only): lets tests read morph influences of the live avatar
     if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
@@ -175,18 +248,25 @@ export class HeadzRenderer implements AvatarRendererApi {
   setConfig(cfg: AvatarConfig) {
     const c = normalizeAvatar(cfg);
     this.cfg = c;
-    this.loading = this.ensure(c).then(() => this.applyColors(c));
+    this.loading = this.ensure(c).then(() => {
+      if (this.cfg !== c) return;
+      this.applyShape(c);
+      this.applyColors(c);
+    });
   }
+
+  // ── loading ────────────────────────────────────────────────────────────────
 
   private async ensure(c: AvatarConfig) {
     const base = headzBase(c.base);
     const faceUrl = (this.lod && base.lod) || base.face;
     if (this.faceKey !== faceUrl) {
       this.faceKey = faceUrl;
-      const gltf = await loadGLTF(faceUrl);
+      const [gltf, map] = await Promise.all([loadGLTF(faceUrl), loadMap(base)]);
       if (this.faceKey !== faceUrl) return; // superseded
       const g = new THREE.Group();
       const driven: Driven[] = [];
+      const owned: Owned[] = [];
       const faceMats: HeadzRenderer["faceMats"] = [];
       gltf.scene.updateMatrixWorld(true);
       gltf.scene.traverse((o) => {
@@ -197,18 +277,27 @@ export class HeadzRenderer implements AvatarRendererApi {
         g.add(mesh);
         const d = this.drive(mesh);
         if (d) driven.push(d);
+        owned.push(this.own(mesh, roleOf(src)));
       });
-      if (this.faceGroup) this.head.remove(this.faceGroup);
+      if (this.faceGroup) this.dropFace(this.faceGroup);
       this.faceMats.forEach((f) => f.mat.dispose());
       this.faceMats = faceMats;
       this.faceGroup = g;
       this.driven = driven;
+      this.owned = owned;
+      this.base = base;
+      this.map = map;
       this.head.add(g);
+      for (const o of owned) if (isSkin(o)) this.skinFx(o);
+      this.buildNeck(base);
+      this.shapeKey = "";
       // parts belong to a base: drop them so they reload for the new one
-      for (const s of SLOTS) this.setPart(s, null);
+      for (const s of SLOTS) await this.setPart(s, null);
+      this.setExtras("");
     }
-    await Promise.all(SLOTS.map((s) => this.setPart(s, headzPart(c.base, s, c[s]))));
-    const rim = headzRim(c.base, c.headwear);
+    await Promise.all(SLOTS.map((s) => this.setPart(s, c[s] === "none" ? null : c[s])));
+    this.setExtras(this.lod ? "" : c.acc.piercings.join(","));
+    const rim = headzRimQ(c.base, c.headwear);
     if (rim) {
       // keep hair where y ≤ rim(z) + margin; rim(z) runs from the front (z = +0.7) to the back (z = −0.7)
       const [yf, yb] = rim;
@@ -226,7 +315,7 @@ export class HeadzRenderer implements AvatarRendererApi {
     this.applyRig();
   }
 
-  /** Build our own mesh (own morph influences, restyled material) from a loaded mesh. */
+  /** Build our own mesh (own geometry wrapper, own morph influences, restyled material) from a loaded mesh. */
   private adopt(src: THREE.Mesh, kind: "face" | HeadzSlot, faceMats?: HeadzRenderer["faceMats"]): THREE.Mesh | null {
     const srcMat = (Array.isArray(src.material) ? src.material[0] : src.material) as THREE.MeshStandardMaterial;
     const role = (srcMat?.name || "").replace(/\.\d+$/, "");
@@ -234,24 +323,28 @@ export class HeadzRenderer implements AvatarRendererApi {
     let mat: THREE.Material;
     switch (role) {
       case "skin":
-      case "iris":
+      case "skinDetail":
       case "mouth": {
         const m = new THREE.MeshPhysicalMaterial({
           color: srcMat.map ? 0xffffff : srcMat.color,
           map: srcMat.map ?? null,
-          roughness: role === "skin" ? 0.5 : 0.3,
-          sheen: role === "skin" ? 0.45 : 0,
+          roughness: role === "mouth" ? 0.3 : 0.5,
+          sheen: role === "mouth" ? 0 : 0.45,
           sheenRoughness: 0.55,
-          clearcoat: role === "iris" ? 1 : role === "skin" ? 0.04 : 0.2,
-          clearcoatRoughness: role === "iris" ? 0.03 : 0.6,
+          clearcoat: role === "mouth" ? 0.2 : 0.04,
+          clearcoatRoughness: 0.6,
         });
         m.name = role;
+        if (role !== "mouth") patchSkin(m, this.skinU);
         faceMats?.push({ mat: m, role, src: srcMat.color.clone(), mapped: !!srcMat.map });
         mat = m;
         break;
       }
-      case "eyeWhite":
+      case "iris":
       case "pupil":
+      case "eyeWhite":
+        mat = this.mats.eye;
+        break;
       case "brows":
       case "lashes":
       case "teeth":
@@ -259,10 +352,10 @@ export class HeadzRenderer implements AvatarRendererApi {
         mat = this.mats[role];
         break;
       case "hair":
-        mat = this.mats.hair;
+        mat = kind === "beard" ? this.mats.beard : this.mats.hair;
         break;
       default: {
-        // frames, lenses, hats, earrings: keep the authored look
+        // frames, lenses, hats, earrings, masks: keep the authored look (recoloured on request)
         const m = new THREE.MeshPhysicalMaterial({
           color: srcMat.color,
           map: srcMat.map ?? null,
@@ -273,7 +366,7 @@ export class HeadzRenderer implements AvatarRendererApi {
           side: kind === "face" ? THREE.FrontSide : THREE.DoubleSide,
           clearcoat: role === "glassLens" ? 1 : role.startsWith("frame") ? 0.5 : 0,
           clearcoatRoughness: 0.1,
-          sheen: role.startsWith("headwear") ? 0.6 : 0,
+          sheen: role.startsWith("headwear") || role.startsWith("mask") ? 0.6 : 0,
           sheenRoughness: 0.5,
         });
         if (role === "glassLens") {
@@ -282,21 +375,56 @@ export class HeadzRenderer implements AvatarRendererApi {
           m.depthWrite = false;
         }
         m.name = role;
+        m.userData.src = srcMat.color.clone();
+        m.userData.srcOpacity = m.opacity;
         if (kind !== "face") this.partMats.add(m);
         else faceMats?.push({ mat: m, role, src: srcMat.color.clone(), mapped: !!srcMat.map });
         mat = m;
       }
     }
-    const mesh = new THREE.Mesh(src.geometry, mat);
+    // Own geometry wrapper: shares index/normals/uv/morphs with the cached GLB, owns its positions
+    const sg = src.geometry;
+    const geo = new THREE.BufferGeometry();
+    geo.setIndex(sg.index);
+    for (const [k, a] of Object.entries(sg.attributes)) geo.setAttribute(k, a);
+    geo.morphAttributes = sg.morphAttributes;
+    geo.morphTargetsRelative = sg.morphTargetsRelative;
+    for (const gr of sg.groups) geo.addGroup(gr.start, gr.count, gr.materialIndex);
+    const p = sg.attributes.position;
+    const pos = new Float32Array(p.count * 3);
+    for (let i = 0; i < p.count; i++) {
+      pos[i * 3] = p.getX(i);
+      pos[i * 3 + 1] = p.getY(i);
+      pos[i * 3 + 2] = p.getZ(i);
+    }
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    const mesh = new THREE.Mesh(geo, mat);
     mesh.name = src.name;
+    mesh.userData.role = role;
     // gltfpack stores dequantisation in the node transform — keep it
     mesh.applyMatrix4(src.matrixWorld);
-    if (src.geometry.morphAttributes.position?.length) {
+    if (sg.morphAttributes.position?.length) {
       mesh.updateMorphTargets();
       mesh.morphTargetDictionary = { ...(src.morphTargetDictionary ?? {}) };
     }
     mesh.frustumCulled = false;
     return mesh;
+  }
+
+  /** Head-space rest positions of a mesh (its node matrix applied) and the matrix back. */
+  private own(mesh: THREE.Mesh, role: string): Owned {
+    mesh.updateMatrix();
+    const pos = mesh.geometry.attributes.position.array as Float32Array;
+    const rest = new Float32Array(pos.length);
+    const v = new THREE.Vector3();
+    for (let i = 0; i < pos.length; i += 3) {
+      v.set(pos[i], pos[i + 1], pos[i + 2]).applyMatrix4(mesh.matrix);
+      rest[i] = v.x;
+      rest[i + 1] = v.y;
+      rest[i + 2] = v.z;
+    }
+    mesh.geometry.setAttribute("aHead", new THREE.BufferAttribute(rest.slice(), 3));
+    return { mesh, role, rest, toLocal: mesh.matrix.clone().invert() };
   }
 
   private drive(mesh: THREE.Mesh): Driven | null {
@@ -311,15 +439,21 @@ export class HeadzRenderer implements AvatarRendererApi {
   }
 
   /** Swap the part in a slot; missing files are ignored. */
-  private async setPart(slot: HeadzSlot, file: string | null) {
-    const key = file ?? "";
-    if (this.parts[slot]?.key === key) return;
+  private async setPart(slot: HeadzSlot, qid: string | null) {
+    const base = this.base;
+    if (!base) return;
+    const res = qid ? resolvePart(base.id, slot, qid) : null;
+    const key = res ? `${res.url}@${base.id}` : "";
+    if ((this.parts[slot]?.key ?? "") === key) return;
     const prev = this.parts[slot]?.group;
-    this.parts[slot] = { key, group: null };
+    this.parts[slot] = { key, group: null, owned: [], driven: [] };
     let group: THREE.Group | null = null;
-    if (file) {
+    const owned: Owned[] = [];
+    const driven: Driven[] = [];
+    if (res) {
       try {
-        const gltf = await loadGLTF(file);
+        const srcBase = headzBase(res.src);
+        const [gltf, srcMap] = await Promise.all([loadGLTF(res.url), res.src !== base.id ? loadMap(srcBase) : Promise.resolve(null)]);
         if (this.parts[slot]?.key !== key) return; // superseded
         gltf.scene.updateMatrixWorld(true);
         group = new THREE.Group();
@@ -328,67 +462,427 @@ export class HeadzRenderer implements AvatarRendererApi {
           const src = o as THREE.Mesh;
           if (!src.isMesh) return;
           const m = this.adopt(src, slot);
-          if (m) g.add(m);
+          if (!m) return;
+          g.add(m);
+          const ow = this.own(m, slot);
+          if (srcMap && this.map) fitRadial(ow.rest, srcMap, this.map);
+          owned.push(ow);
         });
+        if (FOLLOW_SLOTS.has(slot) && !this.lod)
+          for (const ow of owned) {
+            const d = this.follow(ow);
+            if (d) driven.push(d);
+          }
+        if (slot === "hair") for (const ow of owned) this.hairTips(ow);
       } catch {
         group = null;
       }
     }
-    if (prev) {
-      this.head.remove(prev);
-      prev.traverse((o) => {
-        const m = (o as THREE.Mesh).material as THREE.Material | undefined;
-        if (m && this.partMats.has(m)) {
-          m.dispose();
-          this.partMats.delete(m);
-        }
-      });
-    }
+    if (prev) this.dropGroup(prev);
     if (group) this.head.add(group);
-    this.parts[slot] = { key, group };
+    this.parts[slot] = { key, group, owned, driven };
+    this.shapeKey = "";
+    if (slot === "hair") this.scalpCover();
   }
+
+  private dropGroup(g: THREE.Group) {
+    this.head.remove(g);
+    g.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      const m = mesh.material as THREE.Material | undefined;
+      if (m && this.partMats.has(m)) {
+        m.dispose();
+        this.partMats.delete(m);
+      }
+      if (mesh.isMesh) disposeOwnGeometry(mesh.geometry);
+    });
+  }
+
+  private dropFace(g: THREE.Group) {
+    this.head.remove(g);
+    g.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (mesh.isMesh) disposeOwnGeometry(mesh.geometry);
+    });
+  }
+
+  // ── runtime geometry ─────────────────────────────────────────────────────
+
+  /** Skin morph deltas in head space (for morph transfer onto parts). */
+  private skinSource() {
+    const skin = this.owned.filter(isSkin);
+    let n = 0;
+    for (const o of skin) n += o.rest.length;
+    const pos = new Float32Array(n);
+    const deltas = new Map<string, Float32Array>();
+    let off = 0;
+    const m3 = new THREE.Matrix3();
+    const v = new THREE.Vector3();
+    for (const o of skin) {
+      pos.set(o.rest, off);
+      m3.setFromMatrix4(o.mesh.matrix);
+      const dict = o.mesh.morphTargetDictionary ?? {};
+      const attrs = o.mesh.geometry.morphAttributes.position ?? [];
+      for (const [name, idx] of Object.entries(dict)) {
+        const a = attrs[idx];
+        if (!a || !LOWER_FACE.test(name)) continue;
+        let d = deltas.get(name);
+        if (!d) deltas.set(name, (d = new Float32Array(n)));
+        for (let i = 0; i < a.count; i++) {
+          v.set(a.getX(i), a.getY(i), a.getZ(i)).applyMatrix3(m3);
+          d[off + i * 3] = v.x;
+          d[off + i * 3 + 1] = v.y;
+          d[off + i * 3 + 2] = v.z;
+        }
+      }
+      off += o.rest.length;
+    }
+    return { pos, deltas };
+  }
+
+  /** Give a part (beard, mask, piercing) the face's lower-face morphs so it moves with the jaw and lips. */
+  private follow(ow: Owned): Driven | null {
+    const src = this.skinSource();
+    if (!src.pos.length) return null;
+    const moved = transferMorphs(ow.rest, src, (n) => SHAPE_INDEX.has(n));
+    if (!moved.size) return null;
+    const geo = ow.mesh.geometry;
+    const m3 = new THREE.Matrix3().setFromMatrix4(ow.toLocal);
+    const v = new THREE.Vector3();
+    const attrs: THREE.BufferAttribute[] = [];
+    const dict: Record<string, number> = {};
+    for (const [name, d] of moved) {
+      const local = new Float32Array(d.length);
+      for (let i = 0; i < d.length; i += 3) {
+        v.set(d[i], d[i + 1], d[i + 2]).applyMatrix3(m3);
+        local[i] = v.x;
+        local[i + 1] = v.y;
+        local[i + 2] = v.z;
+      }
+      dict[name] = attrs.length;
+      attrs.push(new THREE.BufferAttribute(local, 3));
+    }
+    geo.morphAttributes = { position: attrs };
+    geo.morphTargetsRelative = true;
+    geo.userData.ownMorphs = true;
+    ow.mesh.updateMorphTargets();
+    ow.mesh.morphTargetDictionary = dict;
+    ow.mesh.morphTargetInfluences = new Array(attrs.length).fill(0);
+    return this.drive(ow.mesh);
+  }
+
+  /** Per-vertex make-up / blush regions from the face's own morphs: x lips, y upper lid, z cheeks. */
+  private skinFx(o: Owned) {
+    const geo = o.mesh.geometry;
+    const n = geo.attributes.position.count;
+    const fx = new Float32Array(n * 4);
+    const dict = o.mesh.morphTargetDictionary ?? {};
+    const attrs = geo.morphAttributes.position ?? [];
+    const mag = (names: string[], ch: number, downOnly = false) => {
+      const acc = new Float32Array(n);
+      for (const name of names) {
+        const a = attrs[dict[name] ?? -1];
+        if (!a) continue;
+        let max = 1e-9;
+        const m = new Float32Array(n);
+        for (let i = 0; i < n; i++) {
+          const dy = a.getY(i);
+          m[i] = downOnly && dy > 0 ? 0 : Math.hypot(a.getX(i), dy, a.getZ(i));
+          max = Math.max(max, m[i]);
+        }
+        for (let i = 0; i < n; i++) acc[i] = Math.max(acc[i], m[i] / max);
+      }
+      for (let i = 0; i < n; i++) fx[i * 4 + ch] = acc[i];
+    };
+    mag(["mouthRollLower", "mouthRollUpper"], 0);
+    mag(["eyeBlinkLeft", "eyeBlinkRight"], 1, true);
+    mag(["cheekPuff"], 2);
+    geo.setAttribute("aFx", new THREE.BufferAttribute(fx, 4));
+    geo.setAttribute("aCover", new THREE.BufferAttribute(new Float32Array(n), 1));
+  }
+
+  /** Hair tint on the scalp wherever close-fitting hair covers it (no skin/black gaps between strands). */
+  private scalpCover() {
+    const hair = this.parts.hair?.owned ?? [];
+    const EL = 32, AZ = 64;
+    const inner = new Float32Array(EL * AZ).fill(Infinity);
+    const bin = (x: number, y: number, z: number) => {
+      const r = Math.hypot(x, y, z) || 1e-6;
+      const e = Math.min(EL - 1, Math.max(0, Math.floor((Math.asin(Math.max(-1, Math.min(1, y / r))) / Math.PI + 0.5) * EL)));
+      const a = Math.min(AZ - 1, Math.max(0, Math.floor((Math.atan2(x, z) / (2 * Math.PI) + 0.5) * AZ)));
+      return [e, a, r] as const;
+    };
+    for (const o of hair) {
+      const p = o.rest;
+      for (let i = 0; i < p.length; i += 3) {
+        const [e, a, r] = bin(p[i], p[i + 1], p[i + 2]);
+        const k = e * AZ + a;
+        if (r < inner[k]) inner[k] = r;
+      }
+    }
+    for (const o of this.owned) {
+      const cover = o.mesh.geometry.getAttribute("aCover") as THREE.BufferAttribute | undefined;
+      if (!cover) continue;
+      const arr = cover.array as Float32Array;
+      const p = o.rest;
+      for (let i = 0, j = 0; i < p.length; i += 3, j++) {
+        if (!hair.length) {
+          arr[j] = 0;
+          continue;
+        }
+        const [e, a, r] = bin(p[i], p[i + 1], p[i + 2]);
+        // no dilation: the tint must stay under the hair, not creep past the hairline
+        const best = inner[e * AZ + a];
+        // only the scalp: well above the eyes and not the face front
+        const scalp = smooth(0.05, 0.3, p[i + 1] - 0.15) * (1 - smooth(0.35, 0.7, p[i + 2]) * smooth(0.6, 0.2, p[i + 1]));
+        arr[j] = smooth(0.09, 0.03, best - r) * scalp;
+      }
+      cover.needsUpdate = true;
+    }
+  }
+
+  /** Height of each hair vertex above the scalp (0 at the roots → 1 at the tips), for two-tone hair. */
+  private hairTips(o: Owned) {
+    const p = o.rest;
+    const t = new Float32Array(p.length / 3);
+    for (let i = 0, j = 0; i < p.length; i += 3, j++) {
+      const above = this.map ? Math.hypot(p[i], p[i + 1], p[i + 2]) - radiusAt(this.map, p[i], p[i + 1], p[i + 2]) : 0.1;
+      t[j] = Math.max(smooth(0.05, 0.3, above), smooth(-0.1, -0.9, p[i + 1]));
+    }
+    o.mesh.geometry.setAttribute("aTip", new THREE.BufferAttribute(t, 1));
+  }
+
+  /** A short neck under the head that fades out (Memoji-style) — hides the head's underside. */
+  private buildNeck(b: HeadzBase) {
+    if (this.neck) {
+      this.root.remove(this.neck);
+      this.neck.geometry.dispose();
+      this.neck = null;
+    }
+    if (this.lod) return;
+    const lm = b.lm ?? {};
+    const jaw = lm.jaw ?? 0.55;
+    const chinZ = lm.chin?.[2] ?? 0.48;
+    const rx = jaw * 0.64;
+    const pts: THREE.Vector2[] = [];
+    for (let i = 0; i <= 12; i++) {
+      const t = i / 12;
+      pts.push(new THREE.Vector2(rx * (1 + 0.12 * t * t), lerp(-0.25, -1.75, t)));
+    }
+    const geo = new THREE.LatheGeometry(pts, 40);
+    geo.scale(1, 1, 0.92);
+    geo.translate(0, 0, chinZ - 0.62);
+    geo.setAttribute("aHead", geo.attributes.position.clone());
+    const neck = new THREE.Mesh(geo, this.mats.neck);
+    neck.renderOrder = 2;
+    neck.frustumCulled = false;
+    this.neck = neck;
+    this.root.add(neck);
+  }
+
+  /** Piercings: small metal studs placed on the skin; they follow the lips / nose. */
+  private setExtras(key: string) {
+    const base = this.base;
+    if (!base || this.extras.key === key) return;
+    if (this.extras.group) this.dropGroup(this.extras.group);
+    this.extras = { key, group: null, owned: [], driven: [] };
+    if (!key) return;
+    const f = frameOf(base);
+    const skin = this.skinPoints();
+    const snap = (x: number, y: number, z: number) => nearest(skin, x, y, z);
+    const g = new THREE.Group();
+    const add = (geo: THREE.BufferGeometry, p: [number, number, number], out = 0.012) => {
+      const len = Math.hypot(...p) || 1;
+      geo.translate(p[0] + (p[0] / len) * out, p[1] + (p[1] / len) * out, p[2] + (p[2] / len) * out);
+      const m = new THREE.Mesh(geo, this.mats.metal);
+      m.frustumCulled = false;
+      g.add(m);
+      const ow = this.own(m, "piercing");
+      this.extras.owned.push(ow);
+      const d = this.follow(ow);
+      if (d) this.extras.driven.push(d);
+    };
+    const [nx, ny, nz] = f.nose;
+    for (const k of key.split(",")) {
+      if (k === "nose") add(new THREE.SphereGeometry(0.022, 12, 8), snap(nx + 0.1, ny + 0.02, nz - 0.12));
+      if (k === "septum") {
+        const ring = new THREE.TorusGeometry(0.04, 0.008, 8, 20);
+        ring.rotateX(Math.PI / 2 - 0.4);
+        add(ring, [nx, ny - 0.1, nz - 0.07], 0);
+      }
+      if (k === "lip") add(new THREE.SphereGeometry(0.02, 12, 8), snap(f.mouth[0] + f.mouthHalf * 0.45, f.mouth[1] - 0.07, f.mouth[2]));
+      if (k === "brow") {
+        const e = f.eyes[0];
+        add(new THREE.SphereGeometry(0.02, 12, 8), snap(e.c[0] + e.r * 1.1, e.c[1] + e.r * 1.65, e.c[2]));
+        add(new THREE.SphereGeometry(0.02, 12, 8), snap(e.c[0] + e.r * 1.25, e.c[1] + e.r * 1.25, e.c[2] - 0.02));
+      }
+    }
+    this.extras.group = g;
+    this.head.add(g);
+    this.shapeKey = "";
+  }
+
+  private skinPoints(attr: "rest" | "aHead" = "rest"): Float32Array {
+    const skin = this.owned.filter(isSkin);
+    const out = new Float32Array(skin.reduce((s, o) => s + o.rest.length, 0));
+    let off = 0;
+    for (const o of skin) {
+      out.set(attr === "rest" ? o.rest : ((o.mesh.geometry.getAttribute("aHead") as THREE.BufferAttribute).array as Float32Array), off);
+      off += o.rest.length;
+    }
+    return out;
+  }
+
+  /** Face-shape sliders, brow style, lash length → positions of the face and every part. */
+  private applyShape(c: AvatarConfig) {
+    const base = this.base;
+    if (!base) return;
+    const key = JSON.stringify([c.face, c.brows.style, c.brows.thickness, c.eyes.lashes, this.faceKey, SLOTS.map((s) => this.parts[s]?.key), this.extras.key]);
+    if (key === this.shapeKey) return;
+    this.shapeKey = key;
+    const f = frameOf(base);
+    const all = [...this.owned, ...SLOTS.flatMap((s) => this.parts[s]?.owned ?? []), ...this.extras.owned];
+    const v = new THREE.Vector3();
+    for (const o of all) {
+      const p = o.rest.slice();
+      if (o.role === "brows") browStyle(p, BROW_SHAPES[c.brows.style], c.brows.thickness);
+      if (o.role === "lashes") lashLength(p, f, c.eyes.lashes);
+      deformFace(p, c.face, f, { brows: o.role === "brows" });
+      const head = o.mesh.geometry.getAttribute("aHead") as THREE.BufferAttribute;
+      (head.array as Float32Array).set(p);
+      head.needsUpdate = true;
+      const pos = o.mesh.geometry.attributes.position as THREE.BufferAttribute;
+      const arr = pos.array as Float32Array;
+      for (let i = 0; i < p.length; i += 3) {
+        v.set(p[i], p[i + 1], p[i + 2]).applyMatrix4(o.toLocal);
+        arr[i] = v.x;
+        arr[i + 1] = v.y;
+        arr[i + 2] = v.z;
+      }
+      pos.needsUpdate = true;
+    }
+    // eye shader + skin details follow the reshaped face
+    (["L", "R"] as const).forEach((k, i) => {
+      const e = base.eyes?.[k];
+      if (!e) return;
+      const d = deformedEye(e, c.face, f);
+      this.eyeU.uEyeC.value[i].set(...d.c);
+      this.skinU.uEyeC.value[i].set(...d.c);
+      this.eyeU.uEyeAxis.value[i].set(...e.axis);
+      // small authored irises (kids, elders) are opened up a little: reads livelier, like Memoji
+      const iris = Math.max(e.iris, 29);
+      this.eyeU.uEyeAng.value[i].set(THREE.MathUtils.degToRad(iris), THREE.MathUtils.degToRad(Math.max(e.pupil, iris * 0.4)));
+    });
+    const pts = new Float32Array([...f.nose, ...f.mouth]);
+    deformFace(pts, c.face, f);
+    this.skinU.uNose.value.set(pts[0], pts[1], pts[2]);
+    this.skinU.uMouth.value.set(pts[3], pts[4], pts[5], f.mouthHalf * (1 + 0.2 * (c.face.mouthWidth ?? 0)));
+    this.placeMoles(c, f);
+  }
+
+  private placeMoles(c: AvatarConfig, f: ReturnType<typeof frameOf>) {
+    const pts = this.skinPoints("aHead");
+    const e = this.skinU.uEyeC.value[0];
+    const m = this.skinU.uMouth.value;
+    const spots: [number, number, number][] = [
+      [e.x + 0.06, e.y - 0.3, e.z + 0.05],
+      [m.x - m.w * 0.75, m.y + 0.09, m.z - 0.02],
+      [-0.28, f.chin[1] + 0.22, f.chin[2] - 0.1],
+    ];
+    this.skinU.uMoles.value.forEach((v, i) => {
+      if (i < c.skinFx.moles && pts.length) v.set(...nearest(pts, ...spots[i]), 0.02);
+      else v.set(0, 0, 0, 0);
+    });
+  }
+
+  // ── colours ────────────────────────────────────────────────────────────────
 
   private applyColors(c: AvatarConfig) {
     const base = headzBase(c.base);
-    const skinOverride = c.skin ? srgb(c.skin) : null;
     const baseSkin = srgb(base.skin);
-    const eye = c.eyeColor ? srgb(c.eyeColor) : null;
+    const skin = c.skin ? srgb(c.skin) : baseSkin;
+    const sheen = skin.clone().lerp(new THREE.Color("#ffd9cf"), 0.5);
     for (const f of this.faceMats) {
-      if (f.role === "skin") {
+      if (f.role === "skin" || f.role === "skinDetail") {
         if (f.mapped) {
           // texture carries the authored tone; tint by the ratio to reach the chosen one
-          f.mat.color.setRGB(1, 1, 1);
-          if (skinOverride) f.mat.color.setRGB(
-            Math.min(2, skinOverride.r / Math.max(0.02, baseSkin.r)),
-            Math.min(2, skinOverride.g / Math.max(0.02, baseSkin.g)),
-            Math.min(2, skinOverride.b / Math.max(0.02, baseSkin.b)),
+          f.mat.color.setRGB(
+            Math.min(2, skin.r / Math.max(0.02, baseSkin.r)),
+            Math.min(2, skin.g / Math.max(0.02, baseSkin.g)),
+            Math.min(2, skin.b / Math.max(0.02, baseSkin.b)),
           );
         } else {
-          f.mat.color.copy(skinOverride ?? f.src);
+          f.mat.color.copy(skin);
         }
-        f.mat.sheenColor.copy(skinOverride ?? (f.mapped ? baseSkin : f.src)).lerp(new THREE.Color("#ffd9cf"), 0.5);
-      } else if (f.role === "iris") {
-        f.mat.color.copy(eye ?? (f.mapped ? srgb(base.iris) : f.src));
+        f.mat.sheenColor.copy(sheen);
       }
     }
+    this.mats.neck.color.copy(skin);
+    this.mats.neck.sheenColor.copy(sheen);
     const hair = srgb(c.hairColor ?? base.hair);
     this.mats.hair.color.copy(hair);
     this.mats.hair.sheenColor.copy(hair).lerp(new THREE.Color("#ffffff"), 0.35);
-    this.mats.brows.color.copy(hair).multiplyScalar(0.75);
+    const tip = c.hairTip ? srgb(c.hairTip) : null;
+    this.hairU.uTip.value.set(tip?.r ?? 1, tip?.g ?? 1, tip?.b ?? 1, tip ? 1 : 0);
+    this.hairU.uStreak.value = c.hairTipStyle === "streaks" ? 1 : 0;
+    const beard = srgb(c.beardColor ?? c.hairColor ?? base.hair);
+    this.mats.beard.color.copy(beard);
+    this.mats.beard.sheenColor.copy(beard).lerp(new THREE.Color("#ffffff"), 0.3);
+    this.beardU.uTip.value.w = 0;
+    const brows = c.brows.color ? srgb(c.brows.color) : hair.clone().multiplyScalar(0.75);
+    this.mats.brows.color.copy(brows);
+    this.mats.lashes.color.copy(brows).multiplyScalar(0.45).lerp(new THREE.Color("#1d1512"), 0.6);
+    // eyes
+    this.eyeU.uIrisColor.value.copy(srgb(c.eyeColor ?? irisDefault(base)));
+    this.eyeU.uIrisStyle.value = ["natural", "ring", "cartoon", "bright"].indexOf(c.eyes.style);
+    // skin details + make-up
+    const S = this.skinU;
+    S.uBlush.value.set(1, 0.62, 0.62, c.skinFx.blush);
+    S.uFreckles.value = c.skinFx.freckles;
+    S.uAge.value = c.skinFx.age;
+    const lip = c.makeup.lip ? srgb(c.makeup.lip) : null;
+    S.uLip.value.set(lip?.r ?? 0, lip?.g ?? 0, lip?.b ?? 0, lip ? c.makeup.lipAmount * 0.9 : 0);
+    const sh = c.makeup.shadow ? srgb(c.makeup.shadow) : null;
+    S.uShadow.value.set(sh?.r ?? 0, sh?.g ?? 0, sh?.b ?? 0, sh ? c.makeup.shadowAmount * 0.75 : 0);
+    // a subtle lash line for everyone; eyeliner makes it bolder
+    const liner = new THREE.Color("#1d1512").lerp(skin, 0.35 - 0.35 * c.makeup.liner);
+    S.uLiner.value.set(liner.r, liner.g, liner.b, 0.28 + 0.62 * c.makeup.liner);
+    // gaps between dark strands read as holes; light hair over skin doesn't need it
+    S.uScalp.value.set(hair.r * 0.8, hair.g * 0.8, hair.b * 0.8, 0.9 * (1 - 0.8 * hair.getHSL({ h: 0, s: 0, l: 0 }).l));
+    // accessory colours
+    for (const m of this.partMats) {
+      const pm = m as THREE.MeshPhysicalMaterial;
+      const src = pm.userData.src as THREE.Color | undefined;
+      if (!src) continue;
+      if (pm.name.startsWith("frame")) pm.color.copy(c.acc.frame ? srgb(c.acc.frame) : src);
+      else if (pm.name === "glassLens") {
+        pm.color.copy(c.acc.lens ? srgb(c.acc.lens) : src);
+        pm.opacity = c.acc.lens ? 0.55 : pm.userData.srcOpacity;
+      } else if (pm.name.startsWith("headwear")) {
+        // tint the hat's main colour; dark trims stay dark
+        const l = src.getHSL({ h: 0, s: 0, l: 0 }).l;
+        pm.color.copy(c.acc.hat && l > 0.08 ? srgb(c.acc.hat) : src);
+      }
+    }
   }
+
+  // ── tracking & animation ────────────────────────────────────────────────
 
   applyFaceResult(result: FaceResult | null | undefined) {
     if (!result) return;
     const cats = result.faceBlendshapes?.[0]?.categories;
     if (cats?.length) {
+      const raw: Weights = {};
       for (const { categoryName, score } of cats) {
         let n = categoryName;
         if (this.opts.mirror) {
           if (n.includes("Left")) n = n.replace("Left", "Right");
           else if (n.includes("Right")) n = n.replace("Right", "Left");
         }
-        this.targets[n as Shape] = score;
+        raw[n] = score;
       }
+      // both eyes share one gaze; lids agree unless it's a real wink
+      this.targets = combineEyes(raw) as Partial<Record<Shape, number>>;
       this.lastTrack = performance.now();
     }
     const mtx = result.facialTransformationMatrixes?.[0]?.data;
@@ -443,6 +937,13 @@ export class HeadzRenderer implements AvatarRendererApi {
   /** Called after every rendered frame (e.g. to push it to a captureStream(0) track). */
   onRender: (() => void) | null = null;
 
+  // ── Add-on hook (floating hands: lib/avatar/headz/hands/HandsController) ──
+  // Add-ons get the scene + camera and a tick on every animated frame; the renderer knows nothing else about them.
+  readonly addons = new Set<{ tick(dt: number): void }>();
+  get stage() {
+    return { scene: this.scene, camera: this.camera };
+  }
+
   /** Render right now (face tracking calls this as soon as a camera frame is processed). */
   renderNow() {
     if (!this.running) return;
@@ -475,18 +976,23 @@ export class HeadzRenderer implements AvatarRendererApi {
     cancelAnimationFrame(this.raf);
   }
 
-  async renderOnceAsync(yaw = 0) {
+  async renderOnceAsync(yaw = 0, pitch = 0) {
     await this.loading;
     this.current.fill(0);
-    for (const [k, v] of Object.entries(this.manual)) {
+    const w: Weights = { ...this.manual };
+    // still frames: the same conjugate gaze + lid follow as live
+    const g = gazeOf(w);
+    Object.assign(w, gazeWeights(g.h, g.v));
+    withLidFollow(w, g.v);
+    for (const [k, v] of Object.entries(w)) {
       const i = SHAPE_INDEX.get(k);
       if (i !== undefined) this.current[i] = v ?? 0;
     }
     this.headPivot.quaternion.identity();
-    this.root.rotation.y = yaw;
+    this.root.rotation.set(pitch, yaw, 0, "YXZ");
     this.applyRig();
     this.renderer.render(this.scene, this.camera);
-    this.root.rotation.y = 0;
+    this.root.rotation.set(0, 0, 0);
   }
   renderOnce(yaw = 0) {
     void this.renderOnceAsync(yaw);
@@ -520,10 +1026,10 @@ export class HeadzRenderer implements AvatarRendererApi {
     return i === undefined ? 0 : this.current[i];
   }
 
-  /** Morph influences actually applied to the face meshes (debug: proves the name mapping). */
+  /** Morph influences actually applied to the face meshes and parts (debug: proves the name mapping). */
   debugMorphs(): Record<string, Record<string, number>> {
     const out: Record<string, Record<string, number>> = {};
-    for (const d of this.driven) {
+    for (const d of this.allDriven()) {
       const dict = d.mesh.morphTargetDictionary!;
       const inf = d.mesh.morphTargetInfluences!;
       const row: Record<string, number> = {};
@@ -539,6 +1045,7 @@ export class HeadzRenderer implements AvatarRendererApi {
     Object.values(this.mats).forEach((m) => m.dispose());
     this.faceMats.forEach((f) => f.mat.dispose());
     this.partMats.forEach((m) => m.dispose());
+    this.neck?.geometry.dispose();
     this.scene.environment?.dispose();
     this.renderer.dispose();
   }
@@ -547,17 +1054,28 @@ export class HeadzRenderer implements AvatarRendererApi {
     const now = performance.now();
     const tracking = now - this.lastTrack < 800;
     const t = this.clock.elapsedTime;
-    const target: Partial<Record<Shape, number>> = tracking ? { ...this.targets } : { ...this.manual };
+    const I = this.idle;
+    const target: Weights = tracking ? { ...this.targets } : { ...this.manual };
+    // micro-saccades: tiny shared jumps of both eyes every ~0.4–1.6 s
+    if (t > I.sacAt) {
+      I.sacAt = t + 0.4 + Math.random() * 1.2;
+      I.sx = (Math.random() * 2 - 1) * 0.045;
+      I.sy = (Math.random() * 2 - 1) * 0.03;
+    }
+    let gaze = gazeOf(target);
     if (!tracking && this.opts.idle) {
-      const I = this.idle;
+      // natural blinks: every 2–6 s, sometimes a double blink
       if (I.blinkT < 0 && t > I.nextBlink) {
         I.blinkT = 0;
-        I.nextBlink = t + 2.4 + Math.random() * 3.6;
+        I.double = Math.random() < 0.15;
+        I.nextBlink = t + 2 + Math.random() * 4;
       }
       if (I.blinkT >= 0) {
         I.blinkT += dt;
-        const b = I.blinkT < 0.08 ? I.blinkT / 0.08 : I.blinkT < 0.2 ? 1 - (I.blinkT - 0.08) / 0.12 : 0;
-        if (I.blinkT > 0.2) I.blinkT = -1;
+        const bt = I.blinkT;
+        const one = (x: number) => (x < 0 ? 0 : x < 0.07 ? x / 0.07 : x < 0.22 ? 1 - (x - 0.07) / 0.15 : 0);
+        const b = Math.max(one(bt), I.double ? one(bt - 0.3) : 0);
+        if (bt > (I.double ? 0.52 : 0.22)) I.blinkT = -1;
         target.eyeBlinkLeft = Math.max(target.eyeBlinkLeft ?? 0, b);
         target.eyeBlinkRight = Math.max(target.eyeBlinkRight ?? 0, b);
       }
@@ -571,28 +1089,37 @@ export class HeadzRenderer implements AvatarRendererApi {
       // Head: +yaw turns toward screen right; pitch < 0 (pointer above) must tilt the face UP, i.e. a
       // negative rotation about X (a positive one would swing the face down toward the floor).
       // Gaze: +gx = toward screen right = the avatar's own left (+X): left eye looks out, right eye in.
-      const gx = I.gx + this.look.yaw * 1.5, gy = I.gy - this.look.pitch * 1.5;
-      target.eyeLookOutLeft = Math.max(0, gx);
-      target.eyeLookInRight = Math.max(0, gx);
-      target.eyeLookInLeft = Math.max(0, -gx);
-      target.eyeLookOutRight = Math.max(0, -gx);
-      target.eyeLookUpLeft = target.eyeLookUpRight = Math.max(0, gy);
-      target.eyeLookDownLeft = target.eyeLookDownRight = Math.max(0, -gy);
+      gaze = { h: gaze.h + I.gx + this.look.yaw * 1.5, v: gaze.v + I.gy - this.look.pitch * 1.5 };
       this.headTarget.setFromEuler(
         new THREE.Euler(Math.sin(t * 0.27 + 1) * 0.035 + this.look.pitch, Math.sin(t * 0.35) * 0.06 + this.look.yaw, Math.sin(t * 0.22) * 0.025, "YXZ"),
       );
     }
+    // one gaze for both eyes (+ micro-saccades); lids follow it (tracked lids already include it)
+    const h = Math.max(-1, Math.min(1, gaze.h + I.sx)), v = Math.max(-1, Math.min(1, gaze.v + I.sy));
+    Object.assign(target, gazeWeights(h, v));
+    if (!tracking) withLidFollow(target, v);
+    // pupils breathe a little and widen when the eyes open wide
+    this.eyeU.uDilate.value = 0.06 * Math.sin(t * 0.37) + 0.04 * Math.sin(t * 1.13) + 0.25 * ((this.current[20] + this.current[21]) / 2);
     // Tracked input is already One-Euro filtered (FaceTracker), so it is followed almost directly.
     const k = 1 - Math.exp(-dt * (tracking ? TRACK_RATE : 14));
     const kb = 1 - Math.exp(-dt * (tracking ? TRACK_RATE : 40));
+    const ke = 1 - Math.exp(-dt * 30); // eyes: fast, saccade-like
     for (let i = 0; i < SHAPES.length; i++) {
       const s = SHAPES[i];
       const cur = this.current[i];
-      this.current[i] = cur + ((target[s] ?? 0) - cur) * (i === 8 || i === 9 ? kb : k);
+      const rate = i === 8 || i === 9 ? kb : i >= 10 && i <= 17 ? Math.max(k, ke) : k;
+      this.current[i] = cur + ((target[s] ?? 0) - cur) * rate;
     }
     this.headCurrent.slerp(this.headTarget, 1 - Math.exp(-dt * (tracking ? TRACK_RATE : 12)));
     this.headPivot.quaternion.copy(this.headCurrent);
     this.applyRig();
+    for (const a of this.addons) a.tick(dt); // add-on hook (hands)
+  }
+
+  private *allDriven(): Generator<Driven> {
+    yield* this.driven;
+    for (const s of SLOTS) yield* this.parts[s]?.driven ?? [];
+    yield* this.extras.driven;
   }
 
   private applyRig() {
@@ -600,9 +1127,98 @@ export class HeadzRenderer implements AvatarRendererApi {
       this.head.updateMatrixWorld(true);
       this.hatPlane.copy(this.hatPlaneLocal).applyMatrix4(this.head.matrixWorld);
     }
-    for (const d of this.driven) {
+    for (const d of this.allDriven()) {
       const inf = d.mesh.morphTargetInfluences!;
       for (const [idx, s] of d.slots) inf[idx] = this.current[s];
     }
+  }
+}
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+function smooth(a: number, b: number, x: number) {
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+}
+
+function roleOf(src: THREE.Mesh): string {
+  return (src.name || "").split(/[._]/)[0].toLowerCase();
+}
+
+function isSkin(o: Owned): boolean {
+  const r = o.mesh.userData.role as string;
+  return r === "skin" || r === "skinDetail";
+}
+
+/** Free the GPU buffers we created for a mesh (shared GLB attributes stay with the cache). */
+function disposeOwnGeometry(g: THREE.BufferGeometry) {
+  g.dispose();
+}
+
+/** Default iris colour: the authored one, unless it's so dark the iris would read as a black disc. */
+function irisDefault(b: HeadzBase): string {
+  const { h, s, l } = srgb(b.iris).getHSL({ h: 0, s: 0, l: 0 });
+  // near-black discs and the pale pinkish-grey baked averages of some sources read as "no colour"
+  return l < 0.06 || ((h < 0.1 || h > 0.9) && s < 0.4 && l > 0.4) ? "#5C3B22" : b.iris;
+}
+
+function nearest(pts: Float32Array, x: number, y: number, z: number): [number, number, number] {
+  let best = Infinity, bi = 0;
+  for (let i = 0; i < pts.length; i += 3) {
+    const d = (pts[i] - x) ** 2 + (pts[i + 1] - y) ** 2 + (pts[i + 2] - z) ** 2;
+    if (d < best) {
+      best = d;
+      bi = i;
+    }
+  }
+  return [pts[bi], pts[bi + 1], pts[bi + 2]];
+}
+
+/** Brow style on the brow mesh: arch the middle, tilt the tails, lift, thicken/thin around the centre line. */
+function browStyle(p: Float32Array, s: { arch: number; tilt: number; lift: number }, thickness: number) {
+  if (!s.arch && !s.tilt && !s.lift && !thickness) return;
+  for (const side of [1, -1]) {
+    const idx: number[] = [];
+    for (let i = 0; i < p.length; i += 3) if (p[i] * side > 0) idx.push(i);
+    if (!idx.length) continue;
+    let lo = Infinity, hi = -Infinity;
+    for (const i of idx) {
+      lo = Math.min(lo, p[i] * side);
+      hi = Math.max(hi, p[i] * side);
+    }
+    const cx = (lo + hi) / 2, hw = Math.max(1e-3, (hi - lo) / 2);
+    // centre line: mean height of the brow in thin vertical slices
+    const B = 16;
+    const sum = new Float32Array(B), cnt = new Float32Array(B);
+    const slice = (i: number) => Math.min(B - 1, Math.max(0, Math.floor(((p[i] * side - lo) / (hi - lo + 1e-6)) * B)));
+    for (const i of idx) {
+      sum[slice(i)] += p[i + 1];
+      cnt[slice(i)]++;
+    }
+    for (const i of idx) {
+      const u = (p[i] * side - cx) / hw; // −1 inner … +1 outer
+      const b = slice(i);
+      const mid = cnt[b] ? sum[b] / cnt[b] : p[i + 1];
+      let y = mid + (p[i + 1] - mid) * (1 + 0.55 * thickness);
+      y += 0.04 * s.arch * (1 - u * u) + 0.035 * s.tilt * u + 0.03 * s.lift;
+      p[i + 1] = y;
+    }
+  }
+}
+
+/** Lash length: stretch the lashes away from the eyeball (0 = as authored). */
+function lashLength(p: Float32Array, f: ReturnType<typeof frameOf>, len: number) {
+  if (!len) return;
+  const k = 1 + 0.7 * len;
+  for (let i = 0; i < p.length; i += 3) {
+    const e = f.eyes.find((x) => x.c[0] * p[i] > 0) ?? f.eyes[0];
+    const dx = p[i] - e.c[0], dy = p[i + 1] - e.c[1], dz = p[i + 2] - e.c[2];
+    const r = Math.hypot(dx, dy, dz);
+    const r0 = e.r * 1.02;
+    if (r <= r0) continue;
+    const nr = r0 + (r - r0) * k;
+    p[i] = e.c[0] + (dx / r) * nr;
+    p[i + 1] = e.c[1] + (dy / r) * nr;
+    p[i + 2] = e.c[2] + (dz / r) * nr;
   }
 }

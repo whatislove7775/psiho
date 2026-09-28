@@ -88,6 +88,8 @@ interface CredentialBase {
 
 export interface Credential extends CredentialBase {
   number: string;
+  /** «Показывать номер клиентам полностью» */
+  number_public: boolean;
   status: CredentialStatus;
   status_label: string;
   reject_reason: string;
@@ -110,6 +112,8 @@ export interface StaffCredential extends Credential {
 
 export interface PublicCredential extends CredentialBase {
   number_masked: string;
+  /** full number — only when the specialist chose to show it */
+  number?: string;
   verified_at: string | null;
 }
 
@@ -124,6 +128,7 @@ export interface CredentialInput {
   url?: string;
   doi?: string;
   number?: string;
+  number_public?: boolean;
 }
 
 export const CREDENTIAL_MAX_BYTES = 10 * 1024 * 1024;

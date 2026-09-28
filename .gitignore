@@ -30,6 +30,9 @@ next-env.d.ts
 # MediaPipe wasm is copied from node_modules on install
 apps/web/public/mediapipe/wasm/
 
+# Speech-recognition model (Vosk, ~45 MB) is downloaded at docker build (apps/web/Dockerfile)
+apps/web/public/stt/
+
 # avatar kit build cache
 tools/avatar-kit/.cache/
 __pycache__/

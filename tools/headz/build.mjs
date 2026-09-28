@@ -28,12 +28,13 @@ if (!SRC) {
   process.exit(1);
 }
 const GLTFPACK = process.env.GLTFPACK || "gltfpack";
-const SLOTS = ["hair", "beard", "eyewear", "headwear", "earrings"];
+const SLOTS = ["hair", "beard", "eyewear", "headwear", "earrings", "mask"];
 const GROUP_ORDER = ["woman", "man", "girl", "boy", "oldwoman", "oldman"];
 const TONE_ORDER = ["light", "medium", "dark"];
 
 // Parts that don't sit on the head once exported (checked by eye) — excluded.
-const EXCLUDE = new Set((process.env.HEADZ_EXCLUDE || "").split(",").filter(Boolean));
+// man/hair-hair-10 floats ~0.3 above the scalp in the source (bone-parented, not on the rest pose).
+const EXCLUDE = new Set(["man/hair-hair-10", ...(process.env.HEADZ_EXCLUDE || "").split(",").filter(Boolean)]);
 
 function pack(src, dst) {
   fs.mkdirSync(path.dirname(dst), { recursive: true });
@@ -49,6 +50,13 @@ function pack(src, dst) {
 const lin2srgb = (c) => (c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055);
 const hex = (rgb) =>
   "#" + rgb.map((c) => Math.round(Math.min(1, Math.max(0, lin2srgb(c))) * 255).toString(16).padStart(2, "0")).join("");
+
+const lum = (h) => {
+  const n = parseInt(h.slice(1), 16);
+  return (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
+};
+const TONE_LUM = { medium: 0.45, dark: 0.28 };
+const TONE_SKIN = { medium: "#b07550", dark: "#6e4330" };
 
 const optionId = (slot, key) => key.replace(new RegExp(`^${slot}-`), "").replace(/^hair-/, "").replace(/[^a-z0-9-]/g, "") || slot;
 
@@ -70,6 +78,16 @@ for (const dir of fs.readdirSync(SRC).sort()) {
   const hairPart = info.parts.find((p) => p.slot === "hair" && p.visible) ?? info.parts.find((p) => p.slot === "hair");
   // elders' authored hair shader is a stylised ramp; silver reads better as the default
   const hairColor = group.startsWith("old") ? [0.62, 0.6, 0.57] : hairPart?.materials?.[0]?.color ?? mat("brows")?.color ?? [0.02, 0.015, 0.01];
+  // spherical radius map of the head (uint8) — lets the runtime fit a part made for one base onto another
+  let fit;
+  if (info.fit?.radius) {
+    const fitDst = path.join(OUT, id, "fit.bin");
+    fs.writeFileSync(fitDst, Buffer.from(info.fit.radius, "base64"));
+    fit = "/" + path.relative(PUBLIC, fitDst).split(path.sep).join("/");
+  }
+  let skin = hex(mat("skin")?.color ?? [0.5, 0.3, 0.2]);
+  // a few sources carry a pale head material on darker bases (boys): use a tone-true default
+  if (tone !== "light" && lum(skin) - TONE_LUM[tone] > 0.12) skin = TONE_SKIN[tone];
   const base = {
     id,
     group,
@@ -78,10 +96,11 @@ for (const dir of fs.readdirSync(SRC).sort()) {
     lod: hasLod ? "/" + path.relative(PUBLIC, lodDst).split(path.sep).join("/") : undefined,
     bytes: faceBytes,
     tris: info.face.tris,
-    skin: hex(mat("skin")?.color ?? [0.5, 0.3, 0.2]),
+    skin,
     hair: hex(hairColor),
     iris: hex(mat("iris")?.color ?? [0.05, 0.03, 0.02]),
     defaults: {},
+    ...(fit ? { fit, eyes: info.fit.eyes, lm: info.fit.lm } : {}),
   };
   bases.push(base);
   options[group] ??= Object.fromEntries(SLOTS.map((s) => [s, []]));

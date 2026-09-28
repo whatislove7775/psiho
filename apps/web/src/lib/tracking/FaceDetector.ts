@@ -11,14 +11,16 @@
 import type { LandmarkerResult } from "./FaceTracker";
 import type { Landmark } from "./faceMath.mjs";
 import { avatarPerf } from "./perf";
+import { HAND_INTERVAL_MS, type HandDetection, type HandsCallback } from "./handTypes";
 
 const MP_VERSION = "0.10.14"; // must match package.json exactly
 // Served from our own origin first (see scripts/copy-mediapipe.mjs); CDN as a fallback.
 export const MP_SOURCES = [
-  { wasm: "/mediapipe/wasm", model: "/mediapipe/face_landmarker.task" },
+  { wasm: "/mediapipe/wasm", model: "/mediapipe/face_landmarker.task", hand: "/mediapipe/hand_landmarker.task" },
   {
     wasm: `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}/wasm`,
     model: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+    hand: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
   },
 ];
 
@@ -29,6 +31,8 @@ export interface FaceDetector {
   readonly backend: string;
   /** Offer a camera frame. Returns false if the detector is busy (frame dropped). */
   push(video: HTMLVideoElement, tsMs: number, since: number): boolean;
+  /** Hand tracking on/off (results go to `onHands` of createFaceDetector); loads the model on first use. */
+  setHands?(on: boolean): void;
   close(): void;
 }
 
@@ -53,7 +57,7 @@ function softwareGL(): boolean {
 }
 
 /** Worker-backed detector; resolves null if the worker can't start within `timeoutMs`. */
-async function createWorkerDetector(onResult: DetectCallback, timeoutMs = 30000): Promise<FaceDetector | null> {
+async function createWorkerDetector(onResult: DetectCallback, onHands?: HandsCallback, timeoutMs = 30000): Promise<FaceDetector | null> {
   if (typeof Worker === "undefined" || typeof OffscreenCanvas === "undefined" || typeof createImageBitmap === "undefined") return null;
   let worker: Worker;
   try {
@@ -76,7 +80,7 @@ async function createWorkerDetector(onResult: DetectCallback, timeoutMs = 30000)
       clearTimeout(t);
       resolve(null);
     };
-    worker.postMessage({ type: "init", sources: MP_SOURCES.map((s) => ({ wasm: absolute(s.wasm), model: absolute(s.model) })) });
+    worker.postMessage({ type: "init", sources: MP_SOURCES.map((s) => ({ wasm: absolute(s.wasm), model: absolute(s.model), hand: absolute(s.hand) })) });
   });
   if (!ready) {
     worker.terminate();
@@ -87,6 +91,7 @@ async function createWorkerDetector(onResult: DetectCallback, timeoutMs = 30000)
   let inFlight = false;
   let nextId = 0;
   const since = new Map<number, number>();
+  const handSince = new Map<number, number>();
   let closed = false;
   const det: FaceDetector = {
     backend: `worker/${ready}`,
@@ -113,6 +118,9 @@ async function createWorkerDetector(onResult: DetectCallback, timeoutMs = 30000)
         });
       return true;
     },
+    setHands(on) {
+      if (!closed) worker.postMessage({ type: "hands", on });
+    },
     close() {
       closed = true;
       worker.postMessage({ type: "close" });
@@ -127,10 +135,24 @@ async function createWorkerDetector(onResult: DetectCallback, timeoutMs = 30000)
       since.delete(m.id);
       return;
     }
+    if (m.type === "hands") {
+      avatarPerf.handDetected(m.ms);
+      onHands?.({ hands: m.hands as HandDetection[] }, handSince.get(m.id) ?? performance.now());
+      handSince.delete(m.id);
+      return;
+    }
+    if (m.type === "hands-error") {
+      avatarPerf.log("hand model unavailable → hands off");
+      avatarPerf.hands = "unavailable";
+      return;
+    }
     if (m.type !== "result") return;
     inFlight = false;
     const t0 = since.get(m.id) ?? performance.now();
     since.delete(m.id);
+    // the worker may still post hands for this frame
+    handSince.set(m.id, t0);
+    if (handSince.size > 8) handSince.delete(handSince.keys().next().value as number);
     (det as { backend: string }).backend = `worker/${m.delegate}`;
     avatarPerf.backend = det.backend;
     avatarPerf.detected(m.ms);
@@ -159,8 +181,10 @@ async function createWorkerDetector(onResult: DetectCallback, timeoutMs = 30000)
 }
 
 /** Same thing on the main thread (older Safari, no OffscreenCanvas, worker failure). */
-async function createMainDetector(onResult: DetectCallback, isCancelled: () => boolean): Promise<FaceDetector | null> {
+async function createMainDetector(onResult: DetectCallback, isCancelled: () => boolean, onHands?: HandsCallback): Promise<FaceDetector | null> {
   const { FaceLandmarker, FilesetResolver } = await import("@mediapipe/tasks-vision");
+  let fs: Awaited<ReturnType<typeof FilesetResolver.forVisionTasks>> | null = null;
+  let handSrc = "";
   const order = softwareGL() ? (["CPU", "GPU"] as const) : (["GPU", "CPU"] as const);
   let lm: MainLandmarker | null = null;
   let delegate: string = order[0];
@@ -182,6 +206,8 @@ async function createMainDetector(onResult: DetectCallback, isCancelled: () => b
           numFaces: 1,
         })) as unknown as MainLandmarker;
         delegate = d;
+        fs = fileset;
+        handSrc = src.hand;
         break outer;
       } catch {
         /* next */
@@ -191,6 +217,31 @@ async function createMainDetector(onResult: DetectCallback, isCancelled: () => b
   if (!lm) return null;
   let lastTs = -1;
   const inst = lm;
+  // hands on the main thread: same model, lower rate (the page's own thread pays for it)
+  const H = {
+    on: false,
+    lm: null as MainLandmarker | null,
+    pack: null as null | ((r: never) => ReturnType<typeof import("./handLandmarker").packHands>),
+    loading: false,
+    failed: false,
+    last: -1e9,
+    lastTs: -1,
+  };
+  const ensureHands = async () => {
+    if (H.lm || H.loading || H.failed || !fs) return;
+    H.loading = true;
+    const { createHandLandmarker, packHands } = await import("./handLandmarker");
+    H.pack = packHands as (r: never) => ReturnType<typeof packHands>;
+    const r = await createHandLandmarker(fs, handSrc, delegate === "GPU" ? ["GPU", "CPU"] : ["CPU", "GPU"]).catch(() => null);
+    H.loading = false;
+    if (!r) {
+      H.failed = true;
+      avatarPerf.hands = "unavailable";
+      return;
+    }
+    if (!H.on) r.lm.close();
+    else H.lm = r.lm as unknown as MainLandmarker;
+  };
   return {
     backend: `main/${delegate}`,
     push(video, tsMs, t0) {
@@ -205,9 +256,32 @@ async function createMainDetector(onResult: DetectCallback, isCancelled: () => b
       }
       avatarPerf.detected(performance.now() - s);
       onResult(raw?.faceBlendshapes?.[0]?.categories?.length ? raw : null, t0);
+      if (H.on && H.lm && H.pack && ts - H.last >= HAND_INTERVAL_MS * 1.5) {
+        H.last = ts;
+        const hts = Math.max(ts, H.lastTs + 1);
+        H.lastTs = hts;
+        const h0 = performance.now();
+        let hr: unknown = null;
+        try {
+          hr = H.lm.detectForVideo(video, hts);
+        } catch {
+          hr = null;
+        }
+        avatarPerf.handDetected(performance.now() - h0);
+        onHands?.(H.pack(hr as never), t0);
+      }
       return true;
     },
+    setHands(on) {
+      H.on = on;
+      if (on) void ensureHands();
+      else {
+        H.lm?.close();
+        H.lm = null;
+      }
+    },
     close() {
+      H.lm?.close();
       inst.close();
     },
   };
@@ -232,10 +306,10 @@ const WORKER_BUDGET_MS = 60;
  */
 export async function createFaceDetector(
   onResult: DetectCallback,
-  opts: { isCancelled: () => boolean; worker?: boolean },
+  opts: { isCancelled: () => boolean; worker?: boolean; onHands?: HandsCallback },
 ): Promise<FaceDetector | null> {
   const mainOnly = async (why: string) => {
-    const m = await createMainDetector(onResult, opts.isCancelled).catch(() => null);
+    const m = await createMainDetector(onResult, opts.isCancelled, opts.onHands).catch(() => null);
     if (m) {
       avatarPerf.backend = m.backend;
       avatarPerf.log(`main thread: ${why}`);
@@ -272,7 +346,7 @@ export async function createFaceDetector(
       }
       challenging = true;
       avatarPerf.log(`worker slow (median ${w.toFixed(1)} ms) → measuring main thread`);
-      createMainDetector(wrap("main"), opts.isCancelled)
+      createMainDetector(wrap("main"), opts.isCancelled, handsFrom("main"))
         .catch(() => null)
         .then((m) => {
           challenging = false;
@@ -283,6 +357,7 @@ export async function createFaceDetector(
             return;
           }
           main = m;
+          m.setHands?.(handsOn);
           active = "main";
           avatarPerf.backend = m.backend;
         });
@@ -304,7 +379,11 @@ export async function createFaceDetector(
     }
   }
 
-  worker = await createWorkerDetector(wrap("worker")).catch(() => null);
+  let handsOn = false;
+  const handsFrom = (who: "worker" | "main"): HandsCallback => (raw, since) => {
+    if (who === active) opts.onHands?.(raw, since);
+  };
+  worker = await createWorkerDetector(wrap("worker"), handsFrom("worker")).catch(() => null);
   if (!worker) {
     if (opts.isCancelled()) return null;
     return mainOnly("worker unavailable");
@@ -324,6 +403,11 @@ export async function createFaceDetector(
       const ok = d.push(video, tsMs, since);
       if (!ok) pushedAt.delete(active);
       return ok;
+    },
+    setHands(on) {
+      handsOn = on;
+      worker?.setHands?.(on);
+      main?.setHands?.(on);
     },
     close() {
       worker?.close();

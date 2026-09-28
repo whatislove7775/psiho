@@ -10,6 +10,11 @@
  *    the participant explicitly confirms «Показать лицо».
  *  - The voice mask (useVoiceTransform) is on by default in circles («Нейтральный»).
  *  - The host sends real camera video (useRealCamera), 540p.
+ *  - Two specialists: the host and an optional co-therapist (camera + photo). Both moderate; only the
+ *    host ends the meeting.
+ *  - Breakout rooms (BreakoutPanel): you see and hear only your current room.
+ *  - Video budget: big tiles only for the peers whose video we receive (specialists + active/recent
+ *    speakers, ≤ MAX_VIDEO); the rest sit in an audio strip with their circle avatar.
  *  - Mesh transport: useGroupCall (docs/CIRCLES.md).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -17,9 +22,11 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Camera,
+  Captions,
   CameraOff,
   Eye,
   Hand,
+  LayoutGrid,
   LogOut,
   MessagesSquare,
   Mic,
@@ -41,9 +48,11 @@ import { circlesApi, type MeetingJoin } from "@/lib/api/circles";
 import { useAuth } from "@/lib/auth/store";
 import { normalizeAvatar, randomAvatar } from "@/lib/avatar/schema";
 import { useAvatarCamera } from "@/hooks/useAvatarCamera";
+import { ReactionArt, ReactionLayer, REACTION_LABEL, useKeyedBursts, useReactionThrottle, reactionStyles, type Burst } from "@/components/reactions/Reactions";
+import { useSlowNetReporter } from "@/lib/avatar/headz/hands/netGuard";
 import { useRealCamera } from "@/hooks/useRealCamera";
 import { useVoiceTransform, VOICE_PRESETS, type VoicePreset } from "@/hooks/useVoiceTransform";
-import { useGroupCall, type PeerView } from "@/hooks/useGroupCall";
+import { useGroupCall, type PeerView, type RoomsState } from "@/hooks/useGroupCall";
 import { AvatarThumb } from "@/components/avatar/AvatarThumb";
 import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import { CanvasSlot, SelfVideo, mmss } from "@/components/room/parts";
@@ -51,10 +60,13 @@ import { VoicePicker } from "@/components/room/VoicePicker";
 import { PanicButton } from "@/components/privacy/PanicButton";
 import { Together, TeaWait } from "@/components/illustrations";
 import { GroupChat } from "./GroupChat";
+import { useCaptions } from "@/lib/captions/useCaptions";
+import { CaptionOverlay, CaptionsPanel } from "@/components/captions/Captions";
+import { BreakoutPanel, roomName, useRoomsCountdown } from "./BreakoutPanel";
 import { cx, toneClass } from "./bits";
 import s from "./groupRoom.module.css";
 
-type Side = null | "chat" | "people" | "voice";
+type Side = null | "chat" | "people" | "voice" | "rooms" | "captions";
 
 const VOICE_KEY = "aprosop.circleVoice";
 function loadCircleVoice(): VoicePreset {
@@ -102,6 +114,7 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
   const [speakerOn, setSpeakerOn] = useState(true);
   const [joinedAt, setJoinedAt] = useState<number | null>(null);
   const [narrow, setNarrow] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     bootstrap();
@@ -127,7 +140,11 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
     if (authStatus === "authed") load();
   }, [authStatus, load]);
 
-  const isHost = info?.role === "host";
+  // "isHost" = a specialist (host or co-therapist): real camera + photo, moderation. Only the lead ends the meeting.
+  const isHost = info?.role === "host" || info?.role === "cohost";
+  const isLead = info?.role === "host";
+  const myPhoto = info?.role === "cohost" ? info.cohost?.photo_url ?? null : info?.host.photo_url ?? null;
+  const photoOf = (role: PeerView["role"]) => (role === "cohost" ? info?.cohost?.photo_url ?? null : info?.host.photo_url ?? null);
   const setVoice = (v: VoicePreset) => {
     setVoiceState(v);
     try {
@@ -144,13 +161,25 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
     [ownAvatar, user?.avatar_config, circleAvatar],
   );
   const allowReal = !!info?.circle.allow_real_faces;
-  const avatarCam = useAvatarCamera(avatarCfg, { backdrop: "dusk", realFace: allowReal && realFace });
+  // 👍/👎 reactions (buttons or hand gestures) pop over the sender's tile for everyone in the room;
+  // an open hand raised above the head for ~0.8 s raises the hand («поднять руку»)
+  const [bursts, pushBurst] = useKeyedBursts();
+  const reactionOut = useRef<(k: "up" | "down") => void>(() => {});
+  const react = useReactionThrottle((k) => {
+    pushBurst(ME, k);
+    reactionOut.current(k);
+  });
+  const avatarCam = useAvatarCamera(avatarCfg, {
+    backdrop: "dusk",
+    realFace: allowReal && realFace,
+    onGesture: (g) => phase === "call" && (g === "raise" ? !isHost && setHand(true) : react(g)),
+  });
   const realCam = useRealCamera();
   const startAvatar = avatarCam.start;
   const startReal = realCam.start;
   useEffect(() => {
     if (!info) return;
-    if (info.role === "host") startReal();
+    if (info.role === "host" || info.role === "cohost") startReal();
     else startAvatar();
   }, [info, startAvatar, startReal]);
 
@@ -180,7 +209,37 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
       toast("Ведущий выключил микрофоны. Включите свой, когда захотите сказать.");
     },
     onHandLowered: () => setHand(false),
+    onReaction: pushBurst,
+    onMoved: (room, by, rs) => {
+      const where = roomName(rs, room);
+      toast(rs.rooms.length ? `${by || "Ведущий"}: вы в «${where}»` : "Все вернулись в общий зал");
+    },
+    onBroadcast: (text, from) => {
+      setNotice(`${from}: ${text}`);
+      toast(`${from}: ${text}`);
+    },
   });
+  reactionOut.current = call.sendReaction;
+
+  // Live captions (lib/captions): per-peer data channels, only with people in our (breakout) room
+  const ccLinks = useMemo(
+    () => call.peers.filter((p) => p.room === call.myRoom).map((p) => ({ id: p.id, dc: p.captionDc })),
+    [call.peers, call.myRoom],
+  );
+  const cc = useCaptions({ links: ccLinks, micTrack: micStream?.getAudioTracks()[0] ?? null, micOn: phase === "call" && !muted, textOnly: false });
+  const ccLabel = (who: string) => (who === "me" ? "Вы" : call.peers.find((p) => p.id === who)?.name ?? "Участник");
+
+  // rooms timer ran out → the lead (or the co-therapist when the lead is away) brings everyone back
+  const { rooms: roomsState, roomsAction, peers: allPeers } = call;
+  const leadAway = !allPeers.some((p) => p.role === "host");
+  useEffect(() => {
+    if (!isHost || !roomsState.ends_at || !roomsState.rooms.length || (!isLead && !leadAway)) return;
+    const ms = (roomsState.ends_at - roomsState.now) * 1000;
+    const t = setTimeout(() => roomsAction({ type: "rooms-close" }), Math.max(0, ms));
+    return () => clearTimeout(t);
+  }, [roomsState, roomsAction, isHost, isLead, leadAway]);
+  // the call itself had to step down in quality → floating hands switch off (participants)
+  useSlowNetReporter(isHost ? null : call.autoTier && call.tier !== "high", call.tier, 0);
 
   const { setMyState, setTier } = call;
   useEffect(() => {
@@ -373,9 +432,13 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
   }
 
   // ── call ─────────────────────────────────────────────────────────
-  const tiles = 1 + call.peers.length;
+  const here = call.peers.filter((p) => p.room === call.myRoom);
+  const bigPeers = here.filter((p) => p.videoWanted || p.role !== "member");
+  const smallPeers = here.filter((p) => !bigPeers.includes(p));
+  const tiles = 1 + bigPeers.length;
   const shape = gridShape(tiles, narrow);
-  const hands = call.peers.filter((p) => p.state.hand);
+  const hands = here.filter((p) => p.state.hand);
+  const inRoom = 1 + here.length;
   const statusPill =
     call.status === "live" ? (
       <span className={cx(s.pill, s.pillLive)}>{mmss(elapsed)}</span>
@@ -391,7 +454,8 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
         <div className={s.topTitle}>
           <b>{info.circle.title}</b>
           <small>
-            {tiles} {tiles === 1 ? "участник" : tiles < 5 ? "участника" : "участников"} в&nbsp;комнате
+            {inRoom} {inRoom === 1 ? "участник" : inRoom < 5 ? "участника" : "участников"}
+            {call.rooms.rooms.length ? ` в «${roomName(call.rooms, call.myRoom)}»` : " в комнате"}
             {hands.length > 0 && isHost ? `, руку подняли: ${hands.length}` : ""}
           </small>
         </div>
@@ -404,13 +468,15 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
         <PanicButton />
       </header>
       <div className={s.stage}>
-        <div className={s.gridWrap}>
+        <div className={s.gridWrap} style={{ position: "relative" }}>
+          <CaptionOverlay log={cc.log} version={cc.version} label={ccLabel} include={(who) => who !== "me" && cc.show} />
+          <RoomBanner rooms={call.rooms} myRoom={call.myRoom} notice={notice} onClose={() => setNotice(null)} />
           <div className={s.grid} style={{ ["--cols" as string]: shape.cols, ["--rows" as string]: shape.rows } as React.CSSProperties}>
             <div className={cx(s.tile, !isHost && !realFace && s.tileAvatar, toneClass(isHost ? "primary" : info.self.tone), call.selfSpeaking && s.tileSpeaking)}>
               {camOff || call.tier === "audio" ? (
                 <div className={s.placeholder}>
                   <span className={s.placeholderInner}>
-                    {isHost ? <SpecialistPhoto url={info.host.photo_url} name={info.self.name} size={72} /> : <AvatarThumb config={avatarCfg} size={72} />}
+                    {isHost ? <SpecialistPhoto url={myPhoto} name={info.self.name} size={72} /> : <AvatarThumb config={avatarCfg} size={72} />}
                   </span>
                 </div>
               ) : isHost ? (
@@ -429,6 +495,7 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
                   <Hand size={13} /> Рука поднята
                 </span>
               )}
+              <ReactionLayer items={bursts[ME] ?? []} />
               <div className={s.tileLabel}>
                 <span className={s.name}>
                   {muted ? <MicOff size={13} className={s.mutedIcon} /> : <Mic size={13} />}
@@ -436,7 +503,7 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
                 </span>
               </div>
             </div>
-            {call.peers.map((p) => (
+            {bigPeers.map((p) => (
               <PeerTile
                 key={p.id}
                 peer={p}
@@ -444,42 +511,64 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
                 speakerOn={speakerOn}
                 audioOnly={call.tier === "audio"}
                 hostControls={isHost}
-                hostPhoto={info.host.photo_url}
+                hostPhoto={photoOf(p.role)}
                 onMute={() => call.hostAction("mute", p.id)}
                 onLowerHand={() => call.hostAction("lower-hand", p.id)}
                 onRemove={() => setConfirm({ kind: "remove", peer: p })}
+                reactions={bursts[p.id]}
               />
             ))}
           </div>
+          {smallPeers.length > 0 && (
+            <div className={s.strip} aria-label="Остальные участники (только звук)">
+              {smallPeers.map((p) => (
+                <MiniPeer key={p.id} peer={p} speaking={call.speaker === p.id} speakerOn={speakerOn} />
+              ))}
+            </div>
+          )}
         </div>
         {side && (
-          <aside className={s.side} aria-label={side === "chat" ? "Чат круга" : side === "people" ? "Участники" : "Голос"}>
+          <aside className={s.side} aria-label={side === "chat" ? "Чат круга" : side === "people" ? "Участники" : side === "rooms" ? "Комнаты" : side === "captions" ? "Субтитры" : "Голос"}>
             <div className={s.sideHead}>
-              <h2>{side === "chat" ? "Чат круга" : side === "people" ? "В\u00a0комнате" : "Маска голоса"}</h2>
+              <h2>{side === "chat" ? "Чат круга" : side === "people" ? "В\u00a0комнате" : side === "rooms" ? "Комнаты" : side === "captions" ? "Субтитры" : "Маска голоса"}</h2>
               <Button variant="ghost" size="sm" iconOnly aria-label="Закрыть" onClick={() => setSide(null)} icon={<X size={18} />} />
             </div>
             <div className={s.sideBody}>
-              {side === "chat" && <GroupChat circleId={info.circle.id} hostPhoto={info.host.photo_url} compact />}
+              {side === "chat" && <GroupChat circleId={info.circle.id} hostPhoto={info.host.photo_url} cohostPhoto={info.cohost?.photo_url} compact />}
+              {side === "rooms" && (
+                <BreakoutPanel
+                  peers={call.peers}
+                  selfId={call.selfId}
+                  selfName={info.self.name}
+                  rooms={call.rooms}
+                  isMod={isHost}
+                  onAction={call.roomsAction}
+                  onMoveSelf={call.moveSelf}
+                />
+              )}
               {side === "voice" && <VoicePicker value={voice} onChange={setVoice} />}
+              {side === "captions" && (
+                <CaptionsPanel show={cc.show} onShow={cc.setShow} load={cc.load} log={cc.log} version={cc.version} label={ccLabel} onCopy={() => cc.copy(ccLabel)} />
+              )}
               {side === "people" && (
                 <ul className={s.people}>
                   <li>
-                    {isHost ? <SpecialistPhoto url={info.host.photo_url} name={info.self.name} size={34} /> : <AvatarThumb config={avatarCfg} size={34} />}
+                    {isHost ? <SpecialistPhoto url={myPhoto} name={info.self.name} size={34} /> : <AvatarThumb config={avatarCfg} size={34} />}
                     <span>
                       {info.self.name}
                       <small>Это&nbsp;вы</small>
                     </span>
                   </li>
-                  {call.peers.map((p) => (
+                  {here.map((p) => (
                     <li key={p.id}>
-                      {p.role === "host" ? <SpecialistPhoto url={info.host.photo_url} name={p.name} size={34} /> : <AvatarThumb config={null} seed={`circle-${p.id}`} size={34} />}
+                      {p.role !== "member" ? <SpecialistPhoto url={photoOf(p.role)} name={p.name} size={34} /> : <AvatarThumb config={null} seed={`circle-${p.id}`} size={34} />}
                       <span>
                         {p.name}
                         <small>
-                          {p.role === "host" ? "Ведущий" : p.state.hand ? "Рука поднята" : p.state.muted ? "Микрофон выключен" : "Слушает"}
+                          {p.role === "host" ? "Ведущий" : p.role === "cohost" ? "Ко-терапевт" : p.state.hand ? "Рука поднята" : p.state.muted ? "Микрофон выключен" : "Слушает"}
                         </small>
                       </span>
-                      {isHost && p.role !== "host" && (
+                      {isHost && p.role === "member" && (
                         <>
                           {p.state.hand && (
                             <Button size="sm" variant="ghost" onClick={() => call.hostAction("lower-hand", p.id)}>
@@ -510,21 +599,30 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
           icon={camOff || call.tier === "audio" ? <CameraOff size={22} /> : <Camera size={22} />}
         />
         {!isHost && <Ctl label="Рука" on={hand} onClick={() => setHand((h) => !h)} icon={<Hand size={22} />} />}
+        {(["up", "down"] as const).map((k) => (
+          <Ctl key={k} label={REACTION_LABEL[k]} onClick={() => react(k)} icon={<ReactionArt kind={k} className={reactionStyles.btnArt} />} />
+        ))}
         {!isHost && <Ctl label="Голос" active={side === "voice"} onClick={() => setSide(side === "voice" ? null : "voice")} icon={<Waves size={22} />} />}
+        {cc.available && (
+          <Ctl label="Субтитры" active={side === "captions"} onClick={() => setSide(side === "captions" ? null : "captions")} icon={<Captions size={22} />} />
+        )}
         <Ctl label="Чат" active={side === "chat"} onClick={() => setSide(side === "chat" ? null : "chat")} icon={<MessagesSquare size={22} />} />
         <Ctl label="Люди" active={side === "people"} onClick={() => setSide(side === "people" ? null : "people")} icon={<Users size={22} />} />
+        {(isHost || call.rooms.rooms.length > 0) && (
+          <Ctl label="Комнаты" active={side === "rooms"} onClick={() => setSide(side === "rooms" ? null : "rooms")} icon={<LayoutGrid size={22} />} />
+        )}
         <Ctl label={speakerOn ? "Звук" : "Звук выкл"} off={!speakerOn} onClick={() => setSpeakerOn((v) => !v)} icon={speakerOn ? <Volume2 size={22} /> : <VolumeX size={22} />} />
         {!isHost && allowReal && (
           <Ctl label={realFace ? "Аватар" : "Лицо"} active={realFace} onClick={() => (realFace ? setRealFace(false) : setAskFace(true))} icon={<Eye size={22} />} />
         )}
         {isHost && <Ctl label="Выкл. всем" onClick={() => call.hostAction("mute-all")} icon={<MicOff size={22} />} />}
         <span className={s.sep} aria-hidden />
-        {isHost ? (
+        {isLead ? (
           <Ctl label="Завершить" end onClick={() => setConfirm({ kind: "end" })} icon={<PhoneOff size={22} />} />
         ) : (
           <Ctl label="Выйти" end onClick={() => setConfirm({ kind: "leave" })} icon={<PhoneOff size={22} />} />
         )}
-        {isHost && <Ctl label="Выйти" onClick={() => setPhase("left")} icon={<LogOut size={22} />} />}
+        {isLead && <Ctl label="Выйти" onClick={() => setPhase("left")} icon={<LogOut size={22} />} />}
       </nav>
 
       <Modal open={!!confirm} onClose={() => setConfirm(null)} title={confirm?.kind === "remove" ? "Удалить участника?" : confirm?.kind === "end" ? "Завершить встречу для\u00a0всех?" : "Выйти из\u00a0встречи?"}>
@@ -575,6 +673,59 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
   );
 }
 
+/** key of our own tile in the reaction bursts */
+const ME = "__me__";
+
+/** Which room you're in, the rooms timer and the last message to all rooms. */
+function RoomBanner({ rooms, myRoom, notice, onClose }: { rooms: RoomsState; myRoom: string; notice: string | null; onClose: () => void }) {
+  const left = useRoomsCountdown(rooms);
+  if (!rooms.rooms.length && !notice) return null;
+  return (
+    <div className={s.roomBanner} role="status">
+      {rooms.rooms.length > 0 && (
+        <span>
+          {roomName(rooms, myRoom)}
+          {left !== null ? `, ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}` : ""}
+        </span>
+      )}
+      {notice && (
+        <>
+          <span style={{ fontWeight: 500 }}>{notice}</span>
+          <button type="button" onClick={onClose} aria-label="Скрыть" style={{ all: "unset", cursor: "pointer", display: "inline-flex" }}>
+            <X size={14} />
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** A peer beyond the video budget: audio only + their circle avatar. */
+function MiniPeer({ peer, speaking, speakerOn }: { peer: PeerView; speaking: boolean; speakerOn: boolean }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const aTrack = peer.stream.getAudioTracks()[0];
+  useEffect(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    a.srcObject = aTrack ? new MediaStream([aTrack]) : null;
+    if (aTrack) a.play().catch(() => undefined);
+  }, [aTrack]);
+  return (
+    <div className={cx(s.mini, toneClass(peer.tone), speaking && s.miniSpeaking)} data-peer={peer.id} data-mini>
+      <AvatarThumb config={null} seed={`circle-${peer.id}`} size={52} />
+      <audio ref={audioRef} autoPlay muted={!speakerOn} />
+      {peer.state.hand && (
+        <span className={s.miniHand}>
+          <Hand size={11} />
+        </span>
+      )}
+      <b>
+        {peer.state.muted && <MicOff size={10} />} {peer.name}
+      </b>
+    </div>
+  );
+}
+
 function Ctl({
   label,
   icon,
@@ -616,6 +767,7 @@ function PeerTile({
   onMute,
   onLowerHand,
   onRemove,
+  reactions,
 }: {
   peer: PeerView;
   speaking: boolean;
@@ -626,6 +778,7 @@ function PeerTile({
   onMute: () => void;
   onLowerHand: () => void;
   onRemove: () => void;
+  reactions?: Burst[];
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -654,7 +807,7 @@ function PeerTile({
     if (aTrack) a.play().catch(() => undefined);
   }, [aTrack]);
   const showVideo = (playing || peer.hasVideo) && !!vTrack && vTrack.readyState === "live" && peer.state.video !== false && !peer.state.audio_only && !audioOnly;
-  const host = peer.role === "host";
+  const host = peer.role !== "member";
   const [menu, setMenu] = useState(false);
   return (
     <div
@@ -676,7 +829,8 @@ function PeerTile({
           <Hand size={13} /> Рука
         </span>
       )}
-      {host && !hostControls && <span className={s.hostBadge}>Ведущий</span>}
+      <ReactionLayer items={reactions ?? []} />
+      {host && !hostControls && <span className={s.hostBadge}>{peer.role === "cohost" ? "Ко-терапевт" : "Ведущий"}</span>}
       {hostControls && !host && (
         <div className={s.tileMenu}>
           <Button size="sm" variant="secondary" iconOnly aria-label={`Действия: ${peer.name}`} onClick={() => setMenu((m) => !m)} icon={<MoreHorizontal size={16} />} />

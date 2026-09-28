@@ -61,6 +61,11 @@ export interface AvatarPerfSnapshot {
   /** camera frames skipped because the detector was still busy */
   dropped: number;
   faces: number;
+  /** hand tracking: "off" | "on" | "auto-off" (too slow here) | "unavailable" */
+  hands: string;
+  handFps: number;
+  /** HandLandmarker model time per run */
+  handMs: number;
 }
 
 class AvatarPerf {
@@ -69,6 +74,9 @@ class AvatarPerf {
   decision: string[] = [];
   dropped = 0;
   faces = 0;
+  hands = "off";
+  private hand = new Ring(90);
+  private handMs = new Ring(90);
   private cam = new Ring(120);
   private det = new Ring(120);
   private ren = new Ring(120);
@@ -83,6 +91,15 @@ class AvatarPerf {
   detected(ms: number, t = performance.now()) {
     this.det.push(t);
     this.detMs.push(ms);
+  }
+  handDetected(ms: number, t = performance.now()) {
+    this.hand.push(t);
+    this.handMs.push(ms);
+  }
+  /** mean hand model time over the last runs (0 when none) */
+  handCost(): { ms: number; n: number } {
+    const v = this.handMs.values();
+    return { ms: stat(v).mean, n: v.length };
   }
   rendered(t = performance.now()) {
     this.ren.push(t);
@@ -104,7 +121,8 @@ class AvatarPerf {
   }
   reset() {
     this.decision = [];
-    [this.cam, this.det, this.ren, this.snd, this.detMs, this.lat, this.renMs].forEach((r) => r.clear());
+    [this.cam, this.det, this.ren, this.snd, this.detMs, this.lat, this.renMs, this.hand, this.handMs].forEach((r) => r.clear());
+    this.hands = "off";
     this.dropped = 0;
     this.faces = 0;
     this.backend = "—";
@@ -127,6 +145,9 @@ class AvatarPerf {
       sendFps: r1(rate(this.snd.values(), now)),
       dropped: this.dropped,
       faces: this.faces,
+      hands: this.hands,
+      handFps: r1(rate(this.hand.values(), now)),
+      handMs: r1(stat(this.handMs.values()).mean),
     };
   }
 }

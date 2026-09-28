@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Ban, Download, KeyRound, ListChecks, PlusCircle, ShieldCheck } from "lucide-react";
-import { Badge, Button, Card, CardHead, EmptyState, Input, Modal, Skeleton, useToast } from "@/ui";
+import { Badge, Button, Card, CardHead, EmptyState, Input, Modal, NumberInput, Skeleton, useToast } from "@/ui";
 import { PageHeader, WithRail } from "@/components/shell/AppShell";
 import { useLoad } from "@/components/client/useLoad";
 import { ErrorBlock } from "@/components/client/ClientBits";
@@ -111,14 +111,12 @@ export default function CodesPage() {
             <CardHead title="Выпустить коды" icon={<PlusCircle size={18} />} sub="Коды покажем сразу и&nbsp;сохраним для&nbsp;повторной выгрузки" />
             <form className={s.form} onSubmit={generate}>
               <div className={s.form2}>
-                <Input
+                <NumberInput
                   label="Сколько кодов"
-                  type="number"
                   min={1}
                   max={2000}
-                  inputMode="numeric"
-                  value={count}
-                  onChange={(e) => setCount(e.target.value)}
+                  value={count === "" ? null : Number(count)}
+                  onChange={(v) => setCount(v == null ? "" : String(v))}
                   error={error ?? undefined}
                 />
                 <Input label="Подпись для&nbsp;себя" placeholder="Например, «Отдел продаж, октябрь»" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={80} />

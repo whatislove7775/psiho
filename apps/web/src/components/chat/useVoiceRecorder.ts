@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useVoiceTransform, type VoicePreset } from "@/hooks/useVoiceTransform";
+import { loadModel, sttManifest, startRecognition, sttWasReady } from "@/lib/captions/engine";
 
 export type RecorderPhase = "idle" | "opening" | "ready" | "recording" | "review" | "error";
 
@@ -11,7 +12,11 @@ export interface VoiceClip {
   durationMs: number;
   peaks: number[];
   filename: string;
+  /** recognised on this device from the ORIGINAL voice (before the mask), if «Текст» is on */
+  transcript?: string;
 }
+
+const TEXT_KEY = "aprosop.voiceText";
 
 const BARS = 48;
 const MAX_MS = 10 * 60 * 1000;
@@ -64,6 +69,33 @@ export function useVoiceRecorder() {
   const [live, setLive] = useState<number[]>([]);
   const [clip, setClip] = useState<VoiceClip | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // «Приложить текст»: on-device transcript of the original voice (lib/captions); hidden when unavailable
+  const [sttOk, setSttOk] = useState(false);
+  const [withText, setWithTextState] = useState(false);
+  const stt = useRef<{ stop: () => void; flush: () => void } | null>(null);
+  const finals = useRef<string[]>([]);
+  useEffect(() => {
+    let alive = true;
+    sttManifest().then((m) => alive && setSttOk(!!m));
+    try {
+      const v = localStorage.getItem(TEXT_KEY);
+      // default: on once the model is already on this device (no surprise 45 MB download)
+      setWithTextState(v === null ? sttWasReady() : v === "1");
+    } catch {
+      /* ignore */
+    }
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const setWithText = useCallback((on: boolean) => {
+    setWithTextState(on);
+    try {
+      localStorage.setItem(TEXT_KEY, on ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   const { transformedStream } = useVoiceTransform({ inputStream: mic, preset });
 
@@ -106,11 +138,12 @@ export function useVoiceRecorder() {
       });
       setMic(stream);
       setPhase("ready");
+      if (withText && sttOk) loadModel().catch(() => undefined); // be ready before the first word
     } catch {
       setError("Нет доступа к\u00a0микрофону. Разрешите его в\u00a0настройках браузера.");
       setPhase("error");
     }
-  }, []);
+  }, [withText, sttOk]);
 
   const start = useCallback(() => {
     const stream = transformedStream;
@@ -132,9 +165,18 @@ export function useVoiceRecorder() {
     levels.current = [];
     discardRef.current = false;
     rec.ondataavailable = (e) => e.data.size && chunks.current.push(e.data);
-    rec.onstop = () => {
+    rec.onstop = async () => {
       stopMeter();
       const durationMs = Date.now() - started.current;
+      // let the recogniser close the last phrase (≤ 1.5 s), then release the mic
+      const s = stt.current;
+      stt.current = null;
+      if (s && !discardRef.current) {
+        const n = finals.current.length;
+        s.flush();
+        for (let i = 0; i < 15 && finals.current.length === n; i++) await new Promise((r) => setTimeout(r, 100));
+      }
+      s?.stop();
       releaseMic();
       if (discardRef.current) {
         setPhase("idle");
@@ -143,9 +185,22 @@ export function useVoiceRecorder() {
       const type = rec.mimeType || mime || "audio/webm";
       const blob = new Blob(chunks.current, { type });
       const filename = `voice.${type.includes("mp4") ? "m4a" : type.includes("ogg") ? "ogg" : ext}`;
-      setClip({ blob, url: URL.createObjectURL(blob), durationMs, peaks: downsample(levels.current), filename });
+      const transcript = s ? finals.current.join(" ").replace(/\s+/g, " ").trim() || undefined : undefined;
+      setClip({ blob, url: URL.createObjectURL(blob), durationMs, peaks: downsample(levels.current), filename, transcript });
       setPhase("review");
     };
+    finals.current = [];
+    const raw = mic?.getAudioTracks()[0];
+    if (withText && sttOk && raw) {
+      startRecognition(raw, ({ text, final }) => {
+        if (final && text) finals.current.push(text);
+      })
+        .then((s) => {
+          if (recRef.current === rec && rec.state === "recording") stt.current = s;
+          else s.stop();
+        })
+        .catch(() => undefined);
+    }
     recRef.current = rec;
 
     // Level meter for the live waveform and stored peaks
@@ -185,7 +240,7 @@ export function useVoiceRecorder() {
     setLive([]);
     rec.start(250);
     setPhase("recording");
-  }, [transformedStream, releaseMic]);
+  }, [transformedStream, releaseMic, mic, withText, sttOk]);
 
   const stop = useCallback(() => {
     if (recRef.current?.state === "recording") recRef.current.stop();
@@ -227,6 +282,9 @@ export function useVoiceRecorder() {
     clip,
     error,
     ready: !!transformedStream,
+    /** null → on-device transcription isn't available here */
+    withText: sttOk ? withText : null,
+    setWithText,
     open,
     start,
     stop,

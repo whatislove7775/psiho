@@ -9,6 +9,7 @@
  * then the content fades in; closing plays it backwards). With prefers-reduced-motion it is a
  * plain short fade. On phones the palette is a full-screen sheet.
  */
+import { FactsLine } from "@/components/specialists/SpecialistFacts";
 import { RatingPill } from "@/components/reviews/ReviewBits";
 import {
   createContext,
@@ -627,6 +628,7 @@ function ResultRow({
           <span className={s.rowExp}>
             {p.experience_years} {plural(p.experience_years, "год", "года", "лет")} опыта
           </span>
+          <FactsLine p={p} className={s.rowExp} />
           <RatingPill rating={p.rating} count={p.reviews_count} compact />
           <IntroChip psy={p} />
         </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { SignalingClient } from "@/lib/webrtc/signalingClient";
+import { CAPTION_CHANNEL } from "@/lib/captions/protocol";
 
 // ── TURN credentials — must match coturn in docker-compose.yml ───
 const TURN_USER = process.env.NEXT_PUBLIC_TURN_USER || "aprosop";
@@ -132,6 +133,8 @@ interface UseP2PCallOptions {
    * (signaling "media") on change and whenever the call (re)connects.
    */
   faceMode?: "avatar" | "real";
+  /** the peer sent a 👍/👎 reaction (components/reactions) */
+  onReaction?: (kind: "up" | "down") => void;
 }
 
 /** Random id for one RTCPeerConnection instance (tags every signal we send). */
@@ -158,9 +161,10 @@ function newPcId(): string {
  *  - Local track changes (voice filter on/off → new MediaStream) are applied
  *    with RTCRtpSender.replaceTrack(): no teardown, no renegotiation.
  */
-export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrate = 900_000, faceMode }: UseP2PCallOptions) {
+export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrate = 900_000, faceMode, onReaction }: UseP2PCallOptions) {
   const [status,      setStatus]      = useState<P2PStatus>("idle");
   const [isMuted,     setIsMuted]     = useState(false);
+  const mutedRef       = useRef(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [hasRemote,   setHasRemote]   = useState(false);
   const [elapsed,     setElapsed]     = useState(0);
@@ -169,8 +173,12 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
   const [stats,       setStats]       = useState<CallStats | null>(null);
   /** what the peer's video shows (a client may switch to their real camera) */
   const [remoteFace,  setRemoteFace]  = useState<"avatar" | "real">("avatar");
+  /** live-captions channel of the current PC (lib/captions) */
+  const [captionDc,   setCaptionDc]   = useState<RTCDataChannel | null>(null);
   const faceModeRef    = useRef(faceMode);
   faceModeRef.current  = faceMode;
+  const onReactionRef  = useRef(onReaction);
+  onReactionRef.current = onReaction;
   /** announce our faceMode to the peer (set by the main effect while a call runs) */
   const announceRef    = useRef<() => void>(() => {});
 
@@ -379,6 +387,14 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
         else pc.addTransceiver(kind, { direction: "sendrecv" });
       }
 
+      // Captions data channel: pre-negotiated id on both sides, so it rides the
+      // first offer/answer (m=application) with no extra negotiation round.
+      try {
+        setCaptionDc(pc.createDataChannel(CAPTION_CHANNEL.label, { negotiated: true, id: CAPTION_CHANNEL.id, ordered: true }));
+      } catch {
+        setCaptionDc(null);
+      }
+
       // ── Encoder setup ───────────────────────────────────────────
       // Video: bitrate cap (adapted to the network by the stats loop below),
       // 30 fps, keep framerate over resolution (a smooth face reads better
@@ -544,6 +560,10 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
             break;
           }
 
+          case "reaction":
+            if (msg.kind === "up" || msg.kind === "down") onReactionRef.current?.(msg.kind);
+            break;
+
           case "media":
             if (from && remoteId && from !== remoteId) break; // stale peer PC
             setRemoteFace(msg.face === "real" ? "real" : "avatar");
@@ -703,6 +723,7 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
       closePC();
       stopElapsed();
       attachRemote(null);
+      setCaptionDc(null);
       setStatus("idle");
       setHasRemote(false);
       hasRemoteRef.current = false;
@@ -718,7 +739,9 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
       const kind = tr.receiver.track.kind;
       const next = localStream.getTracks().find(t => t.kind === kind) ?? null;
       if (tr.sender.track === next) continue;
-      if (next && tr.sender.track) next.enabled = tr.sender.track.enabled; // keep mute/camera-off
+      // keep mute/camera-off (audio may come back after «Только текст», when the sender had no track)
+      if (next && kind === "audio") next.enabled = !mutedRef.current;
+      else if (next && tr.sender.track) next.enabled = tr.sender.track.enabled;
       tr.sender.replaceTrack(next).catch(e => console.warn("[P2P] replaceTrack failed:", e));
       try { tr.sender.setStreams?.(localStream); } catch { /* optional API */ }
     }
@@ -732,11 +755,12 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
   // ── Controls ──────────────────────────────────────────────────
   const toggleMute = useCallback(() => {
     const sender = pcRef.current?.getSenders().find(s => s.track?.kind === "audio");
-    if (sender?.track) {
-      const next = !sender.track.enabled;
-      sender.track.enabled = next;
-      setIsMuted(!next);
-    }
+    // No audio sender track (e.g. «Только текст»): only the state flips; it applies when audio returns.
+    if (!sender?.track && !pcRef.current) return;
+    const muted = !mutedRef.current;
+    mutedRef.current = muted;
+    if (sender?.track) sender.track.enabled = !muted;
+    setIsMuted(muted);
   }, []);
 
   const toggleCamera = useCallback(() => {
@@ -767,11 +791,16 @@ export function useP2PCall({ roomId, wsToken, localStream, onEnd, videoMaxBitrat
     onEnd?.();
   }, [stopElapsed, onEnd]);
 
+  /** Send a 👍/👎 reaction to the peer (over signaling; the server rate-limits). */
+  const sendReaction = useCallback((kind: "up" | "down") => {
+    sigRef.current?.send({ type: "reaction", kind });
+  }, []);
+
   // Перезапускает соединение с нуля (сбрасывает счётчик попыток)
   const retryNow = useCallback(() => setRetryKey(k => k + 1), []);
 
   return {
-    status, isMuted, isCameraOff, hasRemote, elapsed, quality, stats, remoteFace,
-    remoteVideoRef, toggleMute, toggleCamera, hangUp, retryNow,
+    status, isMuted, isCameraOff, hasRemote, elapsed, quality, stats, remoteFace, captionDc,
+    remoteVideoRef, toggleMute, toggleCamera, hangUp, retryNow, sendReaction,
   };
 }

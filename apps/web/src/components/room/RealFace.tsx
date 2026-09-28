@@ -55,14 +55,16 @@ export function RealFaceConfirm({
   open,
   onClose,
   onConfirm,
+  className,
 }: {
   open: boolean;
   onClose: () => void;
   onConfirm: (remember: boolean) => void;
+  className?: string;
 }) {
   const [remember, setRemember] = useState(false);
   return (
-    <Modal open={open} onClose={onClose} title="Показать настоящее лицо?" width={440}>
+    <Modal open={open} onClose={onClose} title="Показать настоящее лицо?" width={440} className={className}>
       <div className={r.confirm}>
         <span className={r.confirmIcon} aria-hidden>
           <UserRound size={26} />

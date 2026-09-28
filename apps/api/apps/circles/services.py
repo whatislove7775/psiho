@@ -8,6 +8,9 @@
 Отмена участником — release_for_call(ref, "client_cancel"): те же правила, что у созвонов
 (бесплатно не позже чем за N часов до встречи, позже — штраф в %). Ведущий не пришёл,
 ведущий отменил круг или исключил участника — полный возврат.
+
+Ко-терапевт (второй проверенный специалист по приглашению ведущего): после списания за
+встречу billing.share_captured переводит ему cohost_share_percent % заработка ведущего.
 """
 from __future__ import annotations
 
@@ -36,6 +39,8 @@ JOIN_BEFORE_MINUTES = 10  # комната открывается за 10 мин
 ROOM_GRACE_MINUTES = 15  # и закрывается через 15 минут после конца
 SETTLE_GRACE_MINUTES = 15
 MAX_MEETINGS = 12
+COHOST_SHARE_MIN = 0
+COHOST_SHARE_MAX = 70
 MIN_LEAD_HOURS = 24  # первая встреча — не раньше чем через сутки после отправки на проверку
 PRICE_MIN_RUB = 300
 PRICE_MAX_RUB = 60000
@@ -410,6 +415,7 @@ def room_open(meeting: Meeting, now=None) -> str | None:
 
 
 def mark_host_joined(meeting: Meeting) -> None:
+    """Ведущий или ко-терапевт вошёл — встреча считается состоявшейся (оплата списывается)."""
     if meeting.host_joined_at is None or meeting.status == MS.SCHEDULED:
         Meeting.objects.filter(pk=meeting.pk, host_joined_at__isnull=True).update(host_joined_at=timezone.now())
         Meeting.objects.filter(pk=meeting.pk, status=MS.SCHEDULED).update(status=MS.LIVE)
@@ -447,6 +453,7 @@ def settle_meeting(meeting: Meeting, *, force: bool = False, now=None) -> bool:
         for charge in Charge.objects.filter(meeting=meeting):
             if held:
                 billing.capture_for_call(charge.ref, reason="circle_meeting")
+                _share_with_cohost(circle, charge.ref)
             else:
                 billing.release_for_call(charge.ref, "specialist_no_show")
         if circle.billing == Circle.Billing.SERIES:
@@ -454,6 +461,7 @@ def settle_meeting(meeting: Meeting, *, force: bool = False, now=None) -> bool:
             if held:
                 for charge in series:
                     billing.capture_for_call(charge.ref, reason="circle_series")
+                    _share_with_cohost(circle, charge.ref)
             elif not active_meetings(circle).filter(settled=False).exclude(pk=meeting.pk).exists() and \
                     not active_meetings(circle).filter(status=MS.DONE).exists():
                 # Ни одна встреча цикла не состоялась — вернуть всё
@@ -461,6 +469,86 @@ def settle_meeting(meeting: Meeting, *, force: bool = False, now=None) -> bool:
                     billing.release_for_call(charge.ref, "specialist_no_show")
     refresh_status(circle, now)
     return True
+
+
+def _share_with_cohost(circle: Circle, ref) -> None:
+    co = circle.active_cohost
+    if co is not None and circle.cohost_share_percent:
+        billing.share_captured(ref, co_specialist=co.user, percent=circle.cohost_share_percent,
+                               memo=f"Круг «{circle.title[:60]}»: доля ко-терапевта")
+
+
+# ── Ко-терапевт ──────────────────────────────────────────────────────
+
+def invite_cohost(circle: Circle, profile, share_percent: int | None = None) -> Circle:
+    from apps.users.models import PsychologistProfile
+
+    if circle.status in (S.FINISHED, S.CANCELLED):
+        raise CircleError("Круг закрыт.")
+    if profile.pk == circle.host_id:
+        raise CircleError("Нельзя пригласить самого себя.")
+    if profile.verification_status != PsychologistProfile.VerificationStatus.APPROVED:
+        raise CircleError("Ко-терапевтом может быть только проверенный специалист.")
+    if circle.cohost_id == profile.pk and circle.cohost_status:
+        return set_cohost_share(circle, share_percent) if share_percent is not None else circle
+    circle.cohost = profile
+    circle.cohost_status = Circle.CohostStatus.INVITED
+    circle.cohost_invited_at = timezone.now()
+    if share_percent is not None:
+        circle.cohost_share_percent = _share(share_percent)
+    circle.save(update_fields=["cohost", "cohost_status", "cohost_invited_at", "cohost_share_percent", "updated_at"])
+    return circle
+
+
+def _share(value) -> int:
+    try:
+        v = int(value)
+    except (TypeError, ValueError):
+        raise CircleError("Доля ко-терапевта — число процентов.")
+    if not COHOST_SHARE_MIN <= v <= COHOST_SHARE_MAX:
+        raise CircleError(f"Доля ко-терапевта — от {COHOST_SHARE_MIN} до {COHOST_SHARE_MAX} %.")
+    return v
+
+
+def set_cohost_share(circle: Circle, share_percent) -> Circle:
+    circle.cohost_share_percent = _share(share_percent)
+    circle.save(update_fields=["cohost_share_percent", "updated_at"])
+    return circle
+
+
+def respond_cohost(circle: Circle, user, accept: bool) -> Circle:
+    if not circle.cohost_id or circle.cohost.user_id != user.pk or circle.cohost_status != Circle.CohostStatus.INVITED:
+        raise CircleError("Приглашения нет или оно уже отозвано.", "no_invite", 404)
+    if circle.status in (S.FINISHED, S.CANCELLED):
+        raise CircleError("Круг закрыт.")
+    if accept:
+        circle.cohost_status = Circle.CohostStatus.ACCEPTED
+        circle.save(update_fields=["cohost_status", "updated_at"])
+        system_message(circle, f"К кругу присоединяется ко-терапевт {circle.cohost.display_name}.")
+    else:
+        _drop_cohost(circle)
+    return circle
+
+
+def remove_cohost(circle: Circle) -> Circle:
+    was = circle.active_cohost
+    _drop_cohost(circle)
+    if was is not None:
+        system_message(circle, f"{was.display_name} больше не ведёт этот круг.")
+        for room_id in circle.meetings.filter(status__in=[MS.SCHEDULED, MS.LIVE]).values_list("room_id", flat=True):
+            _group_send(room_id, {"type": "peer.kick", "peer": "cohost"})
+    return circle
+
+
+def _drop_cohost(circle: Circle) -> None:
+    circle.cohost = None
+    circle.cohost_status = ""
+    circle.cohost_invited_at = None
+    circle.save(update_fields=["cohost", "cohost_status", "cohost_invited_at", "updated_at"])
+
+
+def is_moderator(role: str | None) -> bool:
+    return role in ("host", "cohost")
 
 
 # ── Фоновый расчёт ────────────────────────────────────────────────────
@@ -500,11 +588,14 @@ RETENTION = {"1h": timedelta(hours=1), "24h": timedelta(days=1)}
 
 
 def chat_role(circle: Circle, user) -> tuple[str | None, Membership | None]:
-    """("host" | "member" | None, участие)."""
+    """("host" | "cohost" | "member" | None, участие)."""
     if not user or not user.is_authenticated:
         return None, None
     if circle.host.user_id == user.pk:
         return "host", None
+    co = circle.active_cohost
+    if co is not None and co.user_id == user.pk:
+        return "cohost", None
     m = Membership.objects.filter(circle=circle, user=user, status=M.ACTIVE).first()
     return ("member", m) if m else (None, None)
 
@@ -555,7 +646,8 @@ def post_message(circle: Circle, user, text: str) -> CircleMessage:
     if len(text) > 2000:
         raise CircleError("Сообщение длиннее 2000 символов.")
     msg = CircleMessage.objects.create(
-        circle=circle, author=m, role=CircleMessage.Role.HOST if role == "host" else CircleMessage.Role.MEMBER,
+        circle=circle, author=m,
+        role={"host": CircleMessage.Role.HOST, "cohost": CircleMessage.Role.COHOST}.get(role, CircleMessage.Role.MEMBER),
         text_enc=encrypt_text(text), expires_at=expires_for(circle),
     )
     broadcast(circle, {"type": "circle.message", "circle": str(circle.id), "message": serialize_message(msg, None)},
@@ -568,7 +660,7 @@ def delete_message(msg: CircleMessage, user) -> CircleMessage:
     role, m = chat_role(circle, user)
     own = m is not None and msg.author_id == m.pk
     host_own = role == "host" and msg.role == CircleMessage.Role.HOST
-    if not (own or host_own or role == "host") or msg.role == CircleMessage.Role.SYSTEM:
+    if not (own or host_own or is_moderator(role)) or msg.role == CircleMessage.Role.SYSTEM:
         raise CircleError("Удалить можно только своё сообщение.", "forbidden", 403)
     msg.deleted_at = timezone.now()
     msg.text_enc = b""
@@ -583,6 +675,9 @@ def serialize_message(msg: CircleMessage, viewer_membership_id) -> dict:
 
     if msg.role == CircleMessage.Role.HOST:
         author = {"kind": "host", "name": msg.circle.host.display_name, "handle": "host", "tone": "primary"}
+    elif msg.role == CircleMessage.Role.COHOST:
+        co = msg.circle.cohost
+        author = {"kind": "cohost", "name": co.display_name if co else "Ко-терапевт", "handle": "cohost", "tone": "primary"}
     elif msg.role == CircleMessage.Role.MEMBER:
         a = msg.author
         author = {"kind": "member", "name": a.pseudonym if a else "Бывший участник", "handle": a.handle if a else "",
@@ -605,6 +700,8 @@ def serialize_message(msg: CircleMessage, viewer_membership_id) -> dict:
 def audience_user_ids(circle: Circle) -> list:
     ids = list(circle.memberships.filter(status=M.ACTIVE).values_list("user_id", flat=True))
     ids.append(circle.host.user_id)
+    if circle.active_cohost is not None:
+        ids.append(circle.cohost.user_id)
     return ids
 
 

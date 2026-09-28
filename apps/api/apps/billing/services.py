@@ -253,6 +253,39 @@ def capture_for_call(session, *, by=None, reason: str = "completed") -> Hold | N
         return _settle(hold, penalty_kopecks=hold.amount_kopecks, reason=reason, kind=T.CAPTURE, by=by)
 
 
+def share_captured(session_or_ref, *, co_specialist, percent: int, memo: str = "Доля ко-терапевта") -> Hold | None:
+    """Поделить уже списанный заработок: percent % доли специалиста — второму специалисту (ко-терапевт круга).
+
+    Деньги переходят «ожидает» → «ожидает» (ведущий → ко-терапевт) до созревания; у ко-терапевта
+    появляется своя строка Hold (без клиента), которую созревает обычный mature_earnings.
+    Идемпотентно (ключ share:<hold>). Возвращает Hold ко-терапевта или None, если делить нечего.
+    """
+    pct = max(0, min(100, int(percent)))
+    with transaction.atomic():
+        hold = _hold_of(session_or_ref, lock=True)
+        if hold is None or hold.status != HS.CAPTURED or hold.matured or not hold.specialist_kopecks or not pct:
+            return None
+        share_ref = uuid.uuid5(hold.session_ref, "cohost-share")
+        existing = Hold.objects.filter(session_ref=share_ref).first()
+        if existing is not None:
+            return existing
+        share = int((Decimal(hold.specialist_kopecks) * pct / 100).quantize(Decimal("1"), ROUND_HALF_UP))
+        if share <= 0:
+            return None
+        post(T.CAPTURE, f"share:{hold.pk}", [
+            (account_for(hold.specialist_ref, K.SPEC_PENDING), -share),
+            (account_for(co_specialist, K.SPEC_PENDING), share),
+        ], session_id=hold.session_ref, memo=memo, metadata={"reason": "cohost_share", "percent": pct})
+        hold.specialist_kopecks -= share
+        hold.save(update_fields=["specialist_kopecks"])
+        return Hold.objects.create(
+            session=None, session_ref=share_ref, client=None, specialist=co_specialist,
+            client_ref="", specialist_ref=str(co_specialist.pk), amount_kopecks=share, specialist_kopecks=share,
+            status=HS.CAPTURED, reason="cohost_share", duration_minutes=hold.duration_minutes,
+            scheduled_at=hold.scheduled_at, settled_at=hold.settled_at, available_at=hold.available_at,
+        )
+
+
 FULL_REFUND_REASONS = {
     "specialist_cancel", "specialist_no_show", "no_show_both", "staff_cancel", "staff_refund", "unpaid", "system",
     "cancelled",
@@ -317,13 +350,17 @@ def refund_captured_call(session_or_hold, *, by=None, reason: str = "staff_refun
             return release_for_call(hold.session_ref, "staff_refund", by=by)
         if hold.status not in (HS.CAPTURED, HS.PARTIAL):
             raise BillingError("Деньги за этот созвон уже возвращены.")
-        charged = hold.specialist_kopecks + hold.fee_kopecks
+        # доля ко-терапевта (share_captured) возвращается вместе с долей ведущего — теми же правилами
+        share = Hold.objects.select_for_update().filter(
+            session_ref=uuid.uuid5(hold.session_ref, "cohost-share"), status=HS.CAPTURED).first()
+        charged = hold.specialist_kopecks + hold.fee_kopecks + (share.specialist_kopecks if share else 0)
         if charged <= 0:
             raise BillingError("Возвращать нечего.")
         legs = []
-        if hold.specialist_kopecks:
-            src = K.SPEC_AVAILABLE if hold.matured else K.SPEC_PENDING
-            legs.append((account_for(hold.specialist_ref, src), -hold.specialist_kopecks))
+        for h in (hold, share):
+            if h is not None and h.specialist_kopecks:
+                src = K.SPEC_AVAILABLE if h.matured else K.SPEC_PENDING
+                legs.append((account_for(h.specialist_ref, src), -h.specialist_kopecks))
         if hold.fee_kopecks:
             legs.append((system_account(K.PLATFORM_FEE), -hold.fee_kopecks))
         corp_acc, corp_net = _corp_share(hold)
@@ -340,6 +377,10 @@ def refund_captured_call(session_or_hold, *, by=None, reason: str = "staff_refun
         hold.status = HS.REFUNDED
         hold.reason = reason[:40]
         hold.save(update_fields=["returned_kopecks", "status", "reason"])
+        if share is not None:
+            share.returned_kopecks = share.amount_kopecks
+            share.status = HS.REFUNDED
+            share.save(update_fields=["returned_kopecks", "status"])
         if corp_acc is not None:
             _corp().settled(hold.session_ref, returned_kopecks=to_company, refund=True)
         return hold

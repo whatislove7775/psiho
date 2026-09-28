@@ -7,6 +7,8 @@
  *   ?mode=parts&base=…&slot=hair         every option of a slot on a base
  *   ?mode=random                         seeded random configs
  *   ?mode=gaze                           lookAt left/centre/right/up/down
+ *   ?mode=hands&base=…                   «synthetic hands»: floating hands posed from synthetic landmarks
+ *                                        (open, fist, thumbs-up, peace, pointing) — lib/avatar/headz/hands
  */
 import { notFound, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -36,6 +38,7 @@ function Lab() {
   const mode = sp.get("mode") ?? "expr";
   const size = Number(sp.get("size") ?? 240);
   const yaw = Number(sp.get("yaw") ?? 0);
+  const pitch = Number(sp.get("pitch") ?? 0);
   const bg = sp.get("bg") ?? "#e9e4f0";
   const [imgs, setImgs] = useState<{ label: string; src: string }[]>([]);
 
@@ -46,12 +49,18 @@ function Lab() {
       const canvas = document.createElement("canvas");
       const r = new HeadzRenderer(canvas, { background: bg, preserveDrawingBuffer: true, maxPixelRatio: 1, idle: false });
       r.resize(size, size);
-      r.setFraming((sp.get("framing") as "face" | "portrait") ?? "face");
+      r.setFraming((sp.get("framing") as "face" | "portrait") ?? (mode === "hands" ? "portrait" : "face"));
       const q = Object.fromEntries(sp.entries());
-      const one = normalizeAvatar({ ...DEFAULT_AVATAR, ...q, version: 3 });
-      const jobs: { label: string; cfg: AvatarConfig; expr: Record<string, number>; look?: [number, number] }[] = [];
+      let extra: Record<string, unknown> = {};
+      try {
+        extra = q.cfg ? JSON.parse(q.cfg) : {};
+      } catch {
+        /* ignore */
+      }
+      const one = normalizeAvatar({ ...DEFAULT_AVATAR, ...q, ...extra, version: 4 });
+      const jobs: { label: string; cfg: AvatarConfig; expr: Record<string, number>; look?: [number, number]; hands?: number; track?: Record<string, number> }[] = [];
       if (mode === "bases") {
-        for (const b of CATALOG.bases) jobs.push({ label: b.id, cfg: normalizeAvatar({ base: b.id }), expr: {} });
+        for (const b of CATALOG.bases) jobs.push({ label: b.id, cfg: normalizeAvatar({ ...q, ...extra, version: 4, base: b.id }), expr: q.jaw ? { jawOpen: Number(q.jaw) } : {} });
       } else if (mode === "parts") {
         const slot = (sp.get("slot") ?? "hair") as HeadzSlot;
         jobs.push({ label: "none", cfg: { ...one, [slot]: "none" }, expr: {} });
@@ -61,16 +70,33 @@ function Lab() {
           const cfg = randomAvatar(i * 7919);
           jobs.push({ label: `${i} ${cfg.base} ${cfg.hair}`, cfg, expr: {} });
         }
+      } else if (mode === "hands") {
+        const { LAB_HAND_SCENES } = await import("@/lib/avatar/headz/hands/labSynth");
+        LAB_HAND_SCENES.forEach((h, i) => jobs.push({ label: h.label, cfg: one, expr: {}, hands: i }));
+      } else if (mode === "track") {
+        const T: [string, Record<string, number>][] = [
+          ["raw: L out .8, R still", { eyeLookOutLeft: 0.8, eyeLookInRight: 0.05 }],
+          ["raw: L up, R down", { eyeLookUpLeft: 0.6, eyeLookDownRight: 0.3 }],
+          ["raw: blink .35/.15", { eyeBlinkLeft: 0.35, eyeBlinkRight: 0.15 }],
+          ["raw: wink", { eyeBlinkLeft: 0.95, eyeBlinkRight: 0.05, mouthSmileLeft: 0.6 }],
+          ["raw: look down", { eyeLookDownLeft: 0.8, eyeLookDownRight: 0.7 }],
+          ["raw: jaw open", { jawOpen: 0.8 }],
+        ];
+        for (const [l, t] of T) jobs.push({ label: l, cfg: one, expr: {}, track: t });
       } else if (mode === "gaze") {
         const pts: [string, number, number][] = [["left", -1, 0], ["centre", 0, 0], ["right", 1, 0], ["up", 0, -1], ["down", 0, 1]];
         for (const [l, x, y] of pts) jobs.push({ label: `cursor ${l}`, cfg: one, expr: {}, look: [x, y] });
       } else {
-        for (const [l, e] of EXPR) jobs.push({ label: l, cfg: one, expr: e });
+        const only = sp.get("only")?.split(",");
+        for (const [l, e] of EXPR) if (!only || only.includes(l)) jobs.push({ label: l, cfg: one, expr: e });
       }
       const out: { label: string; src: string }[] = [];
       for (const j of jobs) {
         r.setConfig(j.cfg);
-        if (j.look) {
+        if (j.hands !== undefined) {
+          const { LAB_HAND_SCENES, poseSyntheticHands } = await import("@/lib/avatar/headz/hands/labSynth");
+          await poseSyntheticHands(r, j.cfg, LAB_HAND_SCENES[j.hands]);
+        } else if (j.look) {
           // same path as the landing: lookAt → idle animation turns head and eyes
           r.setExpression({});
           r.setIdle(true);
@@ -81,7 +107,7 @@ function Lab() {
         } else {
           r.stop();
           r.setExpression(j.expr);
-          await r.renderOnceAsync(yaw);
+          await r.renderOnceAsync(yaw, pitch);
         }
         out.push({ label: j.label, src: canvas.toDataURL("image/png") });
         if (alive) setImgs([...out]);
@@ -94,7 +120,7 @@ function Lab() {
     return () => {
       alive = false;
     };
-  }, [mode, size, yaw, sp, bg]);
+  }, [mode, size, yaw, pitch, sp, bg]);
 
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: 6, background: "#1b1b1f" }}>

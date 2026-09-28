@@ -18,9 +18,7 @@
 .practices {
   flex-direction: column;
   gap: 8px;
-  padding: 16px 12px 12px;
-  border-radius: var(--r-card);
-  background: var(--c-panel);
+  padding: 4px 0 0;
 }
 
 .practices ul {

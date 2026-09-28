@@ -66,7 +66,17 @@ export interface CircleHost {
   specializations: string[];
   bio?: string;
   verified_credentials?: number;
+  credentials_top?: { kind: string; title: string; year: number | null }[];
   status?: string;
+}
+
+export type CircleRole = "host" | "cohost" | "member";
+
+export interface CohostInvite {
+  status: "invited" | "accepted";
+  share_percent: number;
+  invited_at: string | null;
+  specialist: CircleHost;
 }
 
 export interface CircleMeeting {
@@ -98,6 +108,8 @@ export interface CircleCard {
   first_meeting_at: string | null;
   next_meeting_at: string | null;
   host: CircleHost;
+  /** co-therapist (only once the invite is accepted) */
+  cohost: CircleHost | null;
 }
 
 export interface LeaveTerms {
@@ -128,7 +140,7 @@ export interface CircleDetail extends CircleCard {
   join_closed_reason: string | null;
   amount_due_kopecks: number;
   cancel_rules: { free_cancel_hours: number; late_cancel_penalty_percent: number };
-  my_role: "host" | "member" | null;
+  my_role: CircleRole | null;
   me: MyCircleState | null;
 }
 
@@ -148,12 +160,20 @@ export interface OwnerCircle extends CircleDetail {
   editable: boolean;
   members: CircleMember[] | null;
   rules_text: string;
+  cohost_invite: CohostInvite | null;
+  cohost_share_limits: [number, number];
 }
 
 export interface ProCircleRow extends CircleCard {
   review_comment: string;
   members_count: number;
   waitlist_count: number;
+  my_role: "host" | "cohost";
+}
+
+export interface CohostInviteRow extends CircleCard {
+  share_percent: number;
+  invited_at: string | null;
 }
 
 export interface MyCircleRow extends CircleCard {
@@ -163,7 +183,7 @@ export interface MyCircleRow extends CircleCard {
 
 export interface CircleMessage {
   id: string;
-  author: { kind: "member" | "host" | "system"; name: string; handle: string; tone: string };
+  author: { kind: "member" | "host" | "cohost" | "system"; name: string; handle: string; tone: string };
   text: string;
   deleted: boolean;
   created_at: string;
@@ -173,7 +193,7 @@ export interface CircleMessage {
 
 export interface CircleMessages {
   results: CircleMessage[];
-  my_role: "host" | "member";
+  my_role: CircleRole;
   me: { handle: string; name: string; tone: Tone; chat_muted: boolean } | null;
   writable: boolean;
   retention: CircleRetention;
@@ -198,11 +218,12 @@ export interface CircleWrite {
 export interface MeetingJoin {
   ws_token: string;
   room_id: string;
-  role: "host" | "member";
+  role: CircleRole;
   self: { id: string; name: string; tone: string };
   circle: { id: string; title: string; topic: CircleTopic; topic_label: string; allow_real_faces: boolean };
   meeting: CircleMeeting;
   host: CircleHost;
+  cohost: CircleHost | null;
   max_peers: number;
 }
 
@@ -216,13 +237,21 @@ export const circlesApi = {
   get: (id: string) => api<CircleDetail>(`/circles/${id}/`),
   join: (id: string) => api<{ waitlisted: boolean; circle: CircleDetail }>(`/circles/${id}/join/`, { method: "POST" }),
   leave: (id: string) => api<CircleDetail>(`/circles/${id}/leave/`, { method: "POST" }),
-  members: (id: string) => api<{ host: CircleHost; members: CircleMember[] }>(`/circles/${id}/members/`),
+  members: (id: string) => api<{ host: CircleHost; cohost: CircleHost | null; members: CircleMember[] }>(`/circles/${id}/members/`),
   messages: (id: string) => api<CircleMessages>(`/circles/${id}/messages/`),
   send: (id: string, text: string) => api<CircleMessage>(`/circles/${id}/messages/`, { method: "POST", body: { text } }),
   deleteMessage: (id: string, mid: string) => api<void>(`/circles/${id}/messages/${mid}/delete/`, { method: "POST" }),
   joinMeeting: (meetingId: string) => api<MeetingJoin>(`/circles/meetings/${meetingId}/join/`, { method: "POST" }),
   // specialist
-  proList: () => api<{ results: ProCircleRow[] }>("/circles/pro/"),
+  proList: () => api<{ results: ProCircleRow[]; invites: CohostInviteRow[] }>("/circles/pro/"),
+  cohostCandidates: (q: string) => api<{ results: CircleHost[] }>("/circles/pro/cohost-candidates/", { query: { q } }),
+  cohostInvite: (id: string, psychologistId: number, sharePercent: number) =>
+    api<OwnerCircle>(`/circles/pro/${id}/cohost/`, { method: "POST", body: { psychologist_id: psychologistId, share_percent: sharePercent } }),
+  cohostShare: (id: string, sharePercent: number) =>
+    api<OwnerCircle>(`/circles/pro/${id}/cohost/`, { method: "PATCH", body: { share_percent: sharePercent } }),
+  cohostRemove: (id: string) => api<OwnerCircle>(`/circles/pro/${id}/cohost/`, { method: "DELETE" }),
+  cohostRespond: (id: string, accept: boolean) =>
+    api<OwnerCircle | undefined>(`/circles/pro/${id}/cohost/respond/`, { method: "POST", body: { accept } }),
   proGet: (id: string) => api<OwnerCircle>(`/circles/pro/${id}/`),
   proCreate: (body: CircleWrite) => api<OwnerCircle>("/circles/pro/", { method: "POST", body }),
   proUpdate: (id: string, body: Partial<CircleWrite>) => api<OwnerCircle>(`/circles/pro/${id}/`, { method: "PUT", body }),

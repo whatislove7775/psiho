@@ -152,6 +152,40 @@ def test_me_patch_avatar_v3(client_user):
 
 
 @pytest.mark.django_db
+def test_me_patch_avatar_v4(client_user):
+    """v4 adds a mask slot, cross-group options, face-shape sliders and typed style groups."""
+    c = auth_client(client_user)
+    cfg = {
+        "version": 4, "base": "man-dark", "hair": "woman.004", "beard": "oldman.beard", "eyewear": "none",
+        "headwear": "none", "earrings": "none", "mask": "none", "hairColor": "#5A3B28", "hairTip": "#F2D9A0",
+        "hairTipStyle": "streaks", "beardColor": None, "eyeColor": "#3E6FA6", "skin": "#7A4830",
+        "face": {"jaw": 0.4, "noseSize": -0.25},
+        "skinFx": {"blush": 0.3, "freckles": 0, "moles": 1, "age": 0},
+        "eyes": {"style": "ring", "lashes": 0.2},
+        "brows": {"style": "arched", "thickness": -0.3, "color": None},
+        "makeup": {"lip": "#C2555E", "lipAmount": 0.6, "shadow": None, "shadowAmount": 0.5, "liner": 0.4},
+        "acc": {"frame": "#1B1B1F", "lens": None, "hat": None, "piercings": ["nose", "brow"]},
+    }
+    resp = c.patch("/api/v1/auth/me/", {"avatar_config": cfg}, format="json")
+    assert resp.status_code == 200, resp.content
+    assert resp.json()["avatar_config"] == cfg
+
+    bads = (
+        {**cfg, "face": {"jaw": 3}},
+        {**cfg, "face": {"nope": 0.1}},
+        {**cfg, "eyes": {"style": "laser", "lashes": 0}},
+        {**cfg, "acc": {**cfg["acc"], "piercings": ["tongue"]}},
+        {**cfg, "makeup": {**cfg["makeup"], "lip": "red"}},
+        {**cfg, "hair": "../x"},
+        {**cfg, "extra": 1},
+        {**cfg, "skinFx": {"blush": True}},
+    )
+    for bad in bads:
+        resp = c.patch("/api/v1/auth/me/", {"avatar_config": bad}, format="json")
+        assert resp.status_code == 400, bad
+
+
+@pytest.mark.django_db
 def test_change_password_and_delete(client_user, psychologist):
     c = auth_client(client_user)
     assert c.post("/api/v1/auth/me/password/", {"old_password": "bad", "new_password": "newpass1234"}, format="json").status_code == 400

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
 import { authApi } from "@/lib/api/endpoints";
 import { useAuth } from "@/lib/auth/store";
-import { Button, Input, PasswordInput, Textarea } from "@/ui";
+import { Button, Input, NumberInput, PasswordInput, Textarea } from "@/ui";
 import { SpecialistFriend } from "@/components/illustrations";
 import { AuthCard, AuthLinks, AuthShell } from "./AuthShell";
 import { ChipsInput } from "./ChipsInput";
@@ -173,28 +173,24 @@ export function JoinForm() {
             hint="Выберите из&nbsp;списка или&nbsp;напишите свою и&nbsp;нажмите Enter."
           />
           <div className={s.grid2}>
-            <Input
+            <NumberInput
               label="Опыт, лет"
-              type="number"
-              inputMode="numeric"
               min={0}
               max={80}
-              value={years}
-              onChange={(e) => {
-                setYears(e.target.value);
+              value={years === "" ? null : Number(years)}
+              onChange={(v) => {
+                setYears(v == null ? "" : String(v));
                 touch("experience_years");
               }}
               error={errors.experience_years}
             />
-            <Input
+            <NumberInput
               label="Стоимость созвона, ₽"
-              type="number"
-              inputMode="numeric"
               min={0}
               step={100}
-              value={rate}
-              onChange={(e) => {
-                setRate(e.target.value);
+              value={rate === "" ? null : Number(rate)}
+              onChange={(v) => {
+                setRate(v == null ? "" : String(v));
                 touch("session_rate_rub");
               }}
               error={errors.session_rate_rub}

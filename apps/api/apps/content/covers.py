@@ -88,3 +88,60 @@ def process_cover(upload, crop: dict | None = None) -> dict:
         if field == "image":
             out["width"], out["height"] = tw, th
     return out
+
+
+# ── Картинки внутри статьи ─────────────────────────────────────────────────
+IMAGE_MAX_BYTES = 10 * 1024 * 1024
+IMAGE_MIN_W = 320
+IMAGE_SIZES = (("image", 1600), ("image_md", 800))
+
+
+def process_image(upload) -> dict:
+    """Картинка в тексте: пропорции сохраняем, WebP 1600 и 800 px по ширине, без EXIF.
+    → {"image": ContentFile, "image_md": ContentFile, "width", "height"}."""
+    if upload is None:
+        raise CoverError("Выберите картинку.")
+    if upload.size > IMAGE_MAX_BYTES:
+        raise CoverError("Файл больше 10 МБ. Сожмите картинку или выберите другую.")
+    data = upload.read()
+    try:
+        with Image.open(BytesIO(data)) as probe:
+            fmt = probe.format
+            w, h = probe.size
+            probe.verify()
+    except (UnidentifiedImageError, OSError, SyntaxError, Image.DecompressionBombError):
+        raise CoverError("Не получилось прочитать картинку. Подойдёт JPG, PNG или WebP.")
+    if fmt not in ALLOWED_FORMATS:
+        raise CoverError("Подойдёт только JPG, PNG или WebP.")
+    if w * h > MAX_PIXELS:
+        raise CoverError("Слишком большое изображение. Уменьшите его до 8000 пикселей по стороне.")
+    try:
+        img = Image.open(BytesIO(data))
+        img.load()
+        img = ImageOps.exif_transpose(img)
+    except Exception:
+        raise CoverError("Не получилось прочитать картинку. Попробуйте другой файл.")
+    if img.mode in ("RGBA", "LA", "P"):
+        img = img.convert("RGBA")
+        bg = Image.new("RGB", img.size, (255, 255, 255))
+        bg.paste(img, mask=img.getchannel("A"))
+        img = bg
+    elif img.mode != "RGB":
+        img = img.convert("RGB")
+    if img.width < IMAGE_MIN_W:
+        raise CoverError(f"Картинка слишком маленькая: нужно хотя бы {IMAGE_MIN_W} пикселей в ширину.")
+    if img.height > img.width * 3:
+        raise CoverError("Слишком вытянутая картинка: высота больше ширины в три раза.")
+    out = {}
+    for field, target in IMAGE_SIZES:
+        tw = min(target, img.width)
+        th = max(1, round(img.height * tw / img.width))
+        variant = img.resize((tw, th), Image.LANCZOS) if tw != img.width else img
+        clean = Image.new("RGB", variant.size)  # fresh image: no EXIF / ICC / XMP
+        clean.paste(variant)
+        buf = BytesIO()
+        clean.save(buf, format="WEBP", quality=84, method=5)
+        out[field] = ContentFile(buf.getvalue(), name="image.webp")
+        if field == "image":
+            out["width"], out["height"] = tw, th
+    return out

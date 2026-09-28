@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { ChevronRight, Plus, Users } from "lucide-react";
-import { Badge, Button, Card, CollapsibleCard, EmptyState, Skeleton } from "@/ui";
+import { Badge, Button, Card, CollapsibleCard, EmptyState, Skeleton, useToast } from "@/ui";
+import { ApiError } from "@/lib/api/client";
 import { PageHeader } from "@/components/shell/AppShell";
 import { useLoad } from "@/components/client/useLoad";
 import { LoadError } from "@/components/pro/controls";
@@ -14,6 +16,20 @@ import s from "@/components/circles/circles.module.css";
 
 export default function ProCirclesPage() {
   const list = useLoad(() => circlesApi.proList(), []);
+  const toast = useToast();
+  const [busy, setBusy] = useState<string | null>(null);
+  const respond = async (id: string, accept: boolean) => {
+    setBusy(id);
+    try {
+      await circlesApi.cohostRespond(id, accept);
+      toast(accept ? "Вы ко-терапевт этого круга" : "Приглашение отклонено");
+      list.reload();
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Не получилось.", { error: true });
+    } finally {
+      setBusy(null);
+    }
+  };
   return (
     <div className={s.page}>
       <PageHeader
@@ -25,6 +41,29 @@ export default function ProCirclesPage() {
         }
       />
       {list.error && <LoadError text={list.error} onRetry={list.reload} />}
+      {list.data?.invites.map((c) => (
+        <div key={c.id} className={`${s.proRow} ${topicClass(c.topic)}`}>
+          <span className={s.proIcon}>
+            <Users size={20} />
+          </span>
+          <span style={{ minWidth: 0 }}>
+            <h3>{c.title}</h3>
+            <span className={s.metaRow}>
+              <span>{c.host.name} приглашает вас ко-терапевтом</span>
+              <span>{meetingsLine(c)}</span>
+              <span>ваша доля {c.share_percent}&nbsp;%</span>
+            </span>
+          </span>
+          <span className={s.rowActions}>
+            <Button size="sm" variant="ghost" disabled={busy === c.id} onClick={() => respond(c.id, false)}>
+              Отклонить
+            </Button>
+            <Button size="sm" variant="primary" loading={busy === c.id} onClick={() => respond(c.id, true)}>
+              Принять
+            </Button>
+          </span>
+        </div>
+      ))}
       {list.loading && !list.data && <Skeleton height={120} radius={22} />}
       {list.data && list.data.results.length === 0 && (
         <Card>
@@ -61,6 +100,7 @@ export default function ProCirclesPage() {
                 </span>
               </span>
               <span className={s.rowActions}>
+                {c.my_role === "cohost" && <Badge tone="lilac">Ко-терапевт</Badge>}
                 <Badge tone={STATUS_TONE[c.status]}>{STATUS_LABEL[c.status]}</Badge>
                 <Badge>
                   {c.members_count} из {c.capacity}

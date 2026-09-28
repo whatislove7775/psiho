@@ -22,9 +22,11 @@ import { MessageItem, type MessageActions } from "./MessageItem";
 import { RetentionModal } from "./RetentionModal";
 import { Tisha } from "./Tisha";
 import { ScreenShield } from "@/components/privacy/ScreenShield";
+import { ChatMenu, type ChatMenuItem } from "./ChatMenu";
 import { PanicButton } from "@/components/privacy/PanicButton";
 import { usePrivacyPrefs } from "@/lib/privacy/usePrivacy";
 import type { VoiceClip } from "./useVoiceRecorder";
+import type { FileSendOptions } from "./AttachSheet";
 import s from "./chat.module.css";
 
 const ROLE_SUB: Record<string, string> = {
@@ -94,8 +96,8 @@ export function ConversationView({
   composerDisabled?: boolean;
   /** replaces the role line under the name */
   subtitle?: string;
-  /** extra items at the top of the header «⋮» menu */
-  menuItems?: { key: string; icon: ReactNode; label: string; onClick: () => void }[];
+  /** extra items of the header «⋮» menu: dialogue items first; `danger` ones go to the red group at the end */
+  menuItems?: ChatMenuItem[];
   /** makes the avatar + name a button (e.g. opens dialogue details) */
   onTitleClick?: () => void;
 }) {
@@ -214,9 +216,9 @@ export function ConversationView({
 
   useEffect(() => {
     if (!headMenu) return;
-    const close = (e: MouseEvent) => !headMenuRef.current?.contains(e.target as Node) && setHeadMenu(false);
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setHeadMenu(false);
+    document.addEventListener("keydown", esc);
+    return () => document.removeEventListener("keydown", esc);
   }, [headMenu]);
 
   // Scroll management
@@ -355,6 +357,7 @@ export function ConversationView({
     try {
       const msg = await uploadMessage(conv.id, {
         kind: "voice", file: clip.blob, filename: clip.filename, duration_ms: clip.durationMs, peaks: clip.peaks,
+        transcript: clip.transcript,
       });
       stickBottom.current = true;
       setMessages((xs) => upsert(xs, { ...msg, mine: true }));
@@ -365,22 +368,30 @@ export function ConversationView({
     }
   };
 
-  const sendFile = async (file: File) => {
+  const sendFile = async (file: File, opts?: FileSendOptions) => {
     if (file.size > 20 * 1024 * 1024) {
       toast("Файл больше 20\u00a0МБ", { error: true });
-      return;
+      return false;
     }
     if (conv.contacts_locked && findContacts(file.name.replace(/\.[^.]+$/, "")).length) {
       toast("Название файла похоже на\u00a0контакт\u00a0— переименуйте файл.", { error: true });
-      return;
+      return false;
+    }
+    if (conv.contacts_locked && opts?.text && findContacts(opts.text).length) {
+      toast("В\u00a0подписи похоже на\u00a0контакт\u00a0— до\u00a0первого созвона так нельзя.", { error: true });
+      return false;
     }
     setSending(true);
     try {
-      const msg = await uploadMessage(conv.id, { kind: "file", file, filename: file.name });
+      const msg = await uploadMessage(conv.id, {
+        kind: "file", file, filename: file.name, text: opts?.text, ttl: opts?.ttl, view_once: opts?.viewOnce,
+      });
       stickBottom.current = true;
       setMessages((xs) => upsert(xs, { ...msg, mine: true }));
+      return true;
     } catch (e) {
       toast(e instanceof ApiError ? e.message : "Не\u00a0получилось отправить файл", { error: true });
+      return false;
     } finally {
       setSending(false);
     }
@@ -519,29 +530,41 @@ export function ConversationView({
             <MoreVertical size={20} />
           </button>
           {headMenu && (
-            <div className={`${s.menu} ${s.headMenu}`} role="menu">
-              {menuItems?.map((it) => (
-                <button key={it.key} type="button" role="menuitem" onClick={() => { setHeadMenu(false); it.onClick(); }}>
-                  {it.icon} {it.label}
-                </button>
-              ))}
-              <button type="button" role="menuitem" onClick={() => { setHeadMenu(false); setRetentionOpen(true); }}>
-                <Timer size={16} /> Исчезающие сообщения
-              </button>
-              {conv.can_change_retention && !isAI && (
-                <button type="button" role="menuitemcheckbox" aria-checked={!!conv.screen_protect} onClick={() => { setHeadMenu(false); void toggleScreenProtect(); }}>
-                  <ScanEye size={16} /> {conv.screen_protect ? "Выключить защиту от\u00a0скриншотов" : "Защита от\u00a0скриншотов"}
-                </button>
-              )}
-              <button type="button" role="menuitem" onClick={() => { setHeadMenu(false); setClearOpen(true); }}>
-                <Eraser size={16} /> Очистить чат у&nbsp;себя
-              </button>
-              {isAI && (
-                <button type="button" role="menuitem" className={s.menuDanger} onClick={revokeAI}>
-                  <ShieldOff size={16} /> Отозвать согласие
-                </button>
-              )}
-            </div>
+            <ChatMenu
+              anchor={headMenuRef.current}
+              onClose={() => setHeadMenu(false)}
+              groups={[
+                (menuItems ?? []).filter((it) => !it.danger),
+                [
+                  {
+                    key: "retention",
+                    icon: <Timer size={17} />,
+                    label: "Исчезающие сообщения",
+                    hint: conv.retention === "forever" ? "Выключены: переписка хранится" : `Новые исчезают через\u00a0${RETENTION_LABEL[conv.retention]}`,
+                    onClick: () => setRetentionOpen(true),
+                  },
+                  ...(conv.can_change_retention && !isAI
+                    ? [
+                        {
+                          key: "screen",
+                          icon: <ScanEye size={17} />,
+                          label: "Защита от\u00a0скриншотов",
+                          hint: "Скрывает переписку, когда окно не\u00a0активно",
+                          checked: !!conv.screen_protect,
+                          onClick: () => void toggleScreenProtect(),
+                        },
+                      ]
+                    : []),
+                ],
+                [
+                  ...(menuItems ?? []).filter((it) => it.danger),
+                  { key: "clear", icon: <Eraser size={17} />, label: "Очистить чат у\u00a0себя", hint: "У\u00a0собеседника переписка останется", danger: true, onClick: () => setClearOpen(true) },
+                  ...(isAI
+                    ? [{ key: "revoke", icon: <ShieldOff size={17} />, label: "Отозвать согласие", hint: "Тиша перестанет отвечать", danger: true, onClick: () => void revokeAI() }]
+                    : []),
+                ],
+              ]}
+            />
           )}
         </div>
       </header>

@@ -1,3 +1,4 @@
+from django.db.models import Avg, Count
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics
@@ -28,7 +29,19 @@ def public_articles():
                  specialist__verification_status__in=[s for s in PsychologistProfile.VerificationStatus.values
                                                       if s != PsychologistProfile.VerificationStatus.APPROVED])
         .select_related("cover_image", "specialist", "specialist__photo")
+        .annotate(rating_avg=Avg("ratings__stars"), rating_count=Count("ratings"))
     )
+
+
+def topic_filter(qs, value: str):
+    """?topic=a или ?topic=a,b — статьи, у которых среди тем есть любая из указанных.
+    JSON-поиск по списку на SQLite недоступен, каталог небольшой — фильтруем в Python."""
+    wanted = {t for t in (value or "").split(",") if t}
+    if not wanted:
+        return qs
+    ids = [pk for pk, topics, topic in qs.values_list("id", "topics", "topic")
+           if wanted & set(topics or [topic])]
+    return qs.filter(id__in=ids)
 
 
 def _top_score(a, now) -> float:
@@ -50,10 +63,13 @@ class TopicListView(APIView):
     authentication_classes = []
 
     def get(self, request):
-        topics = list(public_articles().values_list("topic", flat=True))
+        counts: dict[str, int] = {}
+        for topics, topic in Article.objects.filter(id__in=public_articles().values("id")).values_list("topics", "topic"):
+            for t in set(topics or [topic]):
+                counts[t] = counts.get(t, 0) + 1
         return Response([
-            {"value": t.value, "label": t.label, "count": topics.count(t.value)}
-            for t in Topic if t.value in topics
+            {"value": t.value, "label": t.label, "count": counts[t.value]}
+            for t in Topic if counts.get(t.value)
         ])
 
 
@@ -71,9 +87,7 @@ class ArticleListView(generics.ListAPIView):
             qs = qs.filter(specialist__isnull=False)
         elif source == "editorial":
             qs = qs.filter(specialist__isnull=True)
-        topic = self.request.query_params.get("topic")
-        if topic:
-            qs = qs.filter(topic=topic)
+        qs = topic_filter(qs, self.request.query_params.get("topic", "")[:200])
         tag = self.request.query_params.get("tag")
         if tag:
             # JSON contains lookup isn't available on SQLite, filter in Python
@@ -139,7 +153,8 @@ class PracticeDetailView(generics.RetrieveAPIView):
 def _staff_articles():
     # Черновики специалистов сотрудникам не видны, пока автор не отправит статью на модерацию
     return (Article.objects.exclude(specialist__isnull=False, moderation=Moderation.DRAFT)
-            .select_related("cover_image", "specialist", "specialist__photo"))
+            .select_related("cover_image", "specialist", "specialist__photo")
+            .annotate(rating_avg=Avg("ratings__stars"), rating_count=Count("ratings")))
 
 
 class ManageArticleListView(generics.ListCreateAPIView):

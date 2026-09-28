@@ -1,5 +1,6 @@
 """
-«Круги» — тематические группы поддержки на 5–8 участников с психологом-ведущим.
+«Круги» — тематические группы поддержки на 5–12 участников с психологом-ведущим
+(и, по желанию, ко-терапевтом — вторым проверенным специалистом по приглашению ведущего).
 
 Приватность — главное:
 - участники видят друг друга ТОЛЬКО под псевдонимом круга («Участник-Лиса»), который
@@ -61,8 +62,12 @@ class Circle(models.Model):
         DAY = "24h", "Исчезают через 1 день"
         HOUR = "1h", "Исчезают через 1 час"
 
+    class CohostStatus(models.TextChoices):
+        INVITED = "invited", "Приглашён"
+        ACCEPTED = "accepted", "Ко-терапевт"
+
     MIN_CAPACITY = 5
-    MAX_CAPACITY = 8
+    MAX_CAPACITY = 12
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     host = models.ForeignKey("users.PsychologistProfile", on_delete=models.CASCADE, related_name="circles")
@@ -87,6 +92,15 @@ class Circle(models.Model):
     )
     review_comment = models.TextField(max_length=2000, blank=True, default="")
     cancel_reason = models.CharField(max_length=300, blank=True, default="")
+    # Ко-терапевт: второй проверенный специалист, приглашается ведущим и принимает приглашение.
+    # Модерирует встречу наравне с ведущим (кроме отмены/завершения); получает cohost_share_percent
+    # от заработка ведущего за каждую состоявшуюся встречу (apps.billing.services.share_captured).
+    cohost = models.ForeignKey(
+        "users.PsychologistProfile", null=True, blank=True, on_delete=models.SET_NULL, related_name="cohosted_circles",
+    )
+    cohost_status = models.CharField(max_length=10, choices=CohostStatus.choices, blank=True, default="")
+    cohost_share_percent = models.PositiveSmallIntegerField(default=30)
+    cohost_invited_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -100,6 +114,11 @@ class Circle(models.Model):
     @property
     def is_public(self) -> bool:
         return self.status in self.PUBLIC
+
+    @property
+    def active_cohost(self):
+        """Профиль ко-терапевта, если приглашение принято."""
+        return self.cohost if self.cohost_id and self.cohost_status == self.CohostStatus.ACCEPTED else None
 
 
 class Meeting(models.Model):
@@ -184,6 +203,7 @@ class CircleMessage(models.Model):
     class Role(models.TextChoices):
         MEMBER = "member", "Участник"
         HOST = "host", "Ведущий"
+        COHOST = "cohost", "Ко-терапевт"
         SYSTEM = "system", "Система"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

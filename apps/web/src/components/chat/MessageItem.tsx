@@ -1,13 +1,14 @@
 "use client";
 
 import {
-  Check, CheckCheck, Clock3, Copy, Download, FileAudio, FileText, FileType2, Image as ImageIcon, ImageOff,
+  Check, CheckCheck, Clock3, Copy, Download, EyeOff, FileAudio, FileText, FileType2, Image as ImageIcon, ImageOff,
   MoreHorizontal, Pencil, Timer, Trash2,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AttachmentViewer, saveAttachment, viewKind } from "./AttachmentViewer";
-import { attachmentUrl, type ChatMessage } from "@/lib/api/chat";
+import { attachmentUrl, openViewOnce, type ChatMessage } from "@/lib/api/chat";
 import { VoicePlayer } from "./VoicePlayer";
+import { VoiceTranscript } from "@/components/captions/VoiceTranscript";
 import s from "./chat.module.css";
 
 export function fmtTime(iso: string) {
@@ -20,7 +21,7 @@ function fmtSize(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} МБ`;
 }
 
-/** Image: thumbnail from the authenticated endpoint (cached object URL) + compact file row; click → viewer. */
+/** Image: ONLY the picture (like popular messengers) + optional caption; name/type/size live in the viewer. */
 function ImageCard({ msg, meta }: { msg: ChatMessage; meta?: ReactNode }) {
   const att = msg.attachment!;
   const [url, setUrl] = useState<string | null>(null);
@@ -67,11 +68,70 @@ function ImageCard({ msg, meta }: { msg: ChatMessage; meta?: ReactNode }) {
             </span>
           )}
         </button>
-        {/* time/status sits on the picture's bottom-right corner over a soft scrim */}
-        {meta}
+        {/* time/status sits on the picture's bottom-right corner over a soft scrim (without a caption) */}
+        {!msg.text && meta}
       </div>
-      <FileRow msg={msg} onOpen={() => setOpen(true)} compact />
-      {open && <AttachmentViewer msgId={msg.id} name={att.name} mime={att.mime} onClose={() => setOpen(false)} />}
+      {msg.text && <span className={`${s.text} ${s.caption}`}>{msg.text}</span>}
+      {open && (
+        <AttachmentViewer msgId={msg.id} name={att.name} mime={att.mime} size={att.size} caption={msg.text} onClose={() => setOpen(false)} />
+      )}
+    </div>
+  );
+}
+
+/** «Просмотр один раз»: a placeholder; the recipient opens it once (then it is gone for both). */
+function ViewOnceCard({ msg, own }: { msg: ChatMessage; own: boolean }) {
+  const att = msg.attachment;
+  const photo = !!att?.mime.startsWith("image/");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [opened, setOpened] = useState<{ url: string; name: string; caption: string } | null>(null);
+  const viewed = !!msg.viewed_at;
+  const label = viewed ? (photo ? "Фото просмотрено" : "Файл просмотрен") : photo ? "Фото" : "Файл";
+  const sub = viewed ? null : own ? "Один просмотр · ещё не\u00a0открыто" : "Один просмотр · нажмите, чтобы открыть";
+  const canOpen = !own && !viewed && !!att;
+
+  const open = async () => {
+    if (!canOpen || busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      setOpened(await openViewOnce(msg.id));
+    } catch (e) {
+      setErr((e as Error).message || "Не\u00a0получилось открыть");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const close = () => {
+    if (opened) URL.revokeObjectURL(opened.url);
+    setOpened(null);
+  };
+
+  const Icon = viewed ? EyeOff : photo ? ImageIcon : FileText;
+  const body = (
+    <>
+      <span className={s.onceIcon} data-viewed={viewed || undefined}>
+        {busy ? <span className={s.miniSpin} /> : <Icon size={18} />}
+      </span>
+      <span className={s.fileMeta}>
+        <span className={s.fileName}>{label}</span>
+        {(err || sub) && <span className={s.fileSize}>{err ?? sub}</span>}
+      </span>
+    </>
+  );
+  return (
+    <div className={s.fileWrap}>
+      {canOpen ? (
+        <button type="button" className={`${s.fileCard} ${s.onceCard}`} onClick={open} aria-label={`Открыть: ${label}, один просмотр`}>
+          {body}
+        </button>
+      ) : (
+        <div className={`${s.fileCard} ${s.onceCard}`}>{body}</div>
+      )}
+      {opened && att && (
+        <AttachmentViewer msgId={msg.id} name={opened.name} mime={att.mime} size={att.size} caption={opened.caption} viewOnceUrl={opened.url} onClose={close} />
+      )}
     </div>
   );
 }
@@ -133,7 +193,10 @@ function FileCard({ msg }: { msg: ChatMessage }) {
   return (
     <div className={s.fileWrap}>
       <FileRow msg={msg} onOpen={() => setOpen(true)} />
-      {open && <AttachmentViewer msgId={msg.id} name={att.name} mime={att.mime} onClose={() => setOpen(false)} />}
+      {msg.text && <span className={`${s.text} ${s.caption}`}>{msg.text}</span>}
+      {open && (
+        <AttachmentViewer msgId={msg.id} name={att.name} mime={att.mime} size={att.size} caption={msg.text} onClose={() => setOpen(false)} />
+      )}
     </div>
   );
 }
@@ -187,7 +250,8 @@ export function MessageItem({
 
   const canMenu = !msg.deleted && !msg.pending && !msg.streaming;
   const bubbleTone = own ? s.mine : msg.sender_role === "ai" ? s.ai : s.theirs;
-  const isImage = msg.kind === "file" && !msg.deleted && !!msg.attachment?.mime.startsWith("image/");
+  const isOnce = msg.kind === "file" && !msg.deleted && !!msg.view_once;
+  const isImage = !isOnce && msg.kind === "file" && !msg.deleted && !!msg.attachment?.mime.startsWith("image/");
 
   const meta = (
     <span className={s.meta}>
@@ -223,12 +287,17 @@ export function MessageItem({
             <Trash2 size={14} /> Сообщение удалено
           </span>
         ) : msg.kind === "voice" && msg.attachment ? (
-          <VoicePlayer
-            messageId={msg.id}
-            peaks={msg.attachment.peaks}
-            durationMs={msg.attachment.duration_ms ?? 0}
-            tone={own ? "mine" : "theirs"}
-          />
+          <>
+            <VoicePlayer
+              messageId={msg.id}
+              peaks={msg.attachment.peaks}
+              durationMs={msg.attachment.duration_ms ?? 0}
+              tone={own ? "mine" : "theirs"}
+            />
+            <VoiceTranscript messageId={msg.id} text={msg.text} tone={own ? "mine" : "theirs"} />
+          </>
+        ) : isOnce ? (
+          <ViewOnceCard msg={msg} own={own} />
         ) : isImage ? (
           <ImageCard msg={msg} meta={meta} />
         ) : msg.kind === "file" && msg.attachment ? (
@@ -239,7 +308,7 @@ export function MessageItem({
             {msg.streaming && <span className={s.caret} aria-hidden />}
           </span>
         )}
-        {!isImage && meta}
+        {(!isImage || !!msg.text) && meta}
       </div>
       {canMenu && (
         <button
@@ -279,5 +348,7 @@ function expiryTitle(iso: string): string {
   if (!Number.isFinite(t)) return "Исчезающее сообщение";
   const d = new Date(t);
   const hm = d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  const left = t - Date.now();
+  if (left < 60 * 60 * 1000) return `Исчезнет через\u00a0${Math.max(1, Math.ceil(left / 60000))}\u00a0мин`;
   return d.toDateString() === new Date().toDateString() ? `Исчезнет в\u00a0${hm}` : `Исчезнет завтра в\u00a0${hm}`;
 }

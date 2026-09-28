@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
+import { PhotoWithFacts } from "@/components/specialists/SpecialistFacts";
 import { psychologistsApi } from "@/lib/api/endpoints";
 import type { PsychologistPublic } from "@/lib/api/types";
 import { plural, rub } from "@/lib/format";
@@ -66,7 +67,7 @@ export function Specialists() {
           : state.items.map((p) => (
               <div key={p.id} role="listitem">
                 <Link href={hrefFor(p.id)} className={`${s.specCard} ${s.specLink}`}>
-                  <SpecialistPhoto url={p.photo_url} name={p.display_name} size={56} alt="" />
+                  <PhotoWithFacts p={p} photo={<SpecialistPhoto url={p.photo_url} name={p.display_name} size={56} alt="" />} />
                   <span className={s.specName}>{p.display_name}</span>
                   <span className={s.specMeta}>
                     {p.experience_years > 0

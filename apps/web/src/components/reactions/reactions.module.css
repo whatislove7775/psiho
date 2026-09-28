@@ -1,0 +1,95 @@
+/* Reactions (👍 / 👎) in the illustration style: a badge that pops over a video tile for ~2 s. */
+.layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.burst {
+  position: absolute;
+  width: min(34%, 120px);
+  aspect-ratio: 1;
+  animation: pop 2s cubic-bezier(0.2, 0.9, 0.25, 1.1) forwards;
+  filter: drop-shadow(0 6px 14px rgba(20, 24, 60, 0.35));
+}
+.burst[data-small] {
+  width: min(46%, 72px);
+}
+.burst svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.spark {
+  transform-origin: 50px 14px;
+  animation: twinkle 0.9s ease-in-out 0.25s 2 alternate;
+}
+@keyframes pop {
+  0% {
+    opacity: 0;
+    transform: translateY(14%) scale(0.35) rotate(-14deg);
+  }
+  16% {
+    opacity: 1;
+    transform: translateY(0) scale(1.12) rotate(6deg);
+  }
+  28% {
+    transform: translateY(0) scale(0.96) rotate(-3deg);
+  }
+  40% {
+    transform: translateY(-2%) scale(1) rotate(0);
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(-8%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-16%) scale(0.92);
+  }
+}
+@keyframes twinkle {
+  from {
+    transform: scale(0.6) rotate(0);
+  }
+  to {
+    transform: scale(1.15) rotate(20deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .burst {
+    animation: fade 2s linear forwards;
+  }
+  .spark {
+    animation: none;
+  }
+  @keyframes fade {
+    0%,
+    85% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+}
+
+/* reaction buttons' art inside the meeting controls */
+.btnArt {
+  width: 26px;
+  height: 26px;
+  display: block;
+}
+
+/* one quiet line (e.g. «Руки выключены: медленный интернет») */
+.quiet {
+  margin: 0;
+  padding: 0 14px 8px 44px;
+  color: var(--c-muted);
+  font-size: var(--t-12);
+  line-height: 1.4;
+}

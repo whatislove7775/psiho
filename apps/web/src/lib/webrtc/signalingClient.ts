@@ -20,6 +20,8 @@ export type SignalMessage =
   | { type: "bye"; from?: string }
   /** the client shows the avatar or (explicit opt-in) the real camera */
   | { type: "media"; face: "avatar" | "real"; from?: string }
+  /** 👍/👎 reaction (hand gesture or button); the server relays only the kind */
+  | { type: "reaction"; kind: "up" | "down"; from?: string }
   | { type: "peer-joined" }
   | { type: "peer-left" };
 

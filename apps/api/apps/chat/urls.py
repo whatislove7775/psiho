@@ -15,6 +15,7 @@ urlpatterns = [
     path("messages/<uuid:pk>/", views.MessageDetailView.as_view()),
     path("messages/<uuid:pk>/delete/", views.MessageDeleteView.as_view()),
     path("messages/<uuid:pk>/attachment/", views.AttachmentView.as_view()),
+    path("messages/<uuid:pk>/open/", views.ViewOnceOpenView.as_view()),
     path("ai/", ai_views.AIStatusView.as_view()),
     path("ai/consent/", ai_views.AIConsentView.as_view()),
     path("ai/reply/", ai_views.AIReplyView.as_view()),

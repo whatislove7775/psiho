@@ -71,6 +71,10 @@ export interface ChatMessage {
   edited_at: string | null;
   deleted: boolean;
   expires_at: string | null;
+  /** «Просмотр один раз»: name and caption arrive only with the file (openViewOnce) */
+  view_once?: boolean;
+  /** when the recipient opened it — the file is gone for both */
+  viewed_at?: string | null;
   mine: boolean;
   /** client-only: optimistic / streaming state */
   pending?: boolean;
@@ -198,16 +202,39 @@ async function errorFrom(res: Response): Promise<ApiError> {
 
 export async function uploadMessage(
   convId: string,
-  form: { kind: "voice" | "file"; file: Blob; filename: string; duration_ms?: number; peaks?: number[] },
+  form: { kind: "voice" | "file"; file: Blob; filename: string; duration_ms?: number; peaks?: number[]; transcript?: string;
+    /** files: caption, «Исчезнет через …», «Просмотр один раз» */
+    text?: string; ttl?: AttachmentTtl | null; view_once?: boolean },
 ): Promise<ChatMessage> {
   const fd = new FormData();
   fd.set("kind", form.kind);
   fd.set("file", form.file, form.filename);
   if (form.duration_ms) fd.set("duration_ms", String(Math.round(form.duration_ms)));
   if (form.peaks) fd.set("peaks", JSON.stringify(form.peaks.map((p) => Math.round(p * 1000) / 1000)));
+  // voice: text recognised on the sender's device before the voice filter (lib/captions)
+  if (form.transcript) fd.set("transcript", form.transcript);
+  if (form.text) fd.set("text", form.text);
+  if (form.ttl) fd.set("ttl", form.ttl);
+  if (form.view_once) fd.set("view_once", "1");
   const res = await authedFetch(`/chat/conversations/${convId}/messages/`, { method: "POST", body: fd });
   if (!res.ok) throw await errorFrom(res);
   return res.json();
+}
+
+export type AttachmentTtl = "1m" | "1h" | "1d";
+
+/** «Просмотр один раз»: the recipient gets the file once (the server erases it for both right away). */
+export async function openViewOnce(msgId: string): Promise<{ url: string; name: string; caption: string }> {
+  const res = await authedFetch(`/chat/messages/${msgId}/open/`, { method: "POST" });
+  if (!res.ok) throw await errorFrom(res);
+  const dec = (v: string | null) => {
+    try {
+      return decodeURIComponent(v ?? "");
+    } catch {
+      return "";
+    }
+  };
+  return { url: URL.createObjectURL(await res.blob()), name: dec(res.headers.get("X-File-Name")), caption: dec(res.headers.get("X-Caption")) };
 }
 
 /** Decrypted attachment as an object URL (the endpoint needs the Authorization header). */

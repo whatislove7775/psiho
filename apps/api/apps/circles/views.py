@@ -99,7 +99,8 @@ class CircleDetailView(APIView):
 
     def get(self, request, pk):
         c = get_object_or_404(Circle.objects.select_related("host", "host__user"), pk=pk)
-        is_host = request.user.is_authenticated and c.host.user_id == request.user.pk
+        is_host = request.user.is_authenticated and (
+            c.host.user_id == request.user.pk or (c.cohost_id is not None and c.cohost.user_id == request.user.pk))
         is_member = request.user.is_authenticated and c.memberships.filter(user=request.user).exists()
         if not c.is_public and c.status != S.CANCELLED and not is_host:
             return Response({"detail": "Круг не найден."}, status=404)
@@ -157,7 +158,8 @@ class MembersView(APIView):
         c, role, m = _audience(request, pk)
         if role is None:
             return Response({"detail": "Список доступен только участникам круга."}, status=403)
-        return Response({"host": P.host_payload(c), "members": P.members_payload(c, role, m)})
+        return Response({"host": P.host_payload(c), "cohost": P.cohost_payload(c),
+                         "members": P.members_payload(c, role, m)})
 
 
 class MessagesView(APIView):
@@ -231,6 +233,9 @@ class MeetingJoinView(APIView):
         if role == "host":
             svc.mark_host_joined(meeting)
             peer, name, tone = "host", c.host.display_name, "primary"
+        elif role == "cohost":
+            svc.mark_host_joined(meeting)
+            peer, name, tone = "cohost", c.cohost.display_name, "primary"
         else:
             peer, name, tone = m.handle, m.pseudonym, m.tone
         token = make_group_token(user_id=request.user.pk, room_id=meeting.room_id, peer=peer, role=role,
@@ -244,7 +249,8 @@ class MeetingJoinView(APIView):
                        "allow_real_faces": c.allow_real_faces},
             "meeting": P.meeting_payload(meeting),
             "host": P.host_payload(c),
-            "max_peers": 1 + c.capacity,
+            "cohost": P.cohost_payload(c),
+            "max_peers": (2 if c.active_cohost else 1) + c.capacity,
         })
 
 
@@ -304,16 +310,34 @@ def _own(request, pk) -> Circle:
                              host__user=request.user)
 
 
+def _own_or_cohost(request, pk) -> tuple[Circle, str]:
+    """Круг, который я веду или со-веду (принятое приглашение): (круг, "host" | "cohost")."""
+    c = get_object_or_404(
+        Circle.objects.select_related("host", "host__user", "cohost", "cohost__user").filter(
+            Q(host__user=request.user) | Q(cohost__user=request.user, cohost_status=Circle.CohostStatus.ACCEPTED)),
+        pk=pk)
+    return c, "host" if c.host.user_id == request.user.pk else "cohost"
+
+
 class ProCirclesView(APIView):
     permission_classes = [IsPsychologist]
 
     def get(self, request):
         svc.maybe_sweep()
-        qs = Circle.objects.select_related("host", "host__user").filter(host__user=request.user)
+        qs = Circle.objects.select_related("host", "host__user", "cohost").filter(
+            Q(host__user=request.user) | Q(cohost__user=request.user, cohost_status=Circle.CohostStatus.ACCEPTED))
+        invites = Circle.objects.select_related("host", "host__user", "cohost").filter(
+            cohost__user=request.user, cohost_status=Circle.CohostStatus.INVITED).exclude(
+            status__in=[S.FINISHED, S.CANCELLED])
         return Response({"results": [
             {**P.circle_card(c), "review_comment": c.review_comment, "members_count": svc.seats_taken(c),
-             "waitlist_count": c.memberships.filter(status=M.WAITLIST).count()}
+             "waitlist_count": c.memberships.filter(status=M.WAITLIST).count(),
+             "my_role": "host" if c.host.user_id == request.user.pk else "cohost"}
             for c in qs
+        ], "invites": [
+            {**P.circle_card(c), "share_percent": c.cohost_share_percent,
+             "invited_at": c.cohost_invited_at.isoformat() if c.cohost_invited_at else None}
+            for c in invites
         ]})
 
     def post(self, request):
@@ -327,9 +351,9 @@ class ProCircleView(APIView):
     permission_classes = [IsPsychologist]
 
     def get(self, request, pk):
-        c = _own(request, pk)
+        c, role = _own_or_cohost(request, pk)
         svc.refresh_status(c)
-        return Response(P.circle_owner(c))
+        return Response(P.circle_owner(c, role=role))
 
     def put(self, request, pk):
         c = _own(request, pk)
@@ -389,7 +413,7 @@ class ProModerateView(APIView):
     permission_classes = [IsPsychologist]
 
     def post(self, request, pk, handle):
-        c = _own(request, pk)
+        c, _role = _own_or_cohost(request, pk)
         m = get_object_or_404(Membership, circle=c, handle=handle, status=M.ACTIVE)
         action = request.data.get("action")
         if action in ("mute", "unmute"):
@@ -400,6 +424,69 @@ class ProModerateView(APIView):
         else:
             return Response({"detail": "Неизвестное действие."}, status=400)
         return Response({"members": P.members_payload(c, "host", None)})
+
+
+class CohostCandidatesView(APIView):
+    """GET ?q= — проверенные специалисты, которых можно пригласить ко-терапевтом."""
+
+    permission_classes = [IsPsychologist]
+
+    def get(self, request):
+        from apps.users.models import PsychologistProfile
+
+        qs = PsychologistProfile.objects.filter(
+            verification_status=PsychologistProfile.VerificationStatus.APPROVED).exclude(user=request.user)
+        q = (request.query_params.get("q") or "").strip()[:60]
+        if q:
+            qs = qs.filter(display_name__icontains=q)
+        return Response({"results": [P.specialist_payload(p) for p in qs.order_by("display_name")[:20]]})
+
+
+class ProCohostView(APIView):
+    """Ведущий: POST {psychologist_id, share_percent} — пригласить; PATCH {share_percent}; DELETE — убрать."""
+
+    permission_classes = [IsPsychologist]
+
+    def post(self, request, pk):
+        from apps.users.models import PsychologistProfile
+
+        c = _own(request, pk)
+        profile = get_object_or_404(PsychologistProfile, pk=request.data.get("psychologist_id"))
+        try:
+            svc.invite_cohost(c, profile, request.data.get("share_percent"))
+        except svc.CircleError as e:
+            return err(e)
+        return Response(P.circle_owner(c))
+
+    def patch(self, request, pk):
+        c = _own(request, pk)
+        try:
+            svc.set_cohost_share(c, request.data.get("share_percent"))
+        except svc.CircleError as e:
+            return err(e)
+        return Response(P.circle_owner(c))
+
+    def delete(self, request, pk):
+        c = _own(request, pk)
+        svc.remove_cohost(c)
+        return Response(P.circle_owner(c))
+
+
+class ProCohostRespondView(APIView):
+    """Приглашённый специалист: POST {accept: true|false}."""
+
+    permission_classes = [IsPsychologist]
+
+    def post(self, request, pk):
+        c = get_object_or_404(Circle.objects.select_related("host", "cohost", "cohost__user"), pk=pk,
+                              cohost__user=request.user)
+        try:
+            svc.respond_cohost(c, request.user, bool(request.data.get("accept")))
+        except svc.CircleError as e:
+            return err(e)
+        if c.active_cohost is None:
+            return Response(status=204)
+        return Response(P.circle_owner(c, role="cohost"))
 
 
 class ProMeetingEndView(APIView):

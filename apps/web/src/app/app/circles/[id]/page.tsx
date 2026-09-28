@@ -82,7 +82,7 @@ export default function CirclePage() {
               {c.format === "single" ? <Clock size={16} /> : <Repeat size={16} />} {meetingsLine(c)}
             </span>
             <span>
-              <Users size={16} /> До {c.capacity} участников и&nbsp;ведущий
+              <Users size={16} /> До {c.capacity} участников и&nbsp;{c.cohost ? "двое ведущих" : "ведущий"}
             </span>
           </div>
         </div>
@@ -101,10 +101,10 @@ export default function CirclePage() {
             </Button>
           </Card>
         )}
-        {(member || c.my_role === "host") && (
+        {(member || c.my_role === "host" || c.my_role === "cohost") && (
           <Card>
             <CardHead title="Чат круга" icon={<MessagesSquare size={18} />} sub="Здесь можно познакомиться, задать вопрос ведущему и&nbsp;поддержать друг друга" />
-            <GroupChat circleId={c.id} hostPhoto={c.host.photo_url} />
+            <GroupChat circleId={c.id} hostPhoto={c.host.photo_url} cohostPhoto={c.cohost?.photo_url} />
           </Card>
         )}
         <Card>
@@ -194,7 +194,7 @@ function Schedule({ meetings }: { meetings: CircleMeeting[] }) {
 function Rail({ c, reload, setData }: { c: CircleDetail; reload: () => void; setData: (d: CircleDetail) => void }) {
   return (
     <>
-      {c.my_role === "host" ? (
+      {c.my_role === "host" || c.my_role === "cohost" ? (
         <Card>
           <CardHead title="Это&nbsp;ваш круг" />
           <Button variant="primary" block href={`/pro/circles/${c.id}`}>
@@ -205,34 +205,55 @@ function Rail({ c, reload, setData }: { c: CircleDetail; reload: () => void; set
         <Membership c={c} reload={reload} setData={setData} />
       )}
       <Card>
-        <CardHead title="Ведущий" />
-        <div className={s.hostCard}>
-          <SpecialistPhoto url={c.host.photo_url} name={c.host.name} size={72} />
-          <div>
-            <h3>{c.host.name}</h3>
-            <div className={s.hostMeta}>
-              <Badge tone="success">
-                <BadgeCheck size={12} /> Проверенный психолог
-              </Badge>
-              {c.host.experience_years > 0 && (
-                <Badge>
-                  Опыт {c.host.experience_years} {plural(c.host.experience_years, "год", "года", "лет")}
-                </Badge>
-              )}
-              {!!c.host.verified_credentials && (
-                <Badge tone="mint">
-                  {c.host.verified_credentials} {plural(c.host.verified_credentials, "документ", "документа", "документов")}
-                </Badge>
-              )}
-            </div>
-            {c.host.bio && <p>{typo(c.host.bio)}</p>}
-            <Link className={s.hostLink} href={`/app/specialists/${c.host.id}`}>
-              Профиль и&nbsp;дипломы
-            </Link>
+        <CardHead title={c.cohost ? "Ведущие" : "Ведущий"} />
+        <HostCard h={c.host} />
+        {c.cohost && (
+          <div style={{ marginTop: 20 }}>
+            <HostCard h={c.cohost} role="Ко-терапевт" />
           </div>
-        </div>
+        )}
       </Card>
     </>
+  );
+}
+
+function HostCard({ h, role }: { h: CircleDetail["host"]; role?: string }) {
+  return (
+    <div className={s.hostCard}>
+      <SpecialistPhoto url={h.photo_url} name={h.name} size={role ? 60 : 72} />
+      <div>
+        <h3>{h.name}</h3>
+        <div className={s.hostMeta}>
+          <Badge tone="success">
+            <BadgeCheck size={12} /> {role ?? "Проверенный психолог"}
+          </Badge>
+          {h.experience_years > 0 && (
+            <Badge>
+              Опыт {h.experience_years} {plural(h.experience_years, "год", "года", "лет")}
+            </Badge>
+          )}
+          {!!h.verified_credentials && (
+            <Badge tone="mint">
+              {h.verified_credentials} {plural(h.verified_credentials, "документ", "документа", "документов")}
+            </Badge>
+          )}
+        </div>
+        {role && !!h.credentials_top?.length && (
+          <ul className={s.credList}>
+            {h.credentials_top.map((x) => (
+              <li key={`${x.kind}-${x.title}`}>
+                {x.title}
+                {x.year ? `, ${x.year}` : ""}
+              </li>
+            ))}
+          </ul>
+        )}
+        {h.bio && <p>{typo(h.bio)}</p>}
+        <Link className={s.hostLink} href={`/app/specialists/${h.id}`}>
+          Профиль и&nbsp;дипломы
+        </Link>
+      </div>
+    </div>
   );
 }
 

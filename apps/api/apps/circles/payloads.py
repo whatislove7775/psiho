@@ -13,9 +13,18 @@ def rules_list(circle: Circle) -> list[str]:
 
 
 def host_payload(circle: Circle, full: bool = False) -> dict:
+    return specialist_payload(circle.host, full)
+
+
+def cohost_payload(circle: Circle, full: bool = False) -> dict | None:
+    """Ко-терапевт — только если приглашение принято."""
+    co = circle.active_cohost
+    return specialist_payload(co, full) if co is not None else None
+
+
+def specialist_payload(p, full: bool = False) -> dict:
     from apps.photos.utils import photo_url
 
-    p = circle.host
     data = {
         "id": p.pk,
         "name": p.display_name,
@@ -28,9 +37,15 @@ def host_payload(circle: Circle, full: bool = False) -> dict:
         try:
             from apps.credentials.models import Credential
 
-            data["verified_credentials"] = Credential.objects.filter(profile=p, status=Credential.Status.APPROVED).count()
+            approved = Credential.objects.filter(profile=p, status=Credential.Status.APPROVED)
+            data["verified_credentials"] = approved.count()
+            data["credentials_top"] = [
+                {"kind": c.get_kind_display(), "title": c.title, "year": c.year}
+                for c in approved.order_by("-year")[:3]
+            ]
         except Exception:  # pragma: no cover
             data["verified_credentials"] = 0
+            data["credentials_top"] = []
     return data
 
 
@@ -72,6 +87,7 @@ def circle_card(c: Circle, now=None) -> dict:
         "first_meeting_at": meetings[0].starts_at.isoformat() if meetings else None,
         "next_meeting_at": upcoming[0].starts_at.isoformat() if upcoming else None,
         "host": host_payload(c),
+        "cohost": cohost_payload(c),
     }
 
 
@@ -100,6 +116,7 @@ def circle_detail(c: Circle, user=None, now=None) -> dict:
         "allow_real_faces": c.allow_real_faces,
         "chat_retention": c.chat_retention,
         "host": host_payload(c, full=True),
+        "cohost": cohost_payload(c, full=True),
         "meetings": [meeting_payload(m, now) for m in svc.active_meetings(c)],
         "waitlist_count": c.memberships.filter(status=M.WAITLIST).count(),
         "join_closed_reason": svc.join_closed_reason(c, now),
@@ -111,6 +128,8 @@ def circle_detail(c: Circle, user=None, now=None) -> dict:
     if user is not None and user.is_authenticated:
         if c.host.user_id == user.pk:
             role = "host"
+        elif c.active_cohost is not None and c.cohost.user_id == user.pk:
+            role = "cohost"
         else:
             me = Membership.objects.filter(circle=c, user=user).first()
             if me is not None and me.status == M.ACTIVE:
@@ -132,22 +151,33 @@ def members_payload(c: Circle, viewer_role: str, viewer_membership: Membership |
     for m in c.memberships.filter(status=M.ACTIVE).order_by("joined_at"):
         row = {"handle": m.handle, "name": m.pseudonym, "tone": m.tone,
                "is_me": bool(viewer_membership and viewer_membership.pk == m.pk)}
-        if viewer_role == "host":
+        if svc.is_moderator(viewer_role):
             row["chat_muted"] = m.chat_muted
         rows.append(row)
     return rows
 
 
-def circle_owner(c: Circle, now=None) -> dict:
-    """Для ведущего: + статус проверки и участники (по псевдонимам)."""
+def cohost_invite(c: Circle) -> dict | None:
+    """Состояние приглашения ко-терапевта (для ведущего и приглашённого)."""
+    if not c.cohost_id or not c.cohost_status:
+        return None
+    return {"status": c.cohost_status, "share_percent": c.cohost_share_percent,
+            "invited_at": c.cohost_invited_at.isoformat() if c.cohost_invited_at else None,
+            "specialist": specialist_payload(c.cohost, full=True)}
+
+
+def circle_owner(c: Circle, now=None, role: str = "host") -> dict:
+    """Для ведущего (и ко-терапевта): + статус проверки и участники (по псевдонимам)."""
     data = circle_detail(c, None, now)
     data.update({
-        "my_role": "host",
+        "my_role": role,
+        "cohost_invite": cohost_invite(c),
+        "cohost_share_limits": [svc.COHOST_SHARE_MIN, svc.COHOST_SHARE_MAX],
         "review_comment": c.review_comment,
         "submitted_at": c.submitted_at.isoformat() if c.submitted_at else None,
         "reviewed_at": c.reviewed_at.isoformat() if c.reviewed_at else None,
         "cancel_reason": c.cancel_reason,
-        "editable": c.status in Circle.EDITABLE,
+        "editable": role == "host" and c.status in Circle.EDITABLE,
         "members": members_payload(c, "host", None),
         "rules_text": c.rules,
     })

@@ -7,7 +7,8 @@
 
 Файлы хранятся зашифрованными в БД (Fernet, как вложения чата), не в /media: nginx их
 не раздаёт, отдаёт только API — владельцу, сотруднику с правом проверки или всем (если
-пункт подтверждён и файл публичный). Номер документа тоже зашифрован; публично — маска.
+пункт подтверждён и файл публичный). Номер документа тоже зашифрован; публично — маска
+(или полный номер, если специалист так решил).
 """
 import uuid
 
@@ -53,6 +54,8 @@ class Credential(models.Model):
     # Номер документа — зашифрован; публично показывается маска «•••• 1234»
     number_enc = models.BinaryField(blank=True, default=b"")
     number_hint = models.CharField(max_length=8, blank=True, default="")
+    # «Показывать номер клиентам полностью» — чтобы клиент мог сам проверить документ в реестре
+    number_public = models.BooleanField(default=False)
 
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDING, db_index=True)
     reject_reason = models.CharField(max_length=500, blank=True, default="")

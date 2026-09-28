@@ -14,7 +14,9 @@
   color: var(--c-text);
   overflow: hidden;
 }
-.dark {
+/* .modalDark: in-call dialogs are portalled to <body>, so they take the call palette via this class */
+.dark,
+.modalDark {
   --c-page: #07070c;
   --c-panel: #15151d;
   --c-raised: #20202a;
@@ -30,6 +32,8 @@
   --c-warning: #ffb547;
   --c-danger: #ff5a4e;
   color-scheme: dark;
+}
+.dark {
   background: #07070c;
 }
 
@@ -1192,5 +1196,20 @@
   }
   .toastLow {
     top: 116px;
+  }
+}
+
+/* ── Live captions (components/captions): 7 controls fit at 360–390px ── */
+@media (max-width: 420px) {
+  .controls {
+    gap: 2px;
+    padding: 8px 6px 6px;
+  }
+  .ctrlWrap {
+    min-width: 46px;
+  }
+  .ctrl {
+    width: 44px;
+    height: 44px;
   }
 }

@@ -567,6 +567,7 @@ textarea.input {
   max-height: calc(100dvh - 32px);
   overflow: auto;
   background: var(--c-panel);
+  color: var(--c-text);
   border-radius: var(--r-panel);
   padding: 28px;
   box-shadow: var(--shadow-float);

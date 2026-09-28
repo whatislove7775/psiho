@@ -20,6 +20,7 @@ import {
   type TextareaHTMLAttributes,
 } from "react";
 import { X } from "lucide-react";
+import { Portal } from "./Portal";
 import s from "./ui.module.css";
 
 const cx = (...c: unknown[]) => c.filter((x) => typeof x === "string" && x).join(" ");
@@ -245,6 +246,9 @@ export function Segmented<T extends string>({
 }
 
 export { PasswordInput, type PasswordInputProps } from "./PasswordInput";
+export { Portal } from "./Portal";
+export { NumberInput, type NumberInputProps } from "./NumberInput";
+export { Combobox, type ComboboxProps } from "./Combobox";
 export { ScrollRow } from "./ScrollRow";
 
 // ── Badge ─────────────────────────────────────────────────────────────────────
@@ -337,12 +341,15 @@ export function Modal({
   title,
   children,
   width,
+  className,
 }: {
   open: boolean;
   onClose: () => void;
   title?: ReactNode;
   children: ReactNode;
   width?: number;
+  /** extra class on the overlay, e.g. to scope theme variables (the always-dark call screen) */
+  className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   // Keep the latest onClose without re-running the effect: callers pass inline
@@ -375,15 +382,17 @@ export function Modal({
   }, [open]);
   if (!open) return null;
   return (
-    <div className={s.overlay} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={ref} className={s.modal} role="dialog" aria-modal="true" style={width ? { width: `min(${width}px, 100%)` } : undefined}>
-        <div className={s.modalHead} data-modal-head>
-          <h3>{title}</h3>
-          <Button variant="ghost" size="sm" iconOnly aria-label="Закрыть" onClick={onClose} icon={<X size={18} />} />
+    <Portal>
+      <div className={cx(s.overlay, className)} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+        <div ref={ref} className={s.modal} role="dialog" aria-modal="true" style={width ? { width: `min(${width}px, 100%)` } : undefined}>
+          <div className={s.modalHead} data-modal-head>
+            <h3>{title}</h3>
+            <Button variant="ghost" size="sm" iconOnly aria-label="Закрыть" onClick={onClose} icon={<X size={18} />} />
+          </div>
+          {children}
         </div>
-        {children}
       </div>
-    </div>
+    </Portal>
   );
 }
 
@@ -406,13 +415,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastCtx.Provider value={push}>
       {children}
-      <div className={s.toasts} aria-live="polite">
-        {items.map((t) => (
-          <div key={t.id} className={cx(s.toast, t.error && s.toastError)}>
-            {t.text}
-          </div>
-        ))}
-      </div>
+      <Portal>
+        <div className={s.toasts} aria-live="polite">
+          {items.map((t) => (
+            <div key={t.id} className={cx(s.toast, t.error && s.toastError)}>
+              {t.text}
+            </div>
+          ))}
+        </div>
+      </Portal>
     </ToastCtx.Provider>
   );
 }

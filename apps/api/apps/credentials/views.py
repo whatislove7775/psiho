@@ -103,7 +103,8 @@ class MyCredentialDetailView(APIView):
 
     def patch(self, request, pk):
         credential = _own(request, pk)
-        before = {k: getattr(credential, k) for k in CredentialWriteSerializer.Meta.fields if k != "number"}
+        before = {k: getattr(credential, k) for k in CredentialWriteSerializer.Meta.fields
+                  if k not in ("number", "number_public")}  # показ номера — не повод перепроверять
         before_number = decrypt_text(credential.number_enc)
         ser = CredentialWriteSerializer(credential, data=request.data, partial=True)
         ser.is_valid(raise_exception=True)

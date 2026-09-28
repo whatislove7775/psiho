@@ -11,7 +11,7 @@ from apps.billing import services as B
 from apps.billing.ledger import balance_of, verify
 from apps.billing.models import Account, Hold
 from apps.circles import services as svc
-from apps.circles.models import Circle, CircleMessage, Meeting, Membership
+from apps.circles.models import Charge, Circle, CircleMessage, Meeting, Membership
 from apps.signaling.group import make_group_token
 from apps.staff.models import StaffMember
 from apps.users.models import User
@@ -79,8 +79,9 @@ def admin_user(db):
 @pytest.mark.django_db
 def test_create_submit_review_flow(psychologist, admin_user, client_user):
     pro = auth_client(psychologist.user)
-    r = pro.post("/api/v1/circles/pro/", payload(capacity=9), format="json")
-    assert r.status_code == 400  # 5–8 мест
+    r = pro.post("/api/v1/circles/pro/", payload(capacity=13), format="json")
+    assert r.status_code == 400  # 5–12 мест
+    assert pro.post("/api/v1/circles/pro/", payload(capacity=12), format="json").status_code == 201
     r = pro.post("/api/v1/circles/pro/", payload(), format="json")
     cid = r.json()["id"]
     assert r.json()["status"] == "draft" and len(r.json()["meetings"]) == 3
@@ -99,7 +100,7 @@ def test_create_submit_review_flow(psychologist, admin_user, client_user):
     r = staff.post(f"/api/v1/staff/circles/{cid}/", {"decision": "approve"}, format="json")
     assert r.json()["status"] == "recruiting"
     listing = auth_client(client_user).get("/api/v1/circles/?topic=anxiety").json()
-    assert [c["id"] for c in listing["results"]] == [cid]
+    assert cid in [c["id"] for c in listing["results"]]
     assert listing["results"][0]["seats_left"] == 5
 
 
@@ -351,3 +352,166 @@ def test_group_signaling_three_peers(psychologist, admin_user):
     assert Membership.objects.get(circle=circle, user=b).status == "removed"
     meeting.refresh_from_db()
     assert meeting.status == "done" and meeting.settled
+
+
+# ── Ко-терапевт ──────────────────────────────────────────────────────
+
+def _second_psychologist(email="co@example.com", name="Борис"):
+    from apps.users.models import PsychologistProfile
+
+    u = User.objects.create_psychologist(email=email, password="psypass12345")
+    return PsychologistProfile.objects.create(
+        user=u, display_name=name, bio="Групповая терапия", specializations=["Группы"], session_rate_rub=3000,
+        verification_status=PsychologistProfile.VerificationStatus.APPROVED,
+    )
+
+
+@pytest.mark.django_db
+def test_cohost_invite_accept_and_split(psychologist, admin_user):
+    circle = published(psychologist, admin_user)
+    co = _second_psychologist()
+    pro, cop = auth_client(psychologist.user), auth_client(co.user)
+    cands = pro.get("/api/v1/circles/pro/cohost-candidates/?q=Бор").json()["results"]
+    assert [c["id"] for c in cands] == [co.pk]
+    # только ведущий приглашает; доля в пределах
+    assert cop.post(f"/api/v1/circles/pro/{circle.id}/cohost/", {"psychologist_id": co.pk}, format="json").status_code == 404
+    assert pro.post(f"/api/v1/circles/pro/{circle.id}/cohost/",
+                    {"psychologist_id": co.pk, "share_percent": 90}, format="json").status_code == 400
+    r = pro.post(f"/api/v1/circles/pro/{circle.id}/cohost/", {"psychologist_id": co.pk, "share_percent": 30}, format="json")
+    assert r.status_code == 200 and r.json()["cohost_invite"]["status"] == "invited"
+    assert r.json()["cohost"] is None  # до принятия публично не показываем
+    mine = cop.get("/api/v1/circles/pro/").json()
+    assert mine["results"] == [] and [c["id"] for c in mine["invites"]] == [str(circle.id)]
+    assert cop.get(f"/api/v1/circles/pro/{circle.id}/").status_code == 404
+    r = cop.post(f"/api/v1/circles/pro/{circle.id}/cohost/respond/", {"accept": True}, format="json")
+    assert r.status_code == 200 and r.json()["my_role"] == "cohost" and r.json()["editable"] is False
+    detail = auth_client(clients(1)[0]).get(f"/api/v1/circles/{circle.id}/").json()
+    assert detail["cohost"]["name"] == "Борис" and "photo_url" in detail["cohost"]
+    # ко-терапевт не может отменить круг, но модерирует чат
+    assert cop.post(f"/api/v1/circles/pro/{circle.id}/action/", {"action": "cancel"}, format="json").status_code == 404
+    a, b = clients(2)
+    auth_client(a).post(f"/api/v1/circles/{circle.id}/join/")
+    auth_client(b).post(f"/api/v1/circles/{circle.id}/join/")
+    ma = Membership.objects.get(circle=circle, user=a)
+    assert cop.post(f"/api/v1/circles/pro/{circle.id}/members/{ma.handle}/", {"action": "mute"}, format="json").status_code == 200
+    r = cop.post(f"/api/v1/circles/{circle.id}/messages/", {"text": "Привет, я Борис"}, format="json")
+    assert r.status_code == 201 and r.json()["author"]["kind"] == "cohost"
+    # встреча прошла: 1000 ₽ × 2 участника, комиссия 20 % → ведущему 1600, из них 30 % ко-терапевту
+    meeting = circle.meetings.order_by("starts_at").first()
+    Meeting.objects.filter(pk=meeting.pk).update(starts_at=timezone.now() - timedelta(minutes=5))
+    meeting.refresh_from_db()
+    r = cop.post(f"/api/v1/circles/meetings/{meeting.id}/join/")
+    assert r.status_code == 200 and r.json()["self"]["id"] == "cohost" and r.json()["max_peers"] == 7
+    svc.end_meeting(meeting)
+    assert balance_of(co.user, K.SPEC_PENDING) == 48000
+    assert balance_of(psychologist.user, K.SPEC_PENDING) == 112000
+    svc.settle_meeting(meeting, force=True)  # идемпотентно
+    B.mature_earnings(timezone.now() + timedelta(days=30))
+    assert balance_of(co.user, K.SPEC_AVAILABLE) == 48000
+    assert balance_of(psychologist.user, K.SPEC_AVAILABLE) == 112000
+    assert verify()["ok"]
+    earnings = cop.get("/api/v1/billing/earnings/")
+    assert earnings.status_code == 200
+    assert sum(c["net_kopecks"] for c in earnings.json()["calls"]) == 48000
+    # возврат персоналом списанной оплаты забирает обе доли пропорционально (ко-терапевт — уже созревшую)
+    ref = Charge.objects.filter(membership=ma, meeting=meeting).get().ref
+    before_a = balance_of(a, K.CLIENT)
+    B.refund_captured_call(ref)
+    assert balance_of(a, K.CLIENT) - before_a == 100000  # 1000 ₽: 560 ведущему + 240 ко-терапевту + 200 комиссия
+    assert balance_of(co.user, K.SPEC_AVAILABLE) == 48000 - 24000
+    assert balance_of(psychologist.user, K.SPEC_AVAILABLE) == 112000 - 56000
+    with pytest.raises(B.BillingError):
+        B.refund_captured_call(ref)  # повторно нельзя
+    assert balance_of(co.user, K.SPEC_AVAILABLE) == 24000 and verify()["ok"]
+    # уже выплаченная доля ко-терапевта: возврат не проходит целиком, как и для ведущего
+    mb = Membership.objects.get(circle=circle, user=b)
+    ref_b = Charge.objects.filter(membership=mb, meeting=meeting).get().ref
+    from apps.billing.ledger import post, account_for
+    post("adjustment", "qa-drain", [(account_for(co.user, K.SPEC_AVAILABLE), -24000),
+                                     (account_for(co.user, K.SPEC_PAYOUT), 24000)])
+    with pytest.raises(B.BillingError):
+        B.refund_captured_call(ref_b)
+    assert Hold.objects.get(session_ref=ref_b).status == "captured" and verify()["ok"]
+    # ведущий убирает ко-терапевта
+    r = pro.delete(f"/api/v1/circles/pro/{circle.id}/cohost/")
+    assert r.json()["cohost_invite"] is None
+    assert cop.get(f"/api/v1/circles/pro/{circle.id}/").status_code == 404
+
+
+@pytest.mark.django_db(transaction=True)
+def test_breakout_rooms_signaling(psychologist, admin_user):
+    circle = published(psychologist, admin_user)
+    co = _second_psychologist()
+    svc.invite_cohost(circle, co, 30)
+    svc.respond_cohost(circle, co.user, True)
+    a, b, c = clients(3)
+    for u in (a, b, c):
+        auth_client(u).post(f"/api/v1/circles/{circle.id}/join/")
+    meeting = circle.meetings.order_by("starts_at").first()
+    Meeting.objects.filter(pk=meeting.pk).update(starts_at=timezone.now() + timedelta(minutes=5))
+    j = {}
+    for key, who in (("h", psychologist.user), ("co", co.user), ("a", a), ("b", b), ("c", c)):
+        r = auth_client(who).post(f"/api/v1/circles/meetings/{meeting.id}/join/")
+        assert r.status_code == 200, r.content
+        j[key] = r.json()
+    room = j["h"]["room_id"]
+    ids = {k: v["self"]["id"] for k, v in j.items()}
+
+    async def drain(*socks):
+        for s in socks:
+            while not await s.receive_nothing(timeout=0.05):
+                await s.receive_json_from()
+
+    async def scenario():
+        socks = {}
+        for k in ("h", "co", "a", "b", "c"):
+            socks[k] = _ws(room, j[k]["ws_token"])
+            await socks[k].connect()
+            w = await socks[k].receive_json_from()
+            assert w["type"] == "welcome" and w["rooms"]["rooms"] == []
+        await drain(*socks.values())
+        h, cw, pa, pb, pc = (socks[k] for k in ("h", "co", "a", "b", "c"))
+        # участник не может открыть комнаты
+        await pa.send_json_to({"type": "rooms-open", "rooms": 2})
+        assert await pb.receive_nothing(timeout=0.1)
+        # ко-терапевт открывает 2 комнаты и переводит a и b в «Комнату 1»
+        await cw.send_json_to({"type": "rooms-open", "rooms": ["Комната 1", "Комната 2"],
+                               "assign": {ids["a"]: "r1", ids["b"]: "r1"}, "minutes": 10})
+        ra = await pa.receive_json_from()
+        assert ra["type"] == "rooms" and ra["moved"] is True and ra["assign"][ids["a"]] == "r1" and ra["ends_at"]
+        rc = await pc.receive_json_from()
+        assert rc["moved"] is False
+        await drain(*socks.values())
+        # сигналы между комнатами не ходят, внутри комнаты — ходят (вместе с hint)
+        await pa.send_json_to({"type": "signal", "to": ids["c"], "data": {"description": {"type": "offer", "sdp": "x"}}})
+        assert await pc.receive_nothing(timeout=0.1)
+        await pa.send_json_to({"type": "signal", "to": ids["b"], "data": {"hint": {"video": False}, "junk": 1}})
+        assert (await pb.receive_json_from())["data"] == {"hint": {"video": False}}
+        # участник не может уйти сам (не разрешено)
+        await pa.send_json_to({"type": "move-self", "room": "main"})
+        assert await pc.receive_nothing(timeout=0.1)
+        # объявление во все комнаты
+        await h.send_json_to({"type": "broadcast", "text": "Ещё 2 минуты"})
+        for s in (pa, pb, pc, cw):
+            m = await s.receive_json_from()
+            assert m == {"type": "broadcast", "text": "Ещё 2 минуты", "from": "Анна"}
+        await drain(h)
+        # ведущий заходит в комнату 1 сам
+        await h.send_json_to({"type": "move", "peers": ["host"], "room": "r1"})
+        await drain(*socks.values())
+        await h.send_json_to({"type": "signal", "to": ids["a"], "data": {"candidate": {"candidate": "c"}}})
+        assert (await pa.receive_json_from())["from"] == "host"
+        # ко-терапевт не может завершить встречу
+        await cw.send_json_to({"type": "end"})
+        assert await pa.receive_nothing(timeout=0.1)
+        # все обратно
+        await h.send_json_to({"type": "rooms-close"})
+        back = await pa.receive_json_from()
+        assert back["type"] == "rooms" and back["rooms"] == [] and back["moved"] is True and back["note"] == "closed"
+        await drain(*socks.values())
+        await pa.send_json_to({"type": "signal", "to": ids["c"], "data": {"description": {"type": "offer", "sdp": "y"}}})
+        assert (await pc.receive_json_from())["from"] == ids["a"]
+        for s in socks.values():
+            await s.disconnect()
+
+    async_to_sync(scenario)()

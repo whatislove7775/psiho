@@ -5,7 +5,7 @@
  */
 export type HeadzGroup = "man" | "woman" | "boy" | "girl" | "oldman" | "oldwoman";
 export type HeadzTone = "light" | "medium" | "dark";
-export type HeadzSlot = "hair" | "beard" | "eyewear" | "headwear" | "earrings";
+export type HeadzSlot = "hair" | "beard" | "eyewear" | "headwear" | "earrings" | "mask";
 
 export interface HeadzPartOption {
   /** stable option id within the group, e.g. "h3" */
@@ -35,6 +35,32 @@ export interface HeadzBase {
   iris: string;
   /** the part options this base was sold with (option ids by slot) */
   defaults: Partial<Record<HeadzSlot, string>>;
+  /** spherical radius map of the head (uint8, see tools/headz) — fits parts made for other bases */
+  fit?: string;
+  /** eyeballs in head space: centre, radius, gaze axis, iris / pupil angular radius (degrees) */
+  eyes?: Partial<Record<"L" | "R", HeadzEye>>;
+  /** landmarks in head space (+Y up, +Z front) */
+  lm?: HeadzLandmarks;
+}
+
+export interface HeadzEye {
+  c: [number, number, number];
+  r: number;
+  axis: [number, number, number];
+  iris: number;
+  pupil: number;
+}
+
+export interface HeadzLandmarks {
+  nose?: [number, number, number];
+  mouthL?: [number, number, number];
+  mouthR?: [number, number, number];
+  chin?: [number, number, number];
+  crown?: number;
+  bottom?: number;
+  temple?: number;
+  jaw?: number;
+  ear?: number;
 }
 
 export interface HeadzCatalog {

@@ -11,7 +11,11 @@ import {
   Download,
   FileText,
   Headset,
+  History as HistoryIcon,
   Lock,
+  NotebookPen,
+  Paperclip,
+  ShieldCheck,
   Sparkles,
   Timer,
   Video,
@@ -251,6 +255,7 @@ export function DialogDetails({ item, detail, focus }: { item: DialogItem; detai
   return (
     <>
       <Person item={detail ?? item} />
+      {detail && <PrimaryAction detail={detail} />}
       {detail && (
         <div ref={historyRef}>
           <History detail={detail} />
@@ -314,7 +319,11 @@ function History({ detail }: { detail: DialogDetail }) {
   const past = detail.calls.filter((c) => c.id !== detail.next_call?.id);
   return (
     <section className={s.section}>
-      <div className={s.sectionTitle}>История созвонов</div>
+      <div className={s.sectionTitle}>
+        <span className={s.sectionName}>
+          <HistoryIcon size={15} strokeWidth={1.9} aria-hidden /> История созвонов
+        </span>
+      </div>
       {past.length === 0 ? (
         <p className={s.muted}>Здесь появятся прошедшие и&nbsp;отменённые созвоны.</p>
       ) : (
@@ -367,7 +376,11 @@ function Files({ detail }: { detail: DialogDetail }) {
   };
   return (
     <section className={s.section}>
-      <div className={s.sectionTitle}>Файлы</div>
+      <div className={s.sectionTitle}>
+        <span className={s.sectionName}>
+          <Paperclip size={15} strokeWidth={1.9} aria-hidden /> Файлы
+        </span>
+      </div>
       {detail.files.length === 0 ? (
         <p className={s.muted}>
           {detail.my_role === "specialist"
@@ -449,7 +462,9 @@ function Notes({ id }: { id: string }) {
   return (
     <section className={s.section}>
       <div className={s.sectionTitle}>
-        <span>Заметки о&nbsp;клиенте</span>
+        <span className={s.sectionName}>
+          <NotebookPen size={15} strokeWidth={1.9} aria-hidden /> Заметки о&nbsp;клиенте
+        </span>
         <span className={s.noteMeta}>
           {state === "saving" ? "Сохраняем…" : state === "saved" ? "Сохранено" : state === "error" ? "Не\u00a0сохранилось" : ""}
         </span>
@@ -488,16 +503,55 @@ function Notes({ id }: { id: string }) {
 }
 
 function Privacy({ item }: { item: DialogItem | DialogDetail }) {
+  const retention =
+    item.retention === "1h" ? "Новые сообщения исчезают через 1\u00a0час" : item.retention === "24h" ? "Новые сообщения исчезают через 1\u00a0день" : "Выключены: переписка хранится, пока её\u00a0не\u00a0удалят";
+  const who = item.my_role === "client" ? "Меняется в\u00a0меню\u00a0⋮ над\u00a0перепиской" : "Режим выбирает клиент";
   return (
     <section className={s.section}>
-      <div className={s.sectionTitle}>Приватность</div>
-      <p className={s.muted}>
-        <Timer size={14} strokeWidth={1.8} aria-hidden style={{ verticalAlign: -2 }} />{" "}
-        {item.retention === "1h" ? "Исчезающие сообщения: новые исчезают через 1\u00a0час." : item.retention === "24h" ? "Исчезающие сообщения: новые исчезают через 1\u00a0день." : "Исчезающие сообщения выключены: переписка хранится, пока её\u00a0не\u00a0удалят."}{" "}
-        {item.my_role === "client" ? "Режим меняется кнопкой над\u00a0перепиской." : "Режим выбирает клиент."}
-      </p>
-      <p className={s.muted}>Переписка зашифрована. Сотрудники платформы не&nbsp;имеют доступа к&nbsp;диалогам клиентов и&nbsp;специалистов.</p>
+      <div className={s.sectionTitle}>
+        <span className={s.sectionName}>
+          <Lock size={15} strokeWidth={1.9} aria-hidden /> Приватность
+        </span>
+      </div>
+      <div className={s.rows}>
+        <div className={s.row}>
+          <span className={s.rowIcon} aria-hidden>
+            <Timer size={16} strokeWidth={1.8} />
+          </span>
+          <span className={s.rowMain}>
+            <span className={s.rowTitle} style={{ display: "block" }}>Исчезающие сообщения</span>
+            <span className={s.rowSub}>
+              {retention}. {who}.
+            </span>
+          </span>
+        </div>
+        <div className={s.row}>
+          <span className={s.rowIcon} aria-hidden>
+            <ShieldCheck size={16} strokeWidth={1.8} />
+          </span>
+          <span className={s.rowMain}>
+            <span className={s.rowTitle} style={{ display: "block" }}>Переписка зашифрована</span>
+            <span className={s.rowSub}>Сотрудники платформы не&nbsp;читают диалоги</span>
+          </span>
+        </div>
+      </div>
     </section>
+  );
+}
+
+/** The one main thing to do next in this dialogue, first in the sheet. */
+function PrimaryAction({ detail }: { detail: DialogDetail }) {
+  const ctx = useDialogActions();
+  if (!ctx) return null;
+  const client = detail.my_role === "client";
+  const can = client ? detail.can_book : detail.can_propose;
+  if (!can) return null;
+  return (
+    <div style={{ flex: "none" }}>
+      <Button variant="primary" block icon={<CalendarPlus size={18} strokeWidth={1.8} />} onClick={client ? ctx.openBook : ctx.openPropose}>
+        {client ? "Назначить созвон" : "Предложить время"}
+      </Button>
+    </div>
   );
 }
 

@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Camera, Expand, Flag, ImageIcon, Mic, NotebookPen, RefreshCw, ScanFace, Shrink, Smile, Speaker, Wind } from "lucide-react";
+import { Camera, Expand, Flag, Hand, ImageIcon, Mic, NotebookPen, RefreshCw, ScanFace, Shrink, Smile, Speaker, ThumbsUp, Wind } from "lucide-react";
 import { Select } from "@/ui";
+import { SLOW_NET_NOTE, useGesturesPref, useHandsPref, useHandsState } from "@/lib/avatar/headz/hands/prefs";
+import { reactionStyles } from "@/components/reactions/Reactions";
 import s from "./Room.module.css";
 
 export interface DeviceChoice {
@@ -100,6 +102,9 @@ export function CallMore({
   realFace?: boolean;
   onRealFace?: () => void;
 }) {
+  const [hands, setHands] = useHandsPref();
+  const [gestures, setGestures] = useGesturesPref();
+  const handsAutoOff = useHandsState().autoOff;
   return (
     <div className={s.more}>
       <div className={s.moreGroup}>
@@ -109,8 +114,23 @@ export function CallMore({
           <DeviceSelect icon={<Speaker size={18} />} label="Динамик" kind="audiooutput" devices={devices} value={choice.audiooutput} onChange={(id) => onDevice("audiooutput", id)} />
         )}
       </div>
-      {(onRealFace || onAmbient) && (
+      {(onRealFace || onAmbient || !isPro) && (
         <div className={s.moreGroup}>
+          {!isPro && !realFace && (
+            <button type="button" className={s.moreItem} role="switch" aria-checked={hands} onClick={() => setHands(!hands)}>
+              <Hand size={18} />
+              <span className={s.moreGrow}>Показывать руки</span>
+              <span className={s.moreState}>{hands ? "Вкл" : "Выкл"}</span>
+            </button>
+          )}
+          {!isPro && !realFace && handsAutoOff && <p className={reactionStyles.quiet}>{SLOW_NET_NOTE}</p>}
+          {!isPro && !realFace && hands && (
+            <button type="button" className={s.moreItem} role="switch" aria-checked={gestures} onClick={() => setGestures(!gestures)}>
+              <ThumbsUp size={18} />
+              <span className={s.moreGrow}>Реакции жестами</span>
+              <span className={s.moreState}>{gestures ? "Вкл" : "Выкл"}</span>
+            </button>
+          )}
           {onRealFace && (
             <button type="button" className={s.moreItem} onClick={onRealFace}>
               {realFace ? <Smile size={18} /> : <ScanFace size={18} />}

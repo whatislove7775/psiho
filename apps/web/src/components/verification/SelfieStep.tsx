@@ -84,7 +84,7 @@ export function SelfieStep({ approved }: { approved: boolean }) {
         </Button>
       </div>
 
-      <Modal open={open} onClose={() => !busy && setOpen(false)} title="Селфи для&nbsp;проверки" width={420}>
+      <Modal open={open} onClose={() => !busy && setOpen(false)} title="Селфи для&nbsp;проверки" width={480}>
         {open && !frames && state.challenge && (
           <CameraCapture
             mask="oval"

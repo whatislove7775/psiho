@@ -19,6 +19,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  Captions,
   Check,
   Eye,
   FlaskConical,
@@ -65,9 +66,13 @@ import { FaceBadge, FaceChoice, RealFaceConfirm, loadRealFacePref, saveRealFaceP
 import art from "./art.module.css";
 import s from "./Room.module.css";
 import { PanicButton } from "@/components/privacy/PanicButton";
+import { useCaptions } from "@/lib/captions/useCaptions";
+import { CaptionOverlay, CaptionsPanel, TextOnlyBadge } from "@/components/captions/Captions";
 import { ReviewPrompt } from "@/components/reviews/ReviewPrompt";
+import { ReactionLayer, useReactionBursts, useReactionThrottle } from "@/components/reactions/Reactions";
+import { slowCallStats, useSlowNetReporter } from "@/lib/avatar/headz/hands/netGuard";
 
-type Panel = null | "chat" | "voice" | "more" | "notes" | "breath";
+type Panel = null | "chat" | "voice" | "more" | "notes" | "breath" | "captions";
 
 /** A test room from the staff lab, shaped like a Session so the normal room UI works unchanged. */
 function labSession(res: LabJoinResponse): Session {
@@ -200,7 +205,22 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
   // an explicit "remember on this device" choice in localStorage.
   const [realFace, setRealFace] = useState(false);
   const [faceAsk, setFaceAsk] = useState(false);
-  const avatarCam = useAvatarCamera(myAvatar, { backdrop, realFace: !isPro && realFace });
+  // «Только текст» (clients): the microphone track is not sent at all; the
+  // specialist sees the avatar and reads live captions of the client's speech.
+  const [textOnly, setTextOnly] = useState(false);
+  // 👍/👎 reactions: from hand gestures (clients' avatar) — shown over our pip and the peer's video
+  const [myBursts, pushMyBurst] = useReactionBursts();
+  const [peerBursts, pushPeerBurst] = useReactionBursts();
+  const reactionOut = useRef<(k: "up" | "down") => void>(() => {});
+  const react = useReactionThrottle((k) => {
+    pushMyBurst(k);
+    reactionOut.current(k);
+  });
+  const avatarCam = useAvatarCamera(myAvatar, {
+    backdrop,
+    realFace: !isPro && realFace,
+    onGesture: isPro ? undefined : (g) => g !== "raise" && react(g), // raise-hand exists only in circles
+  });
   const showingFace = realFace && !!avatarCam.faceStream;
   const confirmRealFace = (remember: boolean) => {
     setFaceAsk(false);
@@ -242,11 +262,15 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
     if (isPro) return realCam.stream;
     if (!avatarCam.videoStream) return null;
     // With a filter chosen, never fall back to the raw voice (not even while the filter starts up).
-    const audio = voice === "off" ? (avatarCam.audioStream?.getAudioTracks() ?? []) : (transformedStream?.getAudioTracks() ?? []);
+    const audio = textOnly
+      ? []
+      : voice === "off"
+        ? (avatarCam.audioStream?.getAudioTracks() ?? [])
+        : (transformedStream?.getAudioTracks() ?? []);
     // The real camera only after the explicit opt-in; the avatar otherwise (and while it starts).
     const video = realFace && avatarCam.faceStream ? avatarCam.faceStream : avatarCam.videoStream;
     return new MediaStream([...video.getVideoTracks(), ...audio]);
-  }, [isPro, realCam.stream, avatarCam.videoStream, avatarCam.faceStream, realFace, avatarCam.audioStream, transformedStream, voice, phase]);
+  }, [isPro, realCam.stream, avatarCam.videoStream, avatarCam.faceStream, realFace, avatarCam.audioStream, transformedStream, voice, phase, textOnly]);
 
   const onEnd = useCallback(() => setPhase("ended"), []);
   const call = useP2PCall({
@@ -256,11 +280,28 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
     onEnd,
     videoMaxBitrate: isPro ? 1_500_000 : 900_000,
     faceMode: isPro ? undefined : showingFace ? "real" : "avatar",
+    onReaction: pushPeerBurst,
   });
+  reactionOut.current = call.sendReaction;
+  // hands switch off by themselves when the call can barely get through (clients only)
+  useSlowNetReporter(isPro ? null : slowCallStats(call.stats), call.stats);
 
   useEffect(() => {
     if (call.status === "reconnecting") setReconnects((n) => n + 1);
   }, [call.status]);
+
+  // ── Live captions (lib/captions): recognised on the speaker's device, sent over the call's data channel ──
+  const micTrack = micStream?.getAudioTracks()[0] ?? null;
+  const micOff = call.isMuted;
+  const cc = useCaptions({
+    links: useMemo(() => [{ id: "peer", dc: call.captionDc }], [call.captionDc]),
+    micTrack,
+    micOn: phase === "call" && !micOff,
+    textOnly: !isPro && textOnly,
+  });
+  const peerTextOnly = !!cc.remote.peer?.textOnly;
+  const ccLabel = (who: string) => (who === "me" ? "Вы" : isPro ? "Клиент" : "Специалист");
+  const toggleMic = call.toggleMute;
 
   // Specialist: a short, quiet note when the client switches between avatar and real camera.
   const [faceNote, setFaceNote] = useState<string | null>(null);
@@ -404,7 +445,7 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (e.metaKey || e.ctrlKey || e.altKey || (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)))) return;
-      if (e.key === "m" || e.key === "ь") call.toggleMute();
+      if (e.key === "m" || e.key === "ь") toggleMic();
       else if (e.key === "v" || e.key === "м") call.toggleCamera();
     };
     window.addEventListener("keydown", onKey);
@@ -636,6 +677,7 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
     more: "Настройки звонка",
     notes: "Заметки",
     breath: "Дыхательная пауза",
+    captions: "Субтитры",
   };
   const toggle = (p: Exclude<Panel, null>) => setPanel((cur) => (cur === p ? null : p));
   const showChrome = !idle || !connected || panel !== null;
@@ -656,6 +698,7 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
             }}
             portrait={isPro}
           />
+          <ReactionLayer items={peerBursts} />
 
           {!call.hasRemote && call.status !== "failed" && call.status !== "reconnecting" && (
             <div className={s.waiting}>
@@ -740,6 +783,18 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
           {!isPro && showingFace && <FaceBadge className={s.callFace} onBack={backToAvatar} />}
           {!isPro && avatarCam.faceLost && !videoOff && !showingFace && <div className={s.toast}>Лицо не&nbsp;видно, аватар замер. Сядьте ближе к&nbsp;свету</div>}
           {remaining && remaining.left === 5 && connected && <div className={`${s.toast} ${showingFace ? s.toastLow : ""}`}>До&nbsp;конца звонка 5&nbsp;минут</div>}
+          <CaptionOverlay
+            log={cc.log}
+            version={cc.version}
+            label={ccLabel}
+            include={(who) => (who === "me" ? !isPro && textOnly : cc.show || peerTextOnly)}
+            lifted={showChrome}
+            badge={
+              (peerTextOnly || (!isPro && textOnly)) && connected ? (
+                <TextOnlyBadge>{isPro ? "Клиент общается текстом" : "Вы\u00a0общаетесь текстом"}</TextOnlyBadge>
+              ) : null
+            }
+          />
           {isPro && faceNote && (
             <div className={s.toast} role="status">
               {faceNote}
@@ -755,8 +810,9 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
               <CanvasSlot canvas={avatarCam.canvas} />
             )}
             {!isPro && showingFace && <span className={s.pipFace} aria-hidden />}
+            <ReactionLayer items={myBursts} small />
             {videoOff && <div className={s.pipOff}>{isPro || showingFace ? "Камера выключена" : "Аватар скрыт"}</div>}
-            {call.isMuted && (
+            {micOff && (
               <span className={s.pipMuted} aria-label="Микрофон выключен">
                 <Morph icon={MI.MicOff} size={14} />
               </span>
@@ -766,8 +822,13 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
           {debug && <DebugOverlay stats={call.stats} status={call.status} avatar={!isPro} />}
 
           <nav className={`${s.controls} ${showChrome ? "" : s.hidden}`} aria-label="Управление звонком">
-            <CtrlButton label={call.isMuted ? "Включить микрофон" : "Выключить микрофон"} caption="Микрофон" off={call.isMuted} onClick={call.toggleMute}>
-              <Morph icon={call.isMuted ? MI.MicOff : MI.Mic} size={22} />
+            <CtrlButton
+              label={textOnly ? (micOff ? "Возобновить текст" : "Приостановить текст") : micOff ? "Включить микрофон" : "Выключить микрофон"}
+              caption={textOnly ? "Текст" : "Микрофон"}
+              off={micOff}
+              onClick={toggleMic}
+            >
+              <Morph icon={micOff ? MI.MicOff : MI.Mic} size={22} />
             </CtrlButton>
             <CtrlButton
               label={
@@ -782,6 +843,17 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
             {!isPro && (
               <CtrlButton label="Фильтр голоса" caption="Голос" active={panel === "voice"} dot={voice !== "off"} onClick={() => toggle("voice")}>
                 <Waves size={22} />
+              </CtrlButton>
+            )}
+            {cc.available && (
+              <CtrlButton
+                label="Субтитры: речь текстом. Распознаётся на устройстве говорящего, текст идёт напрямую собеседнику"
+                caption="Субтитры"
+                active={panel === "captions"}
+                dot={cc.show || textOnly}
+                onClick={() => toggle("captions")}
+              >
+                <Captions size={22} />
               </CtrlButton>
             )}
             <CtrlButton label={panel === "chat" ? "Закрыть чат" : "Открыть чат"} caption="Чат" active={panel === "chat"} onClick={() => toggle("chat")}>
@@ -843,6 +915,32 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
                   onReport={() => setReportOpen(true)}
                 />
               )}
+              {panel === "captions" && (
+                <CaptionsPanel
+                  show={cc.show}
+                  onShow={cc.setShow}
+                  textOnly={textOnly}
+                  onTextOnly={
+                    isPro
+                      ? undefined
+                      : (on) => {
+                          setTextOnly(on);
+                          if (on) cc.prepare();
+                        }
+                  }
+                  textOnlyHint="Специалист не слышит вас: видит аватар и читает ваши слова."
+                  load={cc.load}
+                  peerNote={
+                    cc.show && cc.remote.peer && !cc.remote.peer.stt
+                      ? `${isPro ? "У клиента" : "У специалиста"} распознавание речи не работает в этом браузере.`
+                      : null
+                  }
+                  log={cc.log}
+                  version={cc.version}
+                  label={ccLabel}
+                  onCopy={() => cc.copy(ccLabel)}
+                />
+              )}
               {panel === "notes" && <SessionNotepad roomId={sessionId} />}
               {panel === "breath" && <BreathingSync />}
             </div>
@@ -850,7 +948,7 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
         )}
       </div>
 
-      <Modal open={confirmEnd} onClose={() => setConfirmEnd(false)} title="Завершить звонок?" width={420}>
+      <Modal open={confirmEnd} onClose={() => setConfirmEnd(false)} title="Завершить звонок?" width={420} className={s.modalDark}>
         <p className={s.note}>
           {remaining && remaining.left > 0
             ? `До\u00a0конца забронированного времени ${remaining.text.replace("ещё ", "")}. Вернуться можно, пока оно не\u00a0закончилось.`
@@ -866,6 +964,7 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
         </div>
       </Modal>
       <RealFaceConfirm
+        className={s.modalDark}
         open={faceAsk}
         onClose={() => setFaceAsk(false)}
         onConfirm={(remember) => {
@@ -873,7 +972,7 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
           setPanel(null);
         }}
       />
-      <ReportProblem open={reportOpen} onClose={() => setReportOpen(false)} sessionId={sessionId} isClient={!isPro} tech={tech} disabled={isLab} />
+      <ReportProblem className={s.modalDark} open={reportOpen} onClose={() => setReportOpen(false)} sessionId={sessionId} isClient={!isPro} tech={tech} disabled={isLab} />
     </div>
   );
 }

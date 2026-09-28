@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarPlus, EyeOff, History, Info, Lock, NotebookPen, Timer, Video, Mic, AlertCircle, X } from "lucide-react";
+import { CalendarPlus, EyeOff, Flag, History, Info, Lock, NotebookPen, Timer, Video, Mic, AlertCircle, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, EmptyState, Modal, Skeleton, useToast } from "@/ui";
@@ -290,11 +290,19 @@ export function DialogsApp({ mode }: { mode: Mode }) {
         onChange={updateConv}
         onTitleClick={() => setDetails("top")}
         menuItems={[
-          { key: "info", icon: <Info size={16} />, label: "О\u00a0диалоге", onClick: () => setDetails("top") },
-          { key: "history", icon: <History size={16} />, label: "Созвоны и\u00a0файлы", onClick: () => setDetails("history") },
+          { key: "info", icon: <Info size={17} />, label: "О\u00a0диалоге", hint: role === "client" ? "Специалист, приватность" : "Клиент, приватность", onClick: () => setDetails("top") },
+          { key: "history", icon: <History size={17} />, label: "Созвоны и\u00a0файлы", hint: "История созвонов, материалы", onClick: () => setDetails("history") },
           ...(role === "specialist"
-            ? [{ key: "notes", icon: <NotebookPen size={16} />, label: "Заметки о\u00a0клиенте", onClick: () => setDetails("notes") }]
+            ? [{ key: "notes", icon: <NotebookPen size={17} />, label: "Заметки о\u00a0клиенте", hint: "Видны только вам", onClick: () => setDetails("notes") }]
             : []),
+          {
+            key: "report",
+            icon: <Flag size={17} />,
+            label: "Пожаловаться",
+            hint: "Откроем чат с\u00a0поддержкой",
+            danger: true,
+            onClick: () => select("support"),
+          },
         ]}
         subtitle={role === "client" ? "Психолог" : "Анонимный клиент"}
         headerActions={infoButton}

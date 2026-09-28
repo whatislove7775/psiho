@@ -30,7 +30,7 @@ export default function CirclesPage() {
     <div className={s.page}>
       <PageHeader
         title="Круги"
-        sub="Группы поддержки на&nbsp;5–8&nbsp;человек с&nbsp;психологом"
+        sub="Группы поддержки до&nbsp;12&nbsp;человек с&nbsp;психологом"
       />
 
       {mine.data && mine.data.results.length > 0 && (

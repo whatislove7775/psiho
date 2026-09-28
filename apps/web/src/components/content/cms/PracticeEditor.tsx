@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ArrowDown, ArrowUp, Eye, Plus, Trash2, X } from "lucide-react";
-import { Badge, Button, Card, CardHead, Input, Textarea, useToast } from "@/ui";
+import { Badge, Button, Card, CardHead, Input, NumberInput, Textarea, useToast } from "@/ui";
 import { ApiError } from "@/lib/api/client";
 import {
   contentAdminApi,
@@ -181,8 +181,8 @@ export function PracticeEditor({
             </div>
             <Select label="Вид" value={f.kind} onChange={(v) => set("kind", v as PracticeKind)} options={PRACTICE_KINDS} error={err("kind")} />
             <div className={s.pair}>
-              <Input label="Минут" type="number" min={1} max={120} value={f.duration_minutes} onChange={(e) => set("duration_minutes", Number(e.target.value))} error={err("duration_minutes")} />
-              <Input label="Порядок" type="number" min={0} value={f.order} onChange={(e) => set("order", Number(e.target.value))} hint="Меньше&nbsp;— выше" />
+              <NumberInput label="Минут" min={1} max={120} value={f.duration_minutes} onChange={(v) => set("duration_minutes", v ?? 0)} error={err("duration_minutes")} />
+              <NumberInput label="Порядок" min={0} value={f.order} onChange={(v) => set("order", v ?? 0)} hint="Меньше&nbsp;— выше" />
             </div>
             <CoverPicker value={f.cover} onChange={(v) => set("cover", v)} error={err("cover")} />
             <Input label="Эмодзи" value={f.emoji} maxLength={8} onChange={(e) => set("emoji", e.target.value)} error={err("emoji")} />
@@ -207,7 +207,7 @@ export function PracticeEditor({
                   ["cycles", "Циклов"],
                 ] as [keyof BreathPattern, string][]
               ).map(([k, label]) => (
-                <Input key={k} label={label} type="number" min={0} max={60} value={pattern[k]} onChange={(e) => setPattern(k, Number(e.target.value))} />
+                <NumberInput key={k} label={label} min={0} max={60} value={pattern[k]} onChange={(v) => setPattern(k, v ?? 0)} />
               ))}
             </div>
           )}
@@ -223,15 +223,14 @@ export function PracticeEditor({
                 <div className={s.stepFields}>
                   <div className={s.stepTop}>
                     <Input aria-label={`Шаг ${i + 1}: заголовок`} placeholder="Заголовок шага" value={st.title} onChange={(e) => setStep(i, { title: e.target.value })} />
-                    <Input
+                    <NumberInput
                       aria-label={`Шаг ${i + 1}: секунд`}
                       placeholder="Сек"
-                      type="number"
                       min={0}
                       max={3600}
                       className={s.seconds}
-                      value={st.seconds ?? ""}
-                      onChange={(e) => setStep(i, { seconds: e.target.value ? Number(e.target.value) : undefined })}
+                      value={st.seconds ?? null}
+                      onChange={(v) => setStep(i, { seconds: v ?? undefined })}
                     />
                   </div>
                   <Textarea aria-label={`Шаг ${i + 1}: текст`} placeholder="Что&nbsp;делать" rows={2} value={st.text} onChange={(e) => setStep(i, { text: e.target.value })} />

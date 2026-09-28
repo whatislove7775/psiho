@@ -11,10 +11,16 @@
  * llvmpipe, blocklisted drivers). We start with GPU unless the GL renderer is
  * obviously software, then keep measuring for the first frames and switch to
  * CPU if GPU turns out slow.
+ *
+ * Hands (optional, «Показывать руки»): HandLandmarker runs on the same bitmap
+ * right after the face result has been posted (so face latency is unchanged),
+ * at most every HAND_INTERVAL_MS (~15 fps). Only 21 landmarks per hand go back.
  */
-import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
+import { FaceLandmarker, FilesetResolver, type HandLandmarker } from "@mediapipe/tasks-vision";
+import { createHandLandmarker, handsTransfer, packHands } from "./handLandmarker";
+import { HAND_INTERVAL_MS } from "./handTypes";
 
-type Src = { wasm: string; model: string };
+type Src = { wasm: string; model: string; hand?: string };
 type Delegate = "GPU" | "CPU";
 
 interface Scope {
@@ -130,17 +136,48 @@ async function doSwitch() {
 
 let busy = false;
 
+// ── hands ──
+const hands = { on: false, lm: null as HandLandmarker | null, loading: false, failed: false, last: -1e9, lastTs: -1 };
+async function ensureHands() {
+  if (hands.lm || hands.loading || hands.failed || !fileset || !source?.hand) return;
+  hands.loading = true;
+  const r = await createHandLandmarker(fileset, source.hand, delegate === "GPU" ? ["GPU", "CPU"] : ["CPU", "GPU"]).catch(() => null);
+  hands.loading = false;
+  if (!r) {
+    hands.failed = true;
+    ctx.postMessage({ type: "hands-error" });
+    return;
+  }
+  if (!hands.on) {
+    r.lm.close();
+    return;
+  }
+  hands.lm = r.lm;
+}
+
 ctx.onmessage = async (e: MessageEvent) => {
   const m = e.data as
     | { type: "init"; sources: Src[] }
     | { type: "frame"; bitmap: ImageBitmap; ts: number; id: number }
+    | { type: "hands"; on: boolean }
     | { type: "close" };
   if (m.type === "init") {
     const ok = await init(m.sources).catch(() => false);
     ctx.postMessage(ok ? { type: "ready", delegate } : { type: "error" });
     return;
   }
+  if (m.type === "hands") {
+    hands.on = m.on;
+    if (m.on) void ensureHands();
+    else {
+      hands.lm?.close();
+      hands.lm = null;
+    }
+    return;
+  }
   if (m.type === "close") {
+    hands.lm?.close();
+    hands.lm = null;
     landmarker?.close();
     landmarker = null;
     ctx.close();
@@ -162,8 +199,6 @@ ctx.onmessage = async (e: MessageEvent) => {
     res = landmarker.detectForVideo(bitmap, ts);
   } catch {
     res = null;
-  } finally {
-    bitmap.close();
   }
   const ms = performance.now() - t0;
   if (!settled) probe[delegate].push(ms);
@@ -192,6 +227,26 @@ ctx.onmessage = async (e: MessageEvent) => {
     if (matrix) transfer.push(matrix.buffer);
     ctx.postMessage({ type: "result", id: m.id, ms, delegate, face: true, names: sendNames, scores, pts, matrix }, transfer);
   }
+  // hands: same frame, after the face result is already on its way
+  if (hands.on && hands.lm && ts - hands.last >= HAND_INTERVAL_MS) {
+    hands.last = ts;
+    const hts = Math.max(ts, hands.lastTs + 1);
+    hands.lastTs = hts;
+    const h0 = performance.now();
+    let hr: ReturnType<HandLandmarker["detectForVideo"]> | null = null;
+    try {
+      hr = hands.lm.detectForVideo(bitmap, hts);
+    } catch {
+      hr = null;
+    }
+    try {
+      const raw = packHands(hr);
+      ctx.postMessage({ type: "hands", id: m.id, ms: performance.now() - h0, hands: raw.hands }, handsTransfer(raw));
+    } catch {
+      /* never let a hand result block face tracking */
+    }
+  }
+  bitmap.close();
   busy = false;
   void maybeSwitch();
 };

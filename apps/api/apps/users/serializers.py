@@ -61,8 +61,17 @@ class PsychologistPublicSerializer(serializers.ModelSerializer):
             "id", "display_name", "bio", "approach", "specializations", "languages",
             "experience_years", "session_rate_rub", "avatar_config", "photo_url", "sessions_count",
             "next_slot", "booking", "gender", "rating", "reviews_count", "verified_credentials",
+            "age", "on_service_since",
         ]
         read_only_fields = ["id"]
+
+    # R9: возраст (только если специалист указал год рождения) и «На Aprosop N мес.»
+    age = serializers.IntegerField(read_only=True)
+    on_service_since = serializers.SerializerMethodField()
+
+    def get_on_service_since(self, obj):
+        since = obj.on_service_since
+        return since.date().isoformat() if since else None
 
     # G2: средняя оценка по опубликованным отзывам и число подтверждённых документов
     rating = serializers.SerializerMethodField()
@@ -135,9 +144,22 @@ class PsychologistPublicSerializer(serializers.ModelSerializer):
 
 
 class PsychologistPrivateSerializer(PsychologistPublicSerializer):
+    # Год рождения видит и меняет только сам специалист; публично — только возраст
+    birth_year = serializers.IntegerField(required=False, allow_null=True)
+
     class Meta(PsychologistPublicSerializer.Meta):
-        fields = PsychologistPublicSerializer.Meta.fields + ["verification_status"]
+        fields = PsychologistPublicSerializer.Meta.fields + ["verification_status", "birth_year"]
         read_only_fields = ["id", "verification_status"]
+
+    def validate_birth_year(self, value):
+        if value is None:
+            return None
+        from django.utils import timezone
+
+        this_year = timezone.now().year
+        if not (this_year - 90 <= value <= this_year - 18):
+            raise serializers.ValidationError(f"Год рождения от {this_year - 90} до {this_year - 18}.")
+        return value
 
 
 class PsychologistAdminSerializer(PsychologistPrivateSerializer):

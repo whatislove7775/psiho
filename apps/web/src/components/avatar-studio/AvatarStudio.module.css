@@ -603,3 +603,69 @@
     transform: none;
   }
 }
+
+/* ── v4 controls: compact sliders, chips ─────────────────────────────── */
+.sliders {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--s-3) var(--s-5);
+}
+.sliders > .range + .range {
+  margin-top: 0;
+}
+.signed {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.unit[data-signed]::-webkit-slider-runnable-track {
+  background:
+    linear-gradient(90deg, transparent var(--lo), var(--c-primary) var(--lo), var(--c-primary) var(--hi), transparent var(--hi)),
+    linear-gradient(90deg, transparent calc(50% - 1px), var(--c-muted) calc(50% - 1px), var(--c-muted) calc(50% + 1px), transparent calc(50% + 1px)),
+    var(--c-line-strong);
+}
+.unit[data-signed]::-moz-range-track {
+  background:
+    linear-gradient(90deg, transparent var(--lo), var(--c-primary) var(--lo), var(--c-primary) var(--hi), transparent var(--hi)),
+    var(--c-line-strong);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  border: 0;
+  padding: 7px 12px;
+  border-radius: var(--r-pill);
+  background: var(--c-raised);
+  color: var(--c-muted);
+  font-size: var(--t-13);
+  font-weight: 550;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.chip:hover {
+  color: var(--c-text);
+}
+.chip[aria-checked="true"],
+.chip[aria-pressed="true"] {
+  background: var(--c-primary-soft);
+  color: var(--c-primary-ink);
+}
+.inlineRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  margin-top: var(--s-4);
+}
+.linkBtn {
+  border: 0;
+  background: none;
+  padding: 4px 0;
+  font-size: var(--t-13);
+  color: var(--c-muted);
+}
+.linkBtn:hover {
+  color: var(--c-text);
+}

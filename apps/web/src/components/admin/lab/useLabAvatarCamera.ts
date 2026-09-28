@@ -11,6 +11,8 @@
  *    staff member's OWN picture ("показать исходное видео"). It is never sent
  *    anywhere and is off by default.
  *  - camera choice, calibration length.
+ *  - floating hands (HandLandmarker on the main thread here) with their model
+ *    time, plus «synthetic hands» gestures to check the hands without a camera.
  *
  * Only used under /admin/lab (staff permission "lab.use").
  */
@@ -19,13 +21,16 @@ import type { AvatarConfig } from "@/lib/avatar/schema";
 import type { Framing } from "@/lib/avatar/kit/types";
 import { FaceTracker, type LandmarkerResult } from "@/lib/tracking/FaceTracker";
 import { backdropCanvas, paintBackdrop, type BackdropId } from "@/lib/avatar/backdrops";
+import type { HandsController } from "@/lib/avatar/headz/hands/HandsController";
+import { HAND_INTERVAL_MS } from "@/lib/tracking/handTypes";
 
 const MP_VERSION = "0.10.14";
 const SOURCES = [
-  { wasm: "/mediapipe/wasm", model: "/mediapipe/face_landmarker.task" },
+  { wasm: "/mediapipe/wasm", model: "/mediapipe/face_landmarker.task", hand: "/mediapipe/hand_landmarker.task" },
   {
     wasm: `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}/wasm`,
     model: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+    hand: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
   },
 ];
 
@@ -47,6 +52,9 @@ export interface LabDebug {
   videoWidth: number;
   videoHeight: number;
   delegate: string;
+  /** hand model time (ms, smoothed) and hands found in the last run */
+  handMs: number;
+  hands: number;
 }
 
 export interface LabCameraOptions {
@@ -55,6 +63,8 @@ export interface LabCameraOptions {
   calibrationSeconds?: number;
   deviceId?: string;
   idle?: boolean;
+  /** floating hands («Показывать руки») */
+  hands?: boolean;
 }
 
 export type LabCamState = "idle" | "starting" | "ready" | "error";
@@ -91,7 +101,12 @@ export function useLabAvatarCamera(config: AvatarConfig, options: LabCameraOptio
     videoWidth: 0,
     videoHeight: 0,
     delegate: "",
+    handMs: 0,
+    hands: 0,
   });
+  const handsRef = useRef<HandsController | null>(null);
+  /** real hand detection pauses while a synthetic gesture plays */
+  const synthUntil = useRef(0);
   const rendererRef = useRef<RendererT | null>(null);
   const trackerRef = useRef<FaceTracker | null>(null);
   const cfgRef = useRef(config);
@@ -101,7 +116,11 @@ export function useLabAvatarCamera(config: AvatarConfig, options: LabCameraOptio
 
   useEffect(() => {
     rendererRef.current?.setConfig(config);
+    handsRef.current?.setConfig(config);
   }, [config]);
+  useEffect(() => {
+    handsRef.current?.setEnabled(options.hands ?? true);
+  }, [options.hands]);
   useEffect(() => {
     const r = rendererRef.current;
     if (!r || !options.backdrop) return;
@@ -119,6 +138,8 @@ export function useLabAvatarCamera(config: AvatarConfig, options: LabCameraOptio
     let cancelled = false;
     let stopLoop = () => {};
     let landmarker: { detectForVideo: (v: HTMLVideoElement, t: number) => unknown; close: () => void } | null = null;
+    let handLm: { detectForVideo: (v: HTMLVideoElement, t: number) => unknown; close: () => void } | null = null;
+    let hands: HandsController | null = null;
     let cam: MediaStream | null = null;
     const v = document.createElement("video");
     v.muted = true;
@@ -188,6 +209,7 @@ export function useLabAvatarCamera(config: AvatarConfig, options: LabCameraOptio
       setState("ready");
 
       let delegateUsed = "";
+      let handSetup: (() => Promise<void>) | null = null;
       try {
         const { FaceLandmarker, FilesetResolver } = await import("@mediapipe/tasks-vision");
         outer: for (const src of SOURCES) {
@@ -208,6 +230,13 @@ export function useLabAvatarCamera(config: AvatarConfig, options: LabCameraOptio
                 numFaces: 1,
               })) as unknown as typeof landmarker;
               delegateUsed = `${delegate}${src.wasm.startsWith("/") ? "" : " (CDN)"}`;
+              const fs = fileset;
+              handSetup = async () => {
+                const { createHandLandmarker } = await import("@/lib/tracking/handLandmarker");
+                const h = await createHandLandmarker(fs, src.hand, [delegate, delegate === "GPU" ? "CPU" : "GPU"]);
+                if (cancelled || !h) return;
+                handLm = h.lm as unknown as typeof handLm;
+              };
               break outer;
             } catch {
               /* next */
@@ -220,6 +249,31 @@ export function useLabAvatarCamera(config: AvatarConfig, options: LabCameraOptio
       if (cancelled || !landmarker) return;
       setTracking(true);
       debugRef.current.delegate = delegateUsed;
+
+      try {
+        const { HandsController } = await import("@/lib/avatar/headz/hands/HandsController");
+        if (cancelled) return;
+        hands = new HandsController(r);
+        hands.setConfig(cfgRef.current);
+        let loading = false;
+        hands.attachDetector({
+          setHands(on) {
+            if (on && !handLm && !loading && handSetup) {
+              loading = true;
+              void handSetup().finally(() => (loading = false));
+            } else if (!on) {
+              handLm?.close();
+              handLm = null;
+            }
+          },
+        });
+        hands.setEnabled(optsRef.current.hands ?? true);
+        handsRef.current = hands;
+      } catch {
+        /* hands unavailable */
+      }
+      const { packHands } = await import("@/lib/tracking/handLandmarker");
+      let handsLast = -1e9;
 
       const tracker = new FaceTracker({ calibrationSeconds: optsRef.current.calibrationSeconds ?? 1.5 });
       trackerRef.current = tracker;
@@ -259,6 +313,16 @@ export function useLabAvatarCamera(config: AvatarConfig, options: LabCameraOptio
             for (const x of res.faceBlendshapes?.[0]?.categories ?? []) pm[x.categoryName] = x.score;
             dbg.processed = pm;
             r.applyFaceResult(res);
+          }
+          const aspect = v.videoWidth && v.videoHeight ? v.videoWidth / v.videoHeight : 4 / 3;
+          hands?.onFace(raw?.faceLandmarks?.[0], aspect, now);
+          if (hands?.on && handLm && ts - handsLast >= HAND_INTERVAL_MS && now > synthUntil.current) {
+            handsLast = ts;
+            const h0 = performance.now();
+            const hr = packHands(handLm.detectForVideo(v, ts + 1) as Parameters<typeof packHands>[0]);
+            dbg.handMs = dbg.handMs * 0.8 + (performance.now() - h0) * 0.2;
+            dbg.hands = hr.hands.length;
+            hands.onHands(hr, now, aspect);
           }
         } catch {
           /* transient */
@@ -315,6 +379,9 @@ export function useLabAvatarCamera(config: AvatarConfig, options: LabCameraOptio
       cancelled = true;
       stopLoop();
       trackerRef.current = null;
+      hands?.dispose();
+      handsRef.current = null;
+      handLm?.close();
       landmarker?.close();
       cam?.getTracks().forEach((t) => t.stop());
       v.srcObject = null;
@@ -335,10 +402,20 @@ export function useLabAvatarCamera(config: AvatarConfig, options: LabCameraOptio
     setRunId(0);
     setState("idle");
   }, []);
+  /** «synthetic hands»: pose the live avatar's hands with a canned gesture for a few seconds */
+  const syntheticHands = useCallback(async (scene: number) => {
+    const r = rendererRef.current;
+    const ctl = handsRef.current;
+    if (!r || !ctl) return;
+    const { LAB_HAND_SCENES, poseSyntheticHands } = await import("@/lib/avatar/headz/hands/labSynth");
+    synthUntil.current = performance.now() + 2600;
+    await poseSyntheticHands(r, cfgRef.current, LAB_HAND_SCENES[scene], 4 / 3, { ctl, ms: 2500, live: true });
+  }, []);
+
   const recalibrate = useCallback(() => {
     trackerRef.current?.recalibrate();
     if (trackerRef.current) setCalibrating(true);
   }, []);
 
-  return { state, error, canvas, video, videoStream, audioStream, tracking, calibrating, debugRef, recalibrate, start, stop };
+  return { state, error, canvas, video, videoStream, audioStream, tracking, calibrating, debugRef, recalibrate, syntheticHands, start, stop };
 }

@@ -18,6 +18,10 @@
  * and the microphone audio are exposed. Frames go to the worker as transferred
  * ImageBitmaps and are closed right after detection.
  *
+ * Hands (optional, «Показывать руки», default on): HandLandmarker runs in the
+ * same worker at ~15 fps; the landmarks (numbers only) pose floating hands in
+ * the avatar scene, so they are part of the outgoing avatar video.
+ *
  * The one exception is an explicit opt-in: with `realFace: true` (the client
  * pressed «Показать настоящее лицо» and confirmed) `faceStream` carries a
  * clone of the camera track. It is stopped as soon as the option goes false.
@@ -29,6 +33,10 @@ import { FaceTracker, type LandmarkerResult } from "@/lib/tracking/FaceTracker";
 import { createFaceDetector, type FaceDetector } from "@/lib/tracking/FaceDetector";
 import { avatarPerf } from "@/lib/tracking/perf";
 import { backdropCanvas, paintBackdrop, type BackdropId } from "@/lib/avatar/backdrops";
+import type { HandsController } from "@/lib/avatar/headz/hands/HandsController";
+import { useHandsState } from "@/lib/avatar/headz/hands/prefs";
+import { checkNetworkForHands } from "@/lib/avatar/headz/hands/netGuard";
+import type { Gesture } from "@/lib/avatar/headz/hands/gestures";
 
 export type CameraState = "idle" | "starting" | "ready" | "denied" | "error";
 
@@ -79,6 +87,10 @@ export interface AvatarCameraOptions {
   backdrop?: BackdropId;
   /** expose the real camera as `faceStream` (explicit client opt-in only) */
   realFace?: boolean;
+  /** hand tracking + floating hands; default: the local «Показывать руки» preference (and not on a slow connection) */
+  hands?: boolean;
+  /** recognised hand gestures (👍 / 👎 / raised hand) while hands run and «Реакции жестами» is on */
+  onGesture?: (g: Gesture) => void;
 }
 
 type RequestFrameTrack = MediaStreamTrack & { requestFrame?: () => void };
@@ -109,9 +121,39 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
   const backdropRef = useRef(options.backdrop);
   backdropRef.current = options.backdrop;
 
+  const handsPref = useHandsState();
+  // the connection check runs once per page session before the 7.8 MB hand model is fetched
+  const [netChecked, setNetChecked] = useState(false);
+  useEffect(() => {
+    if (!handsPref.on || netChecked) return;
+    let alive = true;
+    void checkNetworkForHands().finally(() => alive && setNetChecked(true));
+    return () => {
+      alive = false;
+    };
+  }, [handsPref.on, netChecked]);
+  const handsOn = options.hands ?? (handsPref.on && netChecked);
+  const gestureRef = useRef(options.onGesture);
+  gestureRef.current = options.onGesture;
+  const gesturesOn = handsPref.gestures && !!options.onGesture;
+  const handsOnRef = useRef(handsOn);
+  handsOnRef.current = handsOn;
+  const handsRef = useRef<HandsController | null>(null);
+
   useEffect(() => {
     rendererRef.current?.setConfig(config);
+    handsRef.current?.setConfig(config);
   }, [config]);
+
+  useEffect(() => {
+    handsRef.current?.setEnabled(handsOn);
+  }, [handsOn]);
+  const gesturesOnRef = useRef(gesturesOn);
+  gesturesOnRef.current = gesturesOn;
+  useEffect(() => {
+    const h = handsRef.current;
+    if (h) h.onGesture = gesturesOn ? (g) => gestureRef.current?.(g) : null;
+  }, [gesturesOn, canvas]);
 
   useEffect(() => {
     const r = rendererRef.current;
@@ -148,6 +190,7 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
     let detector: FaceDetector | null = null;
     let cam: MediaStream | null = null;
     let lightTimer: ReturnType<typeof setInterval> | undefined;
+    let hands: HandsController | null = null;
     const video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
@@ -208,6 +251,18 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
         r.setConfig(cfgRef.current);
         if (backdropRef.current) r.setBackground(paintBackdrop(backdropRef.current));
         r.start();
+        try {
+          const { HandsController } = await import("@/lib/avatar/headz/hands/HandsController");
+          if (!cancelled) {
+            hands = new HandsController(r);
+            hands.setConfig(cfgRef.current);
+            hands.setEnabled(handsOnRef.current);
+            hands.onGesture = gesturesOnRef.current ? (g) => gestureRef.current?.(g) : null;
+            handsRef.current = hands;
+          }
+        } catch (e) {
+          console.warn("[avatar] hands unavailable:", e);
+        }
         // Push exactly the frames we render (captureStream(0) + requestFrame):
         // no timer sampling in between, nothing sent while nothing changes.
         stream = c.captureStream(0);
@@ -281,6 +336,7 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
       let calib = true;
       let frames = 0;
 
+      const aspectOf = () => (video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 4 / 3);
       const onResult = (raw: LandmarkerResult | null, since: number) => {
         if (cancelled) return;
         const now = performance.now();
@@ -302,6 +358,7 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
           avatarPerf.renderCost(performance.now() - r0);
           avatarPerf.latency(since);
         }
+        hands?.onFace(raw?.faceLandmarks?.[0], aspectOf(), since);
         if (tracker.calibrating !== calib) {
           calib = tracker.calibrating;
           setCalibrating(calib);
@@ -323,7 +380,13 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
         (raw, since) => {
           onResult(raw, since);
         },
-        { isCancelled: () => cancelled, worker: !debugMain },
+        {
+          isCancelled: () => cancelled,
+          worker: !debugMain,
+          onHands: (raw, since) => {
+            if (!cancelled) hands?.onHands(raw, since, aspectOf());
+          },
+        },
       );
       if (cancelled) {
         detector?.close();
@@ -331,6 +394,7 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
       }
       if (!detector) return; // tracking unavailable — avatar keeps its idle animation
       trackerRef.current = tracker;
+      hands?.attachDetector(detector);
       setTracking(true);
       setCalibrating(true);
 
@@ -399,6 +463,8 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
       stopLoop();
       clearInterval(lightTimer);
       trackerRef.current = null;
+      hands?.dispose();
+      handsRef.current = null;
       detector?.close();
       camRef.current?.cam.getTracks().forEach((t) => t.stop());
       cam?.getTracks().forEach((t) => t.stop());

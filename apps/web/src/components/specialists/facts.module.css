@@ -1,0 +1,28 @@
+/* Specialist cards: age and time on the service next to the photo (quiet, tertiary) */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.row > :first-child {
+  flex: none;
+}
+.facts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: var(--t-12);
+  line-height: 1.35;
+  color: var(--c-muted);
+}
+.facts > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.line {
+  font-size: var(--t-12);
+  color: var(--c-muted);
+}

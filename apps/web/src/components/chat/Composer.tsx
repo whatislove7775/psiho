@@ -8,6 +8,8 @@ import { MI, Morph } from "@/components/ui/Morph";
 import type { VoicePreset } from "@/hooks/useVoiceTransform";
 import { fmtDuration, VoicePlayer } from "./VoicePlayer";
 import { useVoiceRecorder, type VoiceClip } from "./useVoiceRecorder";
+import { AttachSheet, type FileSendOptions } from "./AttachSheet";
+import { VoiceTextToggle } from "@/components/captions/VoiceTranscript";
 import s from "./chat.module.css";
 
 const MASKS: { value: VoicePreset; label: string }[] = [
@@ -37,7 +39,8 @@ export function Composer({
 }: {
   onSendText: (text: string) => Promise<boolean | void> | boolean | void;
   onSendVoice?: (clip: VoiceClip) => Promise<boolean | void>;
-  onSendFile?: (file: File) => void;
+  /** called from the attach sheet (preview, caption, view-once, disappear timer) */
+  onSendFile?: (file: File, opts: FileSendOptions) => Promise<boolean | void> | boolean | void;
   onTyping?: () => void;
   allowVoice?: boolean;
   allowFiles?: boolean;
@@ -61,6 +64,7 @@ export function Composer({
   const blocked = hits.length > 0;
   const area = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const [picked, setPicked] = useState<File | null>(null);
   const rec = useVoiceRecorder();
 
   useEffect(() => {
@@ -143,6 +147,7 @@ export function Composer({
                 ) : (
                   <Segmented value={rec.preset} onChange={rec.setPreset} options={MASKS} ariaLabel="Маска голоса" />
                 )}
+                {rec.withText !== null && rec.phase !== "recording" && <VoiceTextToggle on={rec.withText} onChange={rec.setWithText} />}
               </div>
               <div className={s.recRow}>
                 <button type="button" className={s.iconBtn} onClick={rec.reset} aria-label="Отменить запись">
@@ -264,10 +269,11 @@ export function Composer({
               accept={FILE_ACCEPT}
               onChange={(e) => {
                 const f = e.target.files?.[0];
-                if (f) onSendFile?.(f);
+                if (f) setPicked(f);
                 e.target.value = "";
               }}
             />
+            <AttachSheet file={picked} onClose={() => setPicked(null)} onSend={(f, o) => onSendFile?.(f, o)} />
           </>
         )}
         <textarea

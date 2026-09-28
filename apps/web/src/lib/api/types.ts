@@ -34,10 +34,16 @@ export interface PsychologistPublic {
   reviews_count?: number;
   /** approved credentials (lib/api/credentials.ts); > 0 → «Проверено aprosop» */
   verified_credentials?: number;
+  /** from the optional birth year (null — not set); see lib/specialistFacts.ts */
+  age?: number | null;
+  /** ISO date: profile approval (or sign-up) — «На Aprosop 3 мес.» */
+  on_service_since?: string | null;
 }
 
 export interface PsychologistPrivate extends PsychologistPublic {
   verification_status: VerificationStatus;
+  /** optional, only the specialist sees it; clients see the age */
+  birth_year?: number | null;
   created_at?: string;
 }
 

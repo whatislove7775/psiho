@@ -48,7 +48,9 @@ export function ReportProblem({
   isClient,
   tech,
   disabled,
+  className,
 }: {
+  className?: string;
   open: boolean;
   onClose: () => void;
   sessionId: string;
@@ -81,7 +83,7 @@ export function ReportProblem({
     }
   };
   return (
-    <Modal open={open} onClose={onClose} title="Сообщить о&nbsp;проблеме" width={520}>
+    <Modal open={open} onClose={onClose} title="Сообщить о&nbsp;проблеме" width={520} className={className}>
       <p className={s.note}>
         Отметьте, что&nbsp;мешает. Вместе с&nbsp;сообщением мы&nbsp;отправим только цифры о&nbsp;связи (задержку, потери, кодек), без&nbsp;звука, видео и&nbsp;переписки.
       </p>

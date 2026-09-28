@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Camera, Check, Copy, Dices, Eye, Gauge, RefreshCw, ScanFace, Shuffle, Square, Upload, UserRound } from "lucide-react";
+import { Camera, Check, Copy, Dices, Eye, Gauge, Hand, RefreshCw, ScanFace, Shuffle, Square, Upload, UserRound } from "lucide-react";
 import { Badge, Button, Card, CardHead, Segmented, Select, Textarea, useToast } from "@/ui";
 import { useAuth } from "@/lib/auth/store";
 import { normalizeAvatar, randomAvatar, type AvatarConfig } from "@/lib/avatar/schema";
@@ -11,6 +11,8 @@ import { AvatarThumb } from "@/components/avatar/AvatarThumb";
 import { BackdropPicker } from "@/components/avatar/BackdropPicker";
 import { useLabAvatarCamera, type LabDebug } from "./useLabAvatarCamera";
 import { CanvasSlot, copyText, loadLabAvatar, saveLabAvatar, StatGrid, Switch } from "./shared";
+import { useHandsPref } from "@/lib/avatar/headz/hands/prefs";
+import { LAB_HAND_SCENES } from "@/lib/avatar/headz/hands/labSynth";
 import s from "./lab.module.css";
 
 /** The 52 ARKit blendshapes, grouped for reading. MediaPipe has no tongueOut. */
@@ -59,6 +61,7 @@ export function AvatarPlayground() {
   const [framing, setFraming] = useState<Framing>("portrait");
   const [backdrop, setBackdrop] = useState<BackdropId>(BACKDROPS[0].id);
   const [idle, setIdle] = useState(true);
+  const [hands, setHands] = useHandsPref();
   const [calib, setCalib] = useState("1.5");
   const [deviceId, setDeviceId] = useState("");
   const [cams, setCams] = useState<MediaDeviceInfo[]>([]);
@@ -78,7 +81,7 @@ export function AvatarPlayground() {
   }, []);
   useEffect(() => setJson(JSON.stringify(config, null, 2)), [config]);
 
-  const cam = useLabAvatarCamera(config, { backdrop, framing, idle, calibrationSeconds: Number(calib), deviceId: deviceId || undefined });
+  const cam = useLabAvatarCamera(config, { backdrop, framing, idle, hands, calibrationSeconds: Number(calib), deviceId: deviceId || undefined });
   const running = cam.state === "ready" || cam.state === "starting";
 
   useEffect(() => {
@@ -100,14 +103,14 @@ export function AvatarPlayground() {
   }, [restartKey]);
 
   // Live HUD at 5 Hz (the heavy per-frame parts are drawn without React below).
-  const [hud, setHud] = useState<Pick<LabDebug, "trackFps" | "detectMs" | "faceVisible" | "videoWidth" | "videoHeight" | "pose" | "delegate">>({
-    trackFps: 0, detectMs: 0, faceVisible: false, videoWidth: 0, videoHeight: 0, pose: null, delegate: "",
+  const [hud, setHud] = useState<Pick<LabDebug, "trackFps" | "detectMs" | "faceVisible" | "videoWidth" | "videoHeight" | "pose" | "delegate" | "handMs" | "hands">>({
+    trackFps: 0, detectMs: 0, faceVisible: false, videoWidth: 0, videoHeight: 0, pose: null, delegate: "", handMs: 0, hands: 0,
   });
   useEffect(() => {
     if (cam.state !== "ready") return;
     const t = setInterval(() => {
       const d = cam.debugRef.current;
-      setHud({ trackFps: d.trackFps, detectMs: d.detectMs, faceVisible: d.faceVisible, videoWidth: d.videoWidth, videoHeight: d.videoHeight, pose: d.pose, delegate: d.delegate });
+      setHud({ trackFps: d.trackFps, detectMs: d.detectMs, faceVisible: d.faceVisible, videoWidth: d.videoWidth, videoHeight: d.videoHeight, pose: d.pose, delegate: d.delegate, handMs: d.handMs, hands: d.hands });
     }, 200);
     return () => clearInterval(t);
   }, [cam.state, cam.debugRef]);
@@ -203,8 +206,9 @@ export function AvatarPlayground() {
       ["Камера", hud.videoWidth ? `${hud.videoWidth}×${hud.videoHeight}` : "—"],
       ["Лицо", !cam.tracking ? "—" : hud.faceVisible ? "видно" : "не\u00a0найдено"],
       ["Поворот головы", pose ? `${Math.round(pose.yaw)}°, ${Math.round(pose.pitch)}°, ${Math.round(pose.roll)}°` : "—"],
+      ["Руки", !cam.tracking || !hands ? "—" : hud.handMs ? `${hud.hands} · ${hud.handMs.toFixed(1)} мс` : "загружается"],
     ],
-    [cam.tracking, cam.state, hud, pose],
+    [cam.tracking, cam.state, hud, pose, hands],
   );
 
   return (
@@ -327,6 +331,19 @@ export function AvatarPlayground() {
               <Segmented value={framing} onChange={setFraming} options={FRAMINGS} ariaLabel="Кадрирование" />
             </div>
             <Switch checked={idle} onChange={setIdle} label="Живая анимация без&nbsp;лица" hint="Моргание и&nbsp;дыхание, пока лицо не&nbsp;найдено." />
+            <Switch checked={hands} onChange={setHands} label="Показывать руки" hint="Руки из&nbsp;камеры, ~15&nbsp;кадр/с. Настройка общая с&nbsp;звонками на&nbsp;этом устройстве." />
+            {hands && (
+              <div>
+                <div className={s.label}>Синтетические руки</div>
+                <div className={s.btnRow}>
+                  {LAB_HAND_SCENES.map((h, i) => (
+                    <Button key={h.label} variant="ghost" size="sm" icon={i === 0 ? <Hand size={16} /> : undefined} disabled={cam.state !== "ready"} onClick={() => void cam.syntheticHands(i)}>
+                      {h.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
             {cams.length > 1 && (
               <div className={s.selectLabel}>
                 <Select

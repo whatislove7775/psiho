@@ -193,6 +193,51 @@ export function RangeField({
   );
 }
 
+// ── Signed slider (−1..1, centre = as authored) ──────────────────────────────
+
+export function SignedSlider({
+  label,
+  value,
+  onChange,
+  min = "Меньше",
+  max = "Больше",
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  min?: string;
+  max?: string;
+}) {
+  const id = useId();
+  const pct = (value + 1) * 50;
+  const lo = Math.min(50, pct), hi = Math.max(50, pct);
+  const text = value === 0 ? "Как есть" : `${value < 0 ? min : max} ${Math.round(Math.abs(value) * 100)}%`;
+  return (
+    <div className={s.signed}>
+      <label htmlFor={id} className={s.rangeLabel}>
+        {label}
+      </label>
+      <input
+        id={id}
+        type="range"
+        min={-100}
+        max={100}
+        step={1}
+        value={Math.round(value * 100)}
+        className={s.unit}
+        style={{ ["--lo" as string]: `${lo}%`, ["--hi" as string]: `${hi}%` }}
+        data-signed
+        aria-valuetext={text}
+        onChange={(e) => {
+          const v = Number(e.target.value) / 100;
+          onChange(Math.abs(v) < 0.04 ? 0 : v); // snaps to the centre
+        }}
+        onDoubleClick={() => onChange(0)}
+      />
+    </div>
+  );
+}
+
 // ── Option tiles with live thumbnails ─────────────────────────────────────────
 
 export interface TileRender {

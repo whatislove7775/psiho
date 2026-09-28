@@ -7,7 +7,7 @@ import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import { moderationApi, STATUS_LABEL, type ArticleStatus } from "@/lib/api/authoring";
 import type { ArticleDraft } from "@/lib/api/content";
 import { ArticleBanner } from "../ArticleBanner";
-import { Markdown } from "../Markdown";
+import { RichText } from "../RichText";
 import { Sources } from "../Evidence";
 import { Switch } from "./fields";
 import s from "./cms.module.css";
@@ -54,7 +54,7 @@ export function ModerationPanel({ article: a, canPublish, onChanged }: { article
           </span>
           <h2 className={m.title}>{a.title}</h2>
           {a.summary && <p className={m.lead}>{a.summary}</p>}
-          <Markdown source={a.body} />
+          <RichText html={a.content} />
           <Sources sources={a.sources} level={a.evidence_level} reviewedAt={null} />
         </Card>
       </div>

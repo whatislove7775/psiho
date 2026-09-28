@@ -1,5 +1,6 @@
 "use client";
 
+import { FactsLine } from "@/components/specialists/SpecialistFacts";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { ChevronRight, Search, Users, Video } from "lucide-react";
@@ -186,6 +187,7 @@ function SpecCard({ p }: { p: PsychologistPublic }) {
         )}
       </span>
       <span className={s.specName}>{p.display_name}</span>
+      <FactsLine p={p} className={s.specTopics} />
       <span className={s.specTopics}>{topics}</span>
       <span className={s.specPrice}>{rub(p.session_rate_rub)}</span>
     </Link>

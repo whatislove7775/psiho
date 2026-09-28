@@ -37,3 +37,25 @@ node build.mjs /tmp/headz-out    # → apps/web/public/avatar/headz/**, apps/web
 `build.mjs` packs everything with `gltfpack -cc -kn -km`, de-duplicates identical parts across the
 skin variants of a group and writes the catalogue (bases, options per group/slot, authored colours,
 hat rims used to clip hair under hats).
+
+Also per base (`info.json → fit`, written by `build.mjs` into the catalogue + `<base>/fit.bin`):
+eyeball spheres / gaze axis / iris + pupil angles, face landmarks (nose, mouth corners, chin, jaw,
+temples, ears) and a 32×64 uint8 spherical radius map of the head. The runtime uses them for the
+procedural eyes, the face-shape sliders, and to seat any part (hair, beards, hats…) on any base.
+Morphs for beards / masks, make-up regions and the neck are derived at runtime (no extra bytes).
+`python export.py --measure <out_dir> [ids]` re-measures already exported faces without the sources.
+
+## Floating hands
+
+```
+HEADZ_SRC=/path/to/sources python export_hands.py   # → apps/web/public/avatar/hands/<group>.glb (+ manifest.gen.ts)
+```
+
+`export_hands.py` takes the Memoji-style floating hand islands of each group's White source, bakes
+them (rest pose, 1× subdivision, ≤ 3.2k tris per hand) onto a minimal 21-bone skeleton that maps 1:1
+to MediaPipe's hand landmarks (`wrist`, `<finger>0‥3` + zero-weight `<finger>Tip` markers; weights
+remapped from the Rigify `DEF-hand/palm/f_*/thumb` bones) and packs both hands of a group into one
+GLB with gltfpack (~57 KB). One untextured `skin` material — the runtime tints it with the avatar's
+skin tone. Identical groups are de-duplicated; the girl source has no floating hands and uses the
+boy's. Hands live outside `public/avatar/headz/` on purpose: `build.mjs` wipes that folder.
+Runtime: `apps/web/src/lib/avatar/headz/hands/*` (solver tests: `node --test src/lib/avatar/headz/hands/__tests__/*.test.mjs`).

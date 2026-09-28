@@ -27,7 +27,17 @@ type CircleEvent =
   | { type: "circle.message"; circle: string; message: CircleMessage }
   | { type: "circle.message.deleted"; circle: string; id: string };
 
-export function GroupChat({ circleId, hostPhoto, compact }: { circleId: string; hostPhoto?: string | null; compact?: boolean }) {
+export function GroupChat({
+  circleId,
+  hostPhoto,
+  cohostPhoto,
+  compact,
+}: {
+  circleId: string;
+  hostPhoto?: string | null;
+  cohostPhoto?: string | null;
+  compact?: boolean;
+}) {
   const toast = useToast();
   const [data, setData] = useState<CircleMessages | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -110,7 +120,7 @@ export function GroupChat({ circleId, hostPhoto, compact }: { circleId: string; 
 
   if (error) return <p className={s.note}>{error}</p>;
   if (!data) return <Spinner label="Загружаем чат" />;
-  const isHost = data.my_role === "host";
+  const isHost = data.my_role === "host" || data.my_role === "cohost";
   const myHandle = data.me?.handle;
 
   return (
@@ -138,21 +148,21 @@ export function GroupChat({ circleId, hostPhoto, compact }: { circleId: string; 
               </p>
             );
           }
-          const mine = m.mine ?? (m.author.kind === "member" ? m.author.handle === myHandle : isHost);
-          const host = m.author.kind === "host";
+          const mine = m.mine ?? (m.author.kind === "member" ? m.author.handle === myHandle : m.author.kind === data.my_role);
+          const host = m.author.kind === "host" || m.author.kind === "cohost";
           const canDelete = !m.deleted && (mine || isHost);
           return (
             <div key={m.id} className={cx(s.msg, mine && s.msgMine, host && s.msgHost, toneClass(host ? "primary" : m.author.tone))}>
               {!mine &&
                 (host ? (
                   <span className={s.hostDot}>
-                    <SpecialistPhoto url={hostPhoto} name={m.author.name} size={30} />
+                    <SpecialistPhoto url={m.author.kind === "cohost" ? cohostPhoto : hostPhoto} name={m.author.name} size={30} />
                   </span>
                 ) : (
                   <AvatarThumb config={null} seed={m.author.handle || m.author.name} size={30} />
                 ))}
               <div className={s.msgBody}>
-                {!mine && <span className={s.msgName}>{host ? `${m.author.name}, ведущий` : m.author.name}</span>}
+                {!mine && <span className={s.msgName}>{host ? `${m.author.name}, ${m.author.kind === "cohost" ? "ко-терапевт" : "ведущий"}` : m.author.name}</span>}
                 <div className={cx(s.bubble, m.deleted && s.bubbleDeleted)}>{m.deleted ? "Сообщение удалено" : m.text}</div>
                 <span className={s.msgTime}>
                   {time(m.created_at)}

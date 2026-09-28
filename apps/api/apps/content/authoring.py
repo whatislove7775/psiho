@@ -10,6 +10,8 @@
     /api/v1/content/my/articles/<id>/submit/        POST                 — отправить на модерацию
     /api/v1/content/my/articles/<id>/withdraw/      POST                 — вернуть в черновики (и снять с публикации)
     /api/v1/content/covers/                         POST (multipart)     — загрузить обложку (сотрудник или специалист)
+    /api/v1/content/images/                         POST (multipart)     — картинка в текст статьи (они же)
+    /api/v1/content/articles/<slug>/rating/         GET, PUT {stars}, DELETE — оценка 1–5 (PUT/DELETE — вошедшие)
     /api/v1/content/manage/articles/<id>/moderate/  POST {decision, comment}  — content.publish
     /api/v1/content/manage/articles/<id>/feature/   POST {featured}           — content.publish
     /api/v1/content/articles/<slug>/read/           POST                 — +1 прочтение (анонимно)
@@ -30,10 +32,11 @@ from rest_framework.views import APIView
 
 from apps.users.permissions import IsPsychologist
 
-from .covers import CoverError, process_cover
-from .models import Article, ArticleCover, Moderation
+from .covers import CoverError, process_cover, process_image
+from .models import Article, ArticleCover, ArticleImage, ArticleRating, Moderation
 from .permissions import can_manage_content
-from .serializers import ArticleManageSerializer, CoverImageMixin, _topic_label, clean_sources
+from .richtext import word_count
+from .serializers import ArticleManageSerializer, ArticleWriteMixin, CoverImageMixin, _topic_label, clean_sources
 
 M = Moderation
 
@@ -54,8 +57,8 @@ def unique_slug(title: str) -> str:
     return slug
 
 
-def estimate_minutes(body: str) -> int:
-    return max(1, min(90, round(len((body or "").split()) / 160)))
+def estimate_minutes(content: str) -> int:
+    return max(1, min(90, round(word_count(content) / 160)))
 
 
 def can_publish(user) -> bool:
@@ -127,18 +130,44 @@ class CoverUploadView(APIView):
         return Response(cover.as_json(), status=status.HTTP_201_CREATED)
 
 
+class ImageThrottle(UserRateThrottle):
+    rate = "120/hour"
+    scope = "article_image"
+
+
+class ImageUploadView(APIView):
+    """multipart: image → {id, url, md, width, height}. Вставляется в текст как <figure><img src=url>."""
+
+    permission_classes = [CanUploadCover]
+    parser_classes = [MultiPartParser, FormParser]
+    throttle_classes = [ImageThrottle]
+
+    def post(self, request):
+        try:
+            files = process_image(request.FILES.get("image"))
+        except CoverError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        img = ArticleImage(uploaded_by=request.user, width=files["width"], height=files["height"])
+        for field in ("image", "image_md"):
+            getattr(img, field).save(files[field].name, files[field], save=False)
+        img.save()
+        return Response(img.as_json(), status=status.HTTP_201_CREATED)
+
+
 # ── Кабинет специалиста ─────────────────────────────────────────────────────
 
-class MyArticleSerializer(CoverImageMixin, serializers.ModelSerializer):
+class MyArticleSerializer(ArticleWriteMixin, CoverImageMixin, serializers.ModelSerializer):
     own_covers_only = True
     topic_label = serializers.SerializerMethodField()
+    topic_labels = serializers.SerializerMethodField()
     cover_image = serializers.SerializerMethodField()
     status = serializers.CharField(source="moderation", read_only=True)
 
     class Meta:
         model = Article
         fields = (
-            "id", "slug", "title", "summary", "body", "topic", "topic_label", "sources", "cover", "cover_image",
+            "id", "slug", "title", "summary", "content", "body", "topic", "topic_label", "topics", "topic_labels",
+            "sources", "cover", "cover_image",
             "cover_image_id", "reading_minutes", "status", "moderation_comment", "submitted_at", "moderated_at",
             "published_at", "is_published", "is_featured", "reads", "created_at", "updated_at",
         )
@@ -146,10 +175,13 @@ class MyArticleSerializer(CoverImageMixin, serializers.ModelSerializer):
             "slug", "reading_minutes", "moderation_comment", "submitted_at", "moderated_at", "published_at",
             "is_published", "is_featured", "reads", "created_at", "updated_at", "cover",
         )
-        extra_kwargs = {"title": {"max_length": 200}, "body": {"required": False, "allow_blank": True}}
+        extra_kwargs = {"title": {"max_length": 200}, "body": {"required": False, "allow_blank": True, "write_only": True}}
 
     def get_topic_label(self, obj):
         return _topic_label(obj.topic)
+
+    def get_topic_labels(self, obj):
+        return [_topic_label(t) for t in (obj.topics or [obj.topic])]
 
     def get_cover_image(self, obj):
         return obj.cover_image.as_json() if obj.cover_image_id and obj.cover_image else None
@@ -172,6 +204,9 @@ class MyArticleSerializer(CoverImageMixin, serializers.ModelSerializer):
         if self.instance is not None and self.instance.moderation not in (M.DRAFT, M.REJECTED):
             raise serializers.ValidationError(
                 {"detail": "Статья на модерации или опубликована. Верните её в черновики, чтобы изменить."})
+        attrs = self.normalize_text_and_topics(attrs)
+        if len(attrs.get("content") or "") > 200_000 or word_count(attrs.get("content") or "") > 12_000:
+            raise serializers.ValidationError({"content": ["Текст слишком длинный: до 12 000 слов."]})
         return attrs
 
     def create(self, validated_data):
@@ -179,13 +214,13 @@ class MyArticleSerializer(CoverImageMixin, serializers.ModelSerializer):
         validated_data.update(
             specialist=profile, author_name=profile.display_name, moderation=M.DRAFT, is_published=False,
             slug=unique_slug(validated_data.get("title", "")),
-            reading_minutes=estimate_minutes(validated_data.get("body", "")),
+            reading_minutes=estimate_minutes(validated_data.get("content", "")),
         )
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
-        if "body" in validated_data:
-            validated_data["reading_minutes"] = estimate_minutes(validated_data["body"])
+        if "content" in validated_data:
+            validated_data["reading_minutes"] = estimate_minutes(validated_data["content"])
         return super().update(instance, validated_data)
 
 
@@ -237,8 +272,8 @@ class MyArticleSubmitView(APIView):
             errors["title"] = ["Добавьте заголовок."]
         if len(article.summary.strip()) < 20:
             errors["summary"] = ["Добавьте короткое описание: 1–2 предложения."]
-        if len(article.body.split()) < MIN_WORDS:
-            errors["body"] = [f"Текст слишком короткий: нужно хотя бы {MIN_WORDS} слов."]
+        if word_count(article.content) < MIN_WORDS:
+            errors["content"] = [f"Текст слишком короткий: нужно хотя бы {MIN_WORDS} слов."]
         if errors:
             return Response(errors, status=400)
         article.moderation = M.PENDING
@@ -341,3 +376,77 @@ class ArticleReadView(APIView):
     def post(self, request, slug):
         n = Article.objects.filter(slug=slug, is_published=True).update(reads=F("reads") + 1)
         return Response(status=204 if n else 404)
+
+
+# ── Оценки ─────────────────────────────────────────────────────────────────
+
+class RatingThrottle(UserRateThrottle):
+    rate = "60/hour"
+    scope = "article_rating"
+
+
+def _rating_summary(article, user=None):
+    from django.db.models import Avg, Count
+
+    agg = ArticleRating.objects.filter(article=article).aggregate(avg=Avg("stars"), count=Count("id"))
+    data = {"avg": round(float(agg["avg"]), 1) if agg["count"] else None, "count": agg["count"]}
+    if user is not None and user.is_authenticated:
+        mine = ArticleRating.objects.filter(article=article, user=user).values_list("stars", flat=True).first()
+        data.update(mine=mine, can_rate=_can_rate(user, article))
+    else:
+        data.update(mine=None, can_rate=False)
+    return data
+
+
+def _can_rate(user, article) -> bool:
+    """Клиенты и специалисты с аккаунтом; автор свою статью не оценивает."""
+    if not (user and user.is_authenticated) or user.role not in ("client", "psychologist"):
+        return False
+    return not (article.specialist_id and article.specialist.user_id == user.pk)
+
+
+class ArticleRatingView(APIView):
+    """GET — {avg, count, mine, can_rate}; PUT {stars: 1–5} — поставить/изменить; DELETE — убрать свою.
+    Наружу — только среднее и количество: кто как оценил, не видно ни автору, ни сотрудникам."""
+
+    permission_classes = [AllowAny]
+
+    def get_throttles(self):
+        return [RatingThrottle()] if self.request.method in ("PUT", "DELETE") else []
+
+    def _article(self, slug):
+        from .views import public_articles
+
+        return public_articles().filter(slug=slug).first()
+
+    def get(self, request, slug):
+        article = self._article(slug)
+        if article is None:
+            return Response({"detail": "Статья не найдена."}, status=404)
+        return Response(_rating_summary(article, request.user))
+
+    def put(self, request, slug):
+        if not request.user.is_authenticated:
+            return Response({"detail": "Войдите, чтобы оценить статью."}, status=401)
+        article = self._article(slug)
+        if article is None:
+            return Response({"detail": "Статья не найдена."}, status=404)
+        if not _can_rate(request.user, article):
+            return Response({"detail": "Эту статью вы оценить не можете."}, status=403)
+        try:
+            stars = int(request.data.get("stars"))
+        except (TypeError, ValueError):
+            stars = 0
+        if not 1 <= stars <= 5:
+            return Response({"stars": ["Оценка — от 1 до 5."]}, status=400)
+        ArticleRating.objects.update_or_create(article=article, user=request.user, defaults={"stars": stars})
+        return Response(_rating_summary(article, request.user))
+
+    def delete(self, request, slug):
+        if not request.user.is_authenticated:
+            return Response({"detail": "Войдите, чтобы оценить статью."}, status=401)
+        article = self._article(slug)
+        if article is None:
+            return Response({"detail": "Статья не найдена."}, status=404)
+        ArticleRating.objects.filter(article=article, user=request.user).delete()
+        return Response(_rating_summary(article, request.user))

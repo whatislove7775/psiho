@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { ChevronLeft, ChevronRight, Redo2, Shuffle, Smile, Undo2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Redo2, RotateCcw, Shuffle, Smile, Undo2 } from "lucide-react";
 import { Button } from "@/ui";
 import { AvatarView, type AvatarViewHandle } from "@/components/avatar/AvatarView";
 import { avatarKey, normalizeAvatar, randomAvatar, type AvatarConfig } from "@/lib/avatar/schema";
@@ -70,7 +70,9 @@ export function AvatarStudio({ initial, seed, onSave, saving = false, variant = 
     [hist.set], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
-  const shuffle = () => hist.set(randomAvatar(Date.now()));
+  const shuffle = () => hist.set(randomAvatar(Date.now(), true));
+  // back to the character as authored (keeps the chosen character)
+  const reset = () => hist.set(normalizeAvatar({ base: cfgRef.current.base }));
 
   // ── Keyboard: undo / redo ──
   const { undo, redo } = hist;
@@ -227,7 +229,7 @@ export function AvatarStudio({ initial, seed, onSave, saving = false, variant = 
         </div>
         <div className={s.tools} role="toolbar" aria-label="Действия с&nbsp;аватаром">
           <Button size="sm" variant="secondary" icon={<Shuffle size={16} />} onClick={shuffle}>
-            Перемешать
+            Случайный
           </Button>
           <Button
             size="sm"
@@ -239,6 +241,7 @@ export function AvatarStudio({ initial, seed, onSave, saving = false, variant = 
             Мимика
           </Button>
           <span className={s.toolsGap} />
+          <Button size="sm" variant="ghost" iconOnly icon={<RotateCcw size={18} />} aria-label="Сбросить" title="Сбросить к исходному" onClick={reset} />
           <Button size="sm" variant="ghost" iconOnly icon={<Undo2 size={18} />} aria-label="Отменить" title={`Отменить (${mod}+Z)`} disabled={!hist.canUndo} onClick={hist.undo} />
           <Button
             size="sm"

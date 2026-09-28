@@ -12,6 +12,7 @@ WebRTC Signaling Consumer (Django Channels)
 поэтому «зависшее» соединение не блокирует комнату.
 """
 import json
+import time
 import logging
 from urllib.parse import parse_qs
 
@@ -27,7 +28,7 @@ SLOT_TTL = 3 * 60 * 60
 ROLES = ("client", "psychologist")
 # "media": the client tells the specialist whether they show the avatar or (explicit
 # opt-in) their real camera — {"type": "media", "face": "avatar" | "real"}.
-ALLOWED_TYPES = {"offer", "answer", "ice-candidate", "ready", "bye", "media"}
+ALLOWED_TYPES = {"offer", "answer", "ice-candidate", "ready", "bye", "media", "reaction"}
 
 CLOSE_REPLACED = 4000
 CLOSE_UNAUTHORIZED = 4001
@@ -108,6 +109,15 @@ class SignalingConsumer(AsyncWebsocketConsumer):
             # relay only the two known fields
             data = {"type": "media", "face": "real" if data.get("face") == "real" else "avatar",
                     "from": str(data.get("from") or "")[:64]}
+        elif data["type"] == "reaction":
+            # 👍/👎 reaction (from a gesture or a button): only the kind, at most ~2 per second
+            if data.get("kind") not in ("up", "down"):
+                return
+            now = time.monotonic()
+            if now - getattr(self, "_last_reaction", 0.0) < 0.5:
+                return
+            self._last_reaction = now
+            data = {"type": "reaction", "kind": data["kind"]}
         # Ретранслируем сигнал всем в комнате кроме отправителя
         await self.channel_layer.group_send(
             self.group_name,

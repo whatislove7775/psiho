@@ -131,7 +131,7 @@ def test_short_article_cannot_be_submitted(psychologist):
     psy = auth_client(psychologist.user)
     art = _draft(psy, body="Коротко.")
     r = psy.post(f"/api/v1/content/my/articles/{art['id']}/submit/")
-    assert r.status_code == 400 and "body" in r.json()
+    assert r.status_code == 400 and "content" in r.json()
 
 
 @pytest.mark.django_db

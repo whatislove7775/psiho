@@ -8,7 +8,12 @@
 - исчезающие сообщения (1 час / 1 день): у каждого сообщения есть expires_at;
   API перестаёт отдавать сообщение сразу после этого момента, а физически его
   удаляет команда purge_chats (сервис scheduler в docker-compose, раз в 5 минут);
-- «удалить у всех» оставляет только надгробие (без текста и файла).
+- «удалить у всех» оставляет только надгробие (без текста и файла);
+- файл «на один просмотр» (view_once): получатель открывает его один раз через
+  /messages/<id>/open/, после чего файл и подпись стираются у обоих, остаётся
+  заглушка «Фото просмотрено»; отправитель файл после отправки не открывает;
+- «Исчезнет через …» (1 мин / 1 час / 1 день) для отдельного вложения — тот же
+  expires_at (берётся меньший из срока вложения и режима разговора).
 """
 import uuid
 
@@ -122,6 +127,9 @@ class Message(models.Model):
     deleted_at = models.DateTimeField(null=True, blank=True)
     # None — хранится бессрочно; иначе удаляется purge_chats после этого момента
     expires_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    # Файл «на один просмотр»: viewed_at — когда получатель его открыл (файл к этому моменту стёрт)
+    view_once = models.BooleanField(default=False)
+    viewed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "chat_message"

@@ -181,6 +181,30 @@ def test_edit_after_approval_requires_reverification(psychologist, api):
     assert Credential.objects.get(pk=item["id"]).status == "pending"
 
 
+@pytest.mark.django_db
+def test_number_public_opt_in(psychologist, api):
+    item = create_item(psychologist)
+    assert item["number_public"] is False
+    admin = auth_client(make_staff("admin"))
+    admin.post(f"/api/v1/staff/credentials/{item['id']}/", {"decision": "approve"}, format="json")
+    url = f"/api/v1/psychologists/{psychologist.pk}/credentials/"
+    row = api.get(url).data[0]
+    assert "number" not in row and row["number_masked"] == "№ •••• 3456"
+    owner = auth_client(psychologist.user)
+    # Показ номера целиком — выбор отображения, не новые данные: повторная проверка не нужна
+    res = owner.patch(f"{CAB}{item['id']}/", {"number_public": True}, format="json")
+    assert res.status_code == 200 and res.data["number_public"] is True and res.data["status"] == "approved"
+    row = api.get(url).data[0]
+    assert row["number"] == "ВСА 0123456" and row["number_masked"] == "№ •••• 3456"
+    # Выключили — снова только маска
+    owner.patch(f"{CAB}{item['id']}/", {"number_public": False}, format="json")
+    assert "number" not in api.get(url).data[0]
+    # Сменили номер при включённом показе — пункт на проверке и публично не виден
+    owner.patch(f"{CAB}{item['id']}/", {"number_public": True, "number": "ВСА 7777777"}, format="json")
+    assert Credential.objects.get(pk=item["id"]).status == "pending"
+    assert api.get(url).data == []
+
+
 # ── Отзывы ───────────────────────────────────────────────────────────
 
 def completed_call(client, profile, days_ago=2):

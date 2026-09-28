@@ -103,7 +103,7 @@ function Entry({ c, onOpen }: { c: PublicCredential; onOpen: (i: number) => void
     c.issuer,
     c.supervisor && `супервизор ${c.supervisor}`,
     c.hours && `${c.hours} ${plural(c.hours, "час", "часа", "часов")}`,
-    c.number_masked,
+    c.number ? `№ ${c.number}` : c.number_masked,
   ].filter(Boolean);
   return (
     <li className={s.entry}>

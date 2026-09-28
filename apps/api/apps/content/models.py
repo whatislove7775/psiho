@@ -7,13 +7,28 @@ from django.utils import timezone
 
 class Topic(models.TextChoices):
     ANXIETY = "anxiety", "Тревога"
-    MOOD = "mood", "Настроение"
+    MOOD = "mood", "Депрессия и настроение"
     STRESS = "stress", "Стресс и выгорание"
     SLEEP = "sleep", "Сон"
-    RELATIONSHIPS = "relationships", "Отношения"
+    EMOTIONS = "emotions", "Эмоции"
     SELF = "self", "Самооценка"
+    RELATIONSHIPS = "relationships", "Отношения"
+    FAMILY = "family", "Семья и дети"
+    CONFLICTS = "conflicts", "Конфликты"
+    BOUNDARIES = "boundaries", "Границы"
+    LONELINESS = "loneliness", "Одиночество"
     LOSS = "loss", "Горе и утрата"
+    TRAUMA = "trauma", "Травма"
+    ADDICTION = "addiction", "Зависимости"
+    EATING = "eating", "Пищевое поведение"
+    WORK = "work", "Работа и карьера"
+    BODY = "body", "Телесность"
+    MINDFULNESS = "mindfulness", "Осознанность"
+    TEENS = "teens", "Подростки"
     THERAPY = "therapy", "О терапии"
+
+
+MAX_TOPICS = 3
 
 
 class EvidenceLevel(models.TextChoices):
@@ -77,7 +92,8 @@ class Moderation(models.TextChoices):
 
 
 class Article(models.Model):
-    """Psychology article written in Markdown, managed in /admin/content.
+    """Psychology article, managed in /admin/content. Текст — очищенный HTML (`content`,
+    см. richtext.py); `body` — прежний Markdown, оставлен как резервная копия после миграции 0007.
 
     Статьи пишут и специалисты (/pro/articles): тогда `specialist` заполнен, а публикует
     статью сотрудник с правом content.publish после модерации (`moderation`)."""
@@ -85,7 +101,10 @@ class Article(models.Model):
     title = models.CharField(max_length=200)
     slug = models.SlugField(max_length=120, unique=True)
     summary = models.CharField(max_length=400, blank=True)
-    body = models.TextField(help_text="Markdown")
+    body = models.TextField(blank=True, default="", help_text="Markdown (до 0007; резервная копия)")
+    content = models.TextField(blank=True, default="", help_text="Sanitized HTML (richtext.sanitize_html)")
+    # До трёх тем; первая — основная (`topic`: иллюстрация и цвет обложки, «Ещё по теме»)
+    topics = models.JSONField(default=list, blank=True)
     topic = models.CharField(max_length=32, choices=Topic.choices, default=Topic.THERAPY)
     tags = models.JSONField(default=list, blank=True)
     # Visual: a pastel tone key from the design tokens (peach, butter, lime, mint, lilac, sky) + emoji
@@ -133,10 +152,68 @@ class Article(models.Model):
     def save(self, *args, **kwargs):
         if self.is_published and not self.published_at:
             self.published_at = timezone.now()
+        if self.topics:
+            self.topic = self.topics[0]
+        elif self.topic:
+            self.topics = [self.topic]
+        if not self.content and self.body:
+            from .richtext import markdown_to_html
+
+            self.content = markdown_to_html(self.body)
         super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title
+
+
+def _image_path(instance, filename):
+    return f"content/{instance.pk.hex}.webp"
+
+
+def _image_md_path(instance, filename):
+    return f"content/{instance.pk.hex}-md.webp"
+
+
+class ArticleImage(models.Model):
+    """Картинка внутри статьи: WebP 1600 и 800 px по ширине, без EXIF (images.py).
+
+    Грузят авторы (сотрудники с content.edit и специалисты); файлы со случайным именем
+    раздаются nginx по /media/content/ — как обложки."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    image = models.ImageField(upload_to=_image_path)  # до 1600 по ширине
+    image_md = models.ImageField(upload_to=_image_md_path)  # 800
+    width = models.PositiveIntegerField(default=0)
+    height = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "content_article_image"
+
+    def as_json(self):
+        return {"id": str(self.id), "url": self.image.url, "md": self.image_md.url,
+                "width": self.width, "height": self.height}
+
+
+class ArticleRating(models.Model):
+    """Оценка статьи 1–5 от вошедшего пользователя (одна на человека, можно изменить).
+    Наружу отдаются только среднее и количество — кто как оценил, не видно никому."""
+
+    article = models.ForeignKey(Article, on_delete=models.CASCADE, related_name="ratings")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    stars = models.PositiveSmallIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "content_article_rating"
+        constraints = [
+            models.UniqueConstraint(fields=("article", "user"), name="uniq_article_rating_user"),
+            models.CheckConstraint(check=models.Q(stars__gte=1, stars__lte=5), name="article_rating_1_5"),
+        ]
 
 
 class Practice(models.Model):

@@ -13,6 +13,8 @@ import { normalizeAvatar, randomAvatar } from "@/lib/avatar/schema";
 import { getBackdrop, loadBackdrop, saveBackdrop, type BackdropId } from "@/lib/avatar/backdrops";
 import { useAvatarCamera } from "@/hooks/useAvatarCamera";
 import { useVoiceTransform, type VoicePreset } from "@/hooks/useVoiceTransform";
+import { HandsToggle } from "@/components/avatar/HandsToggle";
+import { ReactionLayer, useReactionBursts } from "@/components/reactions/Reactions";
 import s from "./check.module.css";
 import { illSize, MirrorAvatar } from "@/components/illustrations";
 
@@ -154,7 +156,9 @@ export default function CheckPage() {
   const [voice, setVoice] = useState<VoicePreset>("off");
   const [ticks, setTicks] = useState<Record<string, boolean>>({});
 
-  const cam = useAvatarCamera(avatar, { backdrop });
+  // try the 👍/👎 gestures here: the reaction pops over the avatar just like in a call
+  const [bursts, pushBurst] = useReactionBursts();
+  const cam = useAvatarCamera(avatar, { backdrop, onGesture: (g) => g !== "raise" && pushBurst(g) });
   const { transformedStream } = useVoiceTransform({ inputStream: cam.audioStream, preset: voice });
   const bar = useRef<HTMLSpanElement>(null);
   const heard = useMicMeter(cam.audioStream, bar);
@@ -232,6 +236,7 @@ export default function CheckPage() {
           <div className={s.layout}>
             <div className={s.stage} style={{ background: getBackdrop(backdrop).cover }}>
               {live && <CanvasSlot canvas={cam.canvas} />}
+              {live && <ReactionLayer items={bursts} />}
               {live && status && (
                 <span className={s.status} data-tone={status.tone}>
                   <span className={s.dot} aria-hidden />
@@ -300,6 +305,10 @@ export default function CheckPage() {
                 <Link href="/app/avatar" className={s.link}>
                   Изменить аватар
                 </Link>
+              </div>
+
+              <div className={s.group}>
+                <HandsToggle sub="Жесты увидит специалист. Руки распознаются только на&nbsp;этом устройстве." />
               </div>
 
               <div className={s.group}>

@@ -62,7 +62,8 @@ for tone in ("White", "Brown", "Black"):
         BASES.append(dict(id=f"{g}-{TONES[tone.lower()]}", group=g, file=f"elders/Elderz - Blender Source files/{tone} Older {old}.blend"))
 
 SKIP_OBJ = ("WGT", "cs-", "cs_", "Light", "Background", "TEARS", "Plane", "MSDF", "Generator")
-HAIR_TRIS = 8000
+HAIR_TRIS = 14000  # dense strand hair falls apart (holes, facets) when decimated much harder
+BEARD_TRIS = 8000
 ACC_TRIS = 5000
 FACE_TRIS = 16000
 
@@ -480,8 +481,10 @@ def part_slot(o, coll_name):
     c = coll_name.lower()
     if "earring" in n:
         return "earrings"
-    if "helmet" in n or n.endswith("_ring") or "scarf" in n or "collar" in n or "mask" in n or "masker" in n:
+    if "helmet" in n or n.endswith("_ring") or "scarf" in n or "collar" in n:
         return None
+    if "mask" in n:
+        return "mask"
     if "beard" in n or "moustache" in n or "mustache" in n or c == "beard":
         return "beard"
     if "glass" in n:
@@ -737,8 +740,13 @@ def saturated_mean(img):
     return tuple(float(x) for x in (sel.mean(0) if len(sel) else rgb.mean(0)))
 
 
+TONE_WORD = re.compile(r"(?<=_)(white|brown|black)_")
+
+
 def mat_role(obj_role, src_name, info, slot_index, n_slots):
-    n = (src_name or "").lower()
+    # the skin tone is part of many material names ("mat_female_black_white_eyes"): drop it
+    # before looking for colour words, or the sclera of dark-skinned bases becomes "pupil"
+    n = TONE_WORD.sub("", (src_name or "").lower(), count=1)
     col, r, m, tw, img = info
     if obj_role in ("skin", "ears"):
         if "mouth" in n or "inner" in n:
@@ -895,6 +903,167 @@ def smooth(ob, angle=None):
         me.set_sharp_from_angle(angle=angle)
 
 
+# ── measurements for the runtime (glTF head space: +Y up, +Z front) ──────────
+
+FIT_EL, FIT_AZ = 32, 64
+
+
+def gl(v):
+    return [round(v[0], 4), round(v[2], 4), round(-v[1], 4)]
+
+
+def mat_of(ob, poly):
+    m = ob.material_slots[poly.material_index].material if ob.material_slots else None
+    return re.sub(r"\.\d+$", "", m.name) if m else ""
+
+
+def sphere_fit(pts):
+    import numpy as np
+    P = np.array([tuple(p) for p in pts])
+    A = np.c_[2 * P, np.ones(len(P))]
+    b = (P ** 2).sum(1)
+    x = np.linalg.lstsq(A, b, rcond=None)[0]
+    c = x[:3]
+    r = math.sqrt(max(1e-9, x[3] + (c ** 2).sum()))
+    return Vector(c.tolist()), r
+
+
+def measure_eyes(obs):
+    """Per eye: eyeball sphere, gaze axis through the iris, iris/pupil angular radii.
+    The runtime paints iris + pupil procedurally from these (works for every base)."""
+    by = {"L": {}, "R": {}}
+    for ob in obs:
+        me = ob.data
+        for poly in me.polygons:
+            role = mat_of(ob, poly)
+            for vi in poly.vertices:
+                co = me.vertices[vi].co
+                by["L" if co.x > 0 else "R"].setdefault(role, []).append(co.copy())
+    out = {}
+    for side, roles in by.items():
+        allp = [p for ps in roles.values() for p in ps]
+        if len(allp) < 20:
+            continue
+        white = roles.get("eyeWhite") or allp
+        c, r = sphere_fit(white if len(white) > 20 else allp)
+        dark = roles.get("iris", []) + roles.get("pupil", [])
+        front = [p for p in (dark or allp) if (p - c).normalized().y < -0.3]
+        axis = (sum(front, Vector()) / len(front) - c).normalized() if front else Vector((0, -1, 0))
+
+        def ang(ps):
+            a = sorted(math.degrees((p - c).angle(axis)) for p in ps if (p - c).length > 1e-6)
+            a = [x for x in a if x < 75]
+            return a[int(len(a) * 0.92)] if len(a) > 8 else None
+
+        iris = ang(roles.get("iris", [])) or ang(dark)
+        pupil = ang(roles.get("pupil", [])) if roles.get("iris") else None
+        iris = iris or 38.0
+        if not pupil or pupil >= iris * 0.85:
+            pupil = iris * 0.42
+        ax = gl(axis)
+        out[side] = dict(c=gl(c), r=round(r, 4), axis=[round(a, 4) for a in ax], iris=round(iris, 1), pupil=round(pupil, 1))
+    return out
+
+
+def key_argmax(ob, key, side=0):
+    sk = ob.data.shape_keys
+    if not sk or key not in sk.key_blocks:
+        return None
+    base = sk.key_blocks[0].data
+    kd = sk.key_blocks[key].data
+    best, bi = -1, None
+    for i in range(len(base)):
+        if side and base[i].co.x * side < 0:
+            continue
+        d = (kd[i].co - base[i].co).length
+        if d > best:
+            best, bi = d, i
+    return base[bi].co.copy() if bi is not None else None
+
+
+def wrap_pad(R):
+    """Pad by one cell: edge rows at the poles, wrap-around in azimuth."""
+    import numpy as np
+    pad = np.pad(R, 1, mode="edge")
+    pad[1:-1, 0] = R[:, -1]
+    pad[1:-1, -1] = R[:, 0]
+    return pad
+
+
+def measure_face(obs):
+    """Landmarks + a spherical radius map of the scalp/face (for fitting parts of one base onto another)."""
+    import numpy as np
+    skins = [o for o in obs if o.name.split(".")[0] == "skin"]
+    skin = max(skins, key=lambda o: len(o.data.vertices))
+    eyes = measure_eyes([o for o in obs if o.name.split(".")[0] == "eyes"])
+    P = np.array([tuple(v.co) for o in skins for v in o.data.vertices])
+    lm = {}
+    eye_z = float(np.mean([e["c"][1] for e in eyes.values()])) if eyes else 0.0
+    mid = P[np.abs(P[:, 0]) < 0.12]
+    nose = mid[(mid[:, 2] < eye_z) & (mid[:, 2] > eye_z - 0.9)]
+    if len(nose):
+        n = nose[np.argmin(nose[:, 1])]
+        lm["nose"] = gl(n)
+    cl = key_argmax(skin, "mouthSmileLeft", 1) or key_argmax(skin, "mouthStretchLeft", 1)
+    cr = key_argmax(skin, "mouthSmileRight", -1) or key_argmax(skin, "mouthStretchRight", -1)
+    if cl and cr:
+        lm["mouthL"], lm["mouthR"] = gl(cl), gl(cr)
+    front = mid[mid[:, 1] < -0.2]
+    if len(front):
+        lm["chin"] = gl(front[np.argmin(front[:, 2])])
+    lm["crown"] = round(float(P[:, 2].max()), 4)
+    lm["bottom"] = round(float(P[:, 2].min()), 4)
+    band = P[np.abs(P[:, 2] - eye_z) < 0.06]
+    if len(band):
+        lm["temple"] = round(float(np.abs(band[:, 0]).max()), 4)
+    if cl is not None:
+        jb = P[np.abs(P[:, 2] - cl.z) < 0.06]
+        if len(jb):
+            lm["jaw"] = round(float(np.abs(jb[:, 0]).max()), 4)
+    ears = [v.co for o in obs if o.name.split(".")[0] == "ears" for v in o.data.vertices]
+    if ears:
+        lm["ear"] = round(max(abs(v.x) for v in ears), 4)
+    # radius map over (elevation, azimuth) of the outer skin surface, gaps filled + blurred
+    R = np.zeros((FIT_EL, FIT_AZ))
+    rr = np.linalg.norm(P, axis=1)
+    el = np.clip(((np.arcsin(np.clip(P[:, 2] / np.maximum(rr, 1e-6), -1, 1)) / math.pi + 0.5) * FIT_EL).astype(int), 0, FIT_EL - 1)
+    # azimuth in glTF terms: atan2(x, zFront) with zFront = -y
+    az = np.clip(((np.arctan2(P[:, 0], -P[:, 1]) / (2 * math.pi) + 0.5) * FIT_AZ).astype(int), 0, FIT_AZ - 1)
+    np.maximum.at(R, (el, az), rr)
+    for _ in range(40):
+        empty = R == 0
+        if not empty.any():
+            break
+        pad = wrap_pad(R)
+        s = sum(pad[1 + dy:1 + dy + FIT_EL, 1 + dx:1 + dx + FIT_AZ] for dy in (-1, 0, 1) for dx in (-1, 0, 1))
+        n = sum((pad[1 + dy:1 + dy + FIT_EL, 1 + dx:1 + dx + FIT_AZ] > 0).astype(float) for dy in (-1, 0, 1) for dx in (-1, 0, 1))
+        R[empty] = np.where(n[empty] > 0, s[empty] / np.maximum(n[empty], 1), 0)
+    for _ in range(2):
+        pad = wrap_pad(R)
+        R = sum(pad[1 + dy:1 + dy + FIT_EL, 1 + dx:1 + dx + FIT_AZ] for dy in (-1, 0, 1) for dx in (-1, 0, 1)) / 9
+    q = np.clip(np.round((R - 0.2) / 1.4 * 255), 0, 255).astype(np.uint8)
+    import base64
+    return dict(eyes=eyes, lm=lm, radius=base64.b64encode(q.tobytes()).decode(), radiusShape=[FIT_EL, FIT_AZ])
+
+
+def measure_only(out_root, ids):
+    """Re-measure already exported faces (face.glb) without touching the sources."""
+    for bid in ids:
+        d = os.path.join(out_root, bid)
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        bpy.ops.import_scene.gltf(filepath=os.path.join(d, "face.glb"))
+        obs = [o for o in bpy.context.scene.objects if o.type == "MESH"]
+        for o in obs:
+            o.data.transform(o.matrix_world, shape_keys=True)
+            o.matrix_world = Matrix.Identity(4)
+        # importer names objects by node; our nodes were named by role
+        info_p = os.path.join(d, "info.json")
+        info = json.load(open(info_p))
+        info["fit"] = measure_face(obs)
+        json.dump(info, open(info_p, "w"), indent=1, ensure_ascii=False)
+        log(bid, "eyes", info["fit"]["eyes"], "lm", info["fit"]["lm"])
+
+
 def export_base(b, out_root):
     path = os.path.join(SRC, b["file"])
     log("==", b["id"], path)
@@ -916,6 +1085,7 @@ def export_base(b, out_root):
         dict(role=o.name.split(".")[0], verts=len(o.data.vertices), tris=tri_count(o.data),
              keys=[k.name for k in o.data.shape_keys.key_blocks[1:]] if o.data.shape_keys else [])
         for o in face_obs]), materials=report, transform=meta, parts=[])
+    info["fit"] = measure_face(face_obs)
     # static LOD for list thumbnails: neutral pose, no morph targets, ~6k triangles
     lod = []
     for ob in face_obs:
@@ -955,7 +1125,7 @@ def export_base(b, out_root):
         ob = bpy.data.objects.new(o.name, me)
         bpy.context.scene.collection.objects.link(ob)
         ob.shape_key_clear() if ob.data.shape_keys else None
-        t = decimate(ob, HAIR_TRIS if slot in ("hair", "beard") else ACC_TRIS)
+        t = decimate(ob, HAIR_TRIS if slot == "hair" else BEARD_TRIS if slot in ("beard", "mask") else ACC_TRIS)
         smooth(ob, None if slot in ("hair", "beard") else math.radians(50))
         rep = []
         rebuild_materials(ob, slot, rep)
@@ -987,6 +1157,8 @@ def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
     out_root = argv[0]
     only = set(argv[1:])
+    if out_root == "--measure":
+        return measure_only(argv[1], argv[2:] or [b["id"] for b in BASES])
     for b in BASES:
         if only and b["id"] not in only and b["group"] not in only:
             continue

@@ -2,7 +2,8 @@ from rest_framework import serializers
 
 from urllib.parse import urlparse
 
-from .models import Article, Practice, Topic
+from .models import MAX_TOPICS, Article, Practice, Topic
+from .richtext import markdown_to_html, sanitize_html
 
 COVERS = ("peach", "butter", "lime", "mint", "lilac", "sky")
 SOURCE_KINDS = ("guideline", "review", "study", "org", "book", "other")
@@ -81,21 +82,78 @@ def _topic_label(value):
         return value
 
 
+def clean_topics(value):
+    """1–3 темы из списка Topic, без повторов; первая — основная."""
+    if not isinstance(value, list) or not value:
+        raise serializers.ValidationError("Выберите хотя бы одну тему.")
+    out = []
+    for v in value:
+        if v not in Topic.values:
+            raise serializers.ValidationError(f"Неизвестная тема: {v}.")
+        if v not in out:
+            out.append(v)
+    if len(out) > MAX_TOPICS:
+        raise serializers.ValidationError(f"Не больше {MAX_TOPICS} тем.")
+    return out
+
+
+class ArticleWriteMixin(serializers.Serializer):
+    """Запись текста и тем.
+
+    - `content` — HTML из редактора; очищается по белому списку (richtext.sanitize_html).
+      Старые клиенты могут прислать `body` в Markdown — тогда HTML получается из него.
+    - `topics` — до трёх тем; `topic` (одна) по-прежнему принимается и становится списком из одной."""
+
+    topics = serializers.ListField(child=serializers.CharField(max_length=32), required=False)
+
+    def validate_topics(self, value):
+        return clean_topics(value)
+
+    def validate_content(self, value):
+        if len(value or "") > 300_000:
+            raise serializers.ValidationError("Текст слишком длинный.")
+        return sanitize_html(value)
+
+    def normalize_text_and_topics(self, attrs):
+        if "content" not in attrs and attrs.get("body"):
+            attrs["content"] = markdown_to_html(attrs["body"])
+        if "topics" in attrs:
+            attrs["topic"] = attrs["topics"][0]
+        elif "topic" in attrs:
+            attrs["topics"] = [attrs["topic"]]
+        return attrs
+
+
 class ArticleListSerializer(serializers.ModelSerializer):
     topic_label = serializers.SerializerMethodField()
+    topic_labels = serializers.SerializerMethodField()
     cover_image = serializers.SerializerMethodField()
     specialist = serializers.SerializerMethodField()
+    rating = serializers.SerializerMethodField()
 
     class Meta:
         model = Article
         fields = (
-            "id", "slug", "title", "summary", "topic", "topic_label", "tags", "cover", "emoji",
-            "reading_minutes", "author_name", "published_at", "updated_at", "evidence_level",
-            "cover_image", "specialist", "is_featured",
+            "id", "slug", "title", "summary", "topic", "topic_label", "topics", "topic_labels", "tags", "cover",
+            "emoji", "reading_minutes", "author_name", "published_at", "updated_at", "evidence_level",
+            "cover_image", "specialist", "is_featured", "rating",
         )
 
     def get_topic_label(self, obj):
         return _topic_label(obj.topic)
+
+    def get_topic_labels(self, obj):
+        return [_topic_label(t) for t in (obj.topics or [obj.topic])]
+
+    def get_rating(self, obj):
+        """{avg, count} — только сводка, без того, кто и как оценил."""
+        avg, count = getattr(obj, "rating_avg", None), getattr(obj, "rating_count", None)
+        if count is None:
+            from django.db.models import Avg, Count
+
+            agg = obj.ratings.aggregate(avg=Avg("stars"), count=Count("id"))
+            avg, count = agg["avg"], agg["count"]
+        return {"avg": round(float(avg), 1) if count else None, "count": count or 0}
 
     def get_cover_image(self, obj):
         return obj.cover_image.as_json() if obj.cover_image_id and obj.cover_image else None
@@ -125,7 +183,7 @@ def specialist_brief(profile, full: bool = False):
 
 class ArticleDetailSerializer(ArticleListSerializer):
     class Meta(ArticleListSerializer.Meta):
-        fields = ArticleListSerializer.Meta.fields + ("body", "key_facts", "when_to_seek_help", "sources", "reviewed_at")
+        fields = ArticleListSerializer.Meta.fields + ("content", "key_facts", "when_to_seek_help", "sources", "reviewed_at")
 
     def get_specialist(self, obj):
         # Страница статьи: имя, фото, коротко о себе — и ссылка на профиль / «Начать диалог»
@@ -171,12 +229,12 @@ class CoverImageMixin(serializers.Serializer):
         return instance
 
 
-class ArticleManageSerializer(CoverImageMixin, ArticleListSerializer):
+class ArticleManageSerializer(ArticleWriteMixin, CoverImageMixin, ArticleListSerializer):
     specialist = serializers.SerializerMethodField()
 
     class Meta(ArticleListSerializer.Meta):
         fields = ArticleListSerializer.Meta.fields + (
-            "body", "key_facts", "when_to_seek_help", "sources", "reviewed_at", "is_published", "created_at",
+            "content", "body", "key_facts", "when_to_seek_help", "sources", "reviewed_at", "is_published", "created_at",
             "cover_image_id", "moderation", "moderation_comment", "submitted_at", "moderated_at", "reads",
         )
         read_only_fields = (
@@ -187,6 +245,11 @@ class ArticleManageSerializer(CoverImageMixin, ArticleListSerializer):
 
     def get_specialist(self, obj):
         return specialist_brief(obj.specialist, full=True) if obj.specialist_id else None
+
+    def to_representation(self, obj):
+        data = super().to_representation(obj)
+        data.pop("body", None)  # прежний Markdown — только для записи старыми клиентами
+        return data
 
     def validate_cover(self, value):
         if value not in COVERS:
@@ -202,7 +265,9 @@ class ArticleManageSerializer(CoverImageMixin, ArticleListSerializer):
         return clean_sources(value)
 
     def validate(self, attrs):
-        attrs = super().validate(attrs)
+        attrs = self.normalize_text_and_topics(super().validate(attrs))
+        if self.instance is None and not attrs.get("content"):
+            raise serializers.ValidationError({"content": ["Добавьте текст статьи."]})
         if "key_facts" in attrs:
             sources = attrs.get("sources", getattr(self.instance, "sources", None) or [])
             attrs["key_facts"] = clean_key_facts(attrs["key_facts"], len(sources))

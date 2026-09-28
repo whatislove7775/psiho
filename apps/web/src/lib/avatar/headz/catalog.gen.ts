@@ -3,7 +3,7 @@
 import type { HeadzCatalog } from "./types";
 
 export const CATALOG: HeadzCatalog = {
- "version": "6728b157ba",
+ "version": "3a7e1e1618",
  "bases": [
   {
    "id": "woman-light",
@@ -18,6 +18,66 @@ export const CATALOG: HeadzCatalog = {
    "iris": "#015d74",
    "defaults": {
     "hair": "005"
+   },
+   "fit": "/avatar/headz/woman-light/fit.bin",
+   "eyes": {
+    "L": {
+     "c": [
+      0.2954,
+      -0.0725,
+      0.4795
+     ],
+     "r": 0.1857,
+     "axis": [
+      0,
+      0.0035,
+      1
+     ],
+     "iris": 46.5,
+     "pupil": 27.3
+    },
+    "R": {
+     "c": [
+      -0.2997,
+      -0.0715,
+      0.4762
+     ],
+     "r": 0.1857,
+     "axis": [
+      0,
+      0.0038,
+      1
+     ],
+     "iris": 46.5,
+     "pupil": 27.3
+    }
+   },
+   "lm": {
+    "nose": [
+     0,
+     -0.3789,
+     0.878
+    ],
+    "mouthL": [
+     0.2379,
+     -0.6406,
+     0.5992
+    ],
+    "mouthR": [
+     -0.2379,
+     -0.6406,
+     0.5992
+    ],
+    "chin": [
+     0,
+     -1,
+     0.5033
+    ],
+    "crown": 1,
+    "bottom": -1,
+    "temple": 0.7,
+    "jaw": 0.5664,
+    "ear": 0.87
    }
   },
   {
@@ -33,6 +93,66 @@ export const CATALOG: HeadzCatalog = {
    "iris": "#3f3027",
    "defaults": {
     "hair": "010"
+   },
+   "fit": "/avatar/headz/woman-medium/fit.bin",
+   "eyes": {
+    "L": {
+     "c": [
+      0.306,
+      -0.1226,
+      0.4443
+     ],
+     "r": 0.1838,
+     "axis": [
+      0.0451,
+      -0.0136,
+      0.9989
+     ],
+     "iris": 33.8,
+     "pupil": 14.2
+    },
+    "R": {
+     "c": [
+      -0.306,
+      -0.1226,
+      0.4443
+     ],
+     "r": 0.1838,
+     "axis": [
+      -0.0451,
+      -0.0136,
+      0.9989
+     ],
+     "iris": 33.8,
+     "pupil": 14.2
+    }
+   },
+   "lm": {
+    "nose": [
+     0,
+     -0.4311,
+     0.8983
+    ],
+    "mouthL": [
+     0.312,
+     -0.6347,
+     0.5084
+    ],
+    "mouthR": [
+     -0.312,
+     -0.6347,
+     0.5084
+    ],
+    "chin": [
+     0,
+     -1,
+     0.5211
+    ],
+    "crown": 1,
+    "bottom": -1,
+    "temple": 0.7249,
+    "jaw": 0.6052,
+    "ear": 0.9021
    }
   },
   {
@@ -48,6 +168,66 @@ export const CATALOG: HeadzCatalog = {
    "iris": "#3f3027",
    "defaults": {
     "hair": "010"
+   },
+   "fit": "/avatar/headz/woman-dark/fit.bin",
+   "eyes": {
+    "L": {
+     "c": [
+      0.306,
+      -0.1226,
+      0.4443
+     ],
+     "r": 0.1838,
+     "axis": [
+      0.0451,
+      -0.0136,
+      0.9989
+     ],
+     "iris": 33.8,
+     "pupil": 14.2
+    },
+    "R": {
+     "c": [
+      -0.306,
+      -0.1226,
+      0.4443
+     ],
+     "r": 0.1838,
+     "axis": [
+      -0.0451,
+      -0.0136,
+      0.9989
+     ],
+     "iris": 33.8,
+     "pupil": 14.2
+    }
+   },
+   "lm": {
+    "nose": [
+     0,
+     -0.4311,
+     0.8983
+    ],
+    "mouthL": [
+     0.312,
+     -0.6347,
+     0.5084
+    ],
+    "mouthR": [
+     -0.312,
+     -0.6347,
+     0.5084
+    ],
+    "chin": [
+     0,
+     -1,
+     0.5211
+    ],
+    "crown": 1,
+    "bottom": -1,
+    "temple": 0.7249,
+    "jaw": 0.6052,
+    "ear": 0.9021
    }
   },
   {
@@ -63,6 +243,66 @@ export const CATALOG: HeadzCatalog = {
    "iris": "#2c1005",
    "defaults": {
     "hair": "001"
+   },
+   "fit": "/avatar/headz/man-light/fit.bin",
+   "eyes": {
+    "L": {
+     "c": [
+      0.2867,
+      -0.0819,
+      0.3808
+     ],
+     "r": 0.188,
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "iris": 33.5,
+     "pupil": 15.2
+    },
+    "R": {
+     "c": [
+      -0.2919,
+      -0.081,
+      0.3816
+     ],
+     "r": 0.188,
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "iris": 33.5,
+     "pupil": 15.2
+    }
+   },
+   "lm": {
+    "nose": [
+     0,
+     -0.4246,
+     0.8878
+    ],
+    "mouthL": [
+     0.2382,
+     -0.643,
+     0.5959
+    ],
+    "mouthR": [
+     -0.2382,
+     -0.643,
+     0.5959
+    ],
+    "chin": [
+     0,
+     -1,
+     0.4593
+    ],
+    "crown": 1,
+    "bottom": -1,
+    "temple": 0.6877,
+    "jaw": 0.5287,
+    "ear": 0.9044
    }
   },
   {
@@ -79,6 +319,65 @@ export const CATALOG: HeadzCatalog = {
    "defaults": {
     "beard": "moustache-4",
     "hair": "001"
+   },
+   "fit": "/avatar/headz/man-medium/fit.bin",
+   "eyes": {
+    "L": {
+     "c": [
+      0.3147,
+      0.028,
+      0.3751
+     ],
+     "r": 0.19,
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "iris": 33.9,
+     "pupil": 15.3
+    },
+    "R": {
+     "c": [
+      -0.3145,
+      0.028,
+      0.3751
+     ],
+     "r": 0.19,
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "iris": 33.9,
+     "pupil": 15.3
+    }
+   },
+   "lm": {
+    "nose": [
+     0.0029,
+     -0.3256,
+     0.8503
+    ],
+    "mouthL": [
+     0.3095,
+     -0.6109,
+     0.4812
+    ],
+    "mouthR": [
+     -0.3013,
+     -0.6112,
+     0.4791
+    ],
+    "chin": [
+     0.0029,
+     -1,
+     0.4354
+    ],
+    "crown": 1,
+    "bottom": -1,
+    "temple": 0.9005,
+    "jaw": 0.587
    }
   },
   {
@@ -95,6 +394,65 @@ export const CATALOG: HeadzCatalog = {
    "defaults": {
     "beard": "moustache-4",
     "hair": "001"
+   },
+   "fit": "/avatar/headz/man-dark/fit.bin",
+   "eyes": {
+    "L": {
+     "c": [
+      0.3147,
+      0.028,
+      0.3751
+     ],
+     "r": 0.19,
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "iris": 33.9,
+     "pupil": 15.3
+    },
+    "R": {
+     "c": [
+      -0.3145,
+      0.028,
+      0.3751
+     ],
+     "r": 0.19,
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "iris": 33.9,
+     "pupil": 15.3
+    }
+   },
+   "lm": {
+    "nose": [
+     0.0029,
+     -0.3256,
+     0.8503
+    ],
+    "mouthL": [
+     0.3095,
+     -0.6109,
+     0.4812
+    ],
+    "mouthR": [
+     -0.3013,
+     -0.6112,
+     0.4791
+    ],
+    "chin": [
+     0.0029,
+     -1,
+     0.4354
+    ],
+    "crown": 1,
+    "bottom": -1,
+    "temple": 0.9005,
+    "jaw": 0.587
    }
   },
   {
@@ -110,6 +468,65 @@ export const CATALOG: HeadzCatalog = {
    "iris": "#a4c1b9",
    "defaults": {
     "hair": "1"
+   },
+   "fit": "/avatar/headz/girl-light/fit.bin",
+   "eyes": {
+    "L": {
+     "c": [
+      0.3132,
+      -0.0828,
+      0.3636
+     ],
+     "r": 0.2986,
+     "axis": [
+      0.1619,
+      -0.0799,
+      0.9836
+     ],
+     "iris": 24.6,
+     "pupil": 10.3
+    },
+    "R": {
+     "c": [
+      -0.3132,
+      -0.0828,
+      0.3636
+     ],
+     "r": 0.2986,
+     "axis": [
+      -0.1619,
+      -0.0799,
+      0.9836
+     ],
+     "iris": 24.6,
+     "pupil": 10.3
+    }
+   },
+   "lm": {
+    "nose": [
+     0,
+     -0.415,
+     0.9168
+    ],
+    "mouthL": [
+     0.2656,
+     -0.6304,
+     0.6607
+    ],
+    "mouthR": [
+     -0.2656,
+     -0.6304,
+     0.6607
+    ],
+    "chin": [
+     0,
+     -1,
+     0.5522
+    ],
+    "crown": 1,
+    "bottom": -1,
+    "temple": 0.9264,
+    "jaw": 0.6724
    }
   },
   {
@@ -125,6 +542,65 @@ export const CATALOG: HeadzCatalog = {
    "iris": "#c0a19a",
    "defaults": {
     "hair": "3"
+   },
+   "fit": "/avatar/headz/girl-medium/fit.bin",
+   "eyes": {
+    "L": {
+     "c": [
+      0.3683,
+      -0.1599,
+      0.4882
+     ],
+     "r": 0.2158,
+     "axis": [
+      0.047,
+      -0.0239,
+      0.9986
+     ],
+     "iris": 22.5,
+     "pupil": 9.5
+    },
+    "R": {
+     "c": [
+      -0.3683,
+      -0.1599,
+      0.4882
+     ],
+     "r": 0.2158,
+     "axis": [
+      -0.047,
+      -0.0239,
+      0.9986
+     ],
+     "iris": 22.5,
+     "pupil": 9.5
+    }
+   },
+   "lm": {
+    "nose": [
+     0,
+     -0.4225,
+     0.9594
+    ],
+    "mouthL": [
+     0.1723,
+     -0.6254,
+     0.7772
+    ],
+    "mouthR": [
+     -0.1723,
+     -0.6254,
+     0.7772
+    ],
+    "chin": [
+     0,
+     -1,
+     0.5611
+    ],
+    "crown": 1,
+    "bottom": -1,
+    "temple": 0.9476,
+    "jaw": 0.6468
    }
   },
   {
@@ -133,13 +609,72 @@ export const CATALOG: HeadzCatalog = {
    "tone": "dark",
    "face": "/avatar/headz/girl-dark/face.glb",
    "lod": "/avatar/headz/girl-dark/face-lod.glb",
-   "bytes": 964596,
+   "bytes": 964600,
    "tris": 19280,
-   "skin": "#9a796e",
+   "skin": "#6e4330",
    "hair": "#72351c",
    "iris": "#c0a19a",
    "defaults": {
     "hair": "3"
+   },
+   "fit": "/avatar/headz/girl-dark/fit.bin",
+   "eyes": {
+    "L": {
+     "c": [
+      0.3682,
+      -0.1595,
+      0.487
+     ],
+     "r": 0.2157,
+     "axis": [
+      0.047,
+      -0.0239,
+      0.9986
+     ],
+     "iris": 22.5,
+     "pupil": 9.5
+    },
+    "R": {
+     "c": [
+      -0.3682,
+      -0.1595,
+      0.487
+     ],
+     "r": 0.2157,
+     "axis": [
+      -0.047,
+      -0.0239,
+      0.9986
+     ],
+     "iris": 22.5,
+     "pupil": 9.5
+    }
+   },
+   "lm": {
+    "nose": [
+     0,
+     -0.4082,
+     0.9602
+    ],
+    "mouthL": [
+     0.1918,
+     -0.6182,
+     0.7765
+    ],
+    "mouthR": [
+     -0.1918,
+     -0.6182,
+     0.7765
+    ],
+    "chin": [
+     0,
+     -1,
+     0.5588
+    ],
+    "crown": 1,
+    "bottom": -1,
+    "temple": 0.9474,
+    "jaw": 0.6637
    }
   },
   {
@@ -155,6 +690,65 @@ export const CATALOG: HeadzCatalog = {
    "iris": "#bc938a",
    "defaults": {
     "hair": "5"
+   },
+   "fit": "/avatar/headz/boy-light/fit.bin",
+   "eyes": {
+    "L": {
+     "c": [
+      0.2752,
+      -0.1169,
+      0.4573
+     ],
+     "r": 0.2529,
+     "axis": [
+      0.1457,
+      -0.0004,
+      0.9893
+     ],
+     "iris": 22.5,
+     "pupil": 9.5
+    },
+    "R": {
+     "c": [
+      -0.2752,
+      -0.1169,
+      0.4573
+     ],
+     "r": 0.2529,
+     "axis": [
+      -0.1457,
+      -0.0004,
+      0.9893
+     ],
+     "iris": 22.5,
+     "pupil": 9.5
+    }
+   },
+   "lm": {
+    "nose": [
+     0,
+     -0.399,
+     0.9508
+    ],
+    "mouthL": [
+     0.2621,
+     -0.5988,
+     0.6793
+    ],
+    "mouthR": [
+     -0.2621,
+     -0.5988,
+     0.6793
+    ],
+    "chin": [
+     0,
+     -1,
+     0.5623
+    ],
+    "crown": 1,
+    "bottom": -1,
+    "temple": 0.8957,
+    "jaw": 0.5886
    }
   },
   {
@@ -165,11 +759,70 @@ export const CATALOG: HeadzCatalog = {
    "lod": "/avatar/headz/boy-medium/face-lod.glb",
    "bytes": 843292,
    "tris": 25108,
-   "skin": "#d7af9b",
+   "skin": "#b07550",
    "hair": "#260e0d",
    "iris": "#bc938a",
    "defaults": {
     "hair": "6"
+   },
+   "fit": "/avatar/headz/boy-medium/fit.bin",
+   "eyes": {
+    "L": {
+     "c": [
+      0.2752,
+      -0.1169,
+      0.4573
+     ],
+     "r": 0.2529,
+     "axis": [
+      0.1457,
+      -0.0004,
+      0.9893
+     ],
+     "iris": 22.5,
+     "pupil": 9.5
+    },
+    "R": {
+     "c": [
+      -0.2752,
+      -0.1169,
+      0.4573
+     ],
+     "r": 0.2529,
+     "axis": [
+      -0.1457,
+      -0.0004,
+      0.9893
+     ],
+     "iris": 22.5,
+     "pupil": 9.5
+    }
+   },
+   "lm": {
+    "nose": [
+     0,
+     -0.399,
+     0.9508
+    ],
+    "mouthL": [
+     0.2621,
+     -0.5988,
+     0.6793
+    ],
+    "mouthR": [
+     -0.2621,
+     -0.5988,
+     0.6793
+    ],
+    "chin": [
+     0,
+     -1,
+     0.5623
+    ],
+    "crown": 1,
+    "bottom": -1,
+    "temple": 0.8957,
+    "jaw": 0.5886
    }
   },
   {
@@ -180,11 +833,70 @@ export const CATALOG: HeadzCatalog = {
    "lod": "/avatar/headz/boy-dark/face-lod.glb",
    "bytes": 843284,
    "tris": 25108,
-   "skin": "#b69382",
+   "skin": "#6e4330",
    "hair": "#72351c",
    "iris": "#bc938a",
    "defaults": {
     "hair": "2"
+   },
+   "fit": "/avatar/headz/boy-dark/fit.bin",
+   "eyes": {
+    "L": {
+     "c": [
+      0.2752,
+      -0.1169,
+      0.4573
+     ],
+     "r": 0.2529,
+     "axis": [
+      0.1457,
+      -0.0004,
+      0.9893
+     ],
+     "iris": 22.5,
+     "pupil": 9.5
+    },
+    "R": {
+     "c": [
+      -0.2752,
+      -0.1169,
+      0.4573
+     ],
+     "r": 0.2529,
+     "axis": [
+      -0.1457,
+      -0.0004,
+      0.9893
+     ],
+     "iris": 22.5,
+     "pupil": 9.5
+    }
+   },
+   "lm": {
+    "nose": [
+     0,
+     -0.399,
+     0.9508
+    ],
+    "mouthL": [
+     0.2621,
+     -0.5988,
+     0.6793
+    ],
+    "mouthR": [
+     -0.2621,
+     -0.5988,
+     0.6793
+    ],
+    "chin": [
+     0,
+     -1,
+     0.5623
+    ],
+    "crown": 1,
+    "bottom": -1,
+    "temple": 0.8957,
+    "jaw": 0.5886
    }
   },
   {
@@ -200,6 +912,65 @@ export const CATALOG: HeadzCatalog = {
    "iris": "#8fbed4",
    "defaults": {
     "hair": "9"
+   },
+   "fit": "/avatar/headz/oldwoman-light/fit.bin",
+   "eyes": {
+    "L": {
+     "c": [
+      0.349,
+      -0.0217,
+      0.4054
+     ],
+     "r": 0.174,
+     "axis": [
+      0.0185,
+      -0.006,
+      0.9998
+     ],
+     "iris": 24.6,
+     "pupil": 10.3
+    },
+    "R": {
+     "c": [
+      -0.349,
+      -0.0217,
+      0.4054
+     ],
+     "r": 0.174,
+     "axis": [
+      -0.0185,
+      -0.006,
+      0.9998
+     ],
+     "iris": 24.6,
+     "pupil": 10.3
+    }
+   },
+   "lm": {
+    "nose": [
+     0,
+     -0.3224,
+     0.8948
+    ],
+    "mouthL": [
+     0.1989,
+     -0.5854,
+     0.5765
+    ],
+    "mouthR": [
+     -0.1989,
+     -0.5854,
+     0.5765
+    ],
+    "chin": [
+     0,
+     -1,
+     0.561
+    ],
+    "crown": 1,
+    "bottom": -1,
+    "temple": 0.8215,
+    "jaw": 0.6722
    }
   },
   {
@@ -215,6 +986,65 @@ export const CATALOG: HeadzCatalog = {
    "iris": "#ab8c89",
    "defaults": {
     "hair": "1"
+   },
+   "fit": "/avatar/headz/oldwoman-medium/fit.bin",
+   "eyes": {
+    "L": {
+     "c": [
+      0.3164,
+      -0.0392,
+      0.4091
+     ],
+     "r": 0.1537,
+     "axis": [
+      0.039,
+      -0.006,
+      0.9992
+     ],
+     "iris": 24.6,
+     "pupil": 10.3
+    },
+    "R": {
+     "c": [
+      -0.3164,
+      -0.0392,
+      0.4091
+     ],
+     "r": 0.1537,
+     "axis": [
+      -0.039,
+      -0.006,
+      0.9992
+     ],
+     "iris": 24.6,
+     "pupil": 10.3
+    }
+   },
+   "lm": {
+    "nose": [
+     0,
+     -0.325,
+     0.8783
+    ],
+    "mouthL": [
+     0.2145,
+     -0.5766,
+     0.5523
+    ],
+    "mouthR": [
+     -0.2145,
+     -0.5766,
+     0.5523
+    ],
+    "chin": [
+     0,
+     -1,
+     0.5072
+    ],
+    "crown": 1,
+    "bottom": -1,
+    "temple": 0.85,
+    "jaw": 0.7014
    }
   },
   {
@@ -225,11 +1055,70 @@ export const CATALOG: HeadzCatalog = {
    "lod": "/avatar/headz/oldwoman-dark/face-lod.glb",
    "bytes": 1050468,
    "tris": 33884,
-   "skin": "#856b60",
+   "skin": "#6e4330",
    "hair": "#cecbc7",
    "iris": "#ab8c89",
    "defaults": {
     "hair": "1"
+   },
+   "fit": "/avatar/headz/oldwoman-dark/fit.bin",
+   "eyes": {
+    "L": {
+     "c": [
+      0.3137,
+      -0.0303,
+      0.4062
+     ],
+     "r": 0.1524,
+     "axis": [
+      0.039,
+      -0.006,
+      0.9992
+     ],
+     "iris": 24.6,
+     "pupil": 10.3
+    },
+    "R": {
+     "c": [
+      -0.3137,
+      -0.0303,
+      0.4062
+     ],
+     "r": 0.1524,
+     "axis": [
+      -0.039,
+      -0.006,
+      0.9992
+     ],
+     "iris": 24.6,
+     "pupil": 10.3
+    }
+   },
+   "lm": {
+    "nose": [
+     0,
+     -0.3142,
+     0.8703
+    ],
+    "mouthL": [
+     0.2127,
+     -0.5628,
+     0.5482
+    ],
+    "mouthR": [
+     -0.2127,
+     -0.5628,
+     0.5482
+    ],
+    "chin": [
+     0,
+     -1,
+     0.5504
+    ],
+    "crown": 1,
+    "bottom": -1,
+    "temple": 0.8428,
+    "jaw": 0.6954
    }
   },
   {
@@ -245,6 +1134,65 @@ export const CATALOG: HeadzCatalog = {
    "iris": "#8fbed4",
    "defaults": {
     "hair": "4"
+   },
+   "fit": "/avatar/headz/oldman-light/fit.bin",
+   "eyes": {
+    "L": {
+     "c": [
+      0.3074,
+      0.0463,
+      0.4343
+     ],
+     "r": 0.1836,
+     "axis": [
+      0.0185,
+      -0.0561,
+      0.9983
+     ],
+     "iris": 24.6,
+     "pupil": 10.3
+    },
+    "R": {
+     "c": [
+      -0.3074,
+      0.0463,
+      0.4343
+     ],
+     "r": 0.1836,
+     "axis": [
+      -0.0185,
+      -0.0561,
+      0.9983
+     ],
+     "iris": 24.6,
+     "pupil": 10.3
+    }
+   },
+   "lm": {
+    "nose": [
+     0,
+     -0.3389,
+     0.9392
+    ],
+    "mouthL": [
+     0.0324,
+     -0.8231,
+     -0.054
+    ],
+    "mouthR": [
+     0,
+     -0.8254,
+     -0.0531
+    ],
+    "chin": [
+     0,
+     -1,
+     0.6309
+    ],
+    "crown": 1,
+    "bottom": -1,
+    "temple": 0.8183,
+    "jaw": 0.442
    }
   },
   {
@@ -255,11 +1203,70 @@ export const CATALOG: HeadzCatalog = {
    "lod": "/avatar/headz/oldman-medium/face-lod.glb",
    "bytes": 747456,
    "tris": 30596,
-   "skin": "#ac9383",
+   "skin": "#b07550",
    "hair": "#cecbc7",
    "iris": "#a6938a",
    "defaults": {
     "hair": "5"
+   },
+   "fit": "/avatar/headz/oldman-medium/fit.bin",
+   "eyes": {
+    "L": {
+     "c": [
+      0.2745,
+      0.0424,
+      0.1883
+     ],
+     "r": 0.1774,
+     "axis": [
+      0.1181,
+      -0.0767,
+      0.99
+     ],
+     "iris": 24.6,
+     "pupil": 10.3
+    },
+    "R": {
+     "c": [
+      -0.2742,
+      0.0424,
+      0.1883
+     ],
+     "r": 0.1774,
+     "axis": [
+      -0.1181,
+      -0.0767,
+      0.99
+     ],
+     "iris": 24.6,
+     "pupil": 10.3
+    }
+   },
+   "lm": {
+    "nose": [
+     0.0001,
+     -0.293,
+     0.8278
+    ],
+    "mouthL": [
+     0.2308,
+     -0.6347,
+     0.4087
+    ],
+    "mouthR": [
+     -0.2305,
+     -0.6347,
+     0.4087
+    ],
+    "chin": [
+     0.107,
+     -1,
+     0.4022
+    ],
+    "crown": 1,
+    "bottom": -1,
+    "temple": 0.7173,
+    "jaw": 0.6168
    }
   },
   {
@@ -270,11 +1277,70 @@ export const CATALOG: HeadzCatalog = {
    "lod": "/avatar/headz/oldman-dark/face-lod.glb",
    "bytes": 745000,
    "tris": 30596,
-   "skin": "#9c8175",
+   "skin": "#6e4330",
    "hair": "#cecbc7",
    "iris": "#a6938a",
    "defaults": {
     "hair": "4"
+   },
+   "fit": "/avatar/headz/oldman-dark/fit.bin",
+   "eyes": {
+    "L": {
+     "c": [
+      0.2749,
+      0.0405,
+      0.2391
+     ],
+     "r": 0.1778,
+     "axis": [
+      0.1181,
+      -0.0767,
+      0.99
+     ],
+     "iris": 24.6,
+     "pupil": 10.3
+    },
+    "R": {
+     "c": [
+      -0.2749,
+      0.0405,
+      0.2391
+     ],
+     "r": 0.1778,
+     "axis": [
+      -0.1181,
+      -0.0767,
+      0.99
+     ],
+     "iris": 24.6,
+     "pupil": 10.3
+    }
+   },
+   "lm": {
+    "nose": [
+     0,
+     -0.2955,
+     0.7791
+    ],
+    "mouthL": [
+     0.2165,
+     -0.6367,
+     0.4533
+    ],
+    "mouthR": [
+     -0.2165,
+     -0.6367,
+     0.4533
+    ],
+    "chin": [
+     0,
+     -1,
+     0.4599
+    ],
+    "crown": 1,
+    "bottom": -1,
+    "temple": 0.7192,
+    "jaw": 0.5359
    }
   }
  ],
@@ -284,13 +1350,13 @@ export const CATALOG: HeadzCatalog = {
     {
      "id": "1",
      "files": {
-      "boy-dark": "/avatar/headz/boy/hair-1-c88a1e89.glb",
-      "boy-light": "/avatar/headz/boy/hair-1-c88a1e89.glb",
-      "boy-medium": "/avatar/headz/boy/hair-1-c88a1e89.glb"
+      "boy-dark": "/avatar/headz/boy/hair-1-3883ad77.glb",
+      "boy-light": "/avatar/headz/boy/hair-1-3883ad77.glb",
+      "boy-medium": "/avatar/headz/boy/hair-1-3883ad77.glb"
      },
      "color": "#72351c",
-     "bytes": 38764,
-     "tris": 7999
+     "bytes": 64092,
+     "tris": 14000
     },
     {
      "id": "2",
@@ -306,13 +1372,13 @@ export const CATALOG: HeadzCatalog = {
     {
      "id": "3",
      "files": {
-      "boy-dark": "/avatar/headz/boy/hair-3-a9c85fae.glb",
-      "boy-light": "/avatar/headz/boy/hair-3-a9c85fae.glb",
-      "boy-medium": "/avatar/headz/boy/hair-3-a9c85fae.glb"
+      "boy-dark": "/avatar/headz/boy/hair-3-72311947.glb",
+      "boy-light": "/avatar/headz/boy/hair-3-72311947.glb",
+      "boy-medium": "/avatar/headz/boy/hair-3-72311947.glb"
      },
      "color": "#72351c",
-     "bytes": 40804,
-     "tris": 8000
+     "bytes": 67428,
+     "tris": 14000
     },
     {
      "id": "4",
@@ -328,46 +1394,46 @@ export const CATALOG: HeadzCatalog = {
     {
      "id": "5",
      "files": {
-      "boy-dark": "/avatar/headz/boy/hair-5-ef6a3d0e.glb",
-      "boy-light": "/avatar/headz/boy/hair-5-ef6a3d0e.glb",
-      "boy-medium": "/avatar/headz/boy/hair-5-ef6a3d0e.glb"
+      "boy-dark": "/avatar/headz/boy/hair-5-9e8e3252.glb",
+      "boy-light": "/avatar/headz/boy/hair-5-9e8e3252.glb",
+      "boy-medium": "/avatar/headz/boy/hair-5-9e8e3252.glb"
      },
      "color": "#72351c",
-     "bytes": 38036,
-     "tris": 8000
+     "bytes": 61112,
+     "tris": 14000
     },
     {
      "id": "6",
      "files": {
-      "boy-dark": "/avatar/headz/boy/hair-6-85f73f52.glb",
-      "boy-light": "/avatar/headz/boy/hair-6-85f73f52.glb",
-      "boy-medium": "/avatar/headz/boy/hair-6-8e2c31c4.glb"
+      "boy-dark": "/avatar/headz/boy/hair-6-f14fc37f.glb",
+      "boy-light": "/avatar/headz/boy/hair-6-f14fc37f.glb",
+      "boy-medium": "/avatar/headz/boy/hair-6-e04d10b0.glb"
      },
      "color": "#72351c",
-     "bytes": 40344,
-     "tris": 7999
+     "bytes": 67064,
+     "tris": 14000
     },
     {
      "id": "7",
      "files": {
-      "boy-dark": "/avatar/headz/boy/hair-7-8b91df4b.glb",
-      "boy-light": "/avatar/headz/boy/hair-7-8b91df4b.glb",
-      "boy-medium": "/avatar/headz/boy/hair-7-8b91df4b.glb"
+      "boy-dark": "/avatar/headz/boy/hair-7-77626f3a.glb",
+      "boy-light": "/avatar/headz/boy/hair-7-77626f3a.glb",
+      "boy-medium": "/avatar/headz/boy/hair-7-77626f3a.glb"
      },
      "color": "#72351c",
-     "bytes": 41316,
-     "tris": 7999
+     "bytes": 68496,
+     "tris": 14000
     },
     {
      "id": "8",
      "files": {
-      "boy-dark": "/avatar/headz/boy/hair-8-a4fc6f40.glb",
-      "boy-light": "/avatar/headz/boy/hair-8-a4fc6f40.glb",
-      "boy-medium": "/avatar/headz/boy/hair-8-a4fc6f40.glb"
+      "boy-dark": "/avatar/headz/boy/hair-8-6c088c34.glb",
+      "boy-light": "/avatar/headz/boy/hair-8-6c088c34.glb",
+      "boy-medium": "/avatar/headz/boy/hair-8-6c088c34.glb"
      },
      "color": "#72351c",
-     "bytes": 38888,
-     "tris": 8000
+     "bytes": 64980,
+     "tris": 13998
     },
     {
      "id": "9",
@@ -519,86 +1585,99 @@ export const CATALOG: HeadzCatalog = {
      }
     }
    ],
-   "earrings": []
+   "earrings": [],
+   "mask": [
+    {
+     "id": "mask",
+     "files": {
+      "boy-dark": "/avatar/headz/boy/mask-mask-d94bcb7f.glb",
+      "boy-light": "/avatar/headz/boy/mask-mask-3ee61ab1.glb",
+      "boy-medium": "/avatar/headz/boy/mask-mask-d94bcb7f.glb"
+     },
+     "color": "#e7e7e7",
+     "bytes": 39076,
+     "tris": 8000
+    }
+   ]
   },
   "girl": {
    "hair": [
     {
      "id": "1",
      "files": {
-      "girl-dark": "/avatar/headz/girl/hair-1-681e48cc.glb",
-      "girl-light": "/avatar/headz/girl/hair-1-6aa31b29.glb",
-      "girl-medium": "/avatar/headz/girl/hair-1-d77963a0.glb"
+      "girl-dark": "/avatar/headz/girl/hair-1-ab7564e0.glb",
+      "girl-light": "/avatar/headz/girl/hair-1-4124554d.glb",
+      "girl-medium": "/avatar/headz/girl/hair-1-f703dde2.glb"
      },
      "color": "#72351c",
-     "bytes": 42576,
-     "tris": 7998
+     "bytes": 69304,
+     "tris": 14000
     },
     {
      "id": "2",
      "files": {
-      "girl-dark": "/avatar/headz/girl/hair-2-fe80aa74.glb",
-      "girl-light": "/avatar/headz/girl/hair-2-4c51f7cd.glb",
-      "girl-medium": "/avatar/headz/girl/hair-2-6e122c20.glb"
+      "girl-dark": "/avatar/headz/girl/hair-2-59cb8a24.glb",
+      "girl-light": "/avatar/headz/girl/hair-2-d373076c.glb",
+      "girl-medium": "/avatar/headz/girl/hair-2-1bedde6d.glb"
      },
      "color": "#72351c",
-     "bytes": 40136,
-     "tris": 7999
+     "bytes": 66808,
+     "tris": 13999
     },
     {
      "id": "3",
      "files": {
-      "girl-dark": "/avatar/headz/girl/hair-3-ca544a0f.glb",
-      "girl-light": "/avatar/headz/girl/hair-3-545d3025.glb",
-      "girl-medium": "/avatar/headz/girl/hair-3-b047b8a4.glb"
+      "girl-dark": "/avatar/headz/girl/hair-3-66b7d360.glb",
+      "girl-light": "/avatar/headz/girl/hair-3-1a5ab6ab.glb",
+      "girl-medium": "/avatar/headz/girl/hair-3-7bb87454.glb"
      },
      "color": "#72351c",
-     "bytes": 41028,
-     "tris": 7999
+     "bytes": 67888,
+     "tris": 14000
     },
     {
      "id": "4",
      "files": {
-      "girl-dark": "/avatar/headz/girl/hair-4-0a2f214f.glb",
-      "girl-light": "/avatar/headz/girl/hair-4-7e7b3f00.glb",
-      "girl-medium": "/avatar/headz/girl/hair-4-9c2d9e18.glb"
+      "girl-dark": "/avatar/headz/girl/hair-4-82428ac4.glb",
+      "girl-light": "/avatar/headz/girl/hair-4-4dc5ba06.glb",
+      "girl-medium": "/avatar/headz/girl/hair-4-db42930a.glb"
      },
      "color": "#72351c",
-     "bytes": 39076,
-     "tris": 8000
+     "bytes": 64860,
+     "tris": 13999
     },
     {
      "id": "5",
      "files": {
-      "girl-dark": "/avatar/headz/girl/hair-5-18b4d0a2.glb",
-      "girl-light": "/avatar/headz/girl/hair-5-69f30566.glb",
-      "girl-medium": "/avatar/headz/girl/hair-5-ae7f21c3.glb"
+      "girl-dark": "/avatar/headz/girl/hair-5-2f47cf92.glb",
+      "girl-light": "/avatar/headz/girl/hair-5-ac1c6bbe.glb",
+      "girl-medium": "/avatar/headz/girl/hair-5-c15e19c3.glb"
      },
      "color": "#72351c",
-     "bytes": 39848,
-     "tris": 8000
+     "bytes": 66332,
+     "tris": 13999
     },
     {
      "id": "6",
      "files": {
-      "girl-dark": "/avatar/headz/girl/hair-6-7e5955d8.glb",
-      "girl-light": "/avatar/headz/girl/hair-6-18027400.glb",
-      "girl-medium": "/avatar/headz/girl/hair-6-70e56811.glb"
+      "girl-dark": "/avatar/headz/girl/hair-6-c6e56cbd.glb",
+      "girl-light": "/avatar/headz/girl/hair-6-ce6fd89f.glb",
+      "girl-medium": "/avatar/headz/girl/hair-6-11bd2720.glb"
      },
      "color": "#72351c",
-     "bytes": 42036,
-     "tris": 8000
+     "bytes": 69092,
+     "tris": 13999
     },
     {
      "id": "7",
      "files": {
-      "girl-dark": "/avatar/headz/girl/hair-7-54037aa7.glb",
-      "girl-light": "/avatar/headz/girl/hair-7-a8f7a6cd.glb",
-      "girl-medium": "/avatar/headz/girl/hair-7-fdfec2ac.glb"
+      "girl-dark": "/avatar/headz/girl/hair-7-81da66cf.glb",
+      "girl-light": "/avatar/headz/girl/hair-7-d76a9bda.glb",
+      "girl-medium": "/avatar/headz/girl/hair-7-570581f5.glb"
      },
      "color": "#72351c",
-     "bytes": 42872,
-     "tris": 7999
+     "bytes": 70432,
+     "tris": 14000
     },
     {
      "id": "8",
@@ -614,22 +1693,22 @@ export const CATALOG: HeadzCatalog = {
     {
      "id": "9",
      "files": {
-      "girl-dark": "/avatar/headz/girl/hair-9-9a7a3b5c.glb",
-      "girl-light": "/avatar/headz/girl/hair-9-f7f0f05c.glb",
-      "girl-medium": "/avatar/headz/girl/hair-9-500ad0d8.glb"
+      "girl-dark": "/avatar/headz/girl/hair-9-b0730f39.glb",
+      "girl-light": "/avatar/headz/girl/hair-9-8a5bb4da.glb",
+      "girl-medium": "/avatar/headz/girl/hair-9-e5e5a549.glb"
      },
      "color": "#e7c870",
-     "bytes": 44352,
-     "tris": 7999
+     "bytes": 71884,
+     "tris": 14000
     },
     {
      "id": "10",
      "files": {
-      "girl-light": "/avatar/headz/girl/hair-10-9137c7fe.glb"
+      "girl-light": "/avatar/headz/girl/hair-10-8a7dc3ea.glb"
      },
      "color": "#260e0d",
-     "bytes": 39508,
-     "tris": 7999
+     "bytes": 65536,
+     "tris": 14000
     }
    ],
    "beard": [],
@@ -734,50 +1813,63 @@ export const CATALOG: HeadzCatalog = {
      }
     }
    ],
-   "earrings": []
+   "earrings": [],
+   "mask": [
+    {
+     "id": "mask",
+     "files": {
+      "girl-dark": "/avatar/headz/girl/mask-mask-01d83a2b.glb",
+      "girl-light": "/avatar/headz/girl/mask-mask-7f7bba02.glb",
+      "girl-medium": "/avatar/headz/girl/mask-mask-b4909f8e.glb"
+     },
+     "color": "#e7e7e7",
+     "bytes": 38844,
+     "tris": 8000
+    }
+   ]
   },
   "man": {
    "hair": [
     {
      "id": "001",
      "files": {
-      "man-dark": "/avatar/headz/man/hair-001-1dae3147.glb",
-      "man-light": "/avatar/headz/man/hair-001-a25eba93.glb",
-      "man-medium": "/avatar/headz/man/hair-001-1dae3147.glb"
+      "man-dark": "/avatar/headz/man/hair-001-1039e934.glb",
+      "man-light": "/avatar/headz/man/hair-001-3ffcbe01.glb",
+      "man-medium": "/avatar/headz/man/hair-001-1039e934.glb"
      },
      "color": "#141414",
-     "bytes": 37208,
-     "tris": 8000
+     "bytes": 61756,
+     "tris": 14000
     },
     {
      "id": "002",
      "files": {
-      "man-dark": "/avatar/headz/man/hair-002-464d147e.glb",
-      "man-light": "/avatar/headz/man/hair-002-302a9a06.glb",
-      "man-medium": "/avatar/headz/man/hair-002-464d147e.glb"
+      "man-dark": "/avatar/headz/man/hair-002-f20892c5.glb",
+      "man-light": "/avatar/headz/man/hair-002-3d5b8798.glb",
+      "man-medium": "/avatar/headz/man/hair-002-f20892c5.glb"
      },
      "color": "#141414",
-     "bytes": 37240,
-     "tris": 7999
+     "bytes": 61016,
+     "tris": 13999
     },
     {
      "id": "003",
      "files": {
-      "man-light": "/avatar/headz/man/hair-003-20c55769.glb"
+      "man-light": "/avatar/headz/man/hair-003-02b56d0a.glb"
      },
      "color": "#0a0504",
-     "bytes": 34364,
-     "tris": 7998
+     "bytes": 55712,
+     "tris": 13952
     },
     {
      "id": "003-001",
      "files": {
-      "man-dark": "/avatar/headz/man/hair-003-001-45facd40.glb",
-      "man-medium": "/avatar/headz/man/hair-003-001-45facd40.glb"
+      "man-dark": "/avatar/headz/man/hair-003-001-8e59d563.glb",
+      "man-medium": "/avatar/headz/man/hair-003-001-8e59d563.glb"
      },
      "color": "#141414",
-     "bytes": 34264,
-     "tris": 7998
+     "bytes": 55640,
+     "tris": 13952
     },
     {
      "id": "003-002",
@@ -792,98 +1884,88 @@ export const CATALOG: HeadzCatalog = {
     {
      "id": "004",
      "files": {
-      "man-dark": "/avatar/headz/man/hair-004-d76ae262.glb",
-      "man-light": "/avatar/headz/man/hair-004-08d2945d.glb",
-      "man-medium": "/avatar/headz/man/hair-004-d76ae262.glb"
+      "man-dark": "/avatar/headz/man/hair-004-dfaa499c.glb",
+      "man-light": "/avatar/headz/man/hair-004-fe04d5cc.glb",
+      "man-medium": "/avatar/headz/man/hair-004-dfaa499c.glb"
      },
      "color": "#141414",
-     "bytes": 37312,
-     "tris": 7999
+     "bytes": 62540,
+     "tris": 13999
     },
     {
      "id": "005",
      "files": {
-      "man-dark": "/avatar/headz/man/hair-005-adc0c3a0.glb",
-      "man-light": "/avatar/headz/man/hair-005-187cef26.glb",
-      "man-medium": "/avatar/headz/man/hair-005-adc0c3a0.glb"
+      "man-dark": "/avatar/headz/man/hair-005-f6f04329.glb",
+      "man-light": "/avatar/headz/man/hair-005-425d010d.glb",
+      "man-medium": "/avatar/headz/man/hair-005-f6f04329.glb"
      },
      "color": "#141414",
-     "bytes": 38692,
-     "tris": 7998
+     "bytes": 64696,
+     "tris": 14000
     },
     {
      "id": "006",
      "files": {
-      "man-dark": "/avatar/headz/man/hair-006-a65dd9e3.glb",
-      "man-light": "/avatar/headz/man/hair-006-d18d13a8.glb",
-      "man-medium": "/avatar/headz/man/hair-006-a65dd9e3.glb"
+      "man-dark": "/avatar/headz/man/hair-006-f0fda1ef.glb",
+      "man-light": "/avatar/headz/man/hair-006-499c09b1.glb",
+      "man-medium": "/avatar/headz/man/hair-006-f0fda1ef.glb"
      },
      "color": "#141414",
-     "bytes": 38228,
-     "tris": 8000
+     "bytes": 63772,
+     "tris": 13999
     },
     {
      "id": "007",
      "files": {
-      "man-dark": "/avatar/headz/man/hair-007-ee766cbc.glb",
-      "man-light": "/avatar/headz/man/hair-007-cb31b473.glb",
-      "man-medium": "/avatar/headz/man/hair-007-ee766cbc.glb"
+      "man-dark": "/avatar/headz/man/hair-007-98428454.glb",
+      "man-light": "/avatar/headz/man/hair-007-226b29ec.glb",
+      "man-medium": "/avatar/headz/man/hair-007-98428454.glb"
      },
      "color": "#141414",
-     "bytes": 32664,
-     "tris": 8000
+     "bytes": 43100,
+     "tris": 11264
     },
     {
      "id": "008",
      "files": {
-      "man-dark": "/avatar/headz/man/hair-008-274aac24.glb",
-      "man-light": "/avatar/headz/man/hair-008-9a5b473c.glb",
-      "man-medium": "/avatar/headz/man/hair-008-274aac24.glb"
+      "man-dark": "/avatar/headz/man/hair-008-fdcf6f70.glb",
+      "man-light": "/avatar/headz/man/hair-008-bd658b10.glb",
+      "man-medium": "/avatar/headz/man/hair-008-fdcf6f70.glb"
      },
      "color": "#141414",
-     "bytes": 38404,
-     "tris": 8000
+     "bytes": 63872,
+     "tris": 14000
     },
     {
      "id": "009",
      "files": {
-      "man-dark": "/avatar/headz/man/hair-009-738cb26c.glb",
-      "man-light": "/avatar/headz/man/hair-009-7c897a67.glb",
-      "man-medium": "/avatar/headz/man/hair-009-738cb26c.glb"
+      "man-dark": "/avatar/headz/man/hair-009-d78b5003.glb",
+      "man-light": "/avatar/headz/man/hair-009-96cb347a.glb",
+      "man-medium": "/avatar/headz/man/hair-009-d78b5003.glb"
      },
      "color": "#141414",
-     "bytes": 37380,
-     "tris": 8000
-    },
-    {
-     "id": "10",
-     "files": {
-      "man-dark": "/avatar/headz/man/hair-10-fb32623b.glb",
-      "man-medium": "/avatar/headz/man/hair-10-fb32623b.glb"
-     },
-     "color": "#acacac",
-     "bytes": 33872,
-     "tris": 8000
+     "bytes": 62240,
+     "tris": 14000
     },
     {
      "id": "hair011",
      "files": {
-      "man-dark": "/avatar/headz/man/hair-hair011-64202b85.glb",
-      "man-light": "/avatar/headz/man/hair-hair011-7e792ffd.glb",
-      "man-medium": "/avatar/headz/man/hair-hair011-64202b85.glb"
+      "man-dark": "/avatar/headz/man/hair-hair011-dafb07c3.glb",
+      "man-light": "/avatar/headz/man/hair-hair011-f6e28f72.glb",
+      "man-medium": "/avatar/headz/man/hair-hair011-dafb07c3.glb"
      },
      "color": "#191919",
-     "bytes": 48996,
-     "tris": 8000
+     "bytes": 79416,
+     "tris": 14000
     },
     {
      "id": "hair012",
      "files": {
-      "man-light": "/avatar/headz/man/hair-hair012-f42293c1.glb"
+      "man-light": "/avatar/headz/man/hair-hair012-948f624c.glb"
      },
      "color": "#acacac",
-     "bytes": 34284,
-     "tris": 8000
+     "bytes": 43356,
+     "tris": 10640
     }
    ],
    "beard": [
@@ -1053,97 +2135,118 @@ export const CATALOG: HeadzCatalog = {
      }
     }
    ],
-   "earrings": []
+   "earrings": [],
+   "mask": [
+    {
+     "id": "mask",
+     "files": {
+      "man-dark": "/avatar/headz/man/mask-mask-9b84c098.glb",
+      "man-medium": "/avatar/headz/man/mask-mask-9b84c098.glb"
+     },
+     "color": "#57c4b5",
+     "bytes": 39336,
+     "tris": 8000
+    },
+    {
+     "id": "masker",
+     "files": {
+      "man-light": "/avatar/headz/man/mask-masker-cec41314.glb"
+     },
+     "color": "#57c4b5",
+     "bytes": 38748,
+     "tris": 8000
+    }
+   ]
   },
   "oldman": {
    "hair": [
     {
      "id": "1",
      "files": {
-      "oldman-dark": "/avatar/headz/oldman/hair-1-4975e669.glb",
-      "oldman-light": "/avatar/headz/oldman/hair-1-36cb9e2a.glb",
-      "oldman-medium": "/avatar/headz/oldman/hair-1-5158d379.glb"
+      "oldman-dark": "/avatar/headz/oldman/hair-1-48724c64.glb",
+      "oldman-light": "/avatar/headz/oldman/hair-1-d5a45502.glb",
+      "oldman-medium": "/avatar/headz/oldman/hair-1-5a4afe12.glb"
      },
      "color": "#aebeb2",
-     "bytes": 34876,
-     "tris": 7998
+     "bytes": 56972,
+     "tris": 14000
     },
     {
      "id": "2",
      "files": {
-      "oldman-dark": "/avatar/headz/oldman/hair-2-183d9bd0.glb",
-      "oldman-light": "/avatar/headz/oldman/hair-2-0e199b24.glb",
-      "oldman-medium": "/avatar/headz/oldman/hair-2-e6a9f070.glb"
+      "oldman-dark": "/avatar/headz/oldman/hair-2-e71e07b0.glb",
+      "oldman-light": "/avatar/headz/oldman/hair-2-e7527985.glb",
+      "oldman-medium": "/avatar/headz/oldman/hair-2-a816dd7b.glb"
      },
      "color": "#aebeb2",
-     "bytes": 35568,
-     "tris": 8000
+     "bytes": 58008,
+     "tris": 14000
     },
     {
      "id": "3",
      "files": {
-      "oldman-dark": "/avatar/headz/oldman/hair-3-07a40e40.glb",
-      "oldman-light": "/avatar/headz/oldman/hair-3-d3e5df7a.glb",
-      "oldman-medium": "/avatar/headz/oldman/hair-3-b665f994.glb"
+      "oldman-dark": "/avatar/headz/oldman/hair-3-9a6021ee.glb",
+      "oldman-light": "/avatar/headz/oldman/hair-3-0adafe2c.glb",
+      "oldman-medium": "/avatar/headz/oldman/hair-3-f97d06b5.glb"
      },
      "color": "#aebeb2",
-     "bytes": 34724,
-     "tris": 7998
+     "bytes": 56660,
+     "tris": 14000
     },
     {
      "id": "4",
      "files": {
-      "oldman-dark": "/avatar/headz/oldman/hair-4-e838d146.glb",
-      "oldman-light": "/avatar/headz/oldman/hair-4-007a2a07.glb",
-      "oldman-medium": "/avatar/headz/oldman/hair-4-8c131a4b.glb"
+      "oldman-dark": "/avatar/headz/oldman/hair-4-dca493f6.glb",
+      "oldman-light": "/avatar/headz/oldman/hair-4-bdee0a1f.glb",
+      "oldman-medium": "/avatar/headz/oldman/hair-4-74c83b87.glb"
      },
      "color": "#aebeb2",
-     "bytes": 35808,
-     "tris": 7998
+     "bytes": 58936,
+     "tris": 14000
     },
     {
      "id": "5",
      "files": {
-      "oldman-dark": "/avatar/headz/oldman/hair-5-362f29d3.glb",
-      "oldman-light": "/avatar/headz/oldman/hair-5-7a55ce57.glb",
-      "oldman-medium": "/avatar/headz/oldman/hair-5-d1bf31a1.glb"
+      "oldman-dark": "/avatar/headz/oldman/hair-5-c76017e0.glb",
+      "oldman-light": "/avatar/headz/oldman/hair-5-f373f75b.glb",
+      "oldman-medium": "/avatar/headz/oldman/hair-5-7a96de46.glb"
      },
      "color": "#aebeb2",
-     "bytes": 35444,
-     "tris": 7998
+     "bytes": 57840,
+     "tris": 14000
     },
     {
      "id": "6",
      "files": {
-      "oldman-dark": "/avatar/headz/oldman/hair-6-36a75806.glb",
-      "oldman-light": "/avatar/headz/oldman/hair-6-0bf0cc88.glb",
-      "oldman-medium": "/avatar/headz/oldman/hair-6-ad9c32e5.glb"
+      "oldman-dark": "/avatar/headz/oldman/hair-6-3e864c3c.glb",
+      "oldman-light": "/avatar/headz/oldman/hair-6-183d900d.glb",
+      "oldman-medium": "/avatar/headz/oldman/hair-6-8dcb16c7.glb"
      },
      "color": "#aebeb2",
-     "bytes": 36224,
-     "tris": 7998
+     "bytes": 59468,
+     "tris": 14000
     },
     {
      "id": "7",
      "files": {
-      "oldman-dark": "/avatar/headz/oldman/hair-7-70b30c2e.glb",
-      "oldman-light": "/avatar/headz/oldman/hair-7-5723d946.glb",
-      "oldman-medium": "/avatar/headz/oldman/hair-7-3389871b.glb"
+      "oldman-dark": "/avatar/headz/oldman/hair-7-413edbbd.glb",
+      "oldman-light": "/avatar/headz/oldman/hair-7-bf276afd.glb",
+      "oldman-medium": "/avatar/headz/oldman/hair-7-147abfd0.glb"
      },
      "color": "#aebeb2",
-     "bytes": 36200,
-     "tris": 7998
+     "bytes": 59684,
+     "tris": 14000
     },
     {
      "id": "8",
      "files": {
-      "oldman-dark": "/avatar/headz/oldman/hair-8-bc77d66b.glb",
+      "oldman-dark": "/avatar/headz/oldman/hair-8-2b888721.glb",
       "oldman-light": "/avatar/headz/oldman/hair-8-edce607a.glb",
-      "oldman-medium": "/avatar/headz/oldman/hair-8-e8e116c1.glb"
+      "oldman-medium": "/avatar/headz/oldman/hair-8-998348bd.glb"
      },
      "color": "#aebeb2",
-     "bytes": 34260,
-     "tris": 7998
+     "bytes": 56212,
+     "tris": 14000
     }
    ],
    "beard": [
@@ -1358,130 +2461,131 @@ export const CATALOG: HeadzCatalog = {
      }
     }
    ],
-   "earrings": []
+   "earrings": [],
+   "mask": []
   },
   "oldwoman": {
    "hair": [
     {
      "id": "1",
      "files": {
-      "oldwoman-dark": "/avatar/headz/oldwoman/hair-1-d6a9e336.glb",
+      "oldwoman-dark": "/avatar/headz/oldwoman/hair-1-c359883d.glb",
       "oldwoman-light": "/avatar/headz/oldwoman/hair-1-eb87e580.glb",
-      "oldwoman-medium": "/avatar/headz/oldwoman/hair-1-a29cabd1.glb"
+      "oldwoman-medium": "/avatar/headz/oldwoman/hair-1-4b6b3b7d.glb"
      },
      "color": "#aebeb2",
-     "bytes": 34040,
-     "tris": 7998
+     "bytes": 56336,
+     "tris": 14000
     },
     {
      "id": "2",
      "files": {
-      "oldwoman-dark": "/avatar/headz/oldwoman/hair-2-fd62880c.glb",
-      "oldwoman-light": "/avatar/headz/oldwoman/hair-2-f9b9a176.glb",
-      "oldwoman-medium": "/avatar/headz/oldwoman/hair-2-c022a433.glb"
+      "oldwoman-dark": "/avatar/headz/oldwoman/hair-2-f0e6ce0b.glb",
+      "oldwoman-light": "/avatar/headz/oldwoman/hair-2-a659fb10.glb",
+      "oldwoman-medium": "/avatar/headz/oldwoman/hair-2-53a51f72.glb"
      },
      "color": "#aebeb2",
-     "bytes": 35428,
-     "tris": 7998
+     "bytes": 58356,
+     "tris": 14000
     },
     {
      "id": "3",
      "files": {
-      "oldwoman-dark": "/avatar/headz/oldwoman/hair-3-89305ed0.glb",
-      "oldwoman-light": "/avatar/headz/oldwoman/hair-3-0350c917.glb",
-      "oldwoman-medium": "/avatar/headz/oldwoman/hair-3-a7ed805f.glb"
+      "oldwoman-dark": "/avatar/headz/oldwoman/hair-3-fe4eea90.glb",
+      "oldwoman-light": "/avatar/headz/oldwoman/hair-3-363d8cd7.glb",
+      "oldwoman-medium": "/avatar/headz/oldwoman/hair-3-746eb27b.glb"
      },
      "color": "#aebeb2",
-     "bytes": 39568,
-     "tris": 7999
+     "bytes": 65848,
+     "tris": 14000
     },
     {
      "id": "4",
      "files": {
-      "oldwoman-dark": "/avatar/headz/oldwoman/hair-4-813b17fb.glb",
-      "oldwoman-light": "/avatar/headz/oldwoman/hair-4-34260f3e.glb",
-      "oldwoman-medium": "/avatar/headz/oldwoman/hair-4-cf743d76.glb"
+      "oldwoman-dark": "/avatar/headz/oldwoman/hair-4-0efee9bf.glb",
+      "oldwoman-light": "/avatar/headz/oldwoman/hair-4-95b5a300.glb",
+      "oldwoman-medium": "/avatar/headz/oldwoman/hair-4-285e28ac.glb"
      },
      "color": "#aebeb2",
-     "bytes": 38916,
-     "tris": 7999
+     "bytes": 65108,
+     "tris": 13999
     },
     {
      "id": "5",
      "files": {
-      "oldwoman-dark": "/avatar/headz/oldwoman/hair-5-868d8293.glb",
-      "oldwoman-light": "/avatar/headz/oldwoman/hair-5-f0317a7d.glb",
-      "oldwoman-medium": "/avatar/headz/oldwoman/hair-5-caa4ae75.glb"
+      "oldwoman-dark": "/avatar/headz/oldwoman/hair-5-d3b3df64.glb",
+      "oldwoman-light": "/avatar/headz/oldwoman/hair-5-3c7f199e.glb",
+      "oldwoman-medium": "/avatar/headz/oldwoman/hair-5-b19d9b42.glb"
      },
      "color": "#aebeb2",
-     "bytes": 37128,
-     "tris": 8000
+     "bytes": 61640,
+     "tris": 14000
     },
     {
      "id": "6",
      "files": {
-      "oldwoman-dark": "/avatar/headz/oldwoman/hair-6-ad49efa5.glb",
-      "oldwoman-light": "/avatar/headz/oldwoman/hair-6-44b3aabf.glb",
-      "oldwoman-medium": "/avatar/headz/oldwoman/hair-6-3c1970d5.glb"
+      "oldwoman-dark": "/avatar/headz/oldwoman/hair-6-26cb5b75.glb",
+      "oldwoman-light": "/avatar/headz/oldwoman/hair-6-dd4130fd.glb",
+      "oldwoman-medium": "/avatar/headz/oldwoman/hair-6-a7534ef1.glb"
      },
      "color": "#aebeb2",
-     "bytes": 38184,
-     "tris": 7998
+     "bytes": 63992,
+     "tris": 14000
     },
     {
      "id": "7",
      "files": {
-      "oldwoman-dark": "/avatar/headz/oldwoman/hair-7-904f60e6.glb",
-      "oldwoman-light": "/avatar/headz/oldwoman/hair-7-68b7f115.glb",
-      "oldwoman-medium": "/avatar/headz/oldwoman/hair-7-3f637caa.glb"
+      "oldwoman-dark": "/avatar/headz/oldwoman/hair-7-6b7c9682.glb",
+      "oldwoman-light": "/avatar/headz/oldwoman/hair-7-930fa073.glb",
+      "oldwoman-medium": "/avatar/headz/oldwoman/hair-7-a0a25561.glb"
      },
      "color": "#aebeb2",
-     "bytes": 35540,
-     "tris": 8000
+     "bytes": 58132,
+     "tris": 14000
     },
     {
      "id": "8",
      "files": {
-      "oldwoman-dark": "/avatar/headz/oldwoman/hair-8-72eaf88f.glb",
-      "oldwoman-light": "/avatar/headz/oldwoman/hair-8-b44e557e.glb",
-      "oldwoman-medium": "/avatar/headz/oldwoman/hair-8-264686fe.glb"
+      "oldwoman-dark": "/avatar/headz/oldwoman/hair-8-9a572325.glb",
+      "oldwoman-light": "/avatar/headz/oldwoman/hair-8-69de2301.glb",
+      "oldwoman-medium": "/avatar/headz/oldwoman/hair-8-485a2e26.glb"
      },
      "color": "#aebeb2",
-     "bytes": 38856,
-     "tris": 8000
+     "bytes": 64988,
+     "tris": 14000
     },
     {
      "id": "9",
      "files": {
-      "oldwoman-dark": "/avatar/headz/oldwoman/hair-9-70b91552.glb",
-      "oldwoman-light": "/avatar/headz/oldwoman/hair-9-94cbd53d.glb",
-      "oldwoman-medium": "/avatar/headz/oldwoman/hair-9-96f6f983.glb"
+      "oldwoman-dark": "/avatar/headz/oldwoman/hair-9-c142aaeb.glb",
+      "oldwoman-light": "/avatar/headz/oldwoman/hair-9-c27be6c2.glb",
+      "oldwoman-medium": "/avatar/headz/oldwoman/hair-9-0ff9578b.glb"
      },
      "color": "#aebeb2",
-     "bytes": 36892,
-     "tris": 8000
+     "bytes": 61024,
+     "tris": 14000
     },
     {
      "id": "10",
      "files": {
-      "oldwoman-dark": "/avatar/headz/oldwoman/hair-10-a0001322.glb",
-      "oldwoman-light": "/avatar/headz/oldwoman/hair-10-c26131d3.glb",
-      "oldwoman-medium": "/avatar/headz/oldwoman/hair-10-3a224eb8.glb"
+      "oldwoman-dark": "/avatar/headz/oldwoman/hair-10-fdbb59e9.glb",
+      "oldwoman-light": "/avatar/headz/oldwoman/hair-10-836d5803.glb",
+      "oldwoman-medium": "/avatar/headz/oldwoman/hair-10-5dff2d56.glb"
      },
      "color": "#aebeb2",
-     "bytes": 37504,
-     "tris": 8000
+     "bytes": 62448,
+     "tris": 14000
     },
     {
      "id": "11",
      "files": {
-      "oldwoman-dark": "/avatar/headz/oldwoman/hair-11-52e3b0e3.glb",
-      "oldwoman-light": "/avatar/headz/oldwoman/hair-11-fa6f935f.glb",
-      "oldwoman-medium": "/avatar/headz/oldwoman/hair-11-38dc687e.glb"
+      "oldwoman-dark": "/avatar/headz/oldwoman/hair-11-8ab8b2e5.glb",
+      "oldwoman-light": "/avatar/headz/oldwoman/hair-11-c9909127.glb",
+      "oldwoman-medium": "/avatar/headz/oldwoman/hair-11-a4fbb218.glb"
      },
      "color": "#aebeb2",
-     "bytes": 37056,
-     "tris": 8000
+     "bytes": 61568,
+     "tris": 14000
     }
    ],
    "beard": [],
@@ -1644,108 +2748,109 @@ export const CATALOG: HeadzCatalog = {
      }
     }
    ],
-   "earrings": []
+   "earrings": [],
+   "mask": []
   },
   "woman": {
    "hair": [
     {
      "id": "001",
      "files": {
-      "woman-dark": "/avatar/headz/woman/hair-001-222be474.glb",
-      "woman-light": "/avatar/headz/woman/hair-001-b8f746f9.glb",
-      "woman-medium": "/avatar/headz/woman/hair-001-222be474.glb"
+      "woman-dark": "/avatar/headz/woman/hair-001-e50057c5.glb",
+      "woman-light": "/avatar/headz/woman/hair-001-711a3084.glb",
+      "woman-medium": "/avatar/headz/woman/hair-001-e50057c5.glb"
      },
      "color": "#140505",
-     "bytes": 34892,
-     "tris": 7999
+     "bytes": 56288,
+     "tris": 13999
     },
     {
      "id": "002",
      "files": {
-      "woman-dark": "/avatar/headz/woman/hair-002-53e2ab4b.glb",
-      "woman-light": "/avatar/headz/woman/hair-002-2c437895.glb",
-      "woman-medium": "/avatar/headz/woman/hair-002-53e2ab4b.glb"
+      "woman-dark": "/avatar/headz/woman/hair-002-f763618c.glb",
+      "woman-light": "/avatar/headz/woman/hair-002-188c4611.glb",
+      "woman-medium": "/avatar/headz/woman/hair-002-f763618c.glb"
      },
      "color": "#140505",
-     "bytes": 36108,
-     "tris": 8000
+     "bytes": 60636,
+     "tris": 14000
     },
     {
      "id": "003",
      "files": {
-      "woman-dark": "/avatar/headz/woman/hair-003-4a2e6ab2.glb",
-      "woman-light": "/avatar/headz/woman/hair-003-a5e8b06f.glb",
-      "woman-medium": "/avatar/headz/woman/hair-003-4a2e6ab2.glb"
+      "woman-dark": "/avatar/headz/woman/hair-003-fbd7196d.glb",
+      "woman-light": "/avatar/headz/woman/hair-003-cee30aff.glb",
+      "woman-medium": "/avatar/headz/woman/hair-003-fbd7196d.glb"
      },
      "color": "#140505",
-     "bytes": 36352,
-     "tris": 8000
+     "bytes": 61128,
+     "tris": 14000
     },
     {
      "id": "004",
      "files": {
-      "woman-dark": "/avatar/headz/woman/hair-004-c09ed267.glb",
-      "woman-light": "/avatar/headz/woman/hair-004-32df56e0.glb",
-      "woman-medium": "/avatar/headz/woman/hair-004-c09ed267.glb"
+      "woman-dark": "/avatar/headz/woman/hair-004-149b40be.glb",
+      "woman-light": "/avatar/headz/woman/hair-004-21a5a6e1.glb",
+      "woman-medium": "/avatar/headz/woman/hair-004-149b40be.glb"
      },
      "color": "#140505",
-     "bytes": 37516,
-     "tris": 8000
+     "bytes": 62060,
+     "tris": 14000
     },
     {
      "id": "005",
      "files": {
-      "woman-dark": "/avatar/headz/woman/hair-005-57c39ea5.glb",
-      "woman-light": "/avatar/headz/woman/hair-005-d83921d9.glb",
-      "woman-medium": "/avatar/headz/woman/hair-005-57c39ea5.glb"
+      "woman-dark": "/avatar/headz/woman/hair-005-133e70c4.glb",
+      "woman-light": "/avatar/headz/woman/hair-005-049d27ec.glb",
+      "woman-medium": "/avatar/headz/woman/hair-005-133e70c4.glb"
      },
      "color": "#140505",
-     "bytes": 34948,
-     "tris": 7999
+     "bytes": 56708,
+     "tris": 14000
     },
     {
      "id": "006",
      "files": {
-      "woman-dark": "/avatar/headz/woman/hair-006-d5784fd4.glb",
-      "woman-light": "/avatar/headz/woman/hair-006-a6d6a56c.glb",
-      "woman-medium": "/avatar/headz/woman/hair-006-d5784fd4.glb"
+      "woman-dark": "/avatar/headz/woman/hair-006-98e0f0f6.glb",
+      "woman-light": "/avatar/headz/woman/hair-006-789c8058.glb",
+      "woman-medium": "/avatar/headz/woman/hair-006-98e0f0f6.glb"
      },
      "color": "#140505",
-     "bytes": 36152,
-     "tris": 8000
+     "bytes": 47140,
+     "tris": 11136
     },
     {
      "id": "007",
      "files": {
-      "woman-dark": "/avatar/headz/woman/hair-007-8ff145b8.glb",
-      "woman-light": "/avatar/headz/woman/hair-007-5a395f7f.glb",
-      "woman-medium": "/avatar/headz/woman/hair-007-8ff145b8.glb"
+      "woman-dark": "/avatar/headz/woman/hair-007-937e9e5e.glb",
+      "woman-light": "/avatar/headz/woman/hair-007-b657c3c5.glb",
+      "woman-medium": "/avatar/headz/woman/hair-007-937e9e5e.glb"
      },
      "color": "#140505",
-     "bytes": 38080,
-     "tris": 7999
+     "bytes": 62560,
+     "tris": 13999
     },
     {
      "id": "008",
      "files": {
-      "woman-dark": "/avatar/headz/woman/hair-008-433581e0.glb",
-      "woman-light": "/avatar/headz/woman/hair-008-90d9de7d.glb",
-      "woman-medium": "/avatar/headz/woman/hair-008-433581e0.glb"
+      "woman-dark": "/avatar/headz/woman/hair-008-7dc74a84.glb",
+      "woman-light": "/avatar/headz/woman/hair-008-040805fa.glb",
+      "woman-medium": "/avatar/headz/woman/hair-008-7dc74a84.glb"
      },
      "color": "#140505",
-     "bytes": 36520,
-     "tris": 8000
+     "bytes": 59744,
+     "tris": 13999
     },
     {
      "id": "009",
      "files": {
-      "woman-dark": "/avatar/headz/woman/hair-009-f47364ed.glb",
-      "woman-light": "/avatar/headz/woman/hair-009-c7d17eb6.glb",
-      "woman-medium": "/avatar/headz/woman/hair-009-f47364ed.glb"
+      "woman-dark": "/avatar/headz/woman/hair-009-0f696eed.glb",
+      "woman-light": "/avatar/headz/woman/hair-009-5adeae82.glb",
+      "woman-medium": "/avatar/headz/woman/hair-009-0f696eed.glb"
      },
      "color": "#140505",
-     "bytes": 38364,
-     "tris": 8000
+     "bytes": 64240,
+     "tris": 13998
     },
     {
      "id": "010",
@@ -1833,6 +2938,19 @@ export const CATALOG: HeadzCatalog = {
      "color": "#e7d5a5",
      "bytes": 21604,
      "tris": 5000
+    }
+   ],
+   "mask": [
+    {
+     "id": "mask",
+     "files": {
+      "woman-dark": "/avatar/headz/woman/mask-mask-2c2cbc78.glb",
+      "woman-light": "/avatar/headz/woman/mask-mask-db12db54.glb",
+      "woman-medium": "/avatar/headz/woman/mask-mask-2c2cbc78.glb"
+     },
+     "color": "#57c4b5",
+     "bytes": 39128,
+     "tris": 8000
     }
    ]
   }

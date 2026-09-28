@@ -6,7 +6,8 @@ import { ArticleByline, ArticleCard, PracticeCard } from "@/components/content/C
 import { ArticleBanner } from "@/components/content/ArticleBanner";
 import { AuthorCard, ReadCounter } from "@/components/content/AuthorCard";
 import { EvidenceBadge, KeyFacts, SeekHelp, Sources } from "@/components/content/Evidence";
-import { Markdown } from "@/components/content/Markdown";
+import { RichText, countWords } from "@/components/content/RichText";
+import { ArticleRating, RatingBadge } from "@/components/content/ArticleRating";
 import { Breadcrumbs } from "@/components/public/Breadcrumbs";
 import { JsonLd } from "@/components/public/JsonLd";
 import { PublicShell } from "@/components/public/PublicShell";
@@ -44,7 +45,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       publishedTime: a.published_at ?? undefined,
       modifiedTime: a.updated_at ?? undefined,
       section: a.topic_label,
-      tags: a.tags,
+      tags: [...(a.topic_labels ?? []), ...a.tags],
     },
   };
 }
@@ -70,7 +71,9 @@ export default async function ArticlePage({ params }: Props) {
   const a = await load(params.slug);
   if (!a) notFound();
 
-  const [sameTopic, practices] = await Promise.all([serverContent.articles({ topic: a.topic }), serverContent.practices()]);
+  const topics = a.topics?.length ? a.topics : [a.topic];
+  const labels = a.topic_labels?.length ? a.topic_labels : [a.topic_label];
+  const [sameTopic, practices] = await Promise.all([serverContent.articles({ topic: topics.join(",") }), serverContent.practices()]);
   const related = sameTopic.filter((r) => r.slug !== a.slug).slice(0, 3);
   const kinds = PRACTICE_FOR_TOPIC[a.topic] ?? [];
   const suggested = [...practices].sort((x, y) => rank(kinds, x.kind) - rank(kinds, y.kind)).slice(0, 2);
@@ -92,11 +95,14 @@ export default async function ArticlePage({ params }: Props) {
       ? { "@type": "Person", name: a.specialist.name, ...(a.specialist.photo_url ? { image: abs(a.specialist.photo_url) } : {}) }
       : { "@type": "Organization", name: a.author_name || "Редакция Aprosop", url: abs("/") },
     ...(a.cover_image ? { image: abs(a.cover_image.url) } : {}),
+    ...(a.rating?.count && a.rating.avg != null
+      ? { aggregateRating: { "@type": "AggregateRating", ratingValue: a.rating.avg, ratingCount: a.rating.count, bestRating: 5, worstRating: 1 } }
+      : {}),
     publisher: { "@id": ORG_ID },
     isPartOf: { "@id": WEBSITE_ID },
     articleSection: a.topic_label,
-    keywords: a.tags.join(", "),
-    wordCount: a.body.split(/\s+/).length,
+    keywords: [...labels, ...a.tags].join(", "),
+    wordCount: countWords(a.content),
     timeRequired: `PT${a.reading_minutes}M`,
     citation: sources.map((src) => ({
       "@type": "CreativeWork",
@@ -118,7 +124,7 @@ export default async function ArticlePage({ params }: Props) {
     isPartOf: { "@id": WEBSITE_ID },
     mainEntity: { "@id": `${abs(path)}#article` },
     audience: { "@type": "PeopleAudience", audienceType: "Patient" },
-    about: { "@type": "Thing", name: a.topic_label },
+    about: labels.map((name) => ({ "@type": "Thing", name })),
     ...(a.reviewed_at ? { lastReviewed: a.reviewed_at, reviewedBy: { "@id": ORG_ID } } : {}),
   };
 
@@ -139,19 +145,24 @@ export default async function ArticlePage({ params }: Props) {
           <header className={s.head}>
             <ArticleBanner a={a} className={s.banner} />
             <div className={s.meta}>
-              <Link href={`/articles?topic=${a.topic}`}>{a.topic_label}</Link>
+              {topics.map((t, i) => (
+                <Link key={t} href={`/articles?topic=${t}`}>
+                  {labels[i] ?? t}
+                </Link>
+              ))}
               <span>
                 <Clock size={14} strokeWidth={1.8} aria-hidden />
                 {a.reading_minutes} мин чтения
               </span>
               <EvidenceBadge level={a.evidence_level} />
+              <RatingBadge rating={a.rating} />
             </div>
             <h1 className={s.title}>{typo(a.title)}</h1>
             {a.summary && <p className={s.lead}>{typo(a.summary)}</p>}
           </header>
 
           <KeyFacts facts={a.key_facts} />
-          <Markdown source={a.body} />
+          <RichText html={a.content} />
           <SeekHelp
             text={a.when_to_seek_help}
             cta={
@@ -161,6 +172,7 @@ export default async function ArticlePage({ params }: Props) {
             }
           />
           <Sources sources={sources} level={a.evidence_level} reviewedAt={a.reviewed_at} />
+          <ArticleRating slug={a.slug} initial={a.rating} loginNext={path} />
           <ArticleByline a={a} />
           {a.specialist && <AuthorCard specialist={a.specialist} />}
           <ReadCounter slug={a.slug} />

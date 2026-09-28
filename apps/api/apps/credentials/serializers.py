@@ -25,7 +25,8 @@ class CredentialWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Credential
-        fields = ["kind", "title", "issuer", "year", "year_end", "supervisor", "hours", "url", "doi", "number"]
+        fields = ["kind", "title", "issuer", "year", "year_end", "supervisor", "hours", "url", "doi", "number",
+                  "number_public"]
         extra_kwargs = {
             "issuer": {"required": False, "allow_blank": True},
             "supervisor": {"required": False, "allow_blank": True},
@@ -143,6 +144,7 @@ def credential_owner(c: Credential) -> dict:
     return {
         **_base(c),
         "number": decrypt_text(c.number_enc),
+        "number_public": c.number_public,
         "status": c.status,
         "status_label": c.get_status_display(),
         "reject_reason": c.reject_reason,
@@ -173,9 +175,14 @@ def credential_staff(c: Credential) -> dict:
 
 
 def credential_public(c: Credential) -> dict:
-    return {
+    row = {
         **_base(c),
         "number_masked": mask_number(c.number_hint),
         "verified_at": c.reviewed_at.isoformat() if c.reviewed_at else None,
         "files": [file_row(f, public=True, profile_id=c.profile_id) for f in c.files.all() if f.is_public],
     }
+    # Полный номер — только если специалист разрешил «Показывать номер клиентам полностью»
+    number = decrypt_text(c.number_enc) if c.number_public else ""
+    if number:
+        row["number"] = number
+    return row

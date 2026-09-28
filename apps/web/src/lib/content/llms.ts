@@ -6,6 +6,7 @@ import { EVIDENCE_LEVELS, type Article, type Practice, type Source } from "@/lib
 import { LEGAL_DOCS } from "@/components/legal/docs";
 import { SITE_URL } from "@/lib/seo";
 import { serverContent } from "./server";
+import { htmlToMarkdown } from "./htmlText";
 
 const ABOUT = `# Aprosop
 
@@ -62,14 +63,14 @@ function articleFull(a: Article) {
     `## ${a.title}`,
     "",
     `URL: ${SITE_URL}/articles/${a.slug}`,
-    `Тема: ${a.topic_label}. Сила доказательств: ${level(a.evidence_level)}.${a.reviewed_at ? ` Проверено редакцией: ${a.reviewed_at}.` : ""}`,
+    `Темы: ${(a.topic_labels?.length ? a.topic_labels : [a.topic_label]).join(", ")}. Сила доказательств: ${level(a.evidence_level)}.${a.reviewed_at ? ` Проверено редакцией: ${a.reviewed_at}.` : ""}`,
     "",
     `> ${a.summary}`,
     "",
     ...(a.key_facts?.length
       ? ["### Главное из исследований", "", ...a.key_facts.map((f) => `- ${f.text}${f.refs.length ? ` [${f.refs.join(", ")}]` : ""}`), ""]
       : []),
-    a.body.replace(/^## /gm, "### "),
+    htmlToMarkdown(a.content),
     "",
     ...(a.when_to_seek_help ? ["### Когда нужен специалист", "", a.when_to_seek_help, ""] : []),
     ...(sources.length ? ["### Источники", "", ...sources.map(sourceLine), ""] : []),

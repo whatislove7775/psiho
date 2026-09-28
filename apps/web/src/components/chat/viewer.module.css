@@ -174,3 +174,60 @@
     padding-left: 14px;
   }
 }
+
+/* Bottom bar: caption + file name/type/size (the chat bubble shows only the picture) */
+.foot {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 18px calc(14px + env(safe-area-inset-bottom));
+  text-align: center;
+}
+.caption {
+  margin: 0 auto;
+  max-width: 720px;
+  font-size: var(--t-15, 15px);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.fileInfo {
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+  opacity: 0.7;
+}
+.fileInfoName {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.onceTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 13px;
+}
+/* View-once: no selecting/dragging/callout; hidden while the page is not in front */
+.overlay[data-view-once] {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.stage[data-veiled] > * {
+  filter: blur(40px);
+  opacity: 0.2;
+}
+@media print {
+  .overlay[data-view-once] {
+    display: none !important;
+  }
+}

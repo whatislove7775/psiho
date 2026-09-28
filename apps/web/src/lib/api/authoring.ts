@@ -35,9 +35,12 @@ export interface MyArticle {
   slug: string;
   title: string;
   summary: string;
-  body: string;
+  /** Sanitized HTML from the visual editor. */
+  content: string;
   topic: string;
   topic_label: string;
+  topics: string[];
+  topic_labels: string[];
   sources: Source[];
   cover: string;
   cover_image: CoverImage | null;
@@ -54,7 +57,7 @@ export interface MyArticle {
   updated_at: string;
 }
 
-export type MyArticleInput = Partial<Pick<MyArticle, "title" | "summary" | "body" | "topic" | "sources">> & {
+export type MyArticleInput = Partial<Pick<MyArticle, "title" | "summary" | "content" | "topics" | "sources">> & {
   cover_image_id?: string | null;
 };
 

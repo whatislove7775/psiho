@@ -264,6 +264,53 @@ details + .byline {
   background: var(--c-line);
   margin: 2em 0;
 }
+/* Rich text (visual editor): paragraphs inside lists/quotes/callouts sit tight */
+.prose li > p,
+.prose blockquote > p,
+.prose aside > p {
+  margin: 0;
+}
+.prose blockquote > p + p,
+.prose aside > p + p {
+  margin-top: 0.6em;
+}
+.prose em {
+  font-style: italic;
+}
+.callout {
+  padding: 16px 20px;
+  border-radius: 18px;
+  background: var(--c-primary-soft);
+  font-size: var(--t-15);
+  line-height: 1.55;
+}
+.figure {
+  margin: 1.6em 0 0;
+}
+.figure + * {
+  margin-top: 1.6em;
+}
+.figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 18px;
+  background: var(--c-raised);
+}
+.figure figcaption {
+  margin-top: 8px;
+  font-size: var(--t-13);
+  line-height: 1.45;
+  color: var(--c-muted);
+  text-align: center;
+}
+@media (min-width: 900px) {
+  .figure[data-width="wide"] {
+    width: calc(100% + 96px);
+    max-width: calc(100vw - 48px);
+    margin-left: -48px;
+  }
+}
 
 @media (max-width: 560px) {
   .prose {

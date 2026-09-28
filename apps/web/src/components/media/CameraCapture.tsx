@@ -126,31 +126,44 @@ export function CameraCapture({
     );
   }
 
+  // Guide geometry (viewBox 300×400, same 3:4 as the view): centred, with margins so the face and the
+  // bottom countdown never touch the edges.
+  const guide = mask === "circle" ? { cx: 150, cy: 190, rx: 112, ry: 112 } : { cx: 150, cy: 184, rx: 94, ry: 126 };
+
   return (
     <div className={s.cam}>
+      {cur && (
+        <div className={s.camHead} aria-live="polite">
+          {steps.length > 1 && (
+            <span className={s.camStep}>
+              <span className={s.camDots} aria-hidden>
+                {steps.map((_, i) => (
+                  <i key={i} data-on={i <= step || undefined} />
+                ))}
+              </span>
+              Шаг {step + 1} из {steps.length}
+            </span>
+          )}
+          <p className={s.camHint}>{phase === "live" ? cur.hint : "Включаем камеру…"}</p>
+        </div>
+      )}
       <div className={s.camView} data-mask={mask} data-flash={flash || undefined}>
         <video ref={video} playsInline muted autoPlay aria-label="Камера" />
         <svg className={s.camGuide} viewBox="0 0 300 400" preserveAspectRatio="xMidYMid slice" aria-hidden>
           <defs>
             <mask id={`cam-${mask}`}>
               <rect width="300" height="400" fill="white" />
-              {mask === "circle" ? <circle cx="150" cy="200" r="118" fill="black" /> : <ellipse cx="150" cy="190" rx="100" ry="135" fill="black" />}
+              <ellipse {...guide} fill="black" />
             </mask>
           </defs>
           <rect width="300" height="400" fill="rgba(8,10,20,0.55)" mask={`url(#cam-${mask})`} />
-          {mask === "circle" ? (
-            <circle cx="150" cy="200" r="118" fill="none" stroke="white" strokeOpacity="0.9" strokeWidth="2" />
-          ) : (
-            <ellipse cx="150" cy="190" rx="100" ry="135" fill="none" stroke="white" strokeOpacity="0.9" strokeWidth="2" strokeDasharray="6 6" />
-          )}
+          <ellipse {...guide} fill="none" stroke="white" strokeOpacity="0.9" strokeWidth="2" strokeDasharray={mask === "oval" ? "6 6" : undefined} />
         </svg>
-        {phase === "live" && cur && (
-          <p className={s.camHint} aria-live="polite">
-            {steps.length > 1 && <span>{step + 1} из {steps.length}</span>}
-            {cur.hint}
-          </p>
+        {count !== null && count > 0 && (
+          <span key={count} className={s.camCount} role="timer" aria-label={`Снимок через ${count}`}>
+            {count}
+          </span>
         )}
-        {count !== null && count > 0 && <span className={s.camCount}>{count}</span>}
       </div>
       <div className={s.camActions}>
         <Button type="button" variant="ghost" onClick={onCancel}>

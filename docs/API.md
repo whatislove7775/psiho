@@ -26,9 +26,12 @@ PsychologistPublic {
   booking: { hourly_rate_rub: number; min_duration: number; max_duration: number;
              durations: { minutes: number; price_rub: number }[] }
   gender: "" | "female" | "male";   // необязательно, задаёт специалист (PATCH psychologist/profile/); фильтр поиска
+  age: number | null;               // R9: по необязательному году рождения; null — не указан
+  on_service_since: string | null;  // R9: дата одобрения анкеты (иначе регистрации), «На Aprosop 3 мес.»
 }
 PsychologistPrivate = PsychologistPublic & {
-  verification_status: "pending" | "approved" | "rejected" | "suspended"
+  verification_status: "pending" | "approved" | "rejected" | "suspended";
+  birth_year: number | null;        // R9: только владельцу; PATCH psychologist/profile/ {birth_year} (возраст 18–90 или null)
 }
 
 Slot { start: string; end: string }
@@ -241,6 +244,15 @@ TimeOff { id; start_date; end_date; note }
 |---|---|---|---|
 | POST | `/content/articles/<slug>/read/` | все | +1 прочтение (без cookie и личности), 204 |
 | POST | `/content/covers/` | редакция (content.edit) и специалисты | multipart `image` (JPG/PNG/WebP ≤5 МБ, кадр ≥640×360), `crop` = JSON `{x, y, w}` (доли исходника, 16:9). Ответ — `cover_image`. EXIF удаляется |
+| POST | `/content/images/` | редакция и специалисты | multipart `image` (JPG/PNG/WebP ≤10 МБ, ширина ≥320) → `{id, url, md, width, height}`: WebP 1600 и 800 px, EXIF удаляется. Вставляется в текст как `<figure data-width="column\|wide"><img src=url><figcaption>` |
+| GET | `/content/articles/<slug>/rating/` | все | `{avg, count, mine, can_rate}` (mine/can_rate — для вошедших) |
+| PUT / DELETE | `/content/articles/<slug>/rating/` | вошедшие клиенты и специалисты, кроме автора | `{stars: 1–5}` — одна оценка на человека, можно изменить/убрать. Наружу только среднее и количество |
+
+**Текст статьи (P2).** `content` — HTML из визуального редактора, сервер чистит его по белому списку
+(`p, h2, h3, ul, ol, li, blockquote, aside` (врезка), `strong, em, code, a[href], br, hr, figure[data-width], img[src — только /media/content/…], figcaption`),
+стили/классы/скрипты выбрасываются. `body` (Markdown) — резервная копия до миграции 0007, только запись для старых клиентов
+(если прислать только `body`, `content` получается из него). `topics` — 1–3 темы (первая — основная, она же `topic`);
+`topic` по-прежнему принимается. Фильтр `?topic=a,b` — любая из тем. В карточках и статье — `rating: {avg, count}`, `topic_labels`.
 | GET, POST | `/content/my/articles/` | специалист | мои статьи; POST `{title, summary, body, topic, sources?, cover_image_id?}` → черновик (`status: draft`) |
 | GET, PATCH, DELETE | `/content/my/articles/<id>/` | автор | править можно в `draft`/`rejected`; `cover_image_id` — только своя загрузка, `null` убирает обложку |
 | POST | `/content/my/articles/<id>/submit/` | автор (профиль подтверждён) | → `pending`; нужны заголовок, описание ≥20 зн., текст ≥150 слов (иначе 400 с полями) |
@@ -275,11 +287,12 @@ TimeOff { id; start_date; end_date; note }
 | GET/PATCH | `conversations/{id}/` PATCH `{retention?:"forever"\|"24h"\|"1h", screen_protect?:bool}` | «Исчезающие сообщения» (выкл / 1 день / 1 час, только для новых сообщений; истёкшие API не отдаёт сразу, `purge_chats` удаляет физически) и «Защита от скриншотов» для обеих сторон. Меняет клиент (в `specialist_support` — специалист); обе стороны видят системное сообщение (`retention:*`, `screen:on\|off`) |
 | POST | `conversations/{id}/read/`, `conversations/{id}/clear/` | прочитано; очистить историю у себя |
 | GET | `conversations/{id}/messages/?before=<msg id>&limit=40` | `{results: Message[] (по возрастанию), has_more}` |
-| POST | `conversations/{id}/messages/` JSON `{text}` или multipart `{kind:"voice", file, duration_ms, peaks(JSON)}` / `{kind:"file", file}` | файлы: pdf, doc(x), xls(x), pptx, odt, rtf, txt, png, jpg, webp, gif, mp3, ≤20 МБ; голосовые webm/ogg/mp4 ≤10 мин. Лимит `CHAT_SEND_RATE`. Кто может слать файлы — `can_send_files` (R8): поддержка — всегда; специалист — после записанного созвона (paid/in_progress/completed); клиент — если специалист включил `accept_client_files` и есть записанный созвон; иначе 403. Изображения перекодируются на сервере (EXIF/метаданные удаляются, поворот применяется, ≤2560 px), в `attachment` — `width/height`. Пока `contacts_locked` — текст и имя файла с телефонами/@никами/ссылками на мессенджеры/почтой → **422** `{detail, code:"contacts_blocked", field:"text"\|"file", fragments:[{kind:"phone"\|"handle"\|"link"\|"email", start, end}]}` |
+| POST | `conversations/{id}/messages/` JSON `{text}` или multipart `{kind:"voice", file, duration_ms, peaks(JSON), transcript?}` / `{kind:"file", file, text?, ttl?:"1m"\|"1h"\|"1d", view_once?:1}` | `transcript` (голосовые) — текст, распознанный на устройстве отправителя (web `lib/captions`, сервер звук не распознаёт): сохраняется как `text` сообщения (зашифрован, ≤4000 символов, не логируется, удаляется с сообщением); похожий на контакт при `contacts_locked` молча отбрасывается. R9: `text` — подпись к файлу (та же проверка контактов), `ttl` — «Исчезнет через …» (expires_at = меньший из срока вложения и режима разговора), `view_once` — «Просмотр один раз» (имя файла и подпись в API пустые до открытия, файл не попадает в список файлов диалога). Файлы: pdf, doc(x), xls(x), pptx, odt, rtf, txt, png, jpg, webp, gif, mp3, ≤20 МБ; голосовые webm/ogg/mp4 ≤10 мин. Лимит `CHAT_SEND_RATE`. Кто может слать файлы — `can_send_files` (R8): поддержка — всегда; специалист — после записанного созвона (paid/in_progress/completed); клиент — если специалист включил `accept_client_files` и есть записанный созвон; иначе 403. Изображения перекодируются на сервере (EXIF/метаданные удаляются, поворот применяется, ≤2560 px), в `attachment` — `width/height`. Пока `contacts_locked` — текст и имя файла с телефонами/@никами/ссылками на мессенджеры/почтой → **422** `{detail, code:"contacts_blocked", field:"text"\|"file", fragments:[{kind:"phone"\|"handle"\|"link"\|"email", start, end}]}` |
 | GET/PATCH | `settings/` `{accept_client_files: bool}` | только специалист: «Принимать файлы от клиентов» (по умолчанию false) |
 | PATCH | `messages/{id}/` `{text}` | только своё текстовое, ставит `edited_at`; та же проверка контактов (422) |
 | POST | `messages/{id}/delete/` `{for:"me"\|"all"}` | `all` — только своё: текст и файл стираются, остаётся `deleted: true` |
-| GET | `messages/{id}/attachment/` | расшифрованный файл, `Cache-Control: private, no-store` |
+| GET | `messages/{id}/attachment/` | расшифрованный файл, `Cache-Control: private, no-store` (для `view_once` — 403) |
+| POST | `messages/{id}/open/` | R9 «Просмотр один раз»: только получатель, один раз — отдаёт файл (имя и подпись в заголовках `X-File-Name`/`X-Caption`, URL-кодированы) и стирает файл и подпись у обоих (`viewed_at`, заглушка «Фото просмотрено»); повторно — 410, отправителю — 403 |
 | GET | `contacts/`, `unread/` | с кем можно начать чат; `{total, support}` |
 | POST | `ws-token/` | `{token}` для WebSocket (1 час) |
 | GET | `ai/` | `{name, enabled, consent, conversation_id, daily_limit, used_today, remaining_today}` |
@@ -416,6 +429,8 @@ Proposal { id, status: "pending" | "accepted" | "declined" | "withdrawn" | "expi
 | GET/POST | `/staff/credentials/<uuid>/` | `specialists.verify` | пункт / решение `{decision: approve\|reject\|request_info, comment}` (comment обязателен для reject/request_info), пишется в журнал `credential.*` |
 
 Файлы хранятся зашифрованными в БД (как вложения чата), не в `/media`. `GET /staff/me/` → `badges.credentials` — число пунктов на проверке.
+R9: `number_public` (bool, по умолчанию false) в POST/PATCH пункта — «Показывать номер клиентам полностью»; тогда публичный пункт
+содержит `number` (полный), иначе только `number_masked`. Переключение не отправляет пункт на повторную проверку (смена номера — отправляет).
 
 ## Отзывы — `/reviews/`
 
@@ -488,7 +503,7 @@ depression, panic, sleep, anger, addiction, crisis, family, loneliness. Трот
 
 ## Круги — `/circles/`, `/staff/circles/`
 
-Группы поддержки на 5–8 участников с психологом-ведущим. Участник известен другим **только** по
+Группы поддержки на 5–12 участников с психологом-ведущим и (по желанию) ко-терапевтом. Участник известен другим **только** по
 псевдониму круга («Участник-Лиса») и `handle` (случайная строка, новая в каждом круге); id
 пользователя и alias не отдаются никому, включая ведущего. Подробности, mesh и путь к SFU — `docs/CIRCLES.md`.
 
@@ -502,17 +517,20 @@ depression, panic, sleep, anger, addiction, crisis, family, loneliness. Трот
 | GET | `/circles/{id}/members/` | участник/ведущий | псевдонимы участников |
 | GET/POST | `/circles/{id}/messages/` | участник/ведущий | групповой чат `{text}`; новый участник видит сообщения с момента входа; исчезающие по `chat_retention`. Живые события — через `/ws/chat/`: `circle.message`, `circle.message.deleted` |
 | POST | `/circles/{id}/messages/{mid}/delete/` | автор/ведущий | удалить |
-| POST | `/circles/meetings/{mid}/join/` | участник/ведущий | токен групповой комнаты `{ws_token, room_id, role, self{id,name,tone}, circle, meeting, host, max_peers}`; 409 — комната закрыта (открывается за 10 мин, закрывается через 15 мин после конца) |
-| GET/POST | `/circles/pro/` | специалист | мои круги / создать черновик `{topic,title,description,rules,format,meeting_minutes,capacity(5–8),billing,price_rub,first_meeting_at,meetings_count,allow_real_faces,chat_retention}` |
+| POST | `/circles/meetings/{mid}/join/` | участник/ведущий | токен групповой комнаты `{ws_token, room_id, role(host\|cohost\|member), self{id,name,tone}, circle, meeting, host, cohost, max_peers}`; 409 — комната закрыта (открывается за 10 мин, закрывается через 15 мин после конца) |
+| GET/POST | `/circles/pro/` | специалист | мои круги / создать черновик `{topic,title,description,rules,format,meeting_minutes,capacity(5–12),billing,price_rub,first_meeting_at,meetings_count,allow_real_faces,chat_retention}` |
 | GET/PUT/DELETE | `/circles/pro/{id}/` | ведущий | черновик меняется целиком; после публикации — только `description, rules, allow_real_faces, chat_retention` |
 | POST | `/circles/pro/{id}/action/` | ведущий | `{action: submit}` на проверку · `{action: cancel, reason}` — отмена до начала (все получают полный возврат) |
 | POST | `/circles/pro/{id}/members/{handle}/` | ведущий | `{action: mute \| unmute \| remove}` (remove — полный возврат будущих встреч) |
+| GET | `/circles/pro/cohost-candidates/?q=` | специалист | проверенные специалисты для приглашения |
+| POST/PATCH/DELETE | `/circles/pro/{id}/cohost/` | ведущий | пригласить `{psychologist_id, share_percent(0–70)}` · сменить долю `{share_percent}` · убрать ко-терапевта/отозвать приглашение |
+| POST | `/circles/pro/{id}/cohost/respond/` | приглашённый | `{accept: bool}`; принятый ко-терапевт видит круг в `/circles/pro/` (`my_role: cohost`, `invites` — ждущие ответа), модерирует чат/участников, не отменяет круг и не завершает встречу |
 | POST | `/circles/pro/meetings/{mid}/end/` | ведущий | завершить встречу и сразу рассчитать оплату |
 | GET | `/staff/circles/?status=pending` | `specialists.verify` | очередь проверки + `counts` |
 | GET/POST | `/staff/circles/{id}/` | `specialists.verify` | `{decision: approve \| reject \| cancel, comment}` (reject/cancel — с комментарием; в журнал) |
 
 Деньги: `billing.services.hold_for_group` (Hold без созвона, `reason="group"`); после встречи с ведущим —
-`capture_for_call(ref)`, ведущий не пришёл — полный возврат. Расчёт — `manage.py circles_sweep` (scheduler) и лениво из API.
+`capture_for_call(ref)` + `share_captured(ref, co_specialist, percent)` (доля ко-терапевта из заработка ведущего), ни ведущий, ни ко-терапевт не пришли — полный возврат. Расчёт — `manage.py circles_sweep` (scheduler) и лениво из API.
 
 WebSocket `/ws/circle/{room_id}/?token=` — групповой сигналинг (до 9 пиров), см. `docs/CIRCLES.md`.
 

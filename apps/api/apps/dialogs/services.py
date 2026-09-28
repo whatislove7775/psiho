@@ -267,7 +267,9 @@ def dialogues_for(user) -> list[dict]:
 
 def files_of(conv: Conversation, user) -> list[dict]:
     msgs = chat.visible_messages(conv, user).filter(
-        kind=Message.Kind.FILE, deleted_at__isnull=True).select_related("attachment").order_by("-created_at")[:50]
+        kind=Message.Kind.FILE, deleted_at__isnull=True,
+        view_once=False,  # «один просмотр» не попадает в общий список файлов (ни имя, ни ссылка)
+    ).select_related("attachment").order_by("-created_at")[:50]
     out = []
     for m in msgs:
         a = getattr(m, "attachment", None)

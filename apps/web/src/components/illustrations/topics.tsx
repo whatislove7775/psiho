@@ -237,9 +237,21 @@ const KNOWN = new Set<string>([
   "boundaries", "loneliness", "breathing", "grounding", "body", "journaling", "mindfulness",
 ]);
 
+/** Newer article topics borrow the closest existing motif. */
+const ALIAS: Record<string, TopicKey> = {
+  emotions: "mood",
+  family: "relationships",
+  conflicts: "relationships",
+  trauma: "self",
+  addiction: "stress",
+  eating: "body",
+  work: "stress",
+  teens: "self",
+};
+
 /** Topic or practice-kind motif; unknown keys fall back to the "therapy" motif. */
 export function TopicArt({ topic, title, className }: { topic: string; title?: string; className?: string }) {
-  const t = (KNOWN.has(topic) ? topic : "therapy") as TopicKey;
+  const t = (KNOWN.has(topic) ? topic : ALIAS[topic] ?? "therapy") as TopicKey;
   return (
     <Svg viewBox="0 0 120 90" title={title} className={className}>
       {(u) => <Motif t={t} u={u} />}

@@ -81,8 +81,9 @@
   min-height: 0;
   overflow-y: auto;
   display: flex;
-  align-items: safe center;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  justify-content: safe center;
 }
 .grid {
   --gap: 10px;
@@ -525,4 +526,177 @@
 }
 .menu > * {
   justify-content: flex-start;
+}
+
+/* ── breakout rooms (BreakoutPanel) ───────────────────────────────── */
+.rooms {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.roomsNote {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--c-muted);
+  font-size: var(--t-12);
+}
+.roomBox {
+  border-radius: 16px;
+  padding: 10px 12px;
+  background: var(--c-raised);
+  box-shadow: 0 0 0 1px var(--c-line);
+  transition: box-shadow 0.2s var(--ease), background 0.2s var(--ease);
+}
+.roomHere {
+  box-shadow: 0 0 0 2px var(--c-primary);
+}
+.roomOver {
+  background: var(--c-primary-soft);
+  box-shadow: 0 0 0 2px dashed var(--c-primary);
+}
+.roomBox header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+}
+.roomBox header b {
+  font-size: var(--t-14);
+}
+.roomBox header small {
+  color: var(--c-faint);
+  font-size: var(--t-12);
+  margin-right: auto;
+}
+.roomYou {
+  font-size: var(--t-12);
+  color: var(--c-primary-ink);
+  font-weight: 600;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.chip {
+  border: 0;
+  border-radius: var(--r-pill);
+  padding: 4px 10px;
+  font: inherit;
+  font-size: var(--t-12);
+  font-weight: 600;
+  background: var(--tone-soft, var(--c-panel));
+  color: var(--tone-ink, var(--c-text));
+  cursor: grab;
+  box-shadow: 0 0 0 1px var(--c-line);
+}
+.chip:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+.chipSel {
+  box-shadow: 0 0 0 2px var(--c-primary);
+}
+.roomEmpty {
+  font-size: var(--t-12);
+  color: var(--c-faint);
+}
+.roomsSetup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 4px;
+}
+.check {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: var(--t-13);
+  cursor: pointer;
+}
+.check input {
+  accent-color: var(--c-primary);
+}
+.broadcast {
+  display: flex;
+  gap: 8px;
+}
+.broadcast input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  border-radius: 12px;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: var(--t-13);
+  background: var(--c-raised);
+  color: var(--c-text);
+  box-shadow: 0 0 0 1px var(--c-line);
+}
+/* banner: which room you are in + timer + last broadcast */
+.roomBanner {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 auto 8px;
+  padding: 6px 14px;
+  border-radius: var(--r-pill);
+  background: var(--c-primary-soft);
+  color: var(--c-primary-ink);
+  font-size: var(--t-13);
+  font-weight: 600;
+  max-width: 100%;
+}
+/* audio-only strip of peers whose video we don't subscribe to (MAX_VIDEO) */
+.strip {
+  flex: none;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.mini {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 76px;
+  font-size: 11px;
+  color: var(--c-muted);
+  text-align: center;
+}
+.mini > span:first-child {
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--tone, var(--c-line));
+  transition: box-shadow 0.2s var(--ease);
+}
+.miniSpeaking > span:first-child {
+  box-shadow: 0 0 0 3px var(--tone, var(--c-primary)), 0 0 16px var(--tone, var(--c-primary));
+}
+.mini b {
+  font-weight: 600;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.miniHand {
+  position: absolute;
+  top: -4px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--a-sun);
+  color: #111;
 }

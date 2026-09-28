@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FileWarning, Minus, Plus, X } from "lucide-react";
+import { Download, EyeOff, FileWarning, Minus, Plus, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { attachmentUrl } from "@/lib/api/chat";
@@ -36,15 +36,25 @@ export function AttachmentViewer({
   msgId,
   name,
   mime,
+  size,
+  caption,
+  viewOnceUrl,
   onClose,
 }: {
   msgId: string;
   name: string;
   mime: string;
+  /** bytes — shown with the type in the bottom bar */
+  size?: number;
+  caption?: string;
+  /** «Просмотр один раз»: the already-opened file (no download, best-effort screenshot deterrence) */
+  viewOnceUrl?: string;
   onClose: () => void;
 }) {
   const kind = viewKind(mime, name);
-  const [url, setUrl] = useState<string | null>(null);
+  const viewOnce = !!viewOnceUrl;
+  const [url, setUrl] = useState<string | null>(viewOnceUrl ?? null);
+  const [veiled, setVeiled] = useState(false);
   const [text, setText] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [scale, setScale] = useState(1);
@@ -54,7 +64,30 @@ export function AttachmentViewer({
   const pinch = useRef<{ dist: number; scale: number } | null>(null);
   const close = useRef<HTMLButtonElement>(null);
 
+  // View-once: hide the picture whenever the page is not in front (app switcher, screen recorders' focus steal)
   useEffect(() => {
+    if (!viewOnce) return;
+    const veil = () => setVeiled(document.hidden || !document.hasFocus());
+    const unveil = () => setVeiled(false);
+    document.addEventListener("visibilitychange", veil);
+    window.addEventListener("blur", veil);
+    window.addEventListener("focus", unveil);
+    return () => {
+      document.removeEventListener("visibilitychange", veil);
+      window.removeEventListener("blur", veil);
+      window.removeEventListener("focus", unveil);
+    };
+  }, [viewOnce]);
+
+  useEffect(() => {
+    if (viewOnceUrl) {
+      if (kind === "text")
+        fetch(viewOnceUrl)
+          .then((r) => r.text())
+          .then(setText)
+          .catch(() => setFailed(true));
+      return;
+    }
     let alive = true;
     attachmentUrl(msgId)
       .then(async (u) => {
@@ -76,7 +109,7 @@ export function AttachmentViewer({
     return () => {
       alive = false;
     };
-  }, [msgId, kind]);
+  }, [msgId, kind, viewOnceUrl]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -145,10 +178,21 @@ export function AttachmentViewer({
   const pdfInline = typeof navigator === "undefined" || (navigator as Navigator & { pdfViewerEnabled?: boolean }).pdfViewerEnabled !== false;
 
   return createPortal(
-    <div className={s.overlay} role="dialog" aria-modal="true" aria-label={name}>
+    <div
+      className={s.overlay}
+      role="dialog"
+      aria-modal="true"
+      aria-label={name || "Вложение"}
+      data-view-once={viewOnce || undefined}
+      onContextMenu={viewOnce ? (e) => e.preventDefault() : undefined}
+    >
       <div className={s.bar}>
-        <span className={s.name} title={name}>
-          {name}
+        <span className={s.name}>
+          {viewOnce && (
+            <span className={s.onceTag}>
+              <EyeOff size={14} aria-hidden /> Один просмотр
+            </span>
+          )}
         </span>
         {kind === "image" && url && (
           <span className={s.zoom}>
@@ -163,9 +207,11 @@ export function AttachmentViewer({
             </button>
           </span>
         )}
-        <button type="button" onClick={() => saveAttachment(msgId, name).catch(() => setFailed(true))} aria-label="Скачать">
-          <Download size={18} />
-        </button>
+        {!viewOnce && (
+          <button type="button" onClick={() => saveAttachment(msgId, name).catch(() => setFailed(true))} aria-label="Скачать">
+            <Download size={18} />
+          </button>
+        )}
         <button type="button" ref={close} onClick={onClose} aria-label="Закрыть">
           <X size={20} />
         </button>
@@ -175,6 +221,7 @@ export function AttachmentViewer({
         ref={stage}
         className={`${s.stage} ${kind === "image" ? s.stageImage : ""}`}
         data-zoomed={scale > 1 || undefined}
+        data-veiled={veiled || undefined}
         onClick={(e) => kind === "image" && scale === 1 && e.target === e.currentTarget && onClose()}
         onWheel={onWheel}
       >
@@ -218,7 +265,28 @@ export function AttachmentViewer({
           </div>
         )}
       </div>
+
+      {/* file details live here, not in the chat bubble (like popular messengers) */}
+      {(name || caption || viewOnce) && (
+        <div className={s.foot}>
+          {viewOnce && <p className={s.fileInfo}>После закрытия файл исчезнет у&nbsp;обоих</p>}
+          {caption && <p className={s.caption}>{caption}</p>}
+          {name && (
+            <p className={s.fileInfo}>
+              <span className={s.fileInfoName}>{name}</span>
+              <span>{fileInfo(name, size)}</span>
+            </p>
+          )}
+        </div>
+      )}
     </div>,
     document.body,
   );
+}
+
+function fileInfo(name: string, size?: number): string {
+  const ext = name.includes(".") ? name.split(".").pop()!.toUpperCase() : "";
+  if (size == null) return ext;
+  const sz = size < 1024 ? `${size}\u00a0Б` : size < 1024 * 1024 ? `${Math.round(size / 1024)}\u00a0КБ` : `${(size / 1024 / 1024).toFixed(1).replace(".", ",")}\u00a0МБ`;
+  return ext ? `${ext}, ${sz}` : sz;
 }

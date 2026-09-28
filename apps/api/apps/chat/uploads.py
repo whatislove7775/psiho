@@ -93,3 +93,17 @@ def validate_voice(upload, duration_ms, peaks_raw) -> tuple[bytes, str, int, lis
         except (TypeError, ValueError):
             peaks = []
     return data, mime, duration, peaks
+
+
+TRANSCRIPT_MAX = 4000
+
+
+def clean_transcript(raw) -> str:
+    """Текст голосового, распознанный на устройстве отправителя (web: lib/captions).
+
+    Сервер звук не распознаёт; текст хранится как текст сообщения (зашифрован,
+    удаляется вместе с сообщением) и никогда не логируется.
+    """
+    if not isinstance(raw, str):
+        return ""
+    return " ".join(raw.split())[:TRANSCRIPT_MAX]

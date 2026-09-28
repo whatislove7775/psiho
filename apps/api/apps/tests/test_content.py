@@ -17,7 +17,7 @@ def test_seeded_content_is_public(api):
     assert "body" not in items[0] and items[0]["topic_label"]
 
     detail = api.get(f"/api/v1/content/articles/{items[0]['slug']}/").json()
-    assert detail["body"].strip() and detail["title"] == items[0]["title"]
+    assert detail["content"].startswith("<") and detail["title"] == items[0]["title"]
 
     practices = api.get("/api/v1/content/practices/").json()
     assert len(practices) == len(PRACTICES) >= 8
@@ -69,7 +69,7 @@ def test_staff_crud_article(admin_user, api):
 
     resp = a.patch(f"/api/v1/content/manage/articles/{art['id']}/", {"is_published": True}, format="json")
     assert resp.status_code == 200 and resp.json()["published_at"]
-    assert api.get("/api/v1/content/articles/novaya-statya/").json()["body"].startswith("## Заголовок")
+    assert api.get("/api/v1/content/articles/novaya-statya/").json()["content"] == "<h2>Заголовок</h2><p>Текст</p>"
 
     assert a.patch(f"/api/v1/content/manage/articles/{art['id']}/", {"cover": "neon"}, format="json").status_code == 400
     assert a.post("/api/v1/content/manage/articles/", {"title": "x", "slug": "novaya-statya", "body": "y"},
@@ -138,7 +138,7 @@ def test_seeded_articles_have_consistent_citations(api):
         assert n >= 1 and d["when_to_seek_help"].strip() and d["key_facts"] and d["reviewed_at"]
         for src in d["sources"]:
             assert src["url"].startswith("https://") and src["title"]
-        markers = re.findall(r"\[(\d+(?:,\s*\d+)*)\](?!\()", d["body"] + d["when_to_seek_help"])
+        markers = re.findall(r"\[(\d+(?:,\s*\d+)*)\](?!\()", d["content"] + d["when_to_seek_help"])
         refs = [int(r) for m in markers for r in m.split(",")] + [r for f in d["key_facts"] for r in f["refs"]]
         assert refs and all(1 <= r <= n for r in refs), d["slug"]
     p = api.get("/api/v1/content/practices/dyhanie-4-6/").json()
@@ -153,7 +153,7 @@ def test_upgrade_replaces_only_untouched_seeded_items(monkeypatch):
     untouched = Article.objects.get(slug="vygoranie")
     edited = Article.objects.get(slug="odinochestvo")
     for a in (untouched, edited):
-        Article.objects.filter(pk=a.pk).update(body=old_body, sources=[], key_facts=[], evidence_level="")
+        Article.objects.filter(pk=a.pk).update(body=old_body, content="", sources=[], key_facts=[], evidence_level="")
     Article.objects.filter(pk=edited.pk).update(title="Правка редактора")
     fps = {
         "vygoranie": {seed_mod.fingerprint_article(untouched.title, untouched.summary, old_body)},

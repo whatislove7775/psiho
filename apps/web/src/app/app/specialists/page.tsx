@@ -1,5 +1,6 @@
 "use client";
 
+import { FactsLine } from "@/components/specialists/SpecialistFacts";
 import { RatingPill } from "@/components/reviews/ReviewBits";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -197,6 +198,7 @@ function Specialists() {
                     Опыт {p.experience_years}{" "}
                     {plural(p.experience_years, "год", "года", "лет")}
                   </span>
+                  <FactsLine p={p} className={s.exp} />
                   <RatingPill rating={p.rating} count={p.reviews_count} />
                   <IntroChip psy={p} />
                 </div>
