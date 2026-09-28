@@ -160,6 +160,9 @@ a.calls:hover .callsValue {
   margin-bottom: 8px;
   border-radius: 22px;
   overflow: hidden;
+  /* Safari drops the rounded clip on a transformed overflow:hidden box */
+  clip-path: inset(0 round 22px);
+  isolation: isolate;
   transition: transform var(--dur) var(--ease);
 }
 .spec:hover .specPhoto {
@@ -169,6 +172,7 @@ a.calls:hover .callsValue {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: inherit;
 }
 .specInitials {
   font-size: 44px;
