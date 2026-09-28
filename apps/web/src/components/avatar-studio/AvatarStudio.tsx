@@ -4,7 +4,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type Keyboard
 import { ChevronLeft, ChevronRight, Redo2, RotateCcw, Shuffle, Smile, Undo2 } from "lucide-react";
 import { Button } from "@/ui";
 import { AvatarView, type AvatarViewHandle } from "@/components/avatar/AvatarView";
-import { avatarKey, normalizeAvatar, randomAvatar, type AvatarConfig } from "@/lib/avatar/schema";
+import { DEFAULT_AVATAR, avatarKey, baseDefault, normalizeAvatar, randomAvatar, type AvatarConfig } from "@/lib/avatar/schema";
 import { CATEGORIES, withBase, type SetField } from "./categories";
 import { headzBase } from "@/lib/avatar/headz/catalog";
 import { useHistory } from "./useHistory";
@@ -48,7 +48,7 @@ function useDebounced<T>(value: T, ms: number): T {
 const isMac = () => typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
 export function AvatarStudio({ initial, seed, onSave, saving = false, variant = "client" }: AvatarStudioProps) {
-  const start = useMemo(() => (initial ? normalizeAvatar(initial) : randomAvatar(seed)), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const start = useMemo(() => (initial ? normalizeAvatar(initial) : DEFAULT_AVATAR), []); // eslint-disable-line react-hooks/exhaustive-deps
   const hist = useHistory<AvatarConfig>(start);
   const cfg = hist.value;
   const cfgRef = useRef(cfg);
@@ -72,7 +72,7 @@ export function AvatarStudio({ initial, seed, onSave, saving = false, variant = 
 
   const shuffle = () => hist.set(randomAvatar(Date.now(), true));
   // back to the character as authored (keeps the chosen character)
-  const reset = () => hist.set(normalizeAvatar({ base: cfgRef.current.base }));
+  const reset = () => hist.set(baseDefault(cfgRef.current.base));
 
   // ── Keyboard: undo / redo ──
   const { undo, redo } = hist;

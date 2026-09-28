@@ -73,6 +73,14 @@ function Lab() {
       } else if (mode === "hands") {
         const { LAB_HAND_SCENES } = await import("@/lib/avatar/headz/hands/labSynth");
         LAB_HAND_SCENES.forEach((h, i) => jobs.push({ label: h.label, cfg: one, expr: {}, hands: i }));
+      } else if (mode === "gazegrid") {
+        // 9 gaze directions × several bases: both irises must point the same way, on the sphere
+        const { gazeWeights } = await import("@/lib/avatar/headz/gaze");
+        const dirs: [string, number, number][] = [["↖", -0.8, 0.8], ["↑", 0, 1], ["↗", 0.8, 0.8], ["←", -1, 0], ["•", 0, 0], ["→", 1, 0], ["↙", -0.8, -0.8], ["↓", 0, -1], ["↘", 0.8, -0.8]];
+        const bases = (sp.get("bases") ?? "woman-light,man-medium,girl-dark,oldman-light").split(",");
+        for (const b of bases)
+          for (const [l, h, v] of dirs)
+            jobs.push({ label: `${b} ${l}`, cfg: normalizeAvatar({ ...one, base: b, hair: undefined }), expr: gazeWeights(h, v) as Record<string, number> });
       } else if (mode === "track") {
         const T: [string, Record<string, number>][] = [
           ["raw: L out .8, R still", { eyeLookOutLeft: 0.8, eyeLookInRight: 0.05 }],
@@ -96,6 +104,24 @@ function Lab() {
         if (j.hands !== undefined) {
           const { LAB_HAND_SCENES, poseSyntheticHands } = await import("@/lib/avatar/headz/hands/labSynth");
           await poseSyntheticHands(r, j.cfg, LAB_HAND_SCENES[j.hands]);
+        } else if (j.track) {
+          // the live path: tracked blendshapes (MediaPipe names, un-mirrored) → applyFaceResult
+          r.setIdle(false);
+          r.start();
+          await r.whenReady();
+          const cats = Object.entries(j.track).map(([k, v]) => ({
+            categoryName: k.includes("Left") ? k.replace("Left", "Right") : k.replace("Right", "Left"),
+            score: v,
+          }));
+          for (let f = 0; f < 20; f++) {
+            r.applyFaceResult({ faceBlendshapes: [{ categories: cats }] } as never);
+            r.renderNow();
+            await new Promise((res) => setTimeout(res, 30));
+          }
+          r.stop();
+          r.start();
+          r.applyFaceResult({ faceBlendshapes: [{ categories: cats }] } as never);
+          r.renderNow();
         } else if (j.look) {
           // same path as the landing: lookAt → idle animation turns head and eyes
           r.setExpression({});

@@ -669,3 +669,12 @@
 .linkBtn:hover {
   color: var(--c-text);
 }
+.pickRows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+.note {
+  font-size: var(--t-13);
+  color: var(--c-muted);
+}

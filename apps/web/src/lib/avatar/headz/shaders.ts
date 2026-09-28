@@ -6,7 +6,7 @@
  *  - eye:  procedural sclera / iris / pupil for every base (the sources mix
  *          textured, flat and black cartoon eyes); wet clearcoat on top.
  *  - skin: blush, freckles, moles, age lines, lipstick, eyeshadow, lash line,
- *          hair-coloured scalp under the hair. Regions come from a per-vertex
+ *          a soft contact shadow under close-fitting hair. Regions come from a per-vertex
  *          `aFx` attribute derived from the face's own morph targets.
  *  - fade: soft alpha fade by height (the neck).
  *  - hair: two-tone tips / streak highlights from a per-vertex `aTip`.
@@ -173,7 +173,13 @@ vec3 skinFx(vec3 c) {
   float cheek = smoothstep(0.2, 0.8, vFx.z);
   float front = smoothstep(0.0, 0.3, P.z);
   // scalp under the hair
-  c = mix(c, uScalp.rgb, uScalp.a * vCover);
+  c *= 1.0 - uScalp.a * vCover;
+  // natural lips (a touch rosier than the skin) and the dark mouth cavity behind them
+  c = mix(c, c * vec3(1.0, 0.72, 0.72), 0.5 * lips);
+  float cav = smoothstep(uMouth.z - 0.1, uMouth.z - 0.2, P.z)
+    * smoothstep(uMouth.w * 1.15, uMouth.w * 0.7, abs(P.x - uMouth.x))
+    * smoothstep(0.16, 0.09, abs(P.y - uMouth.y));
+  c = mix(c, vec3(0.3, 0.07, 0.08), cav);
   // blush
   c = mix(c, c * uBlush.rgb * 1.25, uBlush.a * cheek * 0.6);
   // freckles over cheeks and the nose bridge

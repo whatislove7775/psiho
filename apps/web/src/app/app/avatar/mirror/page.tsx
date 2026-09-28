@@ -9,7 +9,7 @@ import { checkDone } from "@/components/client/sessions";
 import { AvatarThumb } from "@/components/avatar/AvatarThumb";
 import { BackdropPicker } from "@/components/avatar/BackdropPicker";
 import { useAuth } from "@/lib/auth/store";
-import { normalizeAvatar, randomAvatar } from "@/lib/avatar/schema";
+import { DEFAULT_AVATAR, normalizeAvatar } from "@/lib/avatar/schema";
 import { getBackdrop, loadBackdrop, saveBackdrop, type BackdropId } from "@/lib/avatar/backdrops";
 import { useAvatarCamera } from "@/hooks/useAvatarCamera";
 import { useVoiceTransform, type VoicePreset } from "@/hooks/useVoiceTransform";
@@ -144,7 +144,7 @@ function VoicePreview({ stream }: { stream: MediaStream | null }) {
 export default function CheckPage() {
   const user = useAuth((x) => x.user);
   const avatar = useMemo(
-    () => (user?.avatar_config ? normalizeAvatar(user.avatar_config) : randomAvatar(user?.id ?? "me")),
+    () => (user?.avatar_config ? normalizeAvatar(user.avatar_config) : DEFAULT_AVATAR),
     [user],
   );
   const [backdrop, setBackdropState] = useState<BackdropId>("dusk");

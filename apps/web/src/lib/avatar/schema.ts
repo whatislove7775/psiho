@@ -92,28 +92,39 @@ export const DEFAULT_BROWS: AvatarConfig["brows"] = { style: "natural", thicknes
 export const DEFAULT_MAKEUP: AvatarConfig["makeup"] = { lip: null, lipAmount: 0.6, shadow: null, shadowAmount: 0.5, liner: 0 };
 export const DEFAULT_ACC: AvatarConfig["acc"] = { frame: null, lens: null, hat: null, piercings: [] };
 
+/**
+ * The neutral default for anyone without a saved avatar: a plain, gender-neutral
+ * head — soft adult face, short neutral hair, mid skin tone, softened brows,
+ * no beard, make-up or accessories.
+ */
+const NEUTRAL_BASE = CATALOG.bases.find((b) => b.id === "man-light")?.id ?? DEFAULT_BASE;
 export const DEFAULT_AVATAR: AvatarConfig = {
   version: 4,
-  base: DEFAULT_BASE,
-  hair: headzBase(DEFAULT_BASE).defaults.hair ?? "none",
+  base: NEUTRAL_BASE,
+  hair: headzOptions(NEUTRAL_BASE, "hair").some((o) => o.id === "007") ? "007" : headzBase(NEUTRAL_BASE).defaults.hair ?? "none",
   beard: "none",
   eyewear: "none",
   headwear: "none",
   earrings: "none",
   mask: "none",
-  hairColor: null,
+  hairColor: "#5A3B28",
   hairTip: null,
   hairTipStyle: "tips",
   beardColor: null,
-  eyeColor: null,
-  skin: null,
+  eyeColor: "#5C3B22",
+  skin: "#D29A73",
   face: {},
   skinFx: DEFAULT_SKIN_FX,
   eyes: DEFAULT_EYES,
-  brows: DEFAULT_BROWS,
+  brows: { style: "natural", thickness: -0.35, color: null },
   makeup: DEFAULT_MAKEUP,
   acc: DEFAULT_ACC,
 };
+
+/** Plain look of a base on its own (its sold hair, authored colours) — for picking a character. */
+export function baseDefault(baseId: string): AvatarConfig {
+  return normalizeAvatar({ version: 4, base: baseId });
+}
 
 function colorOrNull(v: unknown): string | null {
   return typeof v === "string" && HEX.test(v) ? v.toUpperCase() : null;

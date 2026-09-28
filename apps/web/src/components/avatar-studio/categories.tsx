@@ -10,6 +10,7 @@ import {
   PIERCINGS,
   SHADOW_COLORS,
   SKIN_TONES,
+  baseDefault,
   nearestTone,
   type AvatarConfig,
   type FaceShape,
@@ -44,19 +45,47 @@ export const GROUP_RU: Record<HeadzGroup, string> = {
   girl: "Девочка",
   boy: "Мальчик",
 };
-const GROUPS: HeadzGroup[] = ["woman", "man", "oldwoman", "oldman", "girl", "boy"];
 const SLOTS: HeadzSlot[] = ["hair", "beard", "eyewear", "headwear", "earrings", "mask"];
 
 const THREE_Q: TileRender = { yaw: 0.45 };
 const EYES_ZOOM: TileRender = { zoom: { scale: 2.2, x: 50, y: 47 } };
 const MOUTH_ZOOM: TileRender = { zoom: { scale: 2, x: 50, y: 72 } };
 
-/** Switch base: every part fits every base now — keep them all (re-addressed for the new group). */
+type Sex = "m" | "f";
+type Age = "young" | "adult" | "old";
+const GROUP_OF: Record<Sex, Record<Age, HeadzGroup>> = {
+  m: { young: "boy", adult: "man", old: "oldman" },
+  f: { young: "girl", adult: "woman", old: "oldwoman" },
+};
+const sexOf = (g: HeadzGroup): Sex => (g === "woman" || g === "girl" || g === "oldwoman" ? "f" : "m");
+const ageOf = (g: HeadzGroup): Age => (g === "boy" || g === "girl" ? "young" : g === "oldman" || g === "oldwoman" ? "old" : "adult");
+/** only groups whose faces the beards were made for (adult men, elders) and adult women */
+const BEARD_OK = new Set<HeadzGroup>(["man", "oldman", "woman", "oldwoman"]);
+
+/**
+ * Switch base. Within the same group everything stays. Across groups the look
+ * that isn't tied to the head stays (skin, eyes, brows, face sliders, colours,
+ * make-up); parts reset to the new character's own: its hair, no beard on kids,
+ * accessories kept only when they belong to the new group.
+ */
 export function withBase(cfg: AvatarConfig, baseId: string): AvatarConfig {
-  const next: AvatarConfig = { ...cfg, base: baseId };
-  for (const slot of SLOTS) next[slot] = requalify(cfg.base, baseId, slot, cfg[slot]);
-  if (next.hair === "none" && cfg.hair !== "none") next.hair = headzBase(baseId).defaults.hair ?? "none";
-  return next;
+  const from = headzBase(cfg.base).group;
+  const to = headzBase(baseId).group;
+  if (from === to) return { ...cfg, base: baseId };
+  const own = (slot: HeadzSlot) => {
+    const q = requalify(cfg.base, baseId, slot, cfg[slot]);
+    return q.includes(".") ? "none" : q;
+  };
+  return {
+    ...cfg,
+    base: baseId,
+    hair: headzBase(baseId).defaults.hair ?? "none",
+    beard: BEARD_OK.has(to) && (to === "man" || to === "oldman") ? requalify(cfg.base, baseId, "beard", cfg.beard) : "none",
+    eyewear: own("eyewear"),
+    headwear: own("headwear"),
+    earrings: own("earrings"),
+    mask: own("mask"),
+  };
 }
 
 /** Short Russian names for part options. */
@@ -124,9 +153,13 @@ const FACE_SLIDERS: { title: string; items: [FaceShape, string][] }[] = [
 
 function Face(p: CategoryProps) {
   const cur = headzBase(p.cfg.base);
-  const byGroup = (g: HeadzGroup) => CATALOG.bases.find((b) => b.group === g && b.tone === cur.tone) ?? CATALOG.bases.find((b) => b.group === g)!;
-  const groups = GROUPS.filter((g) => CATALOG.bases.some((b) => b.group === g));
-  const groupBase = Object.fromEntries(groups.map((g) => [g, byGroup(g).id])) as Record<HeadzGroup, string>;
+  const sex = sexOf(cur.group), age = ageOf(cur.group);
+  // same tone family when switching character, the variant tiles pick the face
+  const pick = (g: HeadzGroup) => (CATALOG.bases.find((b) => b.group === g && b.tone === cur.tone) ?? CATALOG.bases.find((b) => b.group === g))?.id;
+  const go = (s2: Sex, a2: Age) => {
+    const id = pick(GROUP_OF[s2][a2]);
+    if (id && id !== cur.id) p.set("base", id);
+  };
   const variants = CATALOG.bases.filter((b) => b.group === cur.group);
   const setFace = (k: FaceShape, v: number) => {
     const face = { ...p.cfg.face, [k]: v };
@@ -136,14 +169,16 @@ function Face(p: CategoryProps) {
   return (
     <>
       <Section title="Персонаж">
-        <OptionGrid
-          ariaLabel="Персонаж"
-          options={groups}
-          labels={GROUP_RU}
-          value={cur.group}
-          preview={(g) => withBase(p.tileCfg, groupBase[g])}
-          onSelect={(g) => p.set("base", groupBase[g])}
-        />
+        <div className={s.pickRows}>
+          <div className={s.inlineRow} style={{ marginTop: 0 }}>
+            <span className={s.rangeLabel}>Пол</span>
+            <Chips label="Пол" options={["m", "f"] as const} labels={{ m: "Мужской", f: "Женский" }} value={sex} onChange={(v) => go(v, age)} />
+          </div>
+          <div className={s.inlineRow} style={{ marginTop: 0 }}>
+            <span className={s.rangeLabel}>Возраст</span>
+            <Chips label="Возраст" options={["young", "adult", "old"] as const} labels={{ young: "Молодой", adult: "Средний", old: "Пожилой" }} value={age} onChange={(v) => go(sex, v)} />
+          </div>
+        </div>
       </Section>
       <Section title="Черты лица">
         <OptionGrid
@@ -151,7 +186,8 @@ function Face(p: CategoryProps) {
           options={variants.map((b) => b.id)}
           labels={Object.fromEntries(variants.map((b, i) => [b.id, `Вариант ${i + 1}`]))}
           value={cur.id}
-          preview={(id) => ({ ...withBase(p.tileCfg, id), skin: p.tileCfg.skin ?? cur.skin })}
+          // each variant as sold — its own hair and colours, none of the current parts
+          preview={(id) => baseDefault(id)}
           onSelect={(id) => p.set("base", id)}
         />
       </Section>
@@ -306,6 +342,12 @@ function Hair(p: CategoryProps) {
 // ── Борода ────────────────────────────────────────────────────────────────────
 
 function Beard(p: CategoryProps) {
+  if (!BEARD_OK.has(headzBase(p.cfg.base).group))
+    return (
+      <Section title="Борода и усы">
+        <p className={s.note}>Для детских персонажей бороды нет.</p>
+      </Section>
+    );
   return (
     <>
       <PartGrid p={p} slot="beard" title="Борода и усы" render={MOUTH_ZOOM} />

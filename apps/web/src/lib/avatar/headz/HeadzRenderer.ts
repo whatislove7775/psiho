@@ -26,9 +26,10 @@ import { normalizeAvatar, type AvatarConfig, type BrowStyle } from "../schema";
 import type { AvatarRendererApi, FaceResult, Framing, RendererOptions } from "../kit/types";
 import { headzBase, headzRimQ, resolvePart } from "./catalog";
 import type { HeadzBase, HeadzSlot } from "./types";
-import { deformFace, deformedEye, fitRadial, frameOf, radiusAt, radiusMap, transferMorphs, type RadiusMap } from "./deform";
+import { deformFace, deformedEye, fitRadial, frameOf, radiusAt, radiusMap, seatOnSkin, transferMorphs, type RadiusMap } from "./deform";
 import { combineEyes, gazeOf, gazeWeights, withLidFollow, type Weights } from "./gaze";
 import { eyeUniforms, hairUniforms, patchEye, patchFade, patchHair, patchSkin, skinUniforms } from "./shaders";
+import { EyeRig, OneEuro, irisUniforms, makeCorneaMaterial, makeIrisMaterial, makeScleraMaterial, type EyeSpec } from "./eyes";
 
 const loader = new GLTFLoader();
 loader.setMeshoptDecoder(MeshoptDecoder);
@@ -122,6 +123,12 @@ const srgb = (hex: string) => new THREE.Color(hex);
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 const WITH_NECK = false;
+/** eye mesh roles of the sources — replaced by the rigid EyeRig */
+const EYE_ROLES = new Set(["iris", "pupil", "eyeWhite"]);
+/** eyeLook* on the FACE (lids, skin around the eyes) only follows the gaze a little */
+const LID_FOLLOW = 0.3;
+/** MediaPipe's eyeLook scores rarely exceed ~0.7: scale to the full physiological range */
+const GAZE_GAIN = 1.35;
 
 export class HeadzRenderer implements AvatarRendererApi {
   readonly canvas: HTMLCanvasElement;
@@ -152,6 +159,13 @@ export class HeadzRenderer implements AvatarRendererApi {
   private hatPlane = new THREE.Plane();
 
   private eyeU = eyeUniforms();
+  private irisU = irisUniforms();
+  private eyeMats = { sclera: makeScleraMaterial(), iris: makeIrisMaterial(this.irisU), cornea: makeCorneaMaterial() };
+  private eyeRig = new EyeRig(this.eyeMats);
+  /** source eye meshes hidden in favour of the rig (per-side bounds for the socket fit) */
+  private eyeBounds: [THREE.Box3, THREE.Box3] | null = null;
+  /** tracked gaze: One-Euro filtered, held while blinking / when the tracker is unsure */
+  private trackGaze = { h: 0, v: 0, t: 0, fh: new OneEuro(2.5, 0.6), fv: new OneEuro(2.5, 0.6) };
   private skinU = skinUniforms();
   private hairU = hairUniforms();
   private beardU = hairUniforms();
@@ -231,6 +245,7 @@ export class HeadzRenderer implements AvatarRendererApi {
     this.headPivot.add(this.head);
     this.root.add(this.headPivot);
     this.scene.add(this.root);
+    this.head.add(this.eyeRig.group);
     patchEye(this.mats.eye, this.eyeU);
     patchHair(this.mats.hair, this.hairU);
     patchHair(this.mats.beard, this.beardU);
@@ -291,6 +306,7 @@ export class HeadzRenderer implements AvatarRendererApi {
       this.map = map;
       this.head.add(g);
       for (const o of owned) if (isSkin(o)) this.skinFx(o);
+      this.adoptEyes(base);
       this.buildNeck(base);
       this.shapeKey = "";
       // parts belong to a base: drop them so they reload for the new one
@@ -317,6 +333,30 @@ export class HeadzRenderer implements AvatarRendererApi {
     this.applyRig();
   }
 
+  /**
+   * Replace the source eyes (shape-key driven, asymmetric) by the rigid EyeRig:
+   * hide them, stop driving them, and remember their per-side bounds to fit the socket.
+   */
+  private adoptEyes(base: HeadzBase) {
+    const src = this.owned.filter((o) => EYE_ROLES.has(o.mesh.userData.role as string));
+    if (this.lod || !base.eyes?.L || !base.eyes?.R || !src.length) {
+      this.eyeBounds = null;
+      this.eyeRig.group.visible = false;
+      return;
+    }
+    const boxes: [THREE.Box3, THREE.Box3] = [new THREE.Box3(), new THREE.Box3()];
+    const v = new THREE.Vector3();
+    for (const o of src) {
+      for (let i = 0; i < o.rest.length; i += 3) {
+        v.set(o.rest[i], o.rest[i + 1], o.rest[i + 2]);
+        boxes[v.x > 0 ? 0 : 1].expandByPoint(v);
+      }
+      o.mesh.visible = false;
+    }
+    this.driven = this.driven.filter((d) => !EYE_ROLES.has(d.mesh.userData.role as string));
+    this.eyeBounds = boxes;
+  }
+
   /** Build our own mesh (own geometry wrapper, own morph influences, restyled material) from a loaded mesh. */
   private adopt(src: THREE.Mesh, kind: "face" | HeadzSlot, faceMats?: HeadzRenderer["faceMats"]): THREE.Mesh | null {
     const srcMat = (Array.isArray(src.material) ? src.material[0] : src.material) as THREE.MeshStandardMaterial;
@@ -327,17 +367,20 @@ export class HeadzRenderer implements AvatarRendererApi {
       case "skin":
       case "skinDetail":
       case "mouth": {
+        // "mouth" in the sources is the lip/mouth-corner skin (+ the cavity): it gets the face's skin
+        // colour too — lips and the dark mouth interior are painted by the skin shader (no muzzle patch)
         const m = new THREE.MeshPhysicalMaterial({
           color: srcMat.map ? 0xffffff : srcMat.color,
           map: srcMat.map ?? null,
-          roughness: role === "mouth" ? 0.3 : 0.5,
-          sheen: role === "mouth" ? 0 : 0.45,
+          roughness: 0.5,
+          sheen: 0.45,
           sheenRoughness: 0.55,
-          clearcoat: role === "mouth" ? 0.2 : 0.04,
+          clearcoat: role === "mouth" ? 0.12 : 0.04,
           clearcoatRoughness: 0.6,
         });
         m.name = role;
-        if (role !== "mouth") patchSkin(m, this.skinU);
+        m.userData.map = srcMat.map ?? null;
+        patchSkin(m, this.skinU);
         faceMats?.push({ mat: m, role, src: srcMat.color.clone(), mapped: !!srcMat.map });
         mat = m;
         break;
@@ -467,7 +510,13 @@ export class HeadzRenderer implements AvatarRendererApi {
           if (!m) return;
           g.add(m);
           const ow = this.own(m, slot);
-          if (srcMap && this.map) fitRadial(ow.rest, srcMap, this.map);
+          if (srcMap && this.map) {
+            // made for another head: re-seat it (coarse radius maps), then snap its skin-side layer to our skin
+            const heights = fitRadial(ow.rest, srcMap, this.map);
+            const sk = this.skinSurface();
+            seatOnSkin(ow.rest, heights, sk.pos, sk.nrm);
+          }
+          if (slot === "hair") liftHair(ow.rest);
           owned.push(ow);
         });
         if (FOLLOW_SLOTS.has(slot) && !this.lod)
@@ -603,7 +652,7 @@ export class HeadzRenderer implements AvatarRendererApi {
     geo.setAttribute("aCover", new THREE.BufferAttribute(new Float32Array(n), 1));
   }
 
-  /** Hair tint on the scalp wherever close-fitting hair covers it (no skin/black gaps between strands). */
+  /** Where close-fitting hair covers the scalp (for a very soft contact shadow only — never a colour patch). */
   private scalpCover() {
     const hair = this.parts.hair?.owned ?? [];
     const EL = 32, AZ = 64;
@@ -725,6 +774,29 @@ export class HeadzRenderer implements AvatarRendererApi {
     this.shapeKey = "";
   }
 
+  /** Skin points + normals in head space (rest pose). */
+  private skinSurface(): { pos: Float32Array; nrm: Float32Array } {
+    const skin = this.owned.filter(isSkin);
+    const n = skin.reduce((s, o) => s + o.rest.length, 0);
+    const pos = new Float32Array(n), nrm = new Float32Array(n);
+    let off = 0;
+    const m3 = new THREE.Matrix3();
+    const v = new THREE.Vector3();
+    for (const o of skin) {
+      pos.set(o.rest, off);
+      m3.getNormalMatrix(o.mesh.matrix);
+      const a = o.mesh.geometry.getAttribute("normal");
+      for (let i = 0; a && i < a.count; i++) {
+        v.set(a.getX(i), a.getY(i), a.getZ(i)).applyMatrix3(m3).normalize();
+        nrm[off + i * 3] = v.x;
+        nrm[off + i * 3 + 1] = v.y;
+        nrm[off + i * 3 + 2] = v.z;
+      }
+      off += o.rest.length;
+    }
+    return { pos, nrm };
+  }
+
   private skinPoints(attr: "rest" | "aHead" = "rest"): Float32Array {
     const skin = this.owned.filter(isSkin);
     const out = new Float32Array(skin.reduce((s, o) => s + o.rest.length, 0));
@@ -776,11 +848,37 @@ export class HeadzRenderer implements AvatarRendererApi {
       const iris = Math.max(e.iris, 29);
       this.eyeU.uEyeAng.value[i].set(THREE.MathUtils.degToRad(iris), THREE.MathUtils.degToRad(Math.max(e.pupil, iris * 0.4)));
     });
+    this.placeEyes(base, c, f);
     const pts = new Float32Array([...f.nose, ...f.mouth]);
     deformFace(pts, c.face, f);
     this.skinU.uNose.value.set(pts[0], pts[1], pts[2]);
     this.skinU.uMouth.value.set(pts[3], pts[4], pts[5], f.mouthHalf * (1 + 0.2 * (c.face.mouthWidth ?? 0)));
     this.placeMoles(c, f);
+  }
+
+  private placeEyes(base: HeadzBase, c: AvatarConfig, f: ReturnType<typeof frameOf>) {
+    const bounds = this.eyeBounds;
+    if (!bounds || !base.eyes?.L || !base.eyes?.R) return;
+    const specs = (["L", "R"] as const).map((k, i) => {
+      const e = base.eyes![k]!;
+      const d = deformedEye(e, c.face, f);
+      const size = bounds[i].getSize(new THREE.Vector3());
+      // sockets of stylised eyes are a little oval: stretch the sphere to the authored eyeball, within reason
+      const fit = (half: number) => Math.min(1.2, Math.max(0.85, half / e.r));
+      const k0 = d.r / e.r;
+      // small authored irises (kids, elders) are opened up a little: reads livelier, like Memoji
+      const iris = THREE.MathUtils.degToRad(Math.min(38, Math.max(e.iris, 29)));
+      // depth: how far the authored eyeball reaches in front of its centre (flattened cartoon eyes)
+      const sz = Math.min(1.05, Math.max(0.6, (bounds[i].max.z - e.c[2]) / e.r));
+      return { c: d.c, r: e.r * k0, sx: fit(size.x / 2), sy: fit(size.y / 2), sz, iris } satisfies EyeSpec;
+    }) as [EyeSpec, EyeSpec];
+    // both eyes identical in size and iris (only mirrored in place): no lopsided look
+    const avg = (k: "sx" | "sy" | "sz" | "r") => (specs[0][k] + specs[1][k]) / 2;
+    const same = { sx: avg("sx"), sy: avg("sy"), sz: avg("sz"), r: avg("r"), iris: specs[0].iris };
+    for (const sp of specs) Object.assign(sp, same);
+    this.eyeRig.place(specs);
+    const e0 = base.eyes.L;
+    this.irisU.uPupil.value = Math.min(0.5, Math.max(0.36, e0.pupil / Math.max(e0.iris, 1)));
   }
 
   private placeMoles(c: AvatarConfig, f: ReturnType<typeof frameOf>) {
@@ -806,8 +904,14 @@ export class HeadzRenderer implements AvatarRendererApi {
     const skin = c.skin ? srgb(c.skin) : baseSkin;
     const sheen = skin.clone().lerp(new THREE.Color("#ffd9cf"), 0.5);
     for (const f of this.faceMats) {
-      if (f.role === "skin" || f.role === "skinDetail") {
-        if (f.mapped) {
+      if (f.role === "skin" || f.role === "skinDetail" || f.role === "mouth") {
+        // painted skin textures only fit their own tone: a chosen tone uses the flat colour
+        const map = c.skin || f.role === "mouth" ? null : ((f.mat.userData.map as THREE.Texture | null) ?? null);
+        if (f.mat.map !== map) {
+          f.mat.map = map;
+          f.mat.needsUpdate = true;
+        }
+        if (map) {
           // texture carries the authored tone; tint by the ratio to reach the chosen one
           f.mat.color.setRGB(
             Math.min(2, skin.r / Math.max(0.02, baseSkin.r)),
@@ -838,6 +942,8 @@ export class HeadzRenderer implements AvatarRendererApi {
     // eyes
     this.eyeU.uIrisColor.value.copy(srgb(c.eyeColor ?? irisDefault(base)));
     this.eyeU.uIrisStyle.value = ["natural", "ring", "cartoon", "bright"].indexOf(c.eyes.style);
+    this.irisU.uIrisColor.value.copy(this.eyeU.uIrisColor.value);
+    this.irisU.uIrisStyle.value = this.eyeU.uIrisStyle.value;
     // skin details + make-up
     const S = this.skinU;
     S.uBlush.value.set(1, 0.62, 0.62, c.skinFx.blush);
@@ -850,8 +956,8 @@ export class HeadzRenderer implements AvatarRendererApi {
     // a subtle lash line for everyone; eyeliner makes it bolder
     const liner = new THREE.Color("#1d1512").lerp(skin, 0.35 - 0.35 * c.makeup.liner);
     S.uLiner.value.set(liner.r, liner.g, liner.b, 0.28 + 0.62 * c.makeup.liner);
-    // gaps between dark strands read as holes; light hair over skin doesn't need it
-    S.uScalp.value.set(hair.r * 0.8, hair.g * 0.8, hair.b * 0.8, 0.9 * (1 - 0.8 * hair.getHSL({ h: 0, s: 0, l: 0 }).l));
+    // no painted scalp: only a very soft contact shadow under close-fitting hair
+    S.uScalp.value.set(0, 0, 0, this.parts.hair?.owned.length ? 0.1 : 0);
     // accessory colours
     for (const m of this.partMats) {
       const pm = m as THREE.MeshPhysicalMaterial;
@@ -886,7 +992,18 @@ export class HeadzRenderer implements AvatarRendererApi {
       }
       // both eyes share one gaze; lids agree unless it's a real wink
       this.targets = combineEyes(raw) as Partial<Record<Shape, number>>;
-      this.lastTrack = performance.now();
+      const now = performance.now();
+      const G = this.trackGaze;
+      const blink = ((raw.eyeBlinkLeft ?? 0) + (raw.eyeBlinkRight ?? 0)) / 2;
+      // closed / closing eyes report garbage gaze: hold the last one
+      if (blink < 0.45) {
+        const g = gazeOf(raw);
+        const dt = G.t ? Math.min(0.2, (now - G.t) / 1000) : 1 / 30;
+        G.h = G.fh.filter(Math.max(-1, Math.min(1, g.h * GAZE_GAIN)), dt);
+        G.v = G.fv.filter(Math.max(-1, Math.min(1, g.v * GAZE_GAIN)), dt);
+        G.t = now;
+      }
+      this.lastTrack = now;
     }
     const mtx = result.facialTransformationMatrixes?.[0]?.data;
     if (mtx && mtx.length >= 16) {
@@ -985,7 +1102,8 @@ export class HeadzRenderer implements AvatarRendererApi {
     const w: Weights = { ...this.manual };
     // still frames: the same conjugate gaze + lid follow as live
     const g = gazeOf(w);
-    Object.assign(w, gazeWeights(g.h, g.v));
+    this.eyeRig.snap(g.h, g.v);
+    Object.assign(w, scaled(gazeWeights(g.h, g.v), this.eyeRig.group.visible ? LID_FOLLOW : 1));
     withLidFollow(w, g.v);
     for (const [k, v] of Object.entries(w)) {
       const i = SHAPE_INDEX.get(k);
@@ -1048,6 +1166,8 @@ export class HeadzRenderer implements AvatarRendererApi {
     Object.values(this.mats).forEach((m) => m.dispose());
     this.faceMats.forEach((f) => f.mat.dispose());
     this.partMats.forEach((m) => m.dispose());
+    Object.values(this.eyeMats).forEach((m) => m.dispose());
+    this.eyeRig.dispose();
     this.neck?.geometry.dispose();
     this.scene.environment?.dispose();
     this.renderer.dispose();
@@ -1065,7 +1185,7 @@ export class HeadzRenderer implements AvatarRendererApi {
       I.sx = (Math.random() * 2 - 1) * 0.045;
       I.sy = (Math.random() * 2 - 1) * 0.03;
     }
-    let gaze = gazeOf(target);
+    let gaze = tracking ? { h: this.trackGaze.h, v: this.trackGaze.v } : gazeOf(target);
     if (!tracking && this.opts.idle) {
       // natural blinks: every 2–6 s, sometimes a double blink
       if (I.blinkT < 0 && t > I.nextBlink) {
@@ -1099,10 +1219,14 @@ export class HeadzRenderer implements AvatarRendererApi {
     }
     // one gaze for both eyes (+ micro-saccades); lids follow it (tracked lids already include it)
     const h = Math.max(-1, Math.min(1, gaze.h + I.sx)), v = Math.max(-1, Math.min(1, gaze.v + I.sy));
-    Object.assign(target, gazeWeights(h, v));
+    // the eyeballs rotate rigidly (critically damped); the face only follows with the lids
+    this.eyeRig.update(h, v, dt);
+    const eg = this.eyeRig.group.visible ? this.eyeRig.gaze : { h, v };
+    Object.assign(target, scaled(gazeWeights(eg.h, eg.v), this.eyeRig.group.visible ? LID_FOLLOW : 1));
     if (!tracking) withLidFollow(target, v);
     // pupils breathe a little and widen when the eyes open wide
     this.eyeU.uDilate.value = 0.06 * Math.sin(t * 0.37) + 0.04 * Math.sin(t * 1.13) + 0.25 * ((this.current[20] + this.current[21]) / 2);
+    this.irisU.uDilate.value = this.eyeU.uDilate.value;
     // Tracked input is already One-Euro filtered (FaceTracker), so it is followed almost directly.
     const k = 1 - Math.exp(-dt * (tracking ? TRACK_RATE : 14));
     const kb = 1 - Math.exp(-dt * (tracking ? TRACK_RATE : 40));
@@ -1139,6 +1263,20 @@ export class HeadzRenderer implements AvatarRendererApi {
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
+/** Hair sits a hair's breadth off the scalp: no z-fighting / skin showing through strand gaps. */
+function liftHair(p: Float32Array) {
+  for (let i = 0; i < p.length; i += 3) {
+    p[i] *= 1.006;
+    p[i + 1] = p[i + 1] * 1.006;
+    p[i + 2] *= 1.006;
+  }
+}
+
+function scaled(w: Weights, k: number): Weights {
+  for (const key of Object.keys(w)) w[key] = (w[key] ?? 0) * k;
+  return w;
+}
+
 function smooth(a: number, b: number, x: number) {
   const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
@@ -1150,7 +1288,7 @@ function roleOf(src: THREE.Mesh): string {
 
 function isSkin(o: Owned): boolean {
   const r = o.mesh.userData.role as string;
-  return r === "skin" || r === "skinDetail";
+  return r === "skin" || r === "skinDetail" || r === "mouth";
 }
 
 /** Free the GPU buffers we created for a mesh (shared GLB attributes stay with the cache). */

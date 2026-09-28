@@ -93,7 +93,17 @@ test("parts of any group resolve on any base (cross-group ids)", () => {
   assert.equal(c.hair, foreign.qid);
   const r = resolvePart("woman-light", "hair", foreign.qid);
   assert.ok(r && r.src.startsWith("man-") && r.url.endsWith(".glb"));
-  assert.equal(normalizeAvatar({ ...DEFAULT_AVATAR, hair: "nope.001" }).hair, DEFAULT_AVATAR.hair);
+  const fallback = CATALOG.bases.find((b) => b.id === DEFAULT_AVATAR.base).defaults.hair;
+  assert.equal(normalizeAvatar({ ...DEFAULT_AVATAR, hair: "nope.001" }).hair, fallback);
+});
+
+test("the default avatar is neutral: no beard, make-up or accessories", () => {
+  const d = DEFAULT_AVATAR;
+  assert.deepEqual(normalizeAvatar(d), d);
+  for (const k of ["beard", "eyewear", "headwear", "earrings", "mask"]) assert.equal(d[k], "none");
+  assert.equal(d.makeup.lip, null);
+  assert.deepEqual(d.face, {});
+  assert.deepEqual(d.acc.piercings, []);
 });
 
 test("randomAvatar is deterministic and always valid", () => {

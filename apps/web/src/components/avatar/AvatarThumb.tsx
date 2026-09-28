@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { normalizeAvatar, randomAvatar, type AvatarConfig } from "@/lib/avatar/schema";
+import { DEFAULT_AVATAR, normalizeAvatar, type AvatarConfig } from "@/lib/avatar/schema";
 import { headzBase } from "@/lib/avatar/headz/catalog";
 
 /**
  * Static picture of an avatar (rendered once by a shared offscreen WebGL
  * renderer, cached as a data URL). Use for lists, sidebars, cards.
- * If `config` is null a stable random face is derived from `seed`.
+ * If `config` is null the neutral default avatar is shown (`seed` is kept for API compatibility).
  */
 export function AvatarThumb({
   config,
@@ -27,7 +27,7 @@ export function AvatarThumb({
   background?: string;
   alt?: string;
 }) {
-  const cfg = useMemo(() => (config ? normalizeAvatar(config) : randomAvatar(seed)), [config, seed]);
+  const cfg = useMemo(() => (config ? normalizeAvatar(config) : DEFAULT_AVATAR), [config]);
   const [src, setSrc] = useState<string | null>(null);
 
   useEffect(() => {

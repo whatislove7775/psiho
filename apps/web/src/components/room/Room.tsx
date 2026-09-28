@@ -42,7 +42,7 @@ import { labApi, type LabJoinResponse } from "@/lib/api/lab";
 import { callsApi, type CallIssue, type CallTech } from "@/lib/api/calls";
 import type { JoinResponse, Session } from "@/lib/api/types";
 import { useAuth, homeFor } from "@/lib/auth/store";
-import { normalizeAvatar, randomAvatar } from "@/lib/avatar/schema";
+import { DEFAULT_AVATAR, normalizeAvatar, randomAvatar } from "@/lib/avatar/schema";
 import { when } from "@/lib/format";
 import { AvatarThumb } from "@/components/avatar/AvatarThumb";
 import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
@@ -180,7 +180,7 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
           ? randomAvatar(labJoin?.test_room.id ?? "lab")
           : user?.avatar_config
             ? normalizeAvatar(user.avatar_config)
-            : randomAvatar(user?.id ?? labJoin?.test_room.id ?? "me"),
+            : DEFAULT_AVATAR,
     [user, labAvatar, labJoin?.test_room.id, isLab],
   );
   const [backdrop, setBackdropState] = useState<BackdropId>("dusk");

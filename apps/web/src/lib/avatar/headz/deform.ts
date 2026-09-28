@@ -51,16 +51,71 @@ export function radiusAt(m: RadiusMap, x: number, y: number, z: number): number 
   return (v(e0, a0) * (1 - ta) + v(e0, a1) * ta) * (1 - te) + (v(e1, a0) * (1 - ta) + v(e1, a1) * ta) * te;
 }
 
-/** In place: re-seat points made for the `src` head onto the `dst` head. */
-export function fitRadial(pos: Float32Array, src: RadiusMap, dst: RadiusMap) {
-  for (let i = 0; i < pos.length; i += 3) {
+/**
+ * In place: re-seat points made for the `src` head onto the `dst` head.
+ * Returns each point's height above the source skin (for seatOnSkin).
+ */
+export function fitRadial(pos: Float32Array, src: RadiusMap, dst: RadiusMap): Float32Array {
+  const h = new Float32Array(pos.length / 3);
+  for (let i = 0, j = 0; i < pos.length; i += 3, j++) {
     const x = pos[i], y = pos[i + 1], z = pos[i + 2];
     const r = Math.hypot(x, y, z);
     if (r < 1e-4) continue;
-    const k = (r + radiusAt(dst, x, y, z) - radiusAt(src, x, y, z)) / r;
+    const rs = radiusAt(src, x, y, z);
+    h[j] = r - rs;
+    const k = (r + radiusAt(dst, x, y, z) - rs) / r;
     pos[i] = x * k;
     pos[i + 1] = y * k;
     pos[i + 2] = z * k;
+  }
+  return h;
+}
+
+/**
+ * In place: the radius maps are coarse (≈0.1 head units per cell), so after a
+ * cross-base fit the layer of a part that lay ON the source skin (beard roots,
+ * hair caps, mask) can float or sink. Snap those points (source height < band)
+ * to the real target skin along its normal: height kept, never less than `clearance`.
+ */
+export function seatOnSkin(pos: Float32Array, heights: Float32Array, skin: Float32Array, normals: Float32Array, clearance = 0.012, band = 0.09) {
+  const cell = 0.06;
+  const grid = new Map<string, number[]>();
+  const key = (x: number, y: number, z: number) => `${Math.floor(x / cell)},${Math.floor(y / cell)},${Math.floor(z / cell)}`;
+  for (let i = 0; i < skin.length / 3; i++) {
+    const k = key(skin[i * 3], skin[i * 3 + 1], skin[i * 3 + 2]);
+    let a = grid.get(k);
+    if (!a) grid.set(k, (a = []));
+    a.push(i);
+  }
+  for (let p = 0; p < heights.length; p++) {
+    const h0 = heights[p];
+    if (h0 > band) continue;
+    const x = pos[p * 3], y = pos[p * 3 + 1], z = pos[p * 3 + 2];
+    const gx = Math.floor(x / cell), gy = Math.floor(y / cell), gz = Math.floor(z / cell);
+    let best = Infinity, bi = -1;
+    for (let dx = -2; dx <= 2; dx++)
+      for (let dy = -2; dy <= 2; dy++)
+        for (let dz = -2; dz <= 2; dz++) {
+          const a = grid.get(`${gx + dx},${gy + dy},${gz + dz}`);
+          if (!a) continue;
+          for (const i of a) {
+            const d = (skin[i * 3] - x) ** 2 + (skin[i * 3 + 1] - y) ** 2 + (skin[i * 3 + 2] - z) ** 2;
+            if (d < best) {
+              best = d;
+              bi = i;
+            }
+          }
+        }
+    if (bi < 0) continue;
+    const nx = normals[bi * 3], ny = normals[bi * 3 + 1], nz = normals[bi * 3 + 2];
+    const along = (x - skin[bi * 3]) * nx + (y - skin[bi * 3 + 1]) * ny + (z - skin[bi * 3 + 2]) * nz;
+    const want = Math.max(clearance, h0);
+    // blend out toward the top of the band so thick parts keep their shape
+    const w = 1 - Math.max(0, (h0 - band * 0.6) / (band * 0.4));
+    const d = (want - along) * w;
+    pos[p * 3] += nx * d;
+    pos[p * 3 + 1] += ny * d;
+    pos[p * 3 + 2] += nz * d;
   }
 }
 
