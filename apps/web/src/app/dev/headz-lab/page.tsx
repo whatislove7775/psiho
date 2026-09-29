@@ -5,6 +5,7 @@
  *   ?mode=expr&base=woman-light&hair=…   expressions of one config
  *   ?mode=bases                          every base, neutral
  *   ?mode=parts&base=…&slot=hair         every option of a slot on a base
+ *   ?mode=fit&base=…&slot=hair[&all=1]   every option the studio offers on a base (all=1: also the rejected ones, marked ✕)
  *   ?mode=random                         seeded random configs
  *   ?mode=gaze                           lookAt left/centre/right/up/down
  *   ?mode=hands&base=…                   «synthetic hands»: floating hands posed from synthetic landmarks
@@ -13,7 +14,7 @@
 import { notFound, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { DEFAULT_AVATAR, normalizeAvatar, randomAvatar, type AvatarConfig } from "@/lib/avatar/schema";
-import { CATALOG, headzOptions } from "@/lib/avatar/headz/catalog";
+import { CATALOG, fitGate, fitsBase, headzOptions, headzOptionsAll } from "@/lib/avatar/headz/catalog";
 import type { HeadzSlot } from "@/lib/avatar/headz/types";
 
 const EXPR: [string, Record<string, number>][] = [
@@ -65,6 +66,15 @@ function Lab() {
         const slot = (sp.get("slot") ?? "hair") as HeadzSlot;
         jobs.push({ label: "none", cfg: { ...one, [slot]: "none" }, expr: {} });
         for (const o of headzOptions(one.base, slot)) jobs.push({ label: `${slot} ${o.id}`, cfg: { ...one, [slot]: o.id }, expr: {} });
+      } else if (mode === "fit") {
+        const slot = (sp.get("slot") ?? "hair") as HeadzSlot;
+        const all = sp.get("all") === "1";
+        const base = sp.get("base") ?? one.base;
+        const plain = normalizeAvatar({ version: 4, base, hair: slot === "hair" ? "none" : undefined });
+        fitGate.on = true; // (effects run twice in dev)
+        const opts = headzOptionsAll(base, slot, all).map((o) => ({ ...o, ok: fitsBase(base, slot, o.qid) }));
+        fitGate.on = !all;
+        for (const o of opts) jobs.push({ label: `${o.ok ? "" : "✕ "}${o.qid}`, cfg: { ...plain, [slot]: o.qid }, expr: {} });
       } else if (mode === "random") {
         for (let i = 1; i <= 16; i++) {
           const cfg = randomAvatar(i * 7919);

@@ -169,7 +169,7 @@ export default function BusinessLanding() {
             <p className={l.lead}>
               Мы&nbsp;не&nbsp;обещаем волшебных процентов. Считайте эффект на&nbsp;своих метриках&nbsp;— текучесть, больничные, вовлечённость&nbsp;— до&nbsp;и&nbsp;после пилота.
             </p>
-            <AvatarDecor pics={["thumbs", "peace"]} size={200} from={1200} className={s.whyDecor} />
+            <AvatarDecor heads={["lev", "sonya"]} size={200} from={1200} className={s.whyDecor} />
           </div>
           <div className={s.cards}>
             <div className={s.card}>
@@ -253,7 +253,7 @@ export default function BusinessLanding() {
               <p className={l.lead}>
                 Не&nbsp;нашли ответ? Напишите на <a href="mailto:b2b@aprosop.ru">b2b@aprosop.ru</a>.
               </p>
-              <AvatarDecor pics={["hello"]} size={180} from={1200} className={l.faqDecor} />
+              <AvatarDecor heads={["vera"]} size={180} from={1200} className={l.faqDecor} />
             </div>
             <BizFaq />
           </div>

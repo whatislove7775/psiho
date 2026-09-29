@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { Banknote, CreditCard, Info, Landmark, Receipt, Send, Smartphone, Wallet } from "lucide-react";
-import { Badge, Button, Card, CardHead, CollapsibleCard, Input, Modal, Segmented, Skeleton, useToast } from "@/ui";
+import { Badge, Button, Card, CardHead, CollapsibleCard, Input, Modal, Segmented, Select, Skeleton, useToast } from "@/ui";
 import { PageHeader, WithRail } from "@/components/shell/AppShell";
 import { useLoad } from "@/components/client/useLoad";
 import { ErrorBlock } from "@/components/client/ClientBits";
 import { ApiError } from "@/lib/api/client";
 import { billingApi, rubK, type Earnings, type PayoutKind, type TaxStatus } from "@/lib/api/billing";
 import { dayShort, time } from "@/lib/format";
+import { BANKS, OTHER_BANK } from "@/lib/banks";
 import s from "@/components/billing/billing.module.css";
 import ov from "@/app/pro/overview.module.css";
 
@@ -215,6 +216,7 @@ function MethodModal({ open, current, onClose, onSaved }: { open: boolean; curre
   const [kind, setKind] = useState<Exclude<PayoutKind, "card_token">>(current?.method?.kind === "bank_account" ? "bank_account" : "sbp");
   const [tax, setTax] = useState<TaxStatus>(current?.method?.tax_status ?? "self_employed");
   const [f, setF] = useState<Record<string, string>>({});
+  const [bank, setBank] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = (k: string) => (ev: React.ChangeEvent<HTMLInputElement>) => setF((x) => ({ ...x, [k]: ev.target.value }));
@@ -223,8 +225,10 @@ function MethodModal({ open, current, onClose, onSaved }: { open: boolean; curre
     setBusy(true);
     setError(null);
     try {
-      await billingApi.setPayoutMethod({ kind, tax_status: tax, ...f });
+      const bank_name = kind === "sbp" ? (bank === OTHER_BANK ? (f.bank_name ?? "").trim() : bank) : undefined;
+      await billingApi.setPayoutMethod({ kind, tax_status: tax, ...f, ...(bank_name !== undefined ? { bank_name } : {}) });
       setF({});
+      setBank("");
       onSaved();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Не\u00a0получилось сохранить.");
@@ -257,7 +261,16 @@ function MethodModal({ open, current, onClose, onSaved }: { open: boolean; curre
         {kind === "sbp" ? (
           <>
             <Input label="Телефон, привязанный к&nbsp;СБП" type="tel" value={f.phone ?? ""} onChange={set("phone")} placeholder="+7 900 000-00-00" autoComplete="off" />
-            <Input label="Банк" value={f.bank_name ?? ""} onChange={set("bank_name")} placeholder="Например, Т-Банк" autoComplete="off" />
+            <Select
+              label="Банк"
+              value={bank}
+              onChange={setBank}
+              placeholder="Выберите банк"
+              options={[...BANKS.map((b) => ({ value: b, label: b })), { value: OTHER_BANK, label: "Другой банк" }]}
+            />
+            {bank === OTHER_BANK && (
+              <Input label="Название банка" value={f.bank_name ?? ""} onChange={set("bank_name")} autoComplete="off" autoFocus />
+            )}
           </>
         ) : (
           <>

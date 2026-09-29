@@ -79,10 +79,11 @@ export function fitRadial(pos: Float32Array, src: RadiusMap, dst: RadiusMap): Fl
  */
 export function seatOnSkin(pos: Float32Array, heights: Float32Array, skin: Float32Array, normals: Float32Array, clearance = 0.012, band = 0.09) {
   const cell = 0.06;
-  const grid = new Map<string, number[]>();
-  const key = (x: number, y: number, z: number) => `${Math.floor(x / cell)},${Math.floor(y / cell)},${Math.floor(z / cell)}`;
+  const grid = new Map<number, number[]>();
+  // numeric cell keys (head space spans a few units: ±64 cells is plenty)
+  const cellKey = (gx: number, gy: number, gz: number) => ((gx + 64) * 128 + (gy + 64)) * 128 + (gz + 64);
   for (let i = 0; i < skin.length / 3; i++) {
-    const k = key(skin[i * 3], skin[i * 3 + 1], skin[i * 3 + 2]);
+    const k = cellKey(Math.floor(skin[i * 3] / cell), Math.floor(skin[i * 3 + 1] / cell), Math.floor(skin[i * 3 + 2] / cell));
     let a = grid.get(k);
     if (!a) grid.set(k, (a = []));
     a.push(i);
@@ -96,7 +97,7 @@ export function seatOnSkin(pos: Float32Array, heights: Float32Array, skin: Float
     for (let dx = -2; dx <= 2; dx++)
       for (let dy = -2; dy <= 2; dy++)
         for (let dz = -2; dz <= 2; dz++) {
-          const a = grid.get(`${gx + dx},${gy + dy},${gz + dz}`);
+          const a = grid.get(cellKey(gx + dx, gy + dy, gz + dz));
           if (!a) continue;
           for (const i of a) {
             const d = (skin[i * 3] - x) ** 2 + (skin[i * 3 + 1] - y) ** 2 + (skin[i * 3 + 2] - z) ** 2;
@@ -117,6 +118,27 @@ export function seatOnSkin(pos: Float32Array, heights: Float32Array, skin: Float
     pos[p * 3 + 1] += ny * d;
     pos[p * 3 + 2] += nz * d;
   }
+}
+
+/**
+ * The runtime placement of a part's head-space points on a base (in place): a part made
+ * for another base (`srcMap` given) is re-seated with the radius maps, then its skin-side
+ * layer is snapped onto the real skin; hair then sits a hair's breadth off the scalp
+ * (no z-fighting / skin showing through strand gaps). Shared by the renderer and the fit check.
+ */
+export function placePart(
+  pos: Float32Array,
+  slot: string,
+  srcMap: RadiusMap | null,
+  dstMap: RadiusMap | null,
+  skin: () => { pos: Float32Array; nrm: Float32Array },
+) {
+  if (srcMap && dstMap) {
+    const heights = fitRadial(pos, srcMap, dstMap);
+    const sk = skin();
+    seatOnSkin(pos, heights, sk.pos, sk.nrm);
+  }
+  if (slot === "hair") for (let i = 0; i < pos.length; i++) pos[i] *= 1.006;
 }
 
 // ── face shape ──────────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Clock } from "lucide-react";
+import { Award, Clock } from "lucide-react";
 import type { ArticleCard as TArticle, PracticeCard as TPractice } from "@/lib/api/content";
 import { Skeleton } from "@/ui";
 import { TopicArt } from "@/components/illustrations/topics";
@@ -16,15 +16,17 @@ export function ArticleCard({ a, base = "/app", compact }: { a: TArticle; base?:
         <span className={`${s.cover} ${s.coverPhoto}`} aria-hidden>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={compact ? a.cover_image.sm : a.cover_image.md} alt="" loading="lazy" decoding="async" />
+          {a.editors_choice && <EditorsChoice className={s.choiceOnCover} />}
         </span>
       ) : (
         <span className={`${s.cover} ${s.tone}`} data-tone={a.cover} aria-hidden>
           <TopicArt topic={a.topic} className={art.coverArt} />
+          {a.editors_choice && <EditorsChoice className={s.choiceOnCover} />}
         </span>
       )}
       <span className={s.articleBody}>
         <span className={s.kicker}>
-          {a.topic_label}
+          <span className={s.kickerTopic}>{a.topic_label}</span>
           {a.specialist && <span className={s.fromPro}>От&nbsp;специалиста</span>}
         </span>
         <span className={s.articleTitle}>{typo(a.title)}</span>
@@ -45,6 +47,16 @@ export function ArticleCard({ a, base = "/app", compact }: { a: TArticle; base?:
         </span>
       </span>
     </Link>
+  );
+}
+
+/** «Выбор редакции»: a small quiet badge (cards: over the cover; article page: next to the kicker). */
+export function EditorsChoice({ className }: { className?: string }) {
+  return (
+    <span className={`${s.choice} ${className ?? ""}`} title="Выбор редакции">
+      <Award size={12} strokeWidth={2} aria-hidden />
+      <span className={s.choiceText}>Выбор редакции</span>
+    </span>
   );
 }
 

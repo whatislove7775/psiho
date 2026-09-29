@@ -42,3 +42,59 @@ test("upper lids follow a downward gaze", () => {
   assert.ok(w.eyeBlinkLeft > 0.2 && w.eyeBlinkLeft < 0.4);
   close(w.eyeBlinkLeft, w.eyeBlinkRight);
 });
+
+// ── tracked gaze never latches (owner bug: eyes stuck looking to one side) ──
+import { GazeTracker, gazeWeights as gw } from "../headz/gaze.ts";
+
+/** Tracked weights for a gaze (raw tracker units) with a given blink. */
+const frame = (h, v, blink = 0) => ({ ...gw(h, v), eyeBlinkLeft: blink, eyeBlinkRight: blink });
+
+function feed(g, t0, secs, fn, fps = 30) {
+  let t = t0;
+  for (; t < t0 + secs; t += 1 / fps) g.update(fn(t), t), g.tick(t);
+  return t;
+}
+
+test("gaze returns to centre after a side look, a blink and a low-confidence gap", () => {
+  const g = new GazeTracker();
+  let t = feed(g, 0, 1, () => frame(0.6, 0)); // look hard to one side
+  assert.ok(g.h > 0.6, `side look reached (${g.h})`);
+  // a blink: eyes close for 0.2 s while the tracker reports garbage gaze
+  t = feed(g, t, 0.2, () => frame(-0.9, -0.8, 0.95));
+  assert.ok(g.h > 0.5, "held through the blink (no jump to garbage)");
+  // low confidence: no samples at all for 0.6 s (only render ticks)
+  for (const end = t + 0.6; t < end; t += 1 / 60) g.tick(t);
+  assert.ok(Math.abs(g.h) < 0.05, `relaxed toward the centre during the gap (${g.h})`);
+  // centred input: must be exactly centred within ~100 ms
+  t = feed(g, t, 0.1, () => frame(0.02, -0.01));
+  assert.ok(Math.abs(g.h) < 0.02 && Math.abs(g.v) < 0.02, `centred in 100 ms (${g.h}, ${g.v})`);
+  t = feed(g, t, 0.5, () => frame(0.02, -0.01));
+  assert.equal(g.h, 0);
+  assert.equal(g.v, 0);
+});
+
+test("a long squint / smile (eyes half-closed) doesn't freeze the gaze to the side", () => {
+  const g = new GazeTracker();
+  let t = feed(g, 0, 0.6, () => frame(-0.7, 0.2));
+  assert.ok(g.h < -0.6);
+  t = feed(g, t, 1.2, () => frame(0, 0, 0.7)); // eyes narrowed for >1 s, looking at the camera
+  assert.ok(Math.abs(g.h) < 0.05 && Math.abs(g.v) < 0.05, `released (${g.h}, ${g.v})`);
+  t = feed(g, t, 0.1, () => frame(0, 0, 0.3)); // eyes open again
+  assert.ok(Math.abs(g.h) < 0.01);
+});
+
+test("reacts to a new look within ~100 ms", () => {
+  const g = new GazeTracker();
+  let t = feed(g, 0, 0.5, () => frame(0, 0));
+  t = feed(g, t, 0.1, () => frame(0.5, 0));
+  assert.ok(g.h > 0.45, `followed quickly (${g.h})`);
+});
+
+test("looking back at the camera from a side look centres within ~100 ms", () => {
+  const g = new GazeTracker();
+  let t = feed(g, 0, 0.6, () => frame(0.6, -0.3));
+  t = feed(g, t, 0.1, () => frame(0, 0));
+  assert.ok(Math.abs(g.h) < 0.08 && Math.abs(g.v) < 0.08, `(${g.h}, ${g.v})`);
+  feed(g, t, 0.4, () => frame(0, 0));
+  assert.equal(g.h, 0);
+});

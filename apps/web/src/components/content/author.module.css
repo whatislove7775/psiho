@@ -1,58 +1,74 @@
-/* «Автор статьи» — specialist who wrote the article (L1). Quiet, one block after the text. */
+/* «Автор статьи» — one quiet row after the byline (no panel). */
 .card {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
   align-items: flex-start;
-  margin-top: var(--s-8);
-  padding: 18px;
-  border-radius: var(--r-card);
-  background: var(--c-raised);
+  column-gap: 12px;
+  row-gap: 10px;
+  /* sits right under the byline (which already has the divider) */
+  margin-top: var(--s-5);
 }
 .photo {
   flex: none;
   border-radius: 50%;
 }
 .body {
+  flex: 1 1 260px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 1px;
   min-width: 0;
-}
-.label {
-  color: var(--c-muted);
-  font-size: var(--t-12);
-  font-weight: 600;
 }
 .name {
   color: var(--c-text);
-  font-size: var(--t-18);
+  font-size: var(--t-15);
   font-weight: 650;
+  line-height: 1.35;
   text-decoration: none;
+  overflow-wrap: anywhere;
 }
 .name:hover {
-  color: var(--c-primary);
+  color: var(--c-primary-ink);
 }
 .meta {
   color: var(--c-muted);
-  font-size: var(--t-13);
+  font-size: var(--t-12);
+  line-height: 1.4;
 }
 .bio {
-  margin: 6px 0 0;
-  color: var(--c-text);
-  font-size: var(--t-15);
-  line-height: 1.5;
+  margin: 4px 0 0;
+  color: var(--c-muted);
+  font-size: var(--t-13);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 .actions {
+  flex: none;
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
+  align-items: center;
+  gap: 12px;
 }
-@media (max-width: 480px) {
-  .card {
-    flex-direction: column;
-    padding: 16px;
-    gap: 12px;
+.more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--c-primary-ink);
+  font-size: var(--t-13);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.more:hover {
+  text-decoration: underline;
+}
+/* phones: actions drop under the text, aligned with it */
+@media (max-width: 560px) {
+  .actions {
+    width: 100%;
+    padding-left: 52px;
   }
 }
 

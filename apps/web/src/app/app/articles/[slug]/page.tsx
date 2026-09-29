@@ -8,7 +8,7 @@ import { WithRail } from "@/components/shell/AppShell";
 import { contentApi } from "@/lib/api/content";
 import { useLoad } from "@/components/client/useLoad";
 import { ErrorBlock } from "@/components/client/ClientBits";
-import { ArticleByline, ArticleCard } from "@/components/content/Cards";
+import { ArticleByline, ArticleCard, EditorsChoice } from "@/components/content/Cards";
 import { ArticleBanner } from "@/components/content/ArticleBanner";
 import { AuthorCard, ReadCounter } from "@/components/content/AuthorCard";
 import { RichText } from "@/components/content/RichText";
@@ -101,6 +101,7 @@ export default function ArticlePage() {
                   </span>
                   <EvidenceBadge level={a.evidence_level} />
                   <RatingBadge rating={a.rating} />
+                  {a.editors_choice && <EditorsChoice />}
                 </div>
                 <h1 className={s.title}>{typo(a.title)}</h1>
                 {a.summary && <p className={s.lead}>{typo(a.summary)}</p>}

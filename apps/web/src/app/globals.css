@@ -28,6 +28,13 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: "ss01" on;
+  overflow-wrap: break-word;
+}
+
+/* Long unbroken strings («тсвсвсвсв…», pasted URLs) wrap inside their column instead of pushing it wide:
+   rich text, titles, bios, comments, chat. `anywhere` also lowers min-content, so flex/grid items shrink too. */
+h1, h2, h3, h4, h5, h6, p, li, dd, blockquote, figcaption {
+  overflow-wrap: anywhere;
 }
 
 /* Soft brand glow behind everything (logo periwinkle / violet + a hint of peach). Panels stay opaque. */
@@ -189,4 +196,10 @@ textarea:-webkit-autofill:focus {
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--c-raised-2) transparent;
+}
+
+/* Decorative overhangs (landing ring canvas, scroll-row arrows) must never widen the page on phones. */
+html,
+body {
+  overflow-x: clip;
 }

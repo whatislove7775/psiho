@@ -7,7 +7,7 @@ import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import { PhotoWithFacts } from "@/components/specialists/SpecialistFacts";
 import { psychologistsApi } from "@/lib/api/endpoints";
 import type { PsychologistPublic } from "@/lib/api/types";
-import { plural, rub } from "@/lib/format";
+import { rub, experienceLabel } from "@/lib/format";
 import { ScrollRow, Skeleton } from "@/ui";
 import { useAuth } from "@/lib/auth/store";
 import s from "./landing.module.css";
@@ -71,7 +71,7 @@ export function Specialists() {
                   <span className={s.specName}>{p.display_name}</span>
                   <span className={s.specMeta}>
                     {p.experience_years > 0
-                      ? `Опыт ${p.experience_years}\u00a0${plural(p.experience_years, "год", "года", "лет")}`
+                      ? experienceLabel(p.experience_years)
                       : "Начинающий специалист"}
                     {p.specializations[0] ? ` · ${p.specializations[0].toLowerCase()}` : ""}
                   </span>

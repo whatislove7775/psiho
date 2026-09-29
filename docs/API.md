@@ -236,9 +236,15 @@ TimeOff { id; start_date; end_date; note }
 
 Публичные SEO-страницы Next.js (`/articles`, `/articles/<slug>`, `/practices`, `/practices/<slug>`, `/sitemap.xml`, `/llms.txt`, `/llms-full.txt`) читают этот API на сервере через `INTERNAL_API_URL` (в docker-compose — `http://api:8000/api/v1`, заголовок `Host: aprosop.ru`) и кэшируют ответы на 5 минут.
 
-### Статьи специалистов, обложки, «В топе» (L1)
+### Статьи специалистов, обложки, «Выбор редакции» (L1, R2)
 
-Список/деталь статей дополнительно отдают `cover_image` (`{id, url 1600×900, md 800×450, sm 480×270, width, height}` или null — тогда иллюстрация темы), `specialist` (`{id, name, photo_url}`; в детали ещё `bio` ≤220 зн., `specializations`, `experience_years`; null у статей редакции) и `is_featured`. Статьи специалиста публичны, только если модерация одобрена и профиль автора подтверждён. `GET /content/articles/?source=specialists|editorial&sort=top` — `sort=top`: сначала «В топе», дальше по прочтениям с поправкой на свежесть; без `sort` закреплённые идут первыми, остальные по дате.
+Список/деталь статей дополнительно отдают `cover_image` (`{id, url 1600×900, md 800×450, sm 480×270, width, height}` или null — тогда иллюстрация темы), `specialist` (`{id, name, photo_url}`; в детали ещё `bio` ≤220 зн., `specializations`, `experience_years`; null у статей редакции) и `editors_choice` (значок «Выбор редакции»). Статьи специалиста публичны, только если модерация одобрена и профиль автора подтверждён. `GET /content/articles/?source=specialists|editorial&sort=top|new` — без `sort` и с `sort=top` лента упорядочена рекомендательным score (ручного закрепления нет), `sort=new` — строго по дате публикации.
+
+Score (`apps/content/ranking.py`): `score = (1 + ln(1 + reads)) × (0.5 + R/5) × F × B`, где
+- `R` — байесовское среднее оценок `(C·m + Σstars) / (C + n)`, `C = 5`, `m` — средняя оценка по сайту (4.0, пока оценок нет): одна «пятёрка» почти не сдвигает статью, много хороших — сдвигают;
+- `F = 0.15 + 0.85 · 0.5^(age_days / 30)` — свежесть с полураспадом 30 дней и «полом», чтобы вечные статьи не исчезали;
+- `B` — бусты: ×1.3 статья специалиста, ×1.5 «Выбор редакции».
+При равном score выше более свежая.
 
 | Метод | Путь | Кто | Описание |
 |---|---|---|---|
@@ -259,7 +265,7 @@ TimeOff { id; start_date; end_date; note }
 | POST | `/content/my/articles/<id>/withdraw/` | автор | `pending`/`approved` → `draft` (снимается с публикации) |
 | GET | `/content/manage/articles/?source=specialists` | content.edit | очередь «От специалистов» (черновики не видны, `pending` первыми); `?source=editorial` — только редакция |
 | POST | `/content/manage/articles/<id>/moderate/` | content.publish | `{decision: approve\|reject, comment}` (для reject комментарий обязателен); в журнал |
-| POST | `/content/manage/articles/<id>/feature/` | content.publish | `{featured: bool}` — «В топе», только для опубликованных; в журнал |
+| POST | `/content/manage/articles/<id>/editors-choice/` | content.publish | `{editors_choice: bool}` — «Выбор редакции» (значок + буст в score), только для опубликованных; в журнал |
 
 Поля статьи в `/content/manage/…`: `moderation` ("" у редакции, `draft|pending|approved|rejected`), `moderation_comment`, `submitted_at`, `moderated_at`, `reads`, `cover_image_id` (запись).
 

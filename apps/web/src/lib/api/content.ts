@@ -115,7 +115,8 @@ export interface ArticleCard {
     specializations?: string[];
     experience_years?: number;
   } | null;
-  is_featured?: boolean;
+  /** «Выбор редакции» badge (feed order itself comes from the ranking score). */
+  editors_choice?: boolean;
 }
 
 export interface Article extends ArticleCard {

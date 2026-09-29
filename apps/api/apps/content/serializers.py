@@ -136,7 +136,7 @@ class ArticleListSerializer(serializers.ModelSerializer):
         fields = (
             "id", "slug", "title", "summary", "topic", "topic_label", "topics", "topic_labels", "tags", "cover",
             "emoji", "reading_minutes", "author_name", "published_at", "updated_at", "evidence_level",
-            "cover_image", "specialist", "is_featured", "rating",
+            "cover_image", "specialist", "editors_choice", "rating",
         )
 
     def get_topic_label(self, obj):
@@ -238,7 +238,7 @@ class ArticleManageSerializer(ArticleWriteMixin, CoverImageMixin, ArticleListSer
             "cover_image_id", "moderation", "moderation_comment", "submitted_at", "moderated_at", "reads",
         )
         read_only_fields = (
-            "created_at", "updated_at", "is_featured", "moderation", "moderation_comment",
+            "created_at", "updated_at", "editors_choice", "moderation", "moderation_comment",
             "submitted_at", "moderated_at", "reads",
         )
         extra_kwargs = {"published_at": {"required": False, "allow_null": True}}

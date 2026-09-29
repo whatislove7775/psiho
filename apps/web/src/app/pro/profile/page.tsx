@@ -17,7 +17,7 @@ import { ApiError } from "@/lib/api/client";
 import { cabinetApi } from "@/lib/api/endpoints";
 import type { PsychologistPrivate } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/store";
-import { plural, rub } from "@/lib/format";
+import { rub, experienceLabel } from "@/lib/format";
 import { durationLabel } from "@/lib/api/availability";
 import s from "@/components/pro/pro.module.css";
 import c from "./profile.module.css";
@@ -337,7 +337,7 @@ function Preview({ form, photo }: { form: Form | null; photo: string | null }) {
           <div style={{ minWidth: 0 }}>
             <div className={c.pName}>{form.display_name.trim() || "Ваше имя"}</div>
             <div className={c.pMeta}>
-              {exp ? `Опыт ${exp} ${plural(exp, "год", "года", "лет")}` : "Опыт не\u00a0указан"}
+              {exp ? experienceLabel(exp) : "Опыт не\u00a0указан"}
               {form.languages.length ? `, ${form.languages.join(", ").toLowerCase()}` : ""}
             </div>
           </div>

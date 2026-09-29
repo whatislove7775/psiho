@@ -1,4 +1,4 @@
-"""L1: статьи специалистов (модерация, лента, «В топе») и загрузка обложек."""
+"""L1: статьи специалистов (модерация, лента, «Выбор редакции») и загрузка обложек."""
 from io import BytesIO
 
 import pytest
@@ -157,22 +157,31 @@ def test_public_feed_only_published_and_approved_authors(api, psychologist):
 
 
 @pytest.mark.django_db
-def test_featured_and_top_ranking(api, psychologist):
+def test_editors_choice_badge_and_ranking(api, psychologist):
     editor = _staff("editor")
-    slugs = [a["slug"] for a in api.get("/api/v1/content/articles/").json()]
-    last = Article.objects.get(slug=slugs[-1])
-    r = editor.post(f"/api/v1/content/manage/articles/{last.pk}/feature/", {"featured": True}, format="json")
-    assert r.status_code == 200 and r.json()["is_featured"]
-    feed = api.get("/api/v1/content/articles/").json()
-    assert feed[0]["slug"] == last.slug and feed[0]["is_featured"]
-    assert _staff("support").post(f"/api/v1/content/manage/articles/{last.pk}/feature/", {"featured": False},
-                                  format="json").status_code == 403
-    # Прочтения поднимают статью в сортировке «топ»
-    other = Article.objects.get(slug=slugs[0])
+    feed = api.get("/api/v1/content/articles/?sort=new").json()
+    last = Article.objects.get(slug=feed[-1]["slug"])
+    url = f"/api/v1/content/manage/articles/{last.pk}/editors-choice/"
+    assert _staff("support").post(url, {"editors_choice": True}, format="json").status_code == 403
+    r = editor.post(url, {"editors_choice": True}, format="json")
+    assert r.status_code == 200 and r.json()["editors_choice"]
+    assert AuditLog.objects.filter(action="content.article.editors_choice").exists()
+    item = next(a for a in api.get("/api/v1/content/articles/").json() if a["slug"] == last.slug)
+    assert item["editors_choice"] is True
+    assert api.get(f"/api/v1/content/articles/{last.slug}/").json()["editors_choice"] is True
+    # Прочтения поднимают статью в «Топе» (и в порядке по умолчанию)
+    other = Article.objects.get(slug=feed[0]["slug"])
     assert api.post(f"/api/v1/content/articles/{other.slug}/read/").status_code == 204
-    Article.objects.filter(pk=other.pk).update(reads=500)
-    top = api.get("/api/v1/content/articles/?sort=top").json()
-    assert top[0]["slug"] == last.slug and top[1]["slug"] == other.slug
+    Article.objects.filter(pk=other.pk).update(reads=5000)
+    assert api.get("/api/v1/content/articles/?sort=top").json()[0]["slug"] == other.slug
+    assert api.get("/api/v1/content/articles/").json()[0]["slug"] == other.slug
+    # ?sort=new — строго по дате публикации
+    dates = [a["published_at"] for a in api.get("/api/v1/content/articles/?sort=new").json()]
+    assert dates == sorted(dates, reverse=True)
+    # Неопубликованную отметить нельзя
+    Article.objects.filter(pk=other.pk).update(is_published=False)
+    assert editor.post(f"/api/v1/content/manage/articles/{other.pk}/editors-choice/", {"editors_choice": True},
+                       format="json").status_code == 400
 
 
 @pytest.mark.django_db

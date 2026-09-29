@@ -104,10 +104,10 @@ export function ModerationPanel({ article: a, canPublish, onChanged }: { article
           ) : status === "approved" ? (
             <div className={s.actions}>
               <Switch
-                checked={!!a.is_featured}
-                onChange={(v) => void run("feature", () => moderationApi.feature(a.id, v), v ? "Статья в\u00a0топе" : "Статья убрана из\u00a0топа")}
-                label="В&nbsp;топе"
-                hint="Первой в&nbsp;ленте статей"
+                checked={!!a.editors_choice}
+                onChange={(v) => void run("choice", () => moderationApi.editorsChoice(a.id, v), v ? "Отмечено: выбор редакции" : "Отметка снята")}
+                label="Выбор редакции"
+                hint="Значок на&nbsp;карточке и&nbsp;чуть выше в&nbsp;ленте"
               />
               <Button variant="ghost" block href={`/articles/${a.slug}`} icon={<Eye size={16} />}>
                 Открыть на&nbsp;сайте

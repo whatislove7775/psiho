@@ -14,7 +14,7 @@ urlpatterns = [
     path("manage/articles/", views.ManageArticleListView.as_view(), name="manage_articles"),
     path("manage/articles/<int:pk>/", views.ManageArticleDetailView.as_view(), name="manage_article"),
     path("manage/articles/<int:pk>/moderate/", authoring.ModerateArticleView.as_view(), name="moderate_article"),
-    path("manage/articles/<int:pk>/feature/", authoring.FeatureArticleView.as_view(), name="feature_article"),
+    path("manage/articles/<int:pk>/editors-choice/", authoring.EditorsChoiceView.as_view(), name="article_editors_choice"),
     # Статьи специалистов (кабинет /pro/articles) и обложки
     path("my/articles/", authoring.MyArticleListView.as_view(), name="my_articles"),
     path("my/articles/<int:pk>/", authoring.MyArticleDetailView.as_view(), name="my_article"),

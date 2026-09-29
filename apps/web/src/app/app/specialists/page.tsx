@@ -18,7 +18,7 @@ import {
   type SortOrder,
   type SpecialistQuery,
 } from "@/lib/api/search";
-import { plural, rub, when } from "@/lib/format";
+import { plural, rub, when, experienceLabel } from "@/lib/format";
 import { useLoad } from "@/components/client/useLoad";
 import { ErrorBlock } from "@/components/client/ClientBits";
 import { FilterBar } from "@/components/search/FilterBar";
@@ -195,8 +195,7 @@ function Specialists() {
                 <div className={s.nameRow}>
                   <h2 className={s.name}>{p.display_name}</h2>
                   <span className={s.exp}>
-                    Опыт {p.experience_years}{" "}
-                    {plural(p.experience_years, "год", "года", "лет")}
+                    {experienceLabel(p.experience_years)}
                   </span>
                   <FactsLine p={p} className={s.exp} />
                   <RatingPill rating={p.rating} count={p.reviews_count} />

@@ -1,114 +1,102 @@
 "use client";
 
 /**
- * Landing teaser for «Круги»: a ring of anonymous 3D heads around a psychologist (also a head, larger).
+ * Landing teaser for «Круги»: a ring of anonymous live 3D heads around a psychologist (a bigger head).
  *
- * The ring tells a tiny story on a loop: someone raises a hand, the psychologist turns to them, they talk
- * (mouth moves, a pulse ripples out), everyone else turns toward the speaker. Heads are still snapshots
- * of the Headz avatars (lib/avatar/headz/snapshot) in a few poses — front, turned left/right, smiling,
- * mouth open — so it stays cheap: no live WebGL loop on the landing.
- *  - fine pointer: the centre head follows the cursor and smiles when it's close; hovering a seat makes it
- *    smile, shows its name and everyone looks at it;
+ * All ten heads are real-time HEADZ avatars drawn by one HeadzStage (ONE canvas / WebGL context,
+ * lazy: nothing loads until the ring is near the viewport; paused off-screen / in a hidden tab;
+ * 30 fps on phones). No discs behind the heads, no hands.
+ *
+ * The ring tells a tiny story on a loop: the next speaker catches everyone's attention (brows up,
+ * a small nod), everyone — the psychologist too — turns to them, they talk (jaw + lips move in
+ * syllables), then the next one. Every head breathes, blinks on its own rhythm and glances around.
+ *  - fine pointer: the psychologist follows the cursor and smiles when it's close; hovering a seat
+ *    makes it smile, shows its name and everyone looks at it;
  *  - tap / click on a head: it smiles and a small reaction floats up (plain click — never blocks scrolling);
- *  - prefers-reduced-motion: static ring, no timers.
- * Nothing renders until the section is near the viewport (three.js is loaded lazily).
+ *  - prefers-reduced-motion: one still frame, no loop, no timers.
  */
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Hand, Heart, Sparkles, ThumbsUp } from "lucide-react";
-import { normalizeAvatar, randomAvatar, type AvatarConfig } from "@/lib/avatar/schema";
-import { toneClass } from "@/components/circles/bits";
+import { ArrowRight, Heart, Sparkles, ThumbsUp } from "lucide-react";
+import { normalizeAvatar, randomAvatar } from "@/lib/avatar/schema";
+import type { HeadzRenderer } from "@/lib/avatar/headz/HeadzRenderer";
+import { HeadStage, LiveHead } from "@/components/avatar/LiveHead";
 import s from "@/components/landing/landing.module.css";
 import t from "./circlesTeaser.module.css";
 
-type Pose = "C" | "L" | "R" | "smile" | "talk";
-
-const SEATS: { name: string; tone: string }[] = [
-  { name: "Лиса", tone: "coral" },
-  { name: "Сова", tone: "lilac" },
-  { name: "Кит", tone: "cyan" },
-  { name: "Ёж", tone: "sun" },
-  { name: "Выдра", tone: "mint" },
-  { name: "Панда", tone: "lilac" },
-  { name: "Енот", tone: "cyan" },
-  { name: "Белка", tone: "sun" },
-  { name: "Бобр", tone: "coral" },
+const SEATS = [
+  "Лиса",
+  "Сова",
+  "Кит",
+  "Ёж",
+  "Выдра",
+  "Панда",
+  "Енот",
+  "Белка",
+  "Бобр",
 ];
 
-/** Who raises a hand next (not strictly around the circle, like a real conversation). */
+/** Who speaks next (not strictly around the circle, like a real conversation). */
 const TALK = [2, 6, 0, 4, 7, 1, 5, 3, 8];
 const REACTIONS = [Heart, ThumbsUp, Sparkles];
+const CUE_MS = 1600;
+const TALK_MS = 4200;
 
-const SMILE = { mouthSmileLeft: 0.85, mouthSmileRight: 0.85, cheekSquintLeft: 0.35, cheekSquintRight: 0.35, eyeSquintLeft: 0.2, eyeSquintRight: 0.2 };
-const POSES: Record<Pose, { yaw?: number; expression?: Record<string, number> }> = {
-  C: {},
-  L: { yaw: -0.42 },
-  R: { yaw: 0.42 },
-  smile: { expression: SMILE },
-  talk: { expression: { jawOpen: 0.32, mouthSmileLeft: 0.25, mouthSmileRight: 0.25, mouthLowerDownLeft: 0.3, mouthLowerDownRight: 0.3 } },
-};
-
-/** Snapshots of one head in all poses: front first (fast first paint of the ring), the rest when idle. */
-function usePoses(cfg: AvatarConfig, size: number, active: boolean) {
-  const [urls, setUrls] = useState<Partial<Record<Pose, string>>>({});
-  useEffect(() => {
-    if (!active) return;
-    let alive = true;
-    import("@/lib/avatar/headz/snapshot")
-      .then(async ({ renderAvatarSnapshot }) => {
-        const one = async (p: Pose) => {
-          const url = await renderAvatarSnapshot(cfg, { size, framing: "face", ...POSES[p] });
-          if (alive) setUrls((u) => ({ ...u, [p]: url }));
-        };
-        await one("C");
-        await new Promise((r) => setTimeout(r, 400));
-        for (const p of ["L", "R", "talk", "smile"] as Pose[]) if (alive) await one(p);
-      })
-      .catch(() => undefined);
-    return () => {
-      alive = false;
-    };
-  }, [cfg, size, active]);
-  return urls;
+/** Shared, mutable state the per-frame drivers read (no React re-render per frame). */
+interface Ctl {
+  speaker: number | null; // seat index, -1 = psychologist
+  cue: number | null;
+  hover: number | null;
+  cursor: { x: number; y: number; near: number } | null;
+  smiling: Map<number, number>; // seat → until (ms)
 }
 
-function Head({ cfg, size, pose, active, label }: { cfg: AvatarConfig; size: number; pose: Pose; active: boolean; label?: string }) {
-  const urls = usePoses(cfg, size, active);
-  const src = urls[pose] ?? urls.C;
-  return (
-    <span className={t.head}>
-      {src ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt={label ?? ""} draggable={false} />
-      ) : (
-        <span className={t.headStub} style={{ ["--skin" as string]: cfg.skin ?? "#e0b08a" }} />
-      )}
-    </span>
-  );
-}
+const clamp = (v: number, a = -1, b = 1) => Math.max(a, Math.min(b, v));
 
-/** Where a head at x (−1…1 across the ring) should look to face a target at tx. */
-function turn(x: number, tx: number): Pose {
-  const d = tx - x;
-  return Math.abs(d) < 0.3 ? "C" : d > 0 ? "R" : "L";
+/** Talking mouth: syllables (~6/s) inside words, short pauses between words. */
+function speech(time: number, seed: number) {
+  const word =
+    Math.sin(time * 1.7 + seed) + 0.6 * Math.sin(time * 2.9 + seed * 2);
+  const env = word > -0.55 ? 1 : 0.15;
+  const syl =
+    0.5 + 0.5 * Math.sin(time * 12.5 + seed + Math.sin(time * 3.1) * 1.4);
+  const open = env * (0.06 + 0.26 * syl * syl);
+  const round = env * Math.max(0, Math.sin(time * 4.3 + seed * 3)) * 0.35;
+  return { open, round };
 }
 
 export function CirclesTeaser() {
   const scene = useRef<HTMLDivElement>(null);
-  const [near, setNear] = useState(false);
-  const [still, setStill] = useState(true);
+  const [still, setStill] = useState(false);
   const [fine, setFine] = useState(false);
-  const [step, setStep] = useState(0); // index in TALK
-  const [phase, setPhase] = useState<"hand" | "talk">("hand");
-  const [mouth, setMouth] = useState(false);
+  const [near, setNear] = useState(false);
+  const [step, setStep] = useState(0);
+  const [phase, setPhase] = useState<"cue" | "talk">("cue");
   const [hover, setHover] = useState<number | null>(null);
-  const [cursor, setCursor] = useState<{ x: number; near: number } | null>(null);
-  const [reacts, setReacts] = useState<{ id: number; seat: number; kind: number }[]>([]);
-  const [smiling, setSmiling] = useState<Set<number>>(new Set());
+  const [reacts, setReacts] = useState<
+    { id: number; seat: number; kind: number }[]
+  >([]);
+  const ctl = useRef<Ctl>({
+    speaker: null,
+    cue: null,
+    hover: null,
+    cursor: null,
+    smiling: new Map(),
+  });
 
-  const cfgs = useMemo(() => SEATS.map((seat) => randomAvatar(`landing-circle-${seat.name}`)), []);
+  const cfgs = useMemo(
+    () => SEATS.map((name) => randomAvatar(`landing-circle-${name}`)),
+    [],
+  );
   const hostCfg = useMemo(
-    () => normalizeAvatar({ version: 4, base: "woman-light", hair: "005", eyewear: "glasses-001", earrings: "earrings" }),
+    () =>
+      normalizeAvatar({
+        version: 4,
+        base: "woman-light",
+        hair: "005",
+        eyewear: "glasses-001",
+        earrings: "earrings",
+      }),
     [],
   );
   const pos = useMemo(
@@ -120,172 +108,245 @@ export function CirclesTeaser() {
     [],
   );
 
-  // Start only when the ring is about to be seen.
   useEffect(() => {
-    const el = scene.current;
-    if (!el) return;
     setStill(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
     setFine(window.matchMedia("(hover: hover) and (pointer: fine)").matches);
-    if (!("IntersectionObserver" in window)) return setNear(true);
-    const io = new IntersectionObserver((es) => es.some((e) => e.isIntersecting) && setNear(true), { rootMargin: "400px" });
+    const el = scene.current;
+    if (!el || !("IntersectionObserver" in window)) return setNear(true);
+    const io = new IntersectionObserver(
+      (es) => setNear(es.some((e) => e.isIntersecting)),
+      { rootMargin: "100px" },
+    );
     io.observe(el);
     return () => io.disconnect();
   }, []);
 
-  // The story loop: hand up (2.2 s) → talk (3.6 s) → next.
+  // The story loop (only while the ring is on screen): cue → talk → next.
   useEffect(() => {
     if (!near || still) return;
     const id = window.setTimeout(
       () => {
-        if (phase === "hand") setPhase("talk");
+        if (phase === "cue") setPhase("talk");
         else {
-          setPhase("hand");
+          setPhase("cue");
           setStep((x) => (x + 1) % TALK.length);
         }
       },
-      phase === "hand" ? 2200 : 3600,
+      phase === "cue" ? CUE_MS : TALK_MS,
     );
     return () => window.clearTimeout(id);
   }, [near, still, phase, step]);
 
-  // Mouth flaps while talking.
-  useEffect(() => {
-    if (!near || still) return;
-    const id = window.setInterval(() => setMouth((m) => !m), 190);
-    return () => window.clearInterval(id);
-  }, [near, still]);
+  const current = TALK[step];
+  const speaker = hover ?? (phase === "talk" ? current : null);
+  const cue = hover === null && phase === "cue" ? current : null;
+  ctl.current.speaker = hover === null && phase === "talk" ? current : null;
+  ctl.current.cue = cue;
+  ctl.current.hover = hover;
 
-  // Fine pointer: the centre follows the cursor.
+  // Fine pointer: the psychologist follows the cursor; the ring leans a little.
   useEffect(() => {
     const el = scene.current;
     if (!el || !fine || still) return;
     const zone = el.closest("section") ?? el;
-    let raf = 0;
     const onMove = (e: Event) => {
       const pe = e as PointerEvent;
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const r = el.getBoundingClientRect();
-        const dx = (pe.clientX - (r.left + r.width / 2)) / (r.width / 2);
-        const dy = (pe.clientY - (r.top + r.height / 2)) / (r.height / 2);
-        const dist = Math.hypot(dx, dy);
-        el.style.setProperty("--px", Math.max(-1, Math.min(1, dx)).toFixed(3));
-        el.style.setProperty("--py", Math.max(-1, Math.min(1, dy)).toFixed(3));
-        setCursor({ x: dx, near: Math.max(0, 1 - dist / 1.4) });
-      });
+      const r = el.getBoundingClientRect();
+      const dx = (pe.clientX - (r.left + r.width / 2)) / (r.width / 2);
+      const dy = (pe.clientY - (r.top + r.height / 2)) / (r.height / 2);
+      ctl.current.cursor = {
+        x: dx,
+        y: dy,
+        near: Math.max(0, 1 - Math.hypot(dx, dy) / 0.9),
+      };
+      el.style.setProperty("--px", clamp(dx).toFixed(3));
+      el.style.setProperty("--py", clamp(dy).toFixed(3));
     };
     const onLeave = () => {
-      cancelAnimationFrame(raf);
+      ctl.current.cursor = null;
       el.style.setProperty("--px", "0");
       el.style.setProperty("--py", "0");
-      setCursor(null);
     };
     zone.addEventListener("pointermove", onMove);
     zone.addEventListener("pointerleave", onLeave);
     return () => {
-      cancelAnimationFrame(raf);
       zone.removeEventListener("pointermove", onMove);
       zone.removeEventListener("pointerleave", onLeave);
     };
   }, [fine, still]);
 
-  const current = TALK[step];
-  const speaker = hover ?? (phase === "talk" ? current : null);
-  const handUp = hover === null && phase === "hand" ? current : null;
-  const focus = speaker ?? handUp; // where everyone looks
-
   const react = (i: number) => {
     const id = Date.now() + Math.random();
-    setReacts((r) => [...r.slice(-5), { id, seat: i, kind: Math.floor(Math.random() * REACTIONS.length) }]);
-    setSmiling((m) => new Set(m).add(i));
-    window.setTimeout(() => {
-      setReacts((r) => r.filter((x) => x.id !== id));
-      setSmiling((m) => {
-        const n = new Set(m);
-        n.delete(i);
-        return n;
-      });
-    }, 1400);
+    setReacts((r) => [
+      ...r.slice(-5),
+      { id, seat: i, kind: Math.floor(Math.random() * REACTIONS.length) },
+    ]);
+    ctl.current.smiling.set(i, performance.now() + 1600);
+    window.setTimeout(
+      () => setReacts((r) => r.filter((x) => x.id !== id)),
+      1400,
+    );
   };
 
-  const hostPose: Pose = cursor
-    ? cursor.near > 0.55
-      ? "smile"
-      : turn(0, cursor.x)
-    : focus !== null
-      ? turn(0, pos[focus].x)
-      : "C";
+  /** Per-frame driver of one head: where it looks and what its face does. */
+  const drivers = useMemo(() => {
+    const at = (i: number) => (i < 0 ? { x: 0, y: 0 } : pos[i]);
+    return [-1, ...SEATS.map((_, i) => i)].map((i) => {
+      const me = at(i);
+      const seed = (i + 2) * 1.37;
+      return (r: HeadzRenderer, time: number) => {
+        const c = ctl.current;
+        const now = performance.now();
+        const smile = (c.smiling.get(i) ?? 0) > now || c.hover === i;
+        const focus = c.hover ?? c.speaker ?? c.cue;
+        let yaw = 0,
+          pitch = 0;
+        if (i < 0 && c.cursor && !smile) {
+          yaw = clamp(c.cursor.x * 0.9);
+          pitch = clamp(c.cursor.y * 0.7);
+        } else if (focus !== null && focus !== i) {
+          const f = at(focus);
+          yaw = clamp((f.x - me.x) * 0.75);
+          pitch = clamp((f.y - me.y) * 0.45);
+        } else if (i >= 0 && focus === i) {
+          // the speaker addresses the circle: faces the psychologist, looks around a bit
+          yaw = clamp(-me.x * 0.55 + Math.sin(time * 0.6 + seed) * 0.25);
+          pitch = clamp(-me.y * 0.3);
+        } else {
+          yaw = Math.sin(time * 0.23 + seed) * 0.3;
+          pitch = Math.sin(time * 0.17 + seed * 2) * 0.12;
+        }
+        // listeners nod now and then
+        const listening = focus !== null && focus !== i;
+        if (listening)
+          pitch += Math.max(0, Math.sin(time * 1.3 + seed)) ** 6 * 0.35;
+        r.lookAt(yaw, pitch);
+
+        const w: Record<string, number> = {
+          mouthSmileLeft: 0.18,
+          mouthSmileRight: 0.18,
+        };
+        if (c.speaker === i) {
+          const sp = speech(time, seed);
+          w.jawOpen = sp.open;
+          w.mouthLowerDownLeft = w.mouthLowerDownRight = sp.open * 0.5;
+          w.mouthFunnel = sp.round * 0.6;
+          w.mouthPucker = sp.round * 0.3;
+          w.mouthSmileLeft = w.mouthSmileRight = 0.25;
+          w.browInnerUp = 0.15 + 0.2 * Math.max(0, Math.sin(time * 1.9 + seed));
+        }
+        if (c.cue === i) {
+          w.browInnerUp = 0.55;
+          w.browOuterUpLeft = w.browOuterUpRight = 0.4;
+          w.mouthSmileLeft = w.mouthSmileRight = 0.45;
+        }
+        if (i < 0 && c.cursor && c.cursor.near > 0.3) {
+          const k = Math.min(1, (c.cursor.near - 0.3) / 0.4);
+          w.mouthSmileLeft = w.mouthSmileRight = 0.18 + 0.62 * k;
+          w.cheekSquintLeft = w.cheekSquintRight = 0.35 * k;
+        }
+        if (smile) {
+          w.mouthSmileLeft = w.mouthSmileRight = 0.85;
+          w.cheekSquintLeft = w.cheekSquintRight = 0.4;
+          w.eyeSquintLeft = w.eyeSquintRight = 0.25;
+          w.jawOpen = 0;
+        }
+        r.setExpression(w);
+      };
+    });
+  }, [pos]);
+
+  const Reactions = ({ seat, size }: { seat: number; size: number }) => (
+    <>
+      {reacts
+        .filter((r) => r.seat === seat)
+        .map((r) => {
+          const Icon = REACTIONS[r.kind];
+          return (
+            <span key={r.id} className={t.react}>
+              <Icon size={size} fill="currentColor" />
+            </span>
+          );
+        })}
+    </>
+  );
 
   return (
-    <section id="circles" className={`${s.wrap} ${s.section}`} aria-labelledby="circles-title">
+    <section
+      id="circles"
+      className={`${s.wrap} ${s.section}`}
+      aria-labelledby="circles-title"
+    >
       <div className={t.grid}>
         <div className={t.text}>
           <p className={s.kicker}>Круги</p>
           <h2 id="circles-title" className={s.sectionTitle}>
             Когда важно услышать «у&nbsp;меня так&nbsp;же»
           </h2>
-          <p className={s.sectionSub}>Группы до&nbsp;12&nbsp;человек с&nbsp;психологом, раз в&nbsp;неделю. Тоже с&nbsp;аватаром. Можно просто слушать.</p>
+          <p className={s.sectionSub}>
+            Группы до&nbsp;12&nbsp;человек с&nbsp;психологом, раз в&nbsp;неделю.
+            Тоже с&nbsp;аватаром. Можно просто слушать.
+          </p>
           <Link href="/app/circles" className={s.more}>
             Посмотреть круги
             <ArrowRight size={16} strokeWidth={2} aria-hidden />
           </Link>
         </div>
-        <div ref={scene} className={t.scene} data-fine={fine || undefined} data-still={still || undefined} aria-hidden>
+        <div
+          ref={scene}
+          className={t.scene}
+          data-fine={fine || undefined}
+          aria-hidden
+        >
           <span className={t.orbit} />
-          <div className={t.center} data-listen={focus !== null || undefined} onClick={() => react(-1)}>
-            <span className={t.centerDisc}>
-              <Head cfg={hostCfg} size={320} pose={smiling.has(-1) ? "smile" : hostPose} active={near} />
-            </span>
-            <span className={t.centerName}>Психолог</span>
-            {reacts
-              .filter((r) => r.seat === -1)
-              .map((r) => {
-                const Icon = REACTIONS[r.kind];
-                return (
-                  <span key={r.id} className={t.react}>
-                    <Icon size={16} fill="currentColor" />
-                  </span>
-                );
-              })}
-          </div>
-          {SEATS.map((seat, i) => {
-            const p = pos[i];
-            const talking = speaker === i;
-            const pose: Pose =
-              smiling.has(i) || hover === i ? "smile" : talking ? (mouth ? "talk" : "C") : focus !== null ? turn(p.x, pos[focus].x) : "C";
-            return (
-              <div
-                key={seat.name}
-                data-seat={i}
-                className={`${t.seat} ${toneClass(seat.tone)}`}
-                data-talk={talking || undefined}
-                data-above={p.y < -0.3 || undefined}
-                style={{ left: `${50 + 40 * p.x}%`, top: `${50 + 40 * p.y}%`, ["--i" as string]: i }}
-                onPointerEnter={fine ? () => setHover(i) : undefined}
-                onPointerLeave={fine ? () => setHover((h) => (h === i ? null : h)) : undefined}
-                onClick={() => react(i)}
-              >
-                <span className={t.pulse} />
-                <span className={t.disc}>
-                  <Head cfg={cfgs[i]} size={200} pose={pose} active={near} />
-                </span>
-                <span className={t.hand} data-up={handUp === i || undefined}>
-                  <Hand size={14} />
-                </span>
-                <span className={t.name}>Участник-{seat.name}</span>
-                {reacts
-                  .filter((r) => r.seat === i)
-                  .map((r) => {
-                    const Icon = REACTIONS[r.kind];
-                    return (
-                      <span key={r.id} className={t.react}>
-                        <Icon size={14} fill="currentColor" />
-                      </span>
-                    );
-                  })}
-              </div>
-            );
-          })}
+          <HeadStage
+            still={still}
+            className={t.stage}
+            canvasClassName={t.canvas}
+          >
+            <div className={t.center} onClick={() => react(-1)}>
+              <LiveHead
+                cfg={hostCfg}
+                onFrame={drivers[0]}
+                bob={0.01}
+                turnRate={4}
+                className={t.head}
+              />
+              <span className={t.centerName}>Психолог</span>
+              <Reactions seat={-1} size={16} />
+            </div>
+            {SEATS.map((name, i) => {
+              const p = pos[i];
+              return (
+                <div
+                  key={name}
+                  data-seat={i}
+                  className={t.seat}
+                  data-talk={speaker === i || undefined}
+                  data-above={p.y < -0.3 || undefined}
+                  style={{
+                    left: `${50 + 40 * p.x}%`,
+                    top: `${50 + 40 * p.y}%`,
+                  }}
+                  onPointerEnter={fine ? () => setHover(i) : undefined}
+                  onPointerLeave={
+                    fine
+                      ? () => setHover((h) => (h === i ? null : h))
+                      : undefined
+                  }
+                  onClick={() => react(i)}
+                >
+                  <LiveHead
+                    cfg={cfgs[i]}
+                    onFrame={drivers[i + 1]}
+                    className={t.head}
+                  />
+                  <span className={t.name}>Участник-{name}</span>
+                  <Reactions seat={i} size={14} />
+                </div>
+              );
+            })}
+          </HeadStage>
         </div>
       </div>
     </section>

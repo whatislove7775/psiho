@@ -38,7 +38,7 @@ import {
   type SearchResult,
   type SpecialistQuery,
 } from "@/lib/api/search";
-import { plural, rub, time, dayLabel } from "@/lib/format";
+import { plural, rub, time, dayLabel, experienceLabel } from "@/lib/format";
 import { topicTone } from "@/lib/topicTone";
 import { FilterBar } from "./FilterBar";
 import { IntroChip } from "@/components/matching/IntroChip";
@@ -626,7 +626,7 @@ function ResultRow({
         <div className={s.rowName}>
           {p.display_name}
           <span className={s.rowExp}>
-            {p.experience_years} {plural(p.experience_years, "год", "года", "лет")} опыта
+            {experienceLabel(p.experience_years)}
           </span>
           <FactsLine p={p} className={s.rowExp} />
           <RatingPill rating={p.rating} count={p.reviews_count} compact />

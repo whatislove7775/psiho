@@ -51,7 +51,8 @@ export interface MyArticle {
   moderated_at: string | null;
   published_at: string | null;
   is_published: boolean;
-  is_featured: boolean;
+  /** «Выбор редакции» — badge + ranking boost (docs/API.md). */
+  editors_choice: boolean;
   reads: number;
   created_at: string;
   updated_at: string;
@@ -85,8 +86,8 @@ export const moderationApi = {
   queue: () => api<ArticleDraft[]>("/content/manage/articles/", { query: { source: "specialists" } }),
   moderate: (id: number, decision: "approve" | "reject", comment = "") =>
     api<ArticleDraft>(`/content/manage/articles/${id}/moderate/`, { method: "POST", body: { decision, comment } }),
-  feature: (id: number, featured: boolean) =>
-    api<ArticleDraft>(`/content/manage/articles/${id}/feature/`, { method: "POST", body: { featured } }),
+  editorsChoice: (id: number, on: boolean) =>
+    api<ArticleDraft>(`/content/manage/articles/${id}/editors-choice/`, { method: "POST", body: { editors_choice: on } }),
 };
 
 /** +1 read, fire-and-forget (no cookies, no identity). */

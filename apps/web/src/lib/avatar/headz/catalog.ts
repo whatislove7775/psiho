@@ -2,6 +2,7 @@
  * HEADZ catalogue accessors (data in catalog.gen.ts, built by tools/headz).
  */
 import { CATALOG } from "./catalog.gen";
+import { COMPAT } from "./compat.gen";
 import type { HeadzBase, HeadzGroup, HeadzPartOption, HeadzSlot } from "./types";
 
 export { CATALOG };
@@ -55,13 +56,30 @@ export interface QualifiedOption {
 
 const GROUP_ORDER: HeadzGroup[] = ["woman", "man", "girl", "boy", "oldwoman", "oldman"];
 
-/** Every option of a slot: the base's own group first, then the other groups. */
-export function headzOptionsAll(baseId: string, slot: HeadzSlot): QualifiedOption[] {
+/** QA only (/dev/headz-lab?mode=fit&all=1): render parts that don't fit too. */
+export const fitGate = { on: true };
+
+/**
+ * Does a part fit this base? Cross-group parts are measured offline (scripts/headz-fit.mjs:
+ * eyes / face covered, skin poking through, lens offset) and only the ones that sit well
+ * are listed in compat.gen.ts; slots without a list accept everything.
+ */
+export function fitsBase(baseId: string, slot: HeadzSlot, qid: string): boolean {
+  if (!fitGate.on) return true;
+  const list = COMPAT[headzBase(baseId).id]?.[slot];
+  return !list || list.includes(qid);
+}
+
+/** Options of a slot the base can wear: its own group first, then the compatible parts of the other groups (`all`: unchecked). */
+export function headzOptionsAll(baseId: string, slot: HeadzSlot, all = false): QualifiedOption[] {
   const own = headzBase(baseId).group;
   const groups = [own, ...GROUP_ORDER.filter((g) => g !== own)];
   const out: QualifiedOption[] = [];
   for (const g of groups)
-    for (const o of CATALOG.options[g]?.[slot] ?? []) out.push({ qid: g === own ? o.id : `${g}.${o.id}`, group: g, option: o });
+    for (const o of CATALOG.options[g]?.[slot] ?? []) {
+      const qid = g === own ? o.id : `${g}.${o.id}`;
+      if (all || fitsBase(baseId, slot, qid)) out.push({ qid, group: g, option: o });
+    }
   return out;
 }
 
@@ -74,8 +92,9 @@ function lookup(baseId: string, slot: HeadzSlot, qid: string): { group: HeadzGro
   return option ? { group, option } : null;
 }
 
+/** A known option that fits the base (saved configs with a part that doesn't fit fall back to the default). */
 export function hasOption(baseId: string, slot: HeadzSlot, qid: unknown): qid is string {
-  return typeof qid === "string" && qid !== "none" && !!lookup(baseId, slot, qid);
+  return typeof qid === "string" && qid !== "none" && !!lookup(baseId, slot, qid) && fitsBase(baseId, slot, qid);
 }
 
 /**

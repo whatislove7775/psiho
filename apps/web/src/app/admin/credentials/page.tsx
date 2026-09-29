@@ -22,6 +22,7 @@ import {
 } from "@/lib/api/credentials";
 import { EmptyArt } from "@/components/illustrations";
 import cs from "@/components/credentials/credentials.module.css";
+import { experienceLabel } from "@/lib/format";
 import s from "./page.module.css";
 
 const TABS: { value: CredentialStatus; label: string; empty: string }[] = [
@@ -282,7 +283,7 @@ function Detail({ c, onDecide }: { c: StaffCredential; onDecide: (d: Decision) =
             <a href={`/admin/specialists?status=${c.specialist.verification_status}`} className={s.whoName}>
               {c.specialist.display_name}
             </a>
-            <small>Опыт {c.specialist.experience_years} лет</small>
+            <small>{experienceLabel(c.specialist.experience_years)}</small>
           </span>
           <Badge tone={STATUS_TONE[c.status]}>{STATUS_LABEL[c.status]}</Badge>
         </div>

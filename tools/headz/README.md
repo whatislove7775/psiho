@@ -45,6 +45,23 @@ procedural eyes, the face-shape sliders, and to seat any part (hair, beards, hat
 Morphs for beards / masks, make-up regions and the neck are derived at runtime (no extra bytes).
 `python export.py --measure <out_dir> [ids]` re-measures already exported faces without the sources.
 
+## Part fit check (which hair / beards / glasses / hats each base offers)
+
+Any part can be worn by any base (re-seated at runtime), but some misfit — e.g. a woman's bob
+over an elder man's eyes. After `build.mjs`, from `apps/web`:
+
+```
+node --import ./src/lib/avatar/__tests__/register.mjs scripts/headz-fit.mjs [--json report.json]
+```
+
+places every (base, part) pair exactly like the renderer (`deform.ts placePart`) and measures it
+(`lib/avatar/headz/fit.ts`: share of the eye openings / brows / central face hidden, skin poking
+through the part, lens offset from the eyes — compared with the part on its own base). Passing parts
+are written to `src/lib/avatar/headz/compat.gen.ts`; the studio offers only those (own group first),
+saved configs with a part that no longer fits fall back to the base's default, and
+`src/lib/avatar/__tests__/fit.test.mjs` re-measures every offered pair. Grid check:
+`/dev/headz-lab?mode=fit&base=oldman-medium&slot=hair[&all=1]`.
+
 ## Floating hands
 
 ```

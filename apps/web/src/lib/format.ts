@@ -11,6 +11,21 @@ export function plural(n: number, one: string, few: string, many: string): strin
   return many;
 }
 
+/** «1 год» / «4 года» / «11 лет» (non-breaking space). */
+export function yearsLabel(n: number): string {
+  return `${n} ${plural(n, "год", "года", "лет")}`;
+}
+
+/** «Опыт 4 года» — the one way to show a specialist's experience. */
+export function experienceLabel(n: number, prefix = "Опыт"): string {
+  return `${prefix} ${yearsLabel(n)}`;
+}
+
+/** Genitive after «от»: «от 1 года», «от 3 лет», «от 21 года». */
+export function fromYearsLabel(n: number): string {
+  return `от ${n} ${plural(n, "года", "лет", "лет")}`;
+}
+
 export function rub(n: number): string {
   return `${new Intl.NumberFormat("ru-RU").format(Math.round(n))} ₽`;
 }

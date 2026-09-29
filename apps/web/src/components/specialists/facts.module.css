@@ -4,6 +4,8 @@
   align-items: center;
   gap: 12px;
   min-width: 0;
+  max-width: 100%;
+  align-self: stretch;
 }
 .row > :first-child {
   flex: none;
@@ -18,11 +20,19 @@
   color: var(--c-muted);
 }
 .facts > span {
-  white-space: nowrap;
+  /* narrow cards (phones): wrap onto two short lines instead of pushing past the card edge */
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 .line {
   font-size: var(--t-12);
   color: var(--c-muted);
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

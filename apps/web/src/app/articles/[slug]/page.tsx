@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Clock } from "lucide-react";
-import { ArticleByline, ArticleCard, PracticeCard } from "@/components/content/Cards";
+import { ArticleByline, ArticleCard, EditorsChoice, PracticeCard } from "@/components/content/Cards";
 import { ArticleBanner } from "@/components/content/ArticleBanner";
 import { AuthorCard, ReadCounter } from "@/components/content/AuthorCard";
 import { EvidenceBadge, KeyFacts, SeekHelp, Sources } from "@/components/content/Evidence";
@@ -156,6 +156,7 @@ export default async function ArticlePage({ params }: Props) {
               </span>
               <EvidenceBadge level={a.evidence_level} />
               <RatingBadge rating={a.rating} />
+              {a.editors_choice && <EditorsChoice />}
             </div>
             <h1 className={s.title}>{typo(a.title)}</h1>
             {a.summary && <p className={s.lead}>{typo(a.summary)}</p>}

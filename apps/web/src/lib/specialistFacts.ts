@@ -1,4 +1,4 @@
-import { plural } from "@/lib/format";
+import { plural, yearsLabel } from "@/lib/format";
 
 /** «32 года» — only when the specialist set a birth year. */
 export function ageLabel(age?: number | null): string | null {
@@ -15,7 +15,7 @@ export function tenureShort(since?: string | null, now = new Date()): string | n
   if (months < 1) return "меньше месяца";
   if (months < 12) return `${months}\u00a0мес.`;
   const years = Math.floor(months / 12);
-  return `${years}\u00a0${plural(years, "год", "года", "лет")}`;
+  return yearsLabel(years);
 }
 
 /** «На Aprosop 3 мес.» / «На Aprosop 2 года» / «Новый на Aprosop». */

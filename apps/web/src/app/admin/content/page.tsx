@@ -202,14 +202,13 @@ function ContentCms() {
                           <strong>{a.title}</strong>
                           <em className={pa.mStatus} data-s={st}>
                             {STATUS_LABEL[st]}
-                            {a.is_featured ? " · в\u00a0топе" : ""}
                           </em>
                           <span>
                             {a.specialist?.name}, {topicLabel(a.topic)}
                           </span>
                         </span>
                         <span className={s.rowMeta}>
-                          {a.is_featured && <Badge tone="sun">В&nbsp;топе</Badge>}
+                          {a.editors_choice && <Badge tone="sun">Выбор редакции</Badge>}
                           <Badge tone={st === "pending" ? "warning" : st === "approved" ? "success" : st === "rejected" ? "danger" : "neutral"}>{STATUS_LABEL[st]}</Badge>
                         </span>
                       </button>

@@ -6,6 +6,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from . import ranking
 from .models import Article, Moderation, Practice, Topic
 from .permissions import IsContentStaff
 from .serializers import (
@@ -42,12 +43,6 @@ def topic_filter(qs, value: str):
     ids = [pk for pk, topics, topic in qs.values_list("id", "topics", "topic")
            if wanted & set(topics or [topic])]
     return qs.filter(id__in=ids)
-
-
-def _top_score(a, now) -> float:
-    """«В топе»: прочтения с поправкой на свежесть (старые статьи постепенно опускаются)."""
-    age_days = max(0.0, (now - (a.published_at or a.created_at)).total_seconds() / 86400)
-    return (a.reads + 5) / ((age_days + 2) ** 1.2)
 
 
 def _limit(request, default=None):
@@ -106,14 +101,12 @@ class ArticleListView(generics.ListAPIView):
             ]
             qs = qs.filter(id__in=ids)
         limit = _limit(self.request)
-        if self.request.query_params.get("sort") == "top":
-            # Закреплённые сотрудником — первыми, дальше по прочтениям и свежести
-            now = timezone.now()
-            items = sorted(qs, key=lambda a: (not a.is_featured, -_top_score(a, now)))
-            return items[:limit] if limit else items
-        # Закреплённые «В топе» — первыми, остальные по дате публикации
-        qs = qs.order_by("-is_featured", "-published_at", "-created_at")
-        return qs[:limit] if limit else qs
+        if self.request.query_params.get("sort") == "new":
+            qs = qs.order_by("-published_at", "-created_at")
+            return qs[:limit] if limit else qs
+        # По умолчанию и ?sort=top — рекомендательный score (ranking.py, docs/API.md)
+        items = ranking.ranked(qs, timezone.now())
+        return items[:limit] if limit else items
 
 
 class ArticleDetailView(generics.RetrieveAPIView):

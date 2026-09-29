@@ -64,3 +64,113 @@ export function withLidFollow(w: Weights, v: number): Weights {
   }
   return w;
 }
+
+// ── tracked gaze ────────────────────────────────────────────────────────────
+
+/** Minimal One-Euro filter (Casiez et al.) with a reset — smooths jitter, keeps saccades. */
+class Euro {
+  private x: number | null = null;
+  private dx = 0;
+  private minCutoff: number;
+  private beta: number;
+  private dCutoff: number;
+  constructor(minCutoff: number, beta: number, dCutoff = 1.5) {
+    this.minCutoff = minCutoff;
+    this.beta = beta;
+    this.dCutoff = dCutoff;
+  }
+  private static alpha(cutoff: number, dt: number) {
+    const tau = 1 / (2 * Math.PI * cutoff);
+    return 1 / (1 + tau / dt);
+  }
+  reset(v: number | null = null) {
+    this.x = v;
+    this.dx = 0;
+  }
+  filter(v: number, dt: number): number {
+    if (this.x === null || dt <= 0) return (this.x = v);
+    const dv = (v - this.x) / dt;
+    this.dx += Euro.alpha(this.dCutoff, dt) * (dv - this.dx);
+    this.x += Euro.alpha(this.minCutoff + this.beta * Math.abs(this.dx), dt) * (v - this.x);
+    return this.x;
+  }
+}
+
+/** Blink hysteresis: eyes count as closed above CLOSE, open again below OPEN. */
+const CLOSE = 0.6, OPEN = 0.45;
+/** A closed-eye hold longer than this is not a blink (squint, smile, looking down): let the gaze go. */
+const MAX_HOLD = 0.3;
+/** Without usable samples for this long the gaze relaxes to the centre. */
+const STALE = 0.15;
+/** Returning to the centre: ~90 % in 0.25 s. */
+const RELAX = 9;
+/** Tiny offsets around the centre are tracker noise: looking at the camera reads as exactly 0. */
+const DEAD = 0.06;
+/** MediaPipe's eyeLook scores rarely exceed ~0.7: scale to the full physiological range. */
+export const GAZE_GAIN = 1.35;
+
+/**
+ * The avatar's tracked gaze. Tracked eyeLook* weights → one gaze vector, One-Euro
+ * filtered (reacts in well under 100 ms), held only through a real blink (≤ 0.3 s),
+ * and relaxed back to the centre whenever input is closed-eyed for longer or missing
+ * (low confidence / lost face). It never latches: every path either follows fresh
+ * input or decays to 0. Times are in seconds.
+ */
+export class GazeTracker {
+  h = 0;
+  v = 0;
+  private fh = new Euro(3, 0.8);
+  private fv = new Euro(3, 0.8);
+  private last = -1;
+  private closed = false;
+  private closedAt = 0;
+
+  /** A tracked frame (weights already mirrored to avatar space). */
+  update(w: Weights, now: number) {
+    const blink = ((w.eyeBlinkLeft ?? 0) + (w.eyeBlinkRight ?? 0)) / 2;
+    if (!this.closed && blink > CLOSE) {
+      this.closed = true;
+      this.closedAt = now;
+    } else if (this.closed && blink < OPEN) this.closed = false;
+    if (this.closed) {
+      // lids closing report garbage gaze: hold briefly, then relax toward the centre
+      if (now - this.closedAt > MAX_HOLD) this.relax(now);
+      else this.relaxedAt = -1;
+      this.last = now; // a closed-eye frame is still a live sample (not a gap)
+      return;
+    }
+    const gap = this.last < 0 ? Infinity : now - this.last;
+    if (gap > STALE) {
+      // after a gap start from the current (relaxed) gaze, not from stale filter state
+      this.fh.reset(this.h);
+      this.fv.reset(this.v);
+    }
+    const dt = Math.min(0.1, Math.max(1 / 120, Number.isFinite(gap) ? gap : 1 / 30));
+    const g = gazeOf(w);
+    const dz = (x: number) => (Math.abs(x) < DEAD ? 0 : x - Math.sign(x) * DEAD);
+    const snap = (x: number) => (Math.abs(x) < 1e-3 ? 0 : x);
+    this.h = snap(this.fh.filter(clamp(dz(g.h * GAZE_GAIN), -1, 1), dt));
+    this.v = snap(this.fv.filter(clamp(dz(g.v * GAZE_GAIN), -1, 1), dt));
+    this.last = now;
+  }
+
+  /** Every rendered frame: relaxes the gaze when input is stale (no face / low confidence). */
+  tick(now: number) {
+    if (this.last >= 0 && now - this.last > STALE) this.relax(now);
+    else if (this.closed && now - this.closedAt > MAX_HOLD) this.relax(now);
+  }
+
+  private relaxedAt = -1;
+  private relax(now: number) {
+    const dt = this.relaxedAt < 0 ? 1 / 30 : Math.min(0.1, Math.max(0, now - this.relaxedAt));
+    this.relaxedAt = now;
+    const k = Math.exp(-RELAX * dt);
+    this.h *= k;
+    this.v *= k;
+    if (Math.abs(this.h) < 1e-3) this.h = 0;
+    if (Math.abs(this.v) < 1e-3) this.v = 0;
+    // the filters continue from the relaxed gaze, never from a stale side look
+    this.fh.reset(this.h);
+    this.fv.reset(this.v);
+  }
+}

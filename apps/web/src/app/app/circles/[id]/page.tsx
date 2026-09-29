@@ -41,7 +41,7 @@ import {
   type CircleDetail,
   type CircleMeeting,
 } from "@/lib/api/circles";
-import { day, dayLabel, dayShort, plural, time, untilLabel } from "@/lib/format";
+import { day, dayLabel, dayShort, plural, time, untilLabel, experienceLabel } from "@/lib/format";
 import s from "@/components/circles/circles.module.css";
 import { typo } from "@/lib/typography";
 
@@ -229,7 +229,7 @@ function HostCard({ h, role }: { h: CircleDetail["host"]; role?: string }) {
           </Badge>
           {h.experience_years > 0 && (
             <Badge>
-              Опыт {h.experience_years} {plural(h.experience_years, "год", "года", "лет")}
+              {experienceLabel(h.experience_years)}
             </Badge>
           )}
           {!!h.verified_credentials && (

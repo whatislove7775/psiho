@@ -13,7 +13,7 @@
     /api/v1/content/images/                         POST (multipart)     — картинка в текст статьи (они же)
     /api/v1/content/articles/<slug>/rating/         GET, PUT {stars}, DELETE — оценка 1–5 (PUT/DELETE — вошедшие)
     /api/v1/content/manage/articles/<id>/moderate/  POST {decision, comment}  — content.publish
-    /api/v1/content/manage/articles/<id>/feature/   POST {featured}           — content.publish
+    /api/v1/content/manage/articles/<id>/editors-choice/  POST {editors_choice} — content.publish («Выбор редакции»)
     /api/v1/content/articles/<slug>/read/           POST                 — +1 прочтение (анонимно)
 """
 import json
@@ -169,11 +169,11 @@ class MyArticleSerializer(ArticleWriteMixin, CoverImageMixin, serializers.ModelS
             "id", "slug", "title", "summary", "content", "body", "topic", "topic_label", "topics", "topic_labels",
             "sources", "cover", "cover_image",
             "cover_image_id", "reading_minutes", "status", "moderation_comment", "submitted_at", "moderated_at",
-            "published_at", "is_published", "is_featured", "reads", "created_at", "updated_at",
+            "published_at", "is_published", "editors_choice", "reads", "created_at", "updated_at",
         )
         read_only_fields = (
             "slug", "reading_minutes", "moderation_comment", "submitted_at", "moderated_at", "published_at",
-            "is_published", "is_featured", "reads", "created_at", "updated_at", "cover",
+            "is_published", "editors_choice", "reads", "created_at", "updated_at", "cover",
         )
         extra_kwargs = {"title": {"max_length": 200}, "body": {"required": False, "allow_blank": True, "write_only": True}}
 
@@ -296,8 +296,8 @@ class MyArticleWithdrawView(APIView):
             return Response({"detail": "Статья и так в черновиках."}, status=400)
         article.moderation = M.DRAFT
         article.is_published = False
-        article.is_featured = False
-        article.save(update_fields=["moderation", "is_published", "is_featured", "updated_at"])
+        article.editors_choice = False
+        article.save(update_fields=["moderation", "is_published", "editors_choice", "updated_at"])
         return Response(MyArticleSerializer(article, context={"request": request}).data)
 
 
@@ -341,20 +341,23 @@ class ModerateArticleView(APIView):
         return Response(ArticleManageSerializer(article, context={"request": request}).data)
 
 
-class FeatureArticleView(APIView):
+class EditorsChoiceView(APIView):
+    """«Выбор редакции» — значок на карточке и буст в ранжировании (место в ленте решает ranking.py)."""
+
     permission_classes = [CanPublishContent]
 
     def post(self, request, pk):
         article = Article.objects.filter(pk=pk).first()
         if article is None:
             return Response({"detail": "Статья не найдена."}, status=404)
-        featured = bool(request.data.get("featured"))
-        if featured and not article.is_published:
-            return Response({"detail": "В топ можно поднять только опубликованную статью."}, status=400)
-        if article.is_featured != featured:
-            article.is_featured = featured
-            article.save(update_fields=["is_featured", "updated_at"])
-            _audit(request, "content.article.feature" if featured else "content.article.unfeature", article,
+        value = request.data.get("editors_choice", request.data.get("featured"))
+        on = value is True or str(value).lower() in ("1", "true")
+        if on and not article.is_published:
+            return Response({"detail": "Отметить можно только опубликованную статью."}, status=400)
+        if article.editors_choice != on:
+            article.editors_choice = on
+            article.save(update_fields=["editors_choice", "updated_at"])
+            _audit(request, "content.article.editors_choice" if on else "content.article.editors_choice_off", article,
                    {"slug": article.slug})
         return Response(ArticleManageSerializer(article, context={"request": request}).data)
 

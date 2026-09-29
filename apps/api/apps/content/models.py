@@ -139,9 +139,9 @@ class Article(models.Model):
     moderated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
-    # «В топе»: сотрудник закрепляет статью первой в ленте
-    is_featured = models.BooleanField(default=False, db_index=True)
-    # Прочтения (без привязки к читателю) — для ранжирования «От специалистов»
+    # «Выбор редакции»: значок + буст в ранжировании (ranking.py); ставит сотрудник с content.publish
+    editors_choice = models.BooleanField(default=False, db_index=True)
+    # Прочтения (без привязки к читателю) — для ранжирования (ranking.py)
     reads = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

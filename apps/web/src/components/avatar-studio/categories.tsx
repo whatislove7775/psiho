@@ -12,6 +12,7 @@ import {
   SKIN_TONES,
   baseDefault,
   nearestTone,
+  normalizeAvatar,
   type AvatarConfig,
   type FaceShape,
   type HeadzGroup,
@@ -71,12 +72,13 @@ const BEARD_OK = new Set<HeadzGroup>(["man", "oldman", "woman", "oldwoman"]);
 export function withBase(cfg: AvatarConfig, baseId: string): AvatarConfig {
   const from = headzBase(cfg.base).group;
   const to = headzBase(baseId).group;
-  if (from === to) return { ...cfg, base: baseId };
+  // same group: everything stays, except parts that don't fit the new head (→ its default / none)
+  if (from === to) return normalizeAvatar({ ...cfg, base: baseId });
   const own = (slot: HeadzSlot) => {
     const q = requalify(cfg.base, baseId, slot, cfg[slot]);
     return q.includes(".") ? "none" : q;
   };
-  return {
+  return normalizeAvatar({
     ...cfg,
     base: baseId,
     hair: headzBase(baseId).defaults.hair ?? "none",
@@ -85,7 +87,7 @@ export function withBase(cfg: AvatarConfig, baseId: string): AvatarConfig {
     headwear: own("headwear"),
     earrings: own("earrings"),
     mask: own("mask"),
-  };
+  });
 }
 
 /** Short Russian names for part options. */

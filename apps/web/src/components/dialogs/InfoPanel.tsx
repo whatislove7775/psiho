@@ -26,7 +26,7 @@ import { attachmentUrl } from "@/lib/api/chat";
 import { AttachmentViewer, viewKind } from "@/components/chat/AttachmentViewer";
 import { dialogsApi, type CallInfo, type DialogDetail, type DialogItem } from "@/lib/api/dialogs";
 import { durationLabel } from "@/lib/api/availability";
-import { plural, rub } from "@/lib/format";
+import { plural, rub, experienceLabel } from "@/lib/format";
 import { AvatarThumb } from "@/components/avatar/AvatarThumb";
 import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import { Tisha } from "@/components/chat/Tisha";
@@ -282,7 +282,7 @@ function Person({ item }: { item: DialogItem | DialogDetail }) {
         <div className={s.personBody}>
           <div className={s.personName}>{who.name}</div>
           <div className={s.personSub}>
-            Психолог{who.experience_years ? `, опыт ${who.experience_years} ${plural(who.experience_years, "год", "года", "лет")}` : ""}
+            Психолог{who.experience_years ? `, ${experienceLabel(who.experience_years, "опыт")}` : ""}
           </div>
           {!!who.specializations?.length && (
             <div className={s.chips}>

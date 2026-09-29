@@ -10,6 +10,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { ArrowDownUp, Banknote, Check, Clock3, MessageCircleHeart, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { Select } from "@/ui";
 import { durationLabel } from "@/lib/api/availability";
+import { fromYearsLabel } from "@/lib/format";
 import { hasTime, type GenderFilter, type SearchFacets, type SortOrder, type SpecialistQuery, type TimeOfDay, type WhenFilter } from "@/lib/api/search";
 import { FilterPopover } from "./FilterPopover";
 import s from "./filters.module.css";
@@ -272,7 +273,7 @@ export function FilterBar({
       clear: () => set({ when: undefined, days: undefined, times: undefined, date_from: undefined, date_to: undefined }),
     });
   if (value.duration) chips.push({ key: "dur", label: `Созвон ${durationLabel(value.duration)}`, clear: () => set({ duration: undefined }) });
-  if (value.min_experience) chips.push({ key: "exp", label: `Опыт от\u00a0${value.min_experience} лет`, clear: () => set({ min_experience: undefined }) });
+  if (value.min_experience) chips.push({ key: "exp", label: `Опыт ${fromYearsLabel(value.min_experience)}`, clear: () => set({ min_experience: undefined }) });
   if (value.gender) chips.push({ key: "g", label: GENDER_LABEL[value.gender], clear: () => set({ gender: undefined }) });
   if (value.language) chips.push({ key: "l", label: value.language, clear: () => set({ language: undefined }) });
   if (value.intro) chips.push({ key: "i", label: "Знакомство 15\u00a0мин", clear: () => set({ intro: undefined }) });
@@ -416,7 +417,7 @@ export function FilterBar({
           <Section title="Опыт">
             <Chips
               label="Опыт"
-              options={EXPERIENCE.map((y) => ({ value: y, label: `от\u00a0${y} лет` }))}
+              options={EXPERIENCE.map((y) => ({ value: y, label: fromYearsLabel(y) }))}
               isOn={(v) => value.min_experience === v}
               onToggle={(v) => set({ min_experience: value.min_experience === v ? undefined : v })}
             />

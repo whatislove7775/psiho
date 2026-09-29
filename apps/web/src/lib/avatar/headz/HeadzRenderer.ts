@@ -26,10 +26,10 @@ import { normalizeAvatar, type AvatarConfig, type BrowStyle } from "../schema";
 import type { AvatarRendererApi, FaceResult, Framing, RendererOptions } from "../kit/types";
 import { headzBase, headzRimQ, resolvePart } from "./catalog";
 import type { HeadzBase, HeadzSlot } from "./types";
-import { deformFace, deformedEye, fitRadial, frameOf, radiusAt, radiusMap, seatOnSkin, transferMorphs, type RadiusMap } from "./deform";
-import { combineEyes, gazeOf, gazeWeights, withLidFollow, type Weights } from "./gaze";
+import { deformFace, deformedEye, frameOf, placePart, radiusAt, radiusMap, transferMorphs, type RadiusMap } from "./deform";
+import { GazeTracker, combineEyes, gazeOf, gazeWeights, withLidFollow, type Weights } from "./gaze";
 import { eyeUniforms, hairUniforms, patchEye, patchFade, patchHair, patchSkin, skinUniforms } from "./shaders";
-import { EyeRig, OneEuro, irisUniforms, makeCorneaMaterial, makeIrisMaterial, makeScleraMaterial, type EyeSpec } from "./eyes";
+import { EyeRig, irisUniforms, makeCorneaMaterial, makeIrisMaterial, makeScleraMaterial, type EyeSpec } from "./eyes";
 
 const loader = new GLTFLoader();
 loader.setMeshoptDecoder(MeshoptDecoder);
@@ -127,8 +127,20 @@ const WITH_NECK = false;
 const EYE_ROLES = new Set(["iris", "pupil", "eyeWhite"]);
 /** eyeLook* on the FACE (lids, skin around the eyes) only follows the gaze a little */
 const LID_FOLLOW = 0.3;
-/** MediaPipe's eyeLook scores rarely exceed ~0.7: scale to the full physiological range */
-const GAZE_GAIN = 1.35;
+
+/** Extra options for heads drawn by a shared HeadzStage (one WebGL context for many heads). */
+export interface SharedOptions {
+  /** light static face (thumbnails) */
+  lod?: boolean;
+  /** draw with this renderer (owned by the stage) instead of creating one on `canvas` */
+  gl?: THREE.WebGLRenderer;
+  /** environment map shared by the stage's heads */
+  env?: THREE.Texture;
+  /** idle: breathing bob of the head (head units), 0 = none */
+  bob?: number;
+  /** how fast the head turns toward lookAt() (1/s, default 12) */
+  turnRate?: number;
+}
 
 export class HeadzRenderer implements AvatarRendererApi {
   readonly canvas: HTMLCanvasElement;
@@ -164,8 +176,8 @@ export class HeadzRenderer implements AvatarRendererApi {
   private eyeRig = new EyeRig(this.eyeMats);
   /** source eye meshes hidden in favour of the rig (per-side bounds for the socket fit) */
   private eyeBounds: [THREE.Box3, THREE.Box3] | null = null;
-  /** tracked gaze: One-Euro filtered, held while blinking / when the tracker is unsure */
-  private trackGaze = { h: 0, v: 0, t: 0, fh: new OneEuro(2.5, 0.6), fv: new OneEuro(2.5, 0.6) };
+  /** tracked gaze: filtered, held only through a blink, relaxes to the centre when input is missing (gaze.ts) */
+  private trackGaze = new GazeTracker();
   private skinU = skinUniforms();
   private hairU = hairUniforms();
   private beardU = hairUniforms();
@@ -199,10 +211,19 @@ export class HeadzRenderer implements AvatarRendererApi {
   private lastTrack = -1e9;
   private look = { yaw: 0, pitch: 0 };
   private idle = { nextBlink: 1.5, blinkT: -1, double: false, glanceAt: 2, gx: 0, gy: 0, sacAt: 0.5, sx: 0, sy: 0 };
+  /** the stage owns the WebGL renderer + environment (don't dispose them) */
+  private sharedGl: boolean;
+  private bob: number;
+  private turnRate: number;
+  /** per-head phase so heads on one stage don't sway / blink in sync */
+  private phase = Math.random() * 100;
 
-  constructor(canvas: HTMLCanvasElement, opts: RendererOptions & { lod?: boolean } = {}) {
-    this.canvas = canvas;
+  constructor(canvas: HTMLCanvasElement | null, opts: RendererOptions & SharedOptions = {}) {
     this.lod = !!opts.lod;
+    this.sharedGl = !!opts.gl;
+    this.bob = opts.bob ?? 0;
+    this.turnRate = opts.turnRate ?? 12;
+    this.idle.nextBlink = 0.5 + Math.random() * 3;
     this.opts = {
       background: opts.background ?? null,
       framing: opts.framing ?? "portrait",
@@ -212,22 +233,22 @@ export class HeadzRenderer implements AvatarRendererApi {
       fps: opts.fps ?? 30,
       preserveDrawingBuffer: opts.preserveDrawingBuffer ?? false,
     };
-    this.renderer = new THREE.WebGLRenderer({
-      canvas,
-      antialias: true,
-      alpha: this.opts.background === null,
-      preserveDrawingBuffer: this.opts.preserveDrawingBuffer,
-      powerPreference: "high-performance",
-    });
-    this.renderer.setPixelRatio(Math.min(typeof window !== "undefined" ? window.devicePixelRatio : 1, this.opts.maxPixelRatio));
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.toneMapping = THREE.NeutralToneMapping;
-    this.renderer.toneMappingExposure = 1.0;
-    this.renderer.localClippingEnabled = true;
+    this.renderer =
+      opts.gl ??
+      new THREE.WebGLRenderer({
+        canvas: canvas ?? undefined,
+        antialias: true,
+        alpha: this.opts.background === null,
+        preserveDrawingBuffer: this.opts.preserveDrawingBuffer,
+        powerPreference: "high-performance",
+      });
+    this.canvas = this.renderer.domElement;
+    if (!opts.gl) {
+      this.renderer.setPixelRatio(Math.min(typeof window !== "undefined" ? window.devicePixelRatio : 1, this.opts.maxPixelRatio));
+      configureRenderer(this.renderer);
+    }
     if (this.opts.background) this.scene.background = new THREE.Color(this.opts.background);
-    const pmrem = new THREE.PMREMGenerator(this.renderer);
-    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    pmrem.dispose();
+    this.scene.environment = opts.env ?? makeEnvironment(this.renderer);
     this.scene.environmentIntensity = 0.65;
     // Soft studio light, Memoji-like: warm key high left-front, cool fill, bright rim behind.
     const key = new THREE.DirectionalLight("#fff3e8", 2.0);
@@ -510,13 +531,8 @@ export class HeadzRenderer implements AvatarRendererApi {
           if (!m) return;
           g.add(m);
           const ow = this.own(m, slot);
-          if (srcMap && this.map) {
-            // made for another head: re-seat it (coarse radius maps), then snap its skin-side layer to our skin
-            const heights = fitRadial(ow.rest, srcMap, this.map);
-            const sk = this.skinSurface();
-            seatOnSkin(ow.rest, heights, sk.pos, sk.nrm);
-          }
-          if (slot === "hair") liftHair(ow.rest);
+          // made for another head: re-seat it (coarse radius maps) + snap its skin-side layer to our skin; lift hair
+          placePart(ow.rest, slot, srcMap, this.map, () => this.skinSurface());
           owned.push(ow);
         });
         if (FOLLOW_SLOTS.has(slot) && !this.lod)
@@ -993,16 +1009,7 @@ export class HeadzRenderer implements AvatarRendererApi {
       // both eyes share one gaze; lids agree unless it's a real wink
       this.targets = combineEyes(raw) as Partial<Record<Shape, number>>;
       const now = performance.now();
-      const G = this.trackGaze;
-      const blink = ((raw.eyeBlinkLeft ?? 0) + (raw.eyeBlinkRight ?? 0)) / 2;
-      // closed / closing eyes report garbage gaze: hold the last one
-      if (blink < 0.45) {
-        const g = gazeOf(raw);
-        const dt = G.t ? Math.min(0.2, (now - G.t) / 1000) : 1 / 30;
-        G.h = G.fh.filter(Math.max(-1, Math.min(1, g.h * GAZE_GAIN)), dt);
-        G.v = G.fv.filter(Math.max(-1, Math.min(1, g.v * GAZE_GAIN)), dt);
-        G.t = now;
-      }
+      this.trackGaze.update(raw, now / 1000);
       this.lastTrack = now;
     }
     const mtx = result.facialTransformationMatrixes?.[0]?.data;
@@ -1063,6 +1070,34 @@ export class HeadzRenderer implements AvatarRendererApi {
   get stage() {
     return { scene: this.scene, camera: this.camera };
   }
+
+  // ── shared stage (HeadzStage) ─────────────────────────────────────────────
+
+  /** Advance the animation by dt seconds without drawing (the stage draws). */
+  tick(dt: number) {
+    this.clock.elapsedTime += dt;
+    this.animate(Math.min(0.1, dt));
+  }
+  /** Draw into the renderer's current viewport (set by the stage). */
+  draw() {
+    this.renderer.render(this.scene, this.camera);
+  }
+  /**
+   * Camera for a stage viewport: the head is framed in a box of `aspect` (w / h) and the
+   * viewport extends past the box by `side` × w left and right and `below` × h under it
+   * (big hair / long hair isn't cut at the box's edges).
+   */
+  setView(aspect: number, below = 0, side = 0) {
+    const key = `${aspect.toFixed(4)}|${below}|${side}`;
+    if (this.viewKey === key) return;
+    this.viewKey = key;
+    this.camera.clearViewOffset();
+    this.camera.aspect = aspect;
+    this.fitCamera();
+    const W = 1000, H = 1000 / aspect;
+    if (below > 0 || side > 0) this.camera.setViewOffset(W, H, -side * W, 0, W * (1 + 2 * side), H * (1 + below));
+  }
+  private viewKey = "";
 
   /** Render right now (face tracking calls this as soon as a camera frame is processed). */
   renderNow() {
@@ -1169,6 +1204,8 @@ export class HeadzRenderer implements AvatarRendererApi {
     Object.values(this.eyeMats).forEach((m) => m.dispose());
     this.eyeRig.dispose();
     this.neck?.geometry.dispose();
+    for (const g of [this.faceGroup, ...SLOTS.map((sl) => this.parts[sl]?.group), this.extras.group]) if (g) g.traverse((o) => (o as THREE.Mesh).isMesh && disposeOwnGeometry((o as THREE.Mesh).geometry));
+    if (this.sharedGl) return;
     this.scene.environment?.dispose();
     this.renderer.dispose();
   }
@@ -1176,7 +1213,7 @@ export class HeadzRenderer implements AvatarRendererApi {
   private animate(dt: number) {
     const now = performance.now();
     const tracking = now - this.lastTrack < 800;
-    const t = this.clock.elapsedTime;
+    const t = this.clock.elapsedTime + this.phase;
     const I = this.idle;
     const target: Weights = tracking ? { ...this.targets } : { ...this.manual };
     // micro-saccades: tiny shared jumps of both eyes every ~0.4–1.6 s
@@ -1185,6 +1222,7 @@ export class HeadzRenderer implements AvatarRendererApi {
       I.sx = (Math.random() * 2 - 1) * 0.045;
       I.sy = (Math.random() * 2 - 1) * 0.03;
     }
+    if (tracking) this.trackGaze.tick(now / 1000);
     let gaze = tracking ? { h: this.trackGaze.h, v: this.trackGaze.v } : gazeOf(target);
     if (!tracking && this.opts.idle) {
       // natural blinks: every 2–6 s, sometimes a double blink
@@ -1237,8 +1275,10 @@ export class HeadzRenderer implements AvatarRendererApi {
       const rate = i === 8 || i === 9 ? kb : i >= 10 && i <= 17 ? Math.max(k, ke) : k;
       this.current[i] = cur + ((target[s] ?? 0) - cur) * rate;
     }
-    this.headCurrent.slerp(this.headTarget, 1 - Math.exp(-dt * (tracking ? TRACK_RATE : 12)));
+    this.headCurrent.slerp(this.headTarget, 1 - Math.exp(-dt * (tracking ? TRACK_RATE : this.turnRate)));
     this.headPivot.quaternion.copy(this.headCurrent);
+    // breathing: a slow, slightly uneven rise and fall of the whole head
+    if (this.bob && !tracking) this.root.position.y = this.bob * (Math.sin(t * 1.25) + 0.25 * Math.sin(t * 0.53 + 1));
     this.applyRig();
     for (const a of this.addons) a.tick(dt); // add-on hook (hands)
   }
@@ -1263,13 +1303,20 @@ export class HeadzRenderer implements AvatarRendererApi {
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-/** Hair sits a hair's breadth off the scalp: no z-fighting / skin showing through strand gaps. */
-function liftHair(p: Float32Array) {
-  for (let i = 0; i < p.length; i += 3) {
-    p[i] *= 1.006;
-    p[i + 1] = p[i + 1] * 1.006;
-    p[i + 2] *= 1.006;
-  }
+/** Colour pipeline of every avatar renderer (own or a stage's shared one). */
+export function configureRenderer(r: THREE.WebGLRenderer) {
+  r.outputColorSpace = THREE.SRGBColorSpace;
+  r.toneMapping = THREE.NeutralToneMapping;
+  r.toneMappingExposure = 1.0;
+  r.localClippingEnabled = true;
+}
+
+/** Soft studio reflections (a stage makes this once for all its heads). */
+export function makeEnvironment(r: THREE.WebGLRenderer): THREE.Texture {
+  const pmrem = new THREE.PMREMGenerator(r);
+  const tex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  pmrem.dispose();
+  return tex;
 }
 
 function scaled(w: Weights, k: number): Weights {

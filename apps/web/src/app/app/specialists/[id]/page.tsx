@@ -12,7 +12,7 @@ import { WithRail } from "@/components/shell/AppShell";
 import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import { ApiError } from "@/lib/api/client";
 import { psychologistsApi } from "@/lib/api/endpoints";
-import { plural, rub } from "@/lib/format";
+import { rub, yearsLabel } from "@/lib/format";
 import { useLoad } from "@/components/client/useLoad";
 import { ErrorBlock } from "@/components/client/ClientBits";
 import { BookingPanel } from "@/components/booking/BookingPanel";
@@ -120,8 +120,7 @@ export default function SpecialistProfile() {
                   <div>
                     <dt>Опыт</dt>
                     <dd>
-                      {p.experience_years}{" "}
-                      {plural(p.experience_years, "год", "года", "лет")}
+                      {yearsLabel(p.experience_years)}
                     </dd>
                   </div>
                   {ageLabel(p.age) && (

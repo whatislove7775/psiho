@@ -12,7 +12,7 @@ import { dateOnly, KV, Pager, ReasonModal, SearchBox, Toolbar, useDebounced, ago
 import { LoadError } from "@/components/pro/controls";
 import { staffApi, type Page, type SpecialistDecision, type StaffSpecialist } from "@/lib/api/staff";
 import type { VerificationStatus } from "@/lib/api/types";
-import { plural, rub } from "@/lib/format";
+import { plural, rub, experienceLabel } from "@/lib/format";
 import a from "@/components/admin/admin.module.css";
 import s from "@/components/admin/staff.module.css";
 import { EmptyArt } from "@/components/illustrations";
@@ -193,7 +193,7 @@ function SpecialistsPage() {
                       <span className={a.rate}>
                         {p.hourly_rate_rub ? `${rub(p.hourly_rate_rub)} в\u00a0час` : `от\u00a0${rub(p.session_rate_rub)}`}
                         <small>
-                          опыт {p.experience_years} {plural(p.experience_years, "год", "года", "лет")}
+                          {experienceLabel(p.experience_years, "опыт")}
                         </small>
                       </span>
                       <ChevronDown size={20} className={a.chev} aria-hidden />

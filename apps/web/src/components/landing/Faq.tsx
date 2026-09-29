@@ -53,7 +53,7 @@ export function Faq() {
           <p className={s.sectionSub}>
             Не&nbsp;нашли ответ? <a href="mailto:support@aprosop.ru">support@aprosop.ru</a>
           </p>
-          <AvatarDecor pics={["wave"]} size={190} from={1200} className={s.faqDecor} />
+          <AvatarDecor heads={["mila"]} size={190} from={1200} className={s.faqDecor} />
         </div>
         <div className={s.faqList}>
           {ITEMS.map((item, i) => {

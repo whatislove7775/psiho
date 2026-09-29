@@ -85,7 +85,7 @@ export default async function PracticesPage() {
                 </li>
               ))}
             </ul>
-            {i === decorAt && <AvatarDecor pics={["yay"]} size={170} from={1200} className={s.groupDecor} />}
+            {i === decorAt && <AvatarDecor heads={["timur"]} size={170} from={1200} className={s.groupDecor} />}
           </section>
         ))
       )}
