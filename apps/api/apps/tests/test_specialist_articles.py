@@ -162,6 +162,9 @@ def test_editors_choice_badge_and_ranking(api, psychologist):
     feed = api.get("/api/v1/content/articles/?sort=new").json()
     last = Article.objects.get(slug=feed[-1]["slug"])
     url = f"/api/v1/content/manage/articles/{last.pk}/editors-choice/"
+    # Редакционные статьи отметить нельзя — только статьи специалистов
+    assert editor.post(url, {"editors_choice": True}, format="json").status_code == 400
+    Article.objects.filter(pk=last.pk).update(specialist=psychologist)
     assert _staff("support").post(url, {"editors_choice": True}, format="json").status_code == 403
     r = editor.post(url, {"editors_choice": True}, format="json")
     assert r.status_code == 200 and r.json()["editors_choice"]
@@ -171,6 +174,7 @@ def test_editors_choice_badge_and_ranking(api, psychologist):
     assert api.get(f"/api/v1/content/articles/{last.slug}/").json()["editors_choice"] is True
     # Прочтения поднимают статью в «Топе» (и в порядке по умолчанию)
     other = Article.objects.get(slug=feed[0]["slug"])
+    Article.objects.filter(pk=other.pk).update(specialist=psychologist)
     assert api.post(f"/api/v1/content/articles/{other.slug}/read/").status_code == 204
     Article.objects.filter(pk=other.pk).update(reads=5000)
     assert api.get("/api/v1/content/articles/?sort=top").json()[0]["slug"] == other.slug

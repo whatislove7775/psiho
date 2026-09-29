@@ -354,6 +354,8 @@ class EditorsChoiceView(APIView):
         on = value is True or str(value).lower() in ("1", "true")
         if on and not article.is_published:
             return Response({"detail": "Отметить можно только опубликованную статью."}, status=400)
+        if on and article.specialist_id is None:
+            return Response({"detail": "«Выбор редакции» — только для статей специалистов."}, status=400)
         if article.editors_choice != on:
             article.editors_choice = on
             article.save(update_fields=["editors_choice", "updated_at"])
