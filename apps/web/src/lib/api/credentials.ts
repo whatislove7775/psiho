@@ -1,4 +1,5 @@
 /** Specialist credentials (diplomas, supervision, publications…). See docs/API.md «Документы специалистов». */
+import { t } from "@/lib/i18n";
 import { API_BASE, api, tokens } from "./client";
 
 export type CredentialKind =
@@ -14,14 +15,14 @@ export type CredentialKind =
 export type CredentialStatus = "pending" | "approved" | "rejected" | "needs_info";
 
 export const KIND_LABEL: Record<CredentialKind, string> = {
-  diploma: "Диплом о\u00a0высшем образовании",
-  retraining: "Переподготовка, ДПО",
-  method: "Сертификат метода",
-  supervision: "Супервизия",
-  membership: "Членство в\u00a0ассоциации",
-  publication: "Публикация",
-  course: "Курс или\u00a0тренинг",
-  other: "Другое",
+  get diploma() { return t("Диплом о\u00a0высшем образовании"); },
+  get retraining() { return t("Переподготовка, ДПО"); },
+  get method() { return t("Сертификат метода"); },
+  get supervision() { return t("Супервизия"); },
+  get membership() { return t("Членство в\u00a0ассоциации"); },
+  get publication() { return t("Публикация"); },
+  get course() { return t("Курс или\u00a0тренинг"); },
+  get other() { return t("Другое"); },
 };
 
 export const KIND_ORDER: CredentialKind[] = [
@@ -36,10 +37,10 @@ export const KIND_ORDER: CredentialKind[] = [
 ];
 
 export const STATUS_LABEL: Record<CredentialStatus, string> = {
-  pending: "На\u00a0проверке",
-  approved: "Подтверждено",
-  rejected: "Отклонено",
-  needs_info: "Нужно уточнить",
+  get pending() { return t("На\u00a0проверке"); },
+  get approved() { return t("Подтверждено"); },
+  get rejected() { return t("Отклонено"); },
+  get needs_info() { return t("Нужно уточнить"); },
 };
 
 export const STATUS_TONE: Record<CredentialStatus, "warning" | "success" | "danger" | "primary"> = {
@@ -177,7 +178,7 @@ export async function fetchPrivateFile(path: string): Promise<string> {
   const res = await fetch(apiUrl(path), {
     headers: tokens.access ? { Authorization: `Bearer ${tokens.access}` } : {},
   });
-  if (!res.ok) throw new Error(res.status === 404 ? "Файл не\u00a0найден или\u00a0нет доступа." : "Не\u00a0получилось открыть файл.");
+  if (!res.ok) throw new Error(res.status === 404 ? t("Файл не\u00a0найден или\u00a0нет доступа.") : t("Не\u00a0получилось открыть файл."));
   return URL.createObjectURL(await res.blob());
 }
 
@@ -187,6 +188,6 @@ export function periodLabel(c: { year: number | null; year_end: number | null })
 }
 
 export function fileSize(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} КБ`;
-  return `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} МБ`;
+  if (bytes < 1024 * 1024) return t(`{v} КБ`, { v: Math.max(1, Math.round(bytes / 1024)) });
+  return t(`{v} МБ`, { v: (bytes / 1024 / 1024).toFixed(1).replace(".", ",") });
 }

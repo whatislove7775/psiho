@@ -7,6 +7,7 @@
  * - touch: a thin progress track under the row.
  * Indicators appear only when the row actually overflows.
  */
+import { t } from "@/lib/i18n";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import s from "./ui.module.css";
@@ -84,10 +85,10 @@ export function ScrollRow({
       </div>
       {st.over && (
         <>
-          <button type="button" className={`${s.srArrow} ${s.srPrev}`} onClick={() => page(-1)} disabled={st.start} aria-label="Назад" tabIndex={-1}>
+          <button type="button" className={`${s.srArrow} ${s.srPrev}`} onClick={() => page(-1)} disabled={st.start} aria-label={t("Назад")} tabIndex={-1}>
             <ChevronLeft size={18} strokeWidth={2.2} />
           </button>
-          <button type="button" className={`${s.srArrow} ${s.srNext}`} onClick={() => page(1)} disabled={st.end} aria-label="Дальше" tabIndex={-1}>
+          <button type="button" className={`${s.srArrow} ${s.srNext}`} onClick={() => page(1)} disabled={st.end} aria-label={t("Дальше")} tabIndex={-1}>
             <ChevronRight size={18} strokeWidth={2.2} />
           </button>
           <span className={s.srBar} aria-hidden>

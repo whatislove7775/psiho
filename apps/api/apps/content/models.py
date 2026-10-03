@@ -30,6 +30,14 @@ class Topic(models.TextChoices):
 
 MAX_TOPICS = 3
 
+# S2: язык материала. Интерфейс пока ru/en, но специалисты могут писать и на других языках —
+# такие статьи видны всем с пометкой языка (фильтр ленты — ?lang=, см. views.ArticleListView).
+CONTENT_LANGUAGES = (
+    ("ru", "Русский"), ("en", "English"), ("uk", "Українська"), ("be", "Беларуская"), ("kk", "Қазақша"),
+    ("uz", "Oʻzbekcha"), ("ky", "Кыргызча"), ("hy", "Հայերեն"), ("ka", "ქართული"), ("az", "Azərbaycanca"),
+    ("ro", "Română"), ("de", "Deutsch"), ("es", "Español"), ("fr", "Français"),
+)
+
 
 class EvidenceLevel(models.TextChoices):
     """How strong the research behind a text is. Shown as a badge next to the title."""
@@ -112,6 +120,7 @@ class Article(models.Model):
     emoji = models.CharField(max_length=8, blank=True)
     reading_minutes = models.PositiveSmallIntegerField(default=5)
     author_name = models.CharField(max_length=120, blank=True, default="Редакция Aprosop")
+    language = models.CharField(max_length=8, choices=CONTENT_LANGUAGES, default="ru", db_index=True)
     # Evidence-based layer (see docs/API.md, «Материалы»). Citation markers like [1] in `body`
     # and in `key_facts[].refs` point to 1-based positions in `sources`.
     evidence_level = models.CharField(max_length=16, choices=EvidenceLevel.choices, blank=True, default="")
@@ -237,6 +246,7 @@ class Practice(models.Model):
     cover = models.CharField(max_length=16, default="mint")
     emoji = models.CharField(max_length=8, blank=True)
     order = models.PositiveSmallIntegerField(default=100)
+    language = models.CharField(max_length=8, choices=CONTENT_LANGUAGES, default="ru", db_index=True)
     evidence_level = models.CharField(max_length=16, choices=EvidenceLevel.choices, blank=True, default="")
     mechanism = models.TextField(blank=True, default="", help_text="Markdown: why it works, with [n] citations")
     cautions = models.TextField(blank=True, default="", help_text="Markdown: when to stop or skip")

@@ -108,6 +108,10 @@ def check_alias(value: str, user=None) -> dict:
     error = alias_error(alias)
     if error is None and is_taken(alias, exclude_user=user):
         error = "Этот ник уже занят."
+    if error:
+        from apps.intl.messages_en import tr  # S2: ответ 200 — middleware его не переводит
+
+        error = tr(error)
     return {"alias": alias, "available": error is None, "error": error}
 
 

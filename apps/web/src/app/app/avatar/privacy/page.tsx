@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { PageHeader, WithRail } from "@/components/shell/AppShell";
 import { useAuth } from "@/lib/auth/store";
 import { AliasCard } from "@/components/client/AliasCard";
@@ -10,7 +11,7 @@ export default function PrivacyPage() {
   const user = useAuth((st) => st.user);
   return (
     <>
-      <PageHeader title="Приватность" />
+      <PageHeader title={t("Приватность")} />
       <WithRail
         rail={
           user ? (

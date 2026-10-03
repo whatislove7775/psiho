@@ -6,6 +6,7 @@
  * Portalled to <body>; keyboard events are stopped at the popover so a surrounding palette/modal
  * doesn't steal Esc/Tab.
  */
+import { t as tt } from "@/lib/i18n";
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, X } from "lucide-react";
@@ -21,7 +22,7 @@ export function FilterPopover({
   count,
   onReset,
   width = 340,
-  noun = ["специалиста", "специалистов", "специалистов"],
+  noun = [tt("специалиста"), tt("специалистов"), tt("специалистов")],
   children,
 }: {
   /** accusative forms for «Показать N …» (1, 2–4, 5+) */
@@ -139,7 +140,7 @@ export function FilterPopover({
             >
               <div className={s.popHead}>
                 <strong>{title}</strong>
-                <button type="button" data-close className={s.popClose} aria-label="Закрыть" onClick={() => close()}>
+                <button type="button" data-close className={s.popClose} aria-label={tt("Закрыть")} onClick={() => close()}>
                   <X size={18} strokeWidth={2} />
                 </button>
               </div>
@@ -147,15 +148,15 @@ export function FilterPopover({
               <div className={s.popFoot}>
                 {onReset && (
                   <button type="button" className={s.linkBtn} onClick={onReset} disabled={!active}>
-                    Сбросить
+                    {tt("Сбросить")}
                   </button>
                 )}
                 <button type="button" className={s.showBtn} onClick={() => close()}>
                   {count == null
-                    ? "Готово"
+                    ? tt("Готово")
                     : count === 0
-                      ? "Никого не\u00a0нашли"
-                      : `Показать ${count} ${plural(count, ...noun)}`}
+                      ? tt("Никого не\u00a0нашли")
+                      : tt(`Показать {count} {plural}`, { count, plural: plural(count, ...noun) })}
                 </button>
               </div>
             </div>

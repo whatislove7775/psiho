@@ -2,6 +2,7 @@
  * llms.txt / llms-full.txt (https://llmstxt.org): a plain Markdown summary of the service and its
  * public content for AI assistants and generative search engines.
  */
+import { t } from "@/lib/i18n";
 import { EVIDENCE_LEVELS, type Article, type Practice, type Source } from "@/lib/api/content";
 import { LEGAL_DOCS } from "@/components/legal/docs";
 import { SITE_URL } from "@/lib/seo";
@@ -29,30 +30,30 @@ function sourceLine(s: Source, i: number) {
 }
 
 function level(l?: string) {
-  return EVIDENCE_LEVELS.find((x) => x.value === l)?.label ?? "не указана";
+  return EVIDENCE_LEVELS.find((x) => x.value === l)?.label ?? t("не указана");
 }
 
 function legalSection() {
-  return ["## Документы", "", ...LEGAL_DOCS.map((d) => `- [${d.title}](${SITE_URL}/legal/${d.slug}): ${d.description}`), ""].join("\n");
+  return [t("## Документы"), "", ...LEGAL_DOCS.map((d) => `- [${d.title}](${SITE_URL}/legal/${d.slug}): ${d.description}`), ""].join("\n");
 }
 
 export async function buildLlmsTxt(): Promise<string> {
   const [articles, practices] = await Promise.all([serverContent.articles(), serverContent.practices()]);
   return [
     ABOUT,
-    "## Статьи",
+    t("## Статьи"),
     "",
-    ...articles.map((a) => `- [${a.title}](${SITE_URL}/articles/${a.slug}): ${a.summary} Сила доказательств: ${level(a.evidence_level)}.`),
+    ...articles.map((a) => t(`- [{title}]({SITE_URL}/articles/{slug}): {summary} Сила доказательств: {level}.`, { title: a.title, SITE_URL, slug: a.slug, summary: a.summary, level: level(a.evidence_level) })),
     "",
-    "## Практики самопомощи",
+    t("## Практики самопомощи"),
     "",
-    ...practices.map((p) => `- [${p.title}](${SITE_URL}/practices/${p.slug}): ${p.summary} ${p.duration_minutes} мин.`),
+    ...practices.map((p) => t(`- [{title}]({SITE_URL}/practices/{slug}): {summary} {duration_minutes} мин.`, { title: p.title, SITE_URL, slug: p.slug, summary: p.summary, duration_minutes: p.duration_minutes })),
     "",
     legalSection(),
     "## Optional",
     "",
-    `- [Полные тексты статей и практик](${SITE_URL}/llms-full.txt)`,
-    `- [Карта сайта](${SITE_URL}/sitemap.xml)`,
+    t(`- [Полные тексты статей и практик]({SITE_URL}/llms-full.txt)`, { SITE_URL }),
+    t(`- [Карта сайта]({SITE_URL}/sitemap.xml)`, { SITE_URL }),
     "",
   ].join("\n");
 }
@@ -63,37 +64,37 @@ function articleFull(a: Article) {
     `## ${a.title}`,
     "",
     `URL: ${SITE_URL}/articles/${a.slug}`,
-    `Темы: ${(a.topic_labels?.length ? a.topic_labels : [a.topic_label]).join(", ")}. Сила доказательств: ${level(a.evidence_level)}.${a.reviewed_at ? ` Проверено редакцией: ${a.reviewed_at}.` : ""}`,
+    t(`Темы: {v}. Сила доказательств: {level}.{v2}`, { v: (a.topic_labels?.length ? a.topic_labels : [a.topic_label]).join(", "), level: level(a.evidence_level), v2: a.reviewed_at ? t(` Проверено редакцией: {reviewed_at}.`, { reviewed_at: a.reviewed_at }) : "" }),
     "",
     `> ${a.summary}`,
     "",
     ...(a.key_facts?.length
-      ? ["### Главное из исследований", "", ...a.key_facts.map((f) => `- ${f.text}${f.refs.length ? ` [${f.refs.join(", ")}]` : ""}`), ""]
+      ? [t("### Главное из исследований"), "", ...a.key_facts.map((f) => `- ${f.text}${f.refs.length ? ` [${f.refs.join(", ")}]` : ""}`), ""]
       : []),
     htmlToMarkdown(a.content),
     "",
-    ...(a.when_to_seek_help ? ["### Когда нужен специалист", "", a.when_to_seek_help, ""] : []),
-    ...(sources.length ? ["### Источники", "", ...sources.map(sourceLine), ""] : []),
+    ...(a.when_to_seek_help ? [t("### Когда нужен специалист"), "", a.when_to_seek_help, ""] : []),
+    ...(sources.length ? [t("### Источники"), "", ...sources.map(sourceLine), ""] : []),
   ].join("\n");
 }
 
 function practiceFull(p: Practice) {
   const sources = p.sources ?? [];
   return [
-    `## Практика: ${p.title}`,
+    t(`## Практика: {title}`, { title: p.title }),
     "",
     `URL: ${SITE_URL}/practices/${p.slug}`,
-    `Тип: ${p.kind_label}, ${p.duration_minutes} мин. Сила доказательств: ${level(p.evidence_level)}.`,
+    t(`Тип: {kind_label}, {duration_minutes} мин. Сила доказательств: {level}.`, { kind_label: p.kind_label, duration_minutes: p.duration_minutes, level: level(p.evidence_level) }),
     "",
     `> ${p.summary}`,
     "",
-    "### Шаги",
+    t("### Шаги"),
     "",
     ...p.steps.map((s, i) => `${i + 1}. **${s.title}** ${s.text}`),
     "",
-    ...(p.mechanism ? ["### Почему это может помочь", "", p.mechanism, ""] : []),
-    ...(p.cautions ? ["### Когда остановиться или пропустить", "", p.cautions, ""] : []),
-    ...(sources.length ? ["### Источники", "", ...sources.map(sourceLine), ""] : []),
+    ...(p.mechanism ? [t("### Почему это может помочь"), "", p.mechanism, ""] : []),
+    ...(p.cautions ? [t("### Когда остановиться или пропустить"), "", p.cautions, ""] : []),
+    ...(sources.length ? [t("### Источники"), "", ...sources.map(sourceLine), ""] : []),
   ].join("\n");
 }
 
@@ -103,12 +104,12 @@ export async function buildLlmsFullTxt(): Promise<string> {
   const practices = (await Promise.all(pcards.map((p) => serverContent.practice(p.slug).catch(() => null)))).filter(Boolean) as Practice[];
   return [
     ABOUT,
-    "Материалы носят справочный характер, не являются диагнозом и не заменяют консультацию специалиста. Если человеку угрожает опасность — 112.",
+    t("Материалы носят справочный характер, не являются диагнозом и не заменяют консультацию специалиста. Если человеку угрожает опасность — 112."),
     "",
-    "# Статьи",
+    t("# Статьи"),
     "",
     ...articles.map(articleFull),
-    "# Практики",
+    t("# Практики"),
     "",
     ...practices.map(practiceFull),
     legalSection(),

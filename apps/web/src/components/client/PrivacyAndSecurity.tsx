@@ -3,10 +3,12 @@
 /** Privacy & security settings: what we store, stealth mode, screenshot protection, password, device, delete account.
  *  Shared by /app/profile and the «Приватность» tab. */
 
+import { t } from "@/lib/i18n";
 import { useState, type FormEvent } from "react";
 import { Check, LogOut, Minus, Trash2 } from "lucide-react";
 import { Button, Card, CardHead, CollapsibleCard, Input, Modal, PasswordInput, useToast } from "@/ui";
 import { ThemeToggle } from "@/components/shell/ThemeToggle";
+import { CountrySelect, LanguageSelect } from "@/components/i18n/LanguageSwitch";
 import { ApiError } from "@/lib/api/client";
 import { authApi } from "@/lib/api/endpoints";
 import { useAuth } from "@/lib/auth/store";
@@ -16,24 +18,24 @@ import s from "@/app/app/avatar/privacy/privacy.module.css";
 import { PrivacySettings } from "@/components/privacy/PrivacySettings";
 
 const STORED = [
-  { title: "Псевдоним", text: "Случайное имя, по\u00a0нему вы\u00a0входите" },
-  { title: "Пароль", text: "Только в\u00a0виде хеша, прочитать его нельзя" },
-  { title: "Настройки аватара", text: "Цвета и\u00a0формы, а\u00a0не\u00a0фотография" },
+  { get title() { return t("Псевдоним"); }, get text() { return t("Случайное имя, по\u00a0нему вы\u00a0входите"); } },
+  { get title() { return t("Пароль"); }, get text() { return t("Только в\u00a0виде хеша, прочитать его нельзя"); } },
+  { get title() { return t("Настройки аватара"); }, get text() { return t("Цвета и\u00a0формы, а\u00a0не\u00a0фотография"); } },
   {
-    title: "Записи о\u00a0созвонах",
-    text: "Дата, специалист и\u00a0сумма, чтобы вы\u00a0могли войти в\u00a0звонок",
+    get title() { return t("Записи о\u00a0созвонах"); },
+    get text() { return t("Дата, специалист и\u00a0сумма, чтобы вы\u00a0могли войти в\u00a0звонок"); },
   },
 ];
 const NOT_STORED = [
-  { title: "Имя, телефон и\u00a0почта", text: "Мы\u00a0их\u00a0не\u00a0спрашиваем" },
+  { get title() { return t("Имя, телефон и\u00a0почта"); }, get text() { return t("Мы\u00a0их\u00a0не\u00a0спрашиваем"); } },
   {
-    title: "Изображение с\u00a0камеры",
-    text: "Оно превращается в\u00a0мимику аватара прямо на\u00a0устройстве",
+    get title() { return t("Изображение с\u00a0камеры"); },
+    get text() { return t("Оно превращается в\u00a0мимику аватара прямо на\u00a0устройстве"); },
   },
-  { title: "Запись разговора", text: "Звонок идёт напрямую и\u00a0не\u00a0сохраняется" },
+  { get title() { return t("Запись разговора"); }, get text() { return t("Звонок идёт напрямую и\u00a0не\u00a0сохраняется"); } },
   {
-    title: "Данные карты",
-    text: "Их\u00a0обрабатывает платёжный сервис, у\u00a0нас их\u00a0нет",
+    get title() { return t("Данные карты"); },
+    get text() { return t("Их\u00a0обрабатывает платёжный сервис, у\u00a0нас их\u00a0нет"); },
   },
 ];
 
@@ -61,11 +63,11 @@ export function PrivacyAndSecurity() {
   const changePassword = async (e: FormEvent) => {
     e.preventDefault();
     const errs: typeof pwErr = {};
-    if (!oldPw) errs.old = "Введите пароль, которым входите сейчас";
-    if (newPw.length < 8) errs.next = "Нужно не\u00a0меньше 8\u00a0символов";
-    else if (newPw === oldPw) errs.next = "Новый пароль совпадает с\u00a0текущим";
+    if (!oldPw) errs.old = t("Введите пароль, которым входите сейчас");
+    if (newPw.length < 8) errs.next = t("Нужно не\u00a0меньше 8\u00a0символов");
+    else if (newPw === oldPw) errs.next = t("Новый пароль совпадает с\u00a0текущим");
     if (repeat !== newPw)
-      errs.repeat = "Пароли не\u00a0совпадают. Введите новый пароль ещё раз";
+      errs.repeat = t("Пароли не\u00a0совпадают. Введите новый пароль ещё раз");
     setPwErr(errs);
     if (Object.keys(errs).length) return;
     setPwBusy(true);
@@ -74,7 +76,7 @@ export function PrivacyAndSecurity() {
       setOldPw("");
       setNewPw("");
       setRepeat("");
-      toast("Пароль изменён");
+      toast(t("Пароль изменён"));
     } catch (err) {
       if (err instanceof ApiError && Object.keys(err.fields).length) {
         setPwErr({
@@ -101,7 +103,7 @@ export function PrivacyAndSecurity() {
   const deleteAccount = async (e: FormEvent) => {
     e.preventDefault();
     if (!delPw) {
-      setDelErr("Введите пароль, чтобы подтвердить удаление");
+      setDelErr(t("Введите пароль, чтобы подтвердить удаление"));
       return;
     }
     setDelBusy(true);
@@ -113,7 +115,7 @@ export function PrivacyAndSecurity() {
     } catch (err) {
       setDelErr(
         err instanceof ApiError && err.status === 400
-          ? "Пароль не\u00a0подошёл. Проверьте раскладку и\u00a0попробуйте снова"
+          ? t("Пароль не\u00a0подошёл. Проверьте раскладку и\u00a0попробуйте снова")
           : errorText(err),
       );
       setDelBusy(false);
@@ -122,10 +124,10 @@ export function PrivacyAndSecurity() {
 
   return (
     <>
-        <CollapsibleCard title="Что&nbsp;мы&nbsp;храним" defaultOpen={false}>
+        <CollapsibleCard title={t("Что\u00a0мы\u00a0храним")} defaultOpen={false}>
           <div className={s.columns}>
             <div className={s.col}>
-              <h3 className={s.colTitle}>Храним</h3>
+              <h3 className={s.colTitle}>{t("Храним")}</h3>
               <ul className={s.list}>
                 {STORED.map((x) => (
                   <li key={x.title}>
@@ -141,7 +143,7 @@ export function PrivacyAndSecurity() {
               </ul>
             </div>
             <div className={s.col}>
-              <h3 className={s.colTitle}>Не&nbsp;храним</h3>
+              <h3 className={s.colTitle}>{t("Не\u00a0храним")}</h3>
               <ul className={s.list}>
                 {NOT_STORED.map((x) => (
                   <li key={x.title}>
@@ -162,10 +164,10 @@ export function PrivacyAndSecurity() {
         {/* «Незаметный режим» и «Защита от скриншотов» */}
         <PrivacySettings />
 
-        <CollapsibleCard title="Сменить пароль" defaultOpen={false}>
+        <CollapsibleCard title={t("Сменить пароль")} defaultOpen={false}>
           <form className={s.form} onSubmit={changePassword} noValidate>
             <PasswordInput
-              label="Текущий пароль"
+              label={t("Текущий пароль")}
               autoComplete="current-password"
               value={oldPw}
               onChange={(e) => setOldPw(e.target.value)}
@@ -173,15 +175,15 @@ export function PrivacyAndSecurity() {
             />
             <div className={s.pair}>
               <PasswordInput
-                label="Новый пароль"
+                label={t("Новый пароль")}
                 autoComplete="new-password"
                 value={newPw}
                 onChange={(e) => setNewPw(e.target.value)}
                 error={pwErr.next}
-                hint="Не&nbsp;меньше 8&nbsp;символов"
+                hint={t("Не\u00a0меньше 8\u00a0символов")}
               />
               <PasswordInput
-                label="Новый пароль ещё раз"
+                label={t("Новый пароль ещё раз")}
                 autoComplete="new-password"
                 value={repeat}
                 onChange={(e) => setRepeat(e.target.value)}
@@ -195,24 +197,28 @@ export function PrivacyAndSecurity() {
             )}
             <div>
               <Button type="submit" variant="primary" loading={pwBusy}>
-                Сменить пароль
+                {t("Сменить пароль")}
               </Button>
             </div>
           </form>
         </CollapsibleCard>
 
         <Card as="section">
-          <CardHead title="Это&nbsp;устройство" />
+          <CardHead title={t("Это\u00a0устройство")} />
           <div className={s.settings}>
             <div className={s.setting}>
               <span>
-                <strong>Тема оформления</strong>
+                <strong>{t("Тема оформления")}</strong>
               </span>
               <ThemeToggle />
             </div>
+            <div className={s.settingSelects}>
+              <LanguageSelect />
+              <CountrySelect />
+            </div>
             <div className={s.setting}>
               <span>
-                <strong>Выйти из&nbsp;аккаунта</strong>
+                <strong>{t("Выйти из\u00a0аккаунта")}</strong>
               </span>
               <Button
                 variant="secondary"
@@ -220,7 +226,7 @@ export function PrivacyAndSecurity() {
                 onClick={onLogout}
                 icon={<LogOut size={16} strokeWidth={1.8} />}
               >
-                Выйти
+                {t("Выйти")}
               </Button>
             </div>
           </div>
@@ -228,8 +234,8 @@ export function PrivacyAndSecurity() {
 
         <section className={s.danger} aria-labelledby="danger-title">
           <div>
-            <h2 id="danger-title">Удалить аккаунт и&nbsp;все данные</h2>
-            <p>Восстановить будет нельзя, даже с&nbsp;ключом.</p>
+            <h2 id="danger-title">{t("Удалить аккаунт и\u00a0все данные")}</h2>
+            <p>{t("Восстановить будет нельзя, даже с\u00a0ключом.")}</p>
           </div>
           <Button
             variant="danger"
@@ -240,25 +246,23 @@ export function PrivacyAndSecurity() {
               setDelOpen(true);
             }}
           >
-            Удалить аккаунт
+            {t("Удалить аккаунт")}
           </Button>
         </section>
 
       <Modal
         open={delOpen}
         onClose={() => !delBusy && setDelOpen(false)}
-        title="Удалить аккаунт навсегда?"
+        title={t("Удалить аккаунт навсегда?")}
         width={480}
       >
         <form onSubmit={deleteAccount} noValidate>
           <p className={cs.modalText}>
-            Мы&nbsp;сотрём псевдоним <strong>{user?.alias}</strong>, аватар, диалоги
-            и&nbsp;созвоны. Запланированные созвоны тоже отменятся. Чтобы подтвердить,
-            введите пароль.
+            {t("Мы\u00a0сотрём псевдоним")}{" "}<strong>{user?.alias}</strong>{t(", аватар, диалоги и\u00a0созвоны. Запланированные созвоны тоже отменятся. Чтобы подтвердить, введите пароль.")}
           </p>
           <div style={{ marginTop: 16 }}>
             <PasswordInput
-              label="Пароль"
+              label={t("Пароль")}
               autoComplete="current-password"
               value={delPw}
               onChange={(e) => setDelPw(e.target.value)}
@@ -272,10 +276,10 @@ export function PrivacyAndSecurity() {
               onClick={() => setDelOpen(false)}
               disabled={delBusy}
             >
-              Оставить аккаунт
+              {t("Оставить аккаунт")}
             </Button>
             <Button type="submit" variant="danger" loading={delBusy}>
-              Удалить навсегда
+              {t("Удалить навсегда")}
             </Button>
           </div>
         </form>

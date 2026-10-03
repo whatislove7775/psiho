@@ -1,3 +1,4 @@
+import { t as tt } from "@/lib/i18n";
 import { plural, yearsLabel } from "@/lib/format";
 
 /** «32 года» — only when the specialist set a birth year. */
@@ -12,8 +13,8 @@ export function tenureShort(since?: string | null, now = new Date()): string | n
   const d = new Date(since);
   if (Number.isNaN(d.getTime())) return null;
   const months = (now.getFullYear() - d.getFullYear()) * 12 + now.getMonth() - d.getMonth() - (now.getDate() < d.getDate() ? 1 : 0);
-  if (months < 1) return "меньше месяца";
-  if (months < 12) return `${months}\u00a0мес.`;
+  if (months < 1) return tt("меньше месяца");
+  if (months < 12) return tt(`{months}\u00a0мес.`, { months });
   const years = Math.floor(months / 12);
   return yearsLabel(years);
 }
@@ -22,7 +23,7 @@ export function tenureShort(since?: string | null, now = new Date()): string | n
 export function tenureLabel(since?: string | null, now = new Date()): string | null {
   const t = tenureShort(since, now);
   if (!t) return null;
-  return t === "меньше месяца" ? "Новый на\u00a0Aprosop" : `На\u00a0Aprosop ${t}`;
+  return t === "меньше месяца" ? tt("Новый на\u00a0Aprosop") : tt(`На\u00a0Aprosop {t}`, { t });
 }
 
 /** Age and time on the service, for the quiet line next to a specialist's photo. */

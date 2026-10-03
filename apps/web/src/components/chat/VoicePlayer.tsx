@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { Pause, Play } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { attachmentUrl } from "@/lib/api/chat";
@@ -91,7 +92,7 @@ export function VoicePlayer({
         type="button"
         className={s.voicePlay}
         onClick={toggle}
-        aria-label={playing ? "Пауза" : "Слушать голосовое"}
+        aria-label={playing ? t("Пауза") : t("Слушать голосовое")}
         disabled={loading && !audio.current}
       >
         {loading && !audio.current ? <span className={s.miniSpin} /> : playing ? <Pause size={18} /> : <Play size={18} />}
@@ -106,7 +107,7 @@ export function VoicePlayer({
           />
         ))}
       </div>
-      <span className={s.voiceTime}>{failed ? "Ошибка" : fmtDuration(shown)}</span>
+      <span className={s.voiceTime}>{failed ? t("Ошибка") : fmtDuration(shown)}</span>
     </div>
   );
 }

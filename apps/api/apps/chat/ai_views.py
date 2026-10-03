@@ -12,6 +12,8 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.intl.lang import request_country, request_language
+
 from . import ai, conf, services
 from .crypto import decrypt_text
 from .models import AIDailyUsage, Conversation, Message
@@ -63,13 +65,20 @@ class AIConsentView(APIView):
                 conv.ai_consent_at = timezone.now()
                 conv.save(update_fields=["ai_consent_at"])
             if created:
-                services.create_message(conv, sender=None, sender_role=Message.SenderRole.AI, text=ai.GREETING)
+                services.create_message(conv, sender=None, sender_role=Message.SenderRole.AI,
+                                        text=ai.greeting(request_language(request)))
         return Response(_status(request.user))
 
     def delete(self, request):
         _require_client(request.user)
         Conversation.objects.filter(kind=Kind.AI, client=request.user).update(ai_consent_at=None)
         return Response(_status(request.user))
+
+
+def tr_lang(text: str, lang: str) -> str:
+    from apps.intl.messages_en import translate
+
+    return translate(text, lang)
 
 
 def _sse(payload: dict) -> bytes:
@@ -124,6 +133,9 @@ class AIReplyView(APIView):
             .order_by("-created_at")[: ai.HISTORY_LIMIT]
         ][::-1]
         history = ai.build_history(pairs)
+        # Язык интерфейса и страна из настроек: отвечаем на языке человека, телефоны помощи — его страны
+        lang = request_language(request)
+        prompt = ai.system_prompt(lang, request_country(request))
         user_payload = services.serialize_message(user_msg, user.id)
 
         def save_reply(reply_text: str):
@@ -139,20 +151,20 @@ class AIReplyView(APIView):
             yield _sse({"type": "user_message", "message": user_payload, "remaining_today": remaining})
             parts: list[str] = []
             try:
-                async for chunk in ai.stream_reply(history):
+                async for chunk in ai.stream_reply(history, prompt):
                     parts.append(chunk)
                     yield _sse({"type": "delta", "text": chunk})
                 reply = "".join(parts).strip()
                 if not reply:
                     raise ai.AIRefusal()
             except ai.AIRefusal:
-                reply = ai.REFUSAL_TEXT
+                reply = ai.refusal_text(lang)
                 yield _sse({"type": "replace", "text": reply})
             except Exception as exc:  # noqa: BLE001
                 # Без содержимого — только тип ошибки
                 logger.warning("chat.ai: provider error %s", type(exc).__name__)
                 await sync_to_async(refund)()
-                yield _sse({"type": "error", "detail": "Тиша сейчас не может ответить. Попробуйте чуть позже."})
+                yield _sse({"type": "error", "detail": tr_lang("Тиша сейчас не может ответить. Попробуйте чуть позже.", lang)})
                 return
             message = await sync_to_async(save_reply)(reply)
             yield _sse({"type": "done", "message": message, "remaining_today": remaining})

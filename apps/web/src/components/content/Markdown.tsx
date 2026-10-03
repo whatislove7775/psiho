@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import s from "./content.module.css";
@@ -18,7 +19,7 @@ export function Cite({ refs }: { refs: number[] }) {
   return (
     <sup className={s.cite}>
       {refs.map((n, i) => (
-        <a key={n} href={`#source-${n}`} aria-label={`Источник ${n}`}>
+        <a key={n} href={`#source-${n}`} aria-label={t(`Источник {n}`, { n })}>
           {i > 0 ? ", " : ""}
           {n}
         </a>

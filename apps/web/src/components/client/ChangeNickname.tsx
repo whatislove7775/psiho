@@ -1,5 +1,6 @@
 "use client";
 
+import { t, tj, intlLocale } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { Button, Modal, useToast } from "@/ui";
 import { ApiError } from "@/lib/api/client";
@@ -36,29 +37,28 @@ export function ChangeNickname({ open, onClose }: { open: boolean; onClose: () =
     try {
       const r = await nicknameApi.change(nick.alias);
       useAuth.setState({ user: r.user });
-      toast(`Теперь вы\u00a0— ${r.alias}. Входите под\u00a0новым ником`);
+      toast(t(`Теперь вы\u00a0— {alias}. Входите под\u00a0новым ником`, { alias: r.alias }));
       onClose();
     } catch (e) {
       if (e instanceof ApiError) {
         setError(e.fields.alias?.[0] ?? e.message);
         if (e.status === 429) nicknameApi.mine().then((r) => setNextAt(r.next_change_at)).catch(() => {});
-      } else setError("Не\u00a0получилось сохранить. Попробуйте ещё раз");
+      } else setError(t("Не\u00a0получилось сохранить. Попробуйте ещё раз"));
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Сменить ник" width={440}>
+    <Modal open={open} onClose={onClose} title={t("Сменить ник")} width={440}>
       {locked ? (
         <p className={s.note}>
-          Ник можно менять раз в&nbsp;сутки. Следующая смена&nbsp;—{" "}
-          {new Date(nextAt!).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}.
+          {tj("Ник можно менять раз в\u00a0сутки. Следующая смена\u00a0— {v}.", { v: new Date(nextAt!).toLocaleString(intlLocale(), { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) })}
         </p>
       ) : (
         <div className={s.body}>
-          <NicknameField key={user.alias} initial={user.alias} onChange={setNick} label="Новый ник" startCustom />
-          <p className={s.note}>С&nbsp;новым ником вы&nbsp;входите в&nbsp;аккаунт. Специалисты увидят только его, прежний нигде не&nbsp;сохранится. Менять можно раз в&nbsp;сутки.</p>
+          <NicknameField key={user.alias} initial={user.alias} onChange={setNick} label={t("Новый ник")} startCustom />
+          <p className={s.note}>{t("С\u00a0новым ником вы\u00a0входите в\u00a0аккаунт. Специалисты увидят только его, прежний нигде не\u00a0сохранится. Менять можно раз в\u00a0сутки.")}</p>
           {error && (
             <p className={s.error} role="alert">
               {error}
@@ -66,10 +66,10 @@ export function ChangeNickname({ open, onClose }: { open: boolean; onClose: () =
           )}
           <div className={s.actions}>
             <Button variant="ghost" onClick={onClose}>
-              Отмена
+              {t("Отмена")}
             </Button>
             <Button variant="primary" onClick={save} loading={busy} disabled={!nick.ok}>
-              Сохранить
+              {t("Сохранить")}
             </Button>
           </div>
         </div>

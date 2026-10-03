@@ -1,3 +1,5 @@
+import { t as tt } from "@/lib/i18n";
+import { lp } from "@/lib/i18n";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -14,7 +16,7 @@ import { PublicShell } from "@/components/public/PublicShell";
 import { StartCta } from "@/components/public/StartCta";
 import { isSlug, serverContent } from "@/lib/content/server";
 import type { Article } from "@/lib/api/content";
-import { abs, alternates, ORG_ID, WEBSITE_ID } from "@/lib/seo";
+import { abs, alternates, ORG_ID, WEBSITE_ID, contentAlternates, contentLanguageTag } from "@/lib/seo";
 import { Button } from "@/ui";
 import s from "@/components/public/public.module.css";
 import { typo } from "@/lib/typography";
@@ -31,12 +33,12 @@ async function load(slug: string): Promise<Article | null> {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const a = await load(params.slug);
-  if (!a) return { title: "Статья не\u00a0найдена", robots: { index: false } };
+  if (!a) return { title: tt("Статья не\u00a0найдена"), robots: { index: false } };
   const path = `/articles/${a.slug}`;
   return {
     title: a.title,
     description: a.summary,
-    alternates: alternates(path),
+    alternates: contentAlternates(path, a.language),
     openGraph: {
       type: "article",
       url: path,
@@ -86,14 +88,14 @@ export default async function ArticlePage({ params }: Props) {
     "@id": `${abs(path)}#article`,
     headline: a.title,
     description: a.summary,
-    inLanguage: "ru-RU",
+    inLanguage: contentLanguageTag(a.language),
     url: abs(path),
     mainEntityOfPage: { "@id": abs(path) },
     datePublished: a.published_at ?? undefined,
     dateModified: a.updated_at ?? a.published_at ?? undefined,
     author: a.specialist
       ? { "@type": "Person", name: a.specialist.name, ...(a.specialist.photo_url ? { image: abs(a.specialist.photo_url) } : {}) }
-      : { "@type": "Organization", name: a.author_name || "Редакция Aprosop", url: abs("/") },
+      : { "@type": "Organization", name: a.author_name || tt("Редакция Aprosop"), url: abs("/") },
     ...(a.cover_image ? { image: abs(a.cover_image.url) } : {}),
     ...(a.rating?.count && a.rating.avg != null
       ? { aggregateRating: { "@type": "AggregateRating", ratingValue: a.rating.avg, ratingCount: a.rating.count, bestRating: 5, worstRating: 1 } }
@@ -120,7 +122,7 @@ export default async function ArticlePage({ params }: Props) {
     "@id": abs(path),
     url: abs(path),
     name: a.title,
-    inLanguage: "ru-RU",
+    inLanguage: contentLanguageTag(a.language),
     isPartOf: { "@id": WEBSITE_ID },
     mainEntity: { "@id": `${abs(path)}#article` },
     audience: { "@type": "PeopleAudience", audienceType: "Patient" },
@@ -132,8 +134,8 @@ export default async function ArticlePage({ params }: Props) {
     <PublicShell>
       <Breadcrumbs
         items={[
-          { name: "Главная", href: "/" },
-          { name: "Статьи", href: "/articles" },
+          { name: tt("Главная"), href: "/" },
+          { name: tt("Статьи"), href: "/articles" },
           { name: a.title, href: path },
         ]}
       />
@@ -141,18 +143,18 @@ export default async function ArticlePage({ params }: Props) {
       <JsonLd data={pageLd} />
 
       <div className={s.detail}>
-        <article className={s.doc}>
+        <article className={s.doc} lang={a.language || "ru"}>
           <header className={s.head}>
             <ArticleBanner a={a} className={s.banner} />
             <div className={s.meta}>
               {topics.map((t, i) => (
-                <Link key={t} href={`/articles?topic=${t}`}>
+                <Link key={t} href={lp(`/articles?topic=${t}`)}>
                   {labels[i] ?? t}
                 </Link>
               ))}
               <span>
                 <Clock size={14} strokeWidth={1.8} aria-hidden />
-                {a.reading_minutes} мин чтения
+                {a.reading_minutes}{" "}{tt("мин чтения")}
               </span>
               <EvidenceBadge level={a.evidence_level} />
               <RatingBadge rating={a.rating} />
@@ -167,8 +169,8 @@ export default async function ArticlePage({ params }: Props) {
           <SeekHelp
             text={a.when_to_seek_help}
             cta={
-              <Button href="/start" variant="primary" size="sm">
-                Поговорить с&nbsp;психологом анонимно
+              <Button href={lp("/start")} variant="primary" size="sm">
+                {tt("Поговорить с\u00a0психологом анонимно")}
               </Button>
             }
           />
@@ -179,11 +181,11 @@ export default async function ArticlePage({ params }: Props) {
           <ReadCounter slug={a.slug} />
         </article>
 
-        <aside className={s.aside} aria-label="Ещё по&nbsp;теме">
+        <aside className={s.aside} aria-label={tt("Ещё по\u00a0теме")}>
           <StartCta compact />
           {related.length > 0 && (
             <section>
-              <h2 className={s.asideTitle}>Ещё по&nbsp;теме</h2>
+              <h2 className={s.asideTitle}>{tt("Ещё по\u00a0теме")}</h2>
               <ul className={s.asideList}>
                 {related.map((r) => (
                   <li key={r.id}>
@@ -195,7 +197,7 @@ export default async function ArticlePage({ params }: Props) {
           )}
           {practices.length > 0 && (
             <section>
-              <h2 className={s.asideTitle}>Попробовать сейчас</h2>
+              <h2 className={s.asideTitle}>{tt("Попробовать сейчас")}</h2>
               <ul className={s.asideList}>
                 {suggested.map((p) => (
                   <li key={p.id}>

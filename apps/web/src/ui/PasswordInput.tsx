@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { forwardRef, useId, useState, type InputHTMLAttributes, type ReactNode } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Field } from "./index";
@@ -38,8 +39,8 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(fu
         type="button"
         className={s.pwToggle}
         onClick={() => setShown((v) => !v)}
-        aria-label={shown ? "Скрыть пароль" : "Показать пароль"}
-        title={shown ? "Скрыть пароль" : "Показать пароль"}
+        aria-label={shown ? t("Скрыть пароль") : t("Показать пароль")}
+        title={shown ? t("Скрыть пароль") : t("Показать пароль")}
         aria-pressed={shown}
         aria-controls={inputId}
       >

@@ -1,5 +1,6 @@
 "use client";
 
+import { t, tj, intlLocale } from "@/lib/i18n";
 import { useState } from "react";
 import { Check, Eye, Undo2 } from "lucide-react";
 import { Badge, Button, Card, Textarea, useToast } from "@/ui";
@@ -50,7 +51,7 @@ export function ModerationPanel({ article: a, canPublish, onChanged }: { article
         <Card as="article" className={m.doc}>
           <ArticleBanner a={a} className={m.banner} />
           <span className={m.kicker}>
-            {a.topic_label} · {a.reading_minutes} мин
+            {tj("{topic_label} · {reading_minutes} мин", { topic_label: a.topic_label, reading_minutes: a.reading_minutes })}
           </span>
           <h2 className={m.title}>{a.title}</h2>
           {a.summary && <p className={m.lead}>{a.summary}</p>}
@@ -66,38 +67,38 @@ export function ModerationPanel({ article: a, canPublish, onChanged }: { article
               <span>
                 <strong>{sp.name}</strong>
                 <a href={`/app/specialists/${sp.id}`} target="_blank" rel="noreferrer">
-                  Профиль
+                  {t("Профиль")}
                 </a>
               </span>
             </div>
           )}
           <div className={s.status}>
-            <span>Статус</span>
+            <span>{t("Статус")}</span>
             <Badge tone={TONE[status]}>{STATUS_LABEL[status]}</Badge>
           </div>
-          {a.submitted_at && <p className={m.muted}>Отправлена {new Date(a.submitted_at).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>}
+          {a.submitted_at && <p className={m.muted}>{tj("Отправлена {v}", { v: new Date(a.submitted_at).toLocaleString(intlLocale(), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) })}</p>}
           {status === "rejected" && a.moderation_comment && <p className={m.comment}>{a.moderation_comment}</p>}
 
           {!canPublish ? (
-            <p className={m.muted}>Решение принимают сотрудники с&nbsp;правом публикации.</p>
+            <p className={m.muted}>{t("Решение принимают сотрудники с\u00a0правом публикации.")}</p>
           ) : status === "pending" ? (
             rejecting ? (
               <div className={s.actions}>
-                <Textarea label="Что&nbsp;поправить" value={comment} onChange={(e) => setComment(e.target.value)} rows={4} maxLength={1000} hint="Автор увидит это&nbsp;в&nbsp;кабинете" autoFocus />
-                <Button variant="danger" block loading={busy === "reject"} disabled={!comment.trim()} onClick={() => run("reject", () => moderationApi.moderate(a.id, "reject", comment.trim()), "Статья возвращена автору")}>
-                  Вернуть автору
+                <Textarea label={t("Что\u00a0поправить")} value={comment} onChange={(e) => setComment(e.target.value)} rows={4} maxLength={1000} hint={t("Автор увидит это\u00a0в\u00a0кабинете")} autoFocus />
+                <Button variant="danger" block loading={busy === "reject"} disabled={!comment.trim()} onClick={() => run("reject", () => moderationApi.moderate(a.id, "reject", comment.trim()), t("Статья возвращена автору"))}>
+                  {t("Вернуть автору")}
                 </Button>
                 <Button variant="ghost" block onClick={() => setRejecting(false)}>
-                  Отмена
+                  {t("Отмена")}
                 </Button>
               </div>
             ) : (
               <div className={s.actions}>
-                <Button variant="primary" block icon={<Check size={16} />} loading={busy === "approve"} onClick={() => run("approve", () => moderationApi.moderate(a.id, "approve"), "Статья опубликована")}>
-                  Опубликовать
+                <Button variant="primary" block icon={<Check size={16} />} loading={busy === "approve"} onClick={() => run("approve", () => moderationApi.moderate(a.id, "approve"), t("Статья опубликована"))}>
+                  {t("Опубликовать")}
                 </Button>
                 <Button variant="secondary" block icon={<Undo2 size={16} />} onClick={() => setRejecting(true)}>
-                  Вернуть с&nbsp;комментарием
+                  {t("Вернуть с\u00a0комментарием")}
                 </Button>
               </div>
             )
@@ -105,14 +106,14 @@ export function ModerationPanel({ article: a, canPublish, onChanged }: { article
             <div className={s.actions}>
               <Switch
                 checked={!!a.editors_choice}
-                onChange={(v) => void run("choice", () => moderationApi.editorsChoice(a.id, v), v ? "Отмечено: выбор редакции" : "Отметка снята")}
-                label="Выбор редакции"
-                hint="Значок на&nbsp;карточке и&nbsp;чуть выше в&nbsp;ленте"
+                onChange={(v) => void run("choice", () => moderationApi.editorsChoice(a.id, v), v ? t("Отмечено: выбор редакции") : t("Отметка снята"))}
+                label={t("Выбор редакции")}
+                hint={t("Значок на\u00a0карточке и\u00a0чуть выше в\u00a0ленте")}
               />
               <Button variant="ghost" block href={`/articles/${a.slug}`} icon={<Eye size={16} />}>
-                Открыть на&nbsp;сайте
+                {t("Открыть на\u00a0сайте")}
               </Button>
-              {!!a.reads && <p className={m.muted}>{a.reads} прочтений</p>}
+              {!!a.reads && <p className={m.muted}>{tj("{reads} прочтений", { reads: a.reads })}</p>}
             </div>
           ) : null}
         </Card>

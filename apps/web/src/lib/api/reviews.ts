@@ -1,4 +1,5 @@
 /** Reviews of specialists (only after a completed call). See docs/API.md «Отзывы». */
+import { t, intlLocale } from "@/lib/i18n";
 import { api } from "./client";
 
 export interface ReviewTag {
@@ -7,14 +8,14 @@ export interface ReviewTag {
 }
 
 export const REVIEW_TAGS: ReviewTag[] = [
-  { key: "attentive", label: "Внимательный" },
-  { key: "clarity", label: "Помог разобраться" },
-  { key: "gentle", label: "Бережный" },
-  { key: "tools", label: "Даёт инструменты" },
-  { key: "progress", label: "Есть результат" },
-  { key: "punctual", label: "Пунктуальный" },
-  { key: "clear", label: "Понятно объясняет" },
-  { key: "safe", label: "С\u00a0ним спокойно" },
+  { key: "attentive", get label() { return t("Внимательный"); } },
+  { key: "clarity", get label() { return t("Помог разобраться"); } },
+  { key: "gentle", get label() { return t("Бережный"); } },
+  { key: "tools", get label() { return t("Даёт инструменты"); } },
+  { key: "progress", get label() { return t("Есть результат"); } },
+  { key: "punctual", get label() { return t("Пунктуальный"); } },
+  { key: "clear", get label() { return t("Понятно объясняет"); } },
+  { key: "safe", get label() { return t("С\u00a0ним спокойно"); } },
 ];
 
 export interface Review {
@@ -88,12 +89,11 @@ export const reviewsApi = {
     api<StaffReview>(`/staff/reviews/${id}/moderate/`, { method: "POST", body: { action, note } }),
 };
 
-const MONTHS = ["январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"];
-
+/** "2026-09" → «Сентябрь 2026» / "September 2026" in the page language. */
 export function monthLabel(ym: string | null | undefined): string {
   if (!ym) return "";
   const [y, m] = ym.split("-").map(Number);
-  const name = MONTHS[(m || 1) - 1] ?? "";
+  const name = new Date(y, (m || 1) - 1, 15).toLocaleDateString(intlLocale(), { month: "long" });
   return `${name[0]?.toUpperCase() ?? ""}${name.slice(1)} ${y}`;
 }
 

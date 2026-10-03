@@ -10,6 +10,7 @@ import https from "node:https";
 import { unstable_cache } from "next/cache";
 import type { Article, ArticleCard, Practice, PracticeCard, TopicCount } from "@/lib/api/content";
 import { SITE_URL } from "@/lib/seo";
+import { getLocale } from "@/lib/i18n";
 
 const REVALIDATE = 300;
 
@@ -26,7 +27,7 @@ function apiBase(): string {
 class NotFound extends Error {}
 
 /** GET JSON from Django. Node's fetch drops a custom Host header, so use http(s).request. */
-function getJson<T>(path: string): Promise<T> {
+function getJson<T>(path: string, lang = "ru"): Promise<T> {
   const url = new URL(apiBase() + path);
   const lib = url.protocol === "https:" ? https : http;
   const host = process.env.INTERNAL_API_HOST || new URL(SITE_URL).host;
@@ -37,6 +38,8 @@ function getJson<T>(path: string): Promise<T> {
         method: "GET",
         headers: {
           Accept: "application/json",
+          // Topic / practice-kind labels come back in the page language
+          "Accept-Language": lang,
           // Django checks ALLOWED_HOSTS; the internal hostname (e.g. "api") isn't in it.
           ...(process.env.INTERNAL_API_URL ? { Host: host, "X-Forwarded-Proto": "https" } : {}),
         },
@@ -65,16 +68,17 @@ function getJson<T>(path: string): Promise<T> {
 
 /** Cached read; a missing item resolves to null (so pages can call notFound()). */
 function cached<T>(key: string, path: string): Promise<T | null> {
+  const lang = getLocale();
   return unstable_cache(
     async () => {
       try {
-        return await getJson<T>(path);
+        return await getJson<T>(path, lang);
       } catch (e) {
         if (e instanceof NotFound) return null;
         throw e;
       }
     },
-    ["content", key],
+    ["content", lang, key],
     { revalidate: REVALIDATE, tags: ["content"] },
   )();
 }
@@ -92,13 +96,18 @@ async function list<T>(key: string, path: string): Promise<T[]> {
 export const serverContent = {
   articles: (q: { topic?: string; limit?: number } = {}) => {
     const qs = new URLSearchParams();
+    // Materials in the page language first; the rest follow with a language label (see Cards)
+    if (getLocale() !== "ru") qs.set("lang", getLocale());
     if (q.topic) qs.set("topic", q.topic);
     if (q.limit) qs.set("limit", String(q.limit));
     const s = qs.toString();
     return list<ArticleCard>(`articles?${s}`, `/content/articles/${s ? `?${s}` : ""}`);
   },
   topics: () => list<TopicCount>("topics", "/content/topics/"),
-  practices: () => list<PracticeCard>("practices", "/content/practices/"),
+  practices: () =>
+    getLocale() === "ru"
+      ? list<PracticeCard>("practices", "/content/practices/")
+      : list<PracticeCard>(`practices?lang=${getLocale()}`, `/content/practices/?lang=${getLocale()}`),
   article: (slug: string) => cached<Article>(`article:${slug}`, `/content/articles/${encodeURIComponent(slug)}/`),
   practice: (slug: string) => cached<Practice>(`practice:${slug}`, `/content/practices/${encodeURIComponent(slug)}/`),
 };

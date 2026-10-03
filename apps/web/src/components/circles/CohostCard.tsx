@@ -4,6 +4,7 @@
  * Host: invite a co-therapist (a verified specialist) and set the earnings split.
  * The invitee accepts on their /pro/circles page. Split = share of the host's earnings per held meeting.
  */
+import { t as tt, tj } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { UserPlus, X } from "lucide-react";
 import {
@@ -58,7 +59,7 @@ export function CohostCard({
       onChange(await fn());
       toast(done);
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "Не получилось.", {
+      toast(e instanceof ApiError ? e.message : tt("Не получилось."), {
         error: true,
       });
     } finally {
@@ -68,16 +69,16 @@ export function CohostCard({
 
   const shareControl = (
     <div>
-      <div className={s.label}>Доля ко-терапевта</div>
+      <div className={s.label}>{tt("Доля ко-терапевта")}</div>
       <Segmented<string>
-        ariaLabel="Доля ко-терапевта"
+        ariaLabel={tt("Доля ко-терапевта")}
         value={String(share)}
         onChange={(v) => {
           setShare(+v);
           if (inv)
             run(
               () => circlesApi.cohostShare(c.id, +v),
-              `Доля: ${100 - +v}/${v}`,
+              tt(`Доля: {v}/{v2}`, { v: 100 - +v, v2: v }),
             );
         }}
         options={SHARES.map((n) => ({
@@ -86,8 +87,7 @@ export function CohostCard({
         }))}
       />
       <p className={s.note} style={{ marginTop: 6 }}>
-        От&nbsp;вашего заработка за&nbsp;каждую состоявшуюся встречу: вам{" "}
-        {100 - share}&nbsp;%, ко-терапевту {share}&nbsp;%.
+        {tj("От\u00a0вашего заработка за\u00a0каждую состоявшуюся встречу: вам {v}\u00a0%, ко-терапевту {share}\u00a0%.", { v: 100 - share, share })}
       </p>
     </div>
   );
@@ -95,9 +95,9 @@ export function CohostCard({
   return (
     <Card>
       <CardHead
-        title="Ко-терапевт"
+        title={tt("Ко-терапевт")}
         icon={<UserPlus size={18} />}
-        sub="Второй ведущий: говорит и&nbsp;модерирует, но&nbsp;не&nbsp;отменяет и&nbsp;не&nbsp;завершает встречи"
+        sub={tt("Второй ведущий: говорит и\u00a0модерирует, но\u00a0не\u00a0отменяет и\u00a0не\u00a0завершает встречи")}
       />
       {inv ? (
         <div className={s.joinBox}>
@@ -111,12 +111,12 @@ export function CohostCard({
               <b>{inv.specialist.name}</b>
               <small>
                 {inv.status === "accepted"
-                  ? "Ведёт круг вместе с вами"
-                  : "Ждём ответа на приглашение"}
+                  ? tt("Ведёт круг вместе с вами")
+                  : tt("Ждём ответа на приглашение")}
               </small>
             </span>
             {inv.status === "invited" && (
-              <Badge tone="warning">Приглашён</Badge>
+              <Badge tone="warning">{tt("Приглашён")}</Badge>
             )}
             <Button
               size="sm"
@@ -124,16 +124,16 @@ export function CohostCard({
               iconOnly
               aria-label={
                 inv.status === "accepted"
-                  ? "Убрать ко-терапевта"
-                  : "Отозвать приглашение"
+                  ? tt("Убрать ко-терапевта")
+                  : tt("Отозвать приглашение")
               }
               disabled={busy || closed}
               onClick={() =>
                 run(
                   () => circlesApi.cohostRemove(c.id),
                   inv.status === "accepted"
-                    ? "Ко-терапевт больше не ведёт круг"
-                    : "Приглашение отозвано",
+                    ? tt("Ко-терапевт больше не ведёт круг")
+                    : tt("Приглашение отозвано"),
                 )
               }
               icon={<X size={16} />}
@@ -142,12 +142,12 @@ export function CohostCard({
           {!closed && shareControl}
         </div>
       ) : closed ? (
-        <p className={s.note}>Круг закрыт.</p>
+        <p className={s.note}>{tt("Круг закрыт.")}</p>
       ) : (
         <div className={s.joinBox}>
           <Input
-            label="Найти проверенного специалиста"
-            placeholder="Имя"
+            label={tt("Найти проверенного специалиста")}
+            placeholder={tt("Имя")}
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
@@ -169,18 +169,18 @@ export function CohostCard({
                     onClick={() =>
                       run(
                         () => circlesApi.cohostInvite(c.id, p.id, share),
-                        `Приглашение отправлено: ${p.name}`,
+                        tt(`Приглашение отправлено: {name}`, { name: p.name }),
                       )
                     }
                   >
-                    Пригласить
+                    {tt("Пригласить")}
                   </Button>
                 </li>
               ))}
             </ul>
           )}
           {q.trim().length >= 2 && found.length === 0 && (
-            <p className={s.note}>Никого не&nbsp;нашли.</p>
+            <p className={s.note}>{tt("Никого не\u00a0нашли.")}</p>
           )}
           {shareControl}
         </div>

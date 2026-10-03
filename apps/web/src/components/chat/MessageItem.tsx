@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt, intlLocale } from "@/lib/i18n";
 import {
   Check, CheckCheck, Clock3, Copy, Download, EyeOff, FileAudio, FileText, FileType2, Image as ImageIcon, ImageOff,
   MoreHorizontal, Pencil, Timer, Trash2,
@@ -12,13 +13,13 @@ import { VoiceTranscript } from "@/components/captions/VoiceTranscript";
 import s from "./chat.module.css";
 
 export function fmtTime(iso: string) {
-  return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString(intlLocale(), { hour: "2-digit", minute: "2-digit" });
 }
 
 function fmtSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} Б`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} КБ`;
-  return `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} МБ`;
+  if (bytes < 1024) return tt(`{bytes} Б`, { bytes });
+  if (bytes < 1024 * 1024) return tt(`{v} КБ`, { v: Math.round(bytes / 1024) });
+  return tt(`{v} МБ`, { v: (bytes / 1024 / 1024).toFixed(1).replace(".", ",") });
 }
 
 /** Image: ONLY the picture (like popular messengers) + optional caption; name/type/size live in the viewer. */
@@ -54,7 +55,7 @@ function ImageCard({ msg, meta }: { msg: ChatMessage; meta?: ReactNode }) {
           data-state={state}
           style={{ aspectRatio: att.width ? `${w} / ${h}` : "4 / 3" }}
           onClick={() => (state === "error" ? setAttempt((n) => n + 1) : state === "ready" && setOpen(true))}
-          aria-label={state === "error" ? "Не\u00a0загрузилось\u00a0— повторить" : `Посмотреть ${att.name}`}
+          aria-label={state === "error" ? tt("Не\u00a0загрузилось\u00a0— повторить") : tt(`Посмотреть {name}`, { name: att.name })}
         >
           {url && state !== "error" && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -64,7 +65,7 @@ function ImageCard({ msg, meta }: { msg: ChatMessage; meta?: ReactNode }) {
           {state === "error" && (
             <span className={s.thumbError}>
               <ImageOff size={20} />
-              <span>Не&nbsp;загрузилось. Повторить</span>
+              <span>{tt("Не\u00a0загрузилось. Повторить")}</span>
             </span>
           )}
         </button>
@@ -87,8 +88,8 @@ function ViewOnceCard({ msg, own }: { msg: ChatMessage; own: boolean }) {
   const [err, setErr] = useState<string | null>(null);
   const [opened, setOpened] = useState<{ url: string; name: string; caption: string } | null>(null);
   const viewed = !!msg.viewed_at;
-  const label = viewed ? (photo ? "Фото просмотрено" : "Файл просмотрен") : photo ? "Фото" : "Файл";
-  const sub = viewed ? null : own ? "Один просмотр · ещё не\u00a0открыто" : "Один просмотр · нажмите, чтобы открыть";
+  const label = viewed ? (photo ? tt("Фото просмотрено") : tt("Файл просмотрен")) : photo ? tt("Фото") : tt("Файл");
+  const sub = viewed ? null : own ? tt("Один просмотр · ещё не\u00a0открыто") : tt("Один просмотр · нажмите, чтобы открыть");
   const canOpen = !own && !viewed && !!att;
 
   const open = async () => {
@@ -98,7 +99,7 @@ function ViewOnceCard({ msg, own }: { msg: ChatMessage; own: boolean }) {
     try {
       setOpened(await openViewOnce(msg.id));
     } catch (e) {
-      setErr((e as Error).message || "Не\u00a0получилось открыть");
+      setErr((e as Error).message || tt("Не\u00a0получилось открыть"));
     } finally {
       setBusy(false);
     }
@@ -123,7 +124,7 @@ function ViewOnceCard({ msg, own }: { msg: ChatMessage; own: boolean }) {
   return (
     <div className={s.fileWrap}>
       {canOpen ? (
-        <button type="button" className={`${s.fileCard} ${s.onceCard}`} onClick={open} aria-label={`Открыть: ${label}, один просмотр`}>
+        <button type="button" className={`${s.fileCard} ${s.onceCard}`} onClick={open} aria-label={tt(`Открыть: {label}, один просмотр`, { label })}>
           {body}
         </button>
       ) : (
@@ -170,7 +171,7 @@ function FileRow({ msg, onOpen, compact }: { msg: ChatMessage; onOpen: () => voi
       </span>
       {kind && !compact && (
         <button type="button" className={s.fileOpen} onClick={onOpen}>
-          Открыть
+          {tt("Открыть")}
         </button>
       )}
       <button
@@ -178,10 +179,10 @@ function FileRow({ msg, onOpen, compact }: { msg: ChatMessage; onOpen: () => voi
         className={kind ? s.fileDlBtn : s.fileOpen}
         onClick={download}
         disabled={busy}
-        aria-label={`Скачать ${att.name}`}
-        title="Скачать"
+        aria-label={tt(`Скачать {name}`, { name: att.name })}
+        title={tt("Скачать")}
       >
-        {busy ? <span className={s.miniSpin} /> : kind ? <Download size={17} /> : "Скачать"}
+        {busy ? <span className={s.miniSpin} /> : kind ? <Download size={17} /> : tt("Скачать")}
       </button>
     </div>
   );
@@ -260,10 +261,10 @@ export function MessageItem({
           <Timer size={12} />
         </span>
       )}
-      {msg.edited_at && !msg.deleted && <span>изменено</span>}
+      {msg.edited_at && !msg.deleted && <span>{tt("изменено")}</span>}
       <span>{fmtTime(msg.created_at)}</span>
       {own && !msg.deleted && msg.sender_role !== "ai" && (
-        <span className={s.metaIcon} aria-label={msg.pending ? "Отправляется" : read ? "Прочитано" : "Доставлено"}>
+        <span className={s.metaIcon} aria-label={msg.pending ? tt("Отправляется") : read ? tt("Прочитано") : tt("Доставлено")}>
           {msg.pending ? <Clock3 size={13} /> : read ? <CheckCheck size={14} /> : <Check size={14} />}
         </span>
       )}
@@ -284,7 +285,7 @@ export function MessageItem({
       >
         {msg.deleted ? (
           <span className={s.deletedText}>
-            <Trash2 size={14} /> Сообщение удалено
+            <Trash2 size={14} />{" "}{tt("Сообщение удалено")}
           </span>
         ) : msg.kind === "voice" && msg.attachment ? (
           <>
@@ -314,7 +315,7 @@ export function MessageItem({
         <button
           type="button"
           className={s.moreBtn}
-          aria-label="Действия с&nbsp;сообщением"
+          aria-label={tt("Действия с\u00a0сообщением")}
           aria-expanded={menuOpen}
           onClick={() => onMenu(!menuOpen)}
         >
@@ -325,16 +326,16 @@ export function MessageItem({
         <div className={`${s.menu} ${own ? s.menuMine : ""}`} role="menu">
           {msg.kind === "text" && (
             <button type="button" role="menuitem" onClick={() => actions.onCopy(msg)}>
-              <Copy size={16} /> Копировать
+              <Copy size={16} />{" "}{tt("Копировать")}
             </button>
           )}
           {own && msg.kind === "text" && msg.sender_role !== "ai" && (
             <button type="button" role="menuitem" onClick={() => actions.onEdit(msg)}>
-              <Pencil size={16} /> Изменить
+              <Pencil size={16} />{" "}{tt("Изменить")}
             </button>
           )}
           <button type="button" role="menuitem" className={s.menuDanger} onClick={() => actions.onDelete(msg)}>
-            <Trash2 size={16} /> Удалить
+            <Trash2 size={16} />{" "}{tt("Удалить")}
           </button>
         </div>
       )}
@@ -345,10 +346,10 @@ export function MessageItem({
 /** «Исчезнет в 14:05» / «Исчезнет завтра в 09:30» for disappearing messages. */
 function expiryTitle(iso: string): string {
   const t = Date.parse(iso);
-  if (!Number.isFinite(t)) return "Исчезающее сообщение";
+  if (!Number.isFinite(t)) return tt("Исчезающее сообщение");
   const d = new Date(t);
-  const hm = d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  const hm = d.toLocaleTimeString(intlLocale(), { hour: "2-digit", minute: "2-digit" });
   const left = t - Date.now();
-  if (left < 60 * 60 * 1000) return `Исчезнет через\u00a0${Math.max(1, Math.ceil(left / 60000))}\u00a0мин`;
-  return d.toDateString() === new Date().toDateString() ? `Исчезнет в\u00a0${hm}` : `Исчезнет завтра в\u00a0${hm}`;
+  if (left < 60 * 60 * 1000) return tt(`Исчезнет через\u00a0{v}\u00a0мин`, { v: Math.max(1, Math.ceil(left / 60000)) });
+  return d.toDateString() === new Date().toDateString() ? tt(`Исчезнет в\u00a0{hm}`, { hm }) : tt(`Исчезнет завтра в\u00a0{hm}`, { hm });
 }

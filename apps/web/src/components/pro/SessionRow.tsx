@@ -1,5 +1,6 @@
 "use client";
 
+import { t, tj } from "@/lib/i18n";
 import { useState } from "react";
 import { Badge, Button, Modal, useToast } from "@/ui";
 import { AvatarThumb } from "@/components/avatar/AvatarThumb";
@@ -26,7 +27,7 @@ export function SessionRow({ session, onChange }: { session: Session; onChange: 
     try {
       const next = kind === "cancel" ? await sessionsApi.cancel(session.id) : await sessionsApi.complete(session.id);
       onChange(next);
-      toast(kind === "cancel" ? "Сессия отменена" : "Сессия завершена");
+      toast(kind === "cancel" ? t("Сессия отменена") : t("Сессия завершена"));
       setConfirm(false);
     } catch (e) {
       toast((e as Error).message, { error: true });
@@ -42,7 +43,7 @@ export function SessionRow({ session, onChange }: { session: Session; onChange: 
         <div className={s.rowTitle}>{session.client.alias}</div>
         <div className={s.rowMeta}>
           <span>{when(session.scheduled_at)}</span>
-          <span>{session.duration_minutes} минут</span>
+          <span>{tj("{duration_minutes} минут", { duration_minutes: session.duration_minutes })}</span>
         </div>
       </div>
       <div className={s.rowSide}>
@@ -53,32 +54,32 @@ export function SessionRow({ session, onChange }: { session: Session; onChange: 
         <div className={s.actions}>
           {session.can_join && (
             <Button size="sm" variant="primary" href={`/room/${session.id}`}>
-              Войти
+              {t("Войти")}
             </Button>
           )}
           {session.status === "in_progress" && (
             <Button size="sm" variant="secondary" loading={busy === "complete"} onClick={() => run("complete")}>
-              Завершить
+              {t("Завершить")}
             </Button>
           )}
           {canCancel(session) && (
             <Button size="sm" variant="ghost" onClick={() => setConfirm(true)}>
-              Отменить
+              {t("Отменить")}
             </Button>
           )}
         </div>
       </div>
 
-      <Modal open={confirm} onClose={() => setConfirm(false)} title="Отменить созвон?">
+      <Modal open={confirm} onClose={() => setConfirm(false)} title={t("Отменить созвон?")}>
         <p className={s.muted} style={{ marginBottom: 20 }}>
-          {session.client.alias}, {when(session.scheduled_at).toLowerCase()}. Клиент увидит отмену в&nbsp;своём кабинете, а&nbsp;время снова станет свободным для&nbsp;записи.
+          {tj("{alias}, {v}. Клиент увидит отмену в\u00a0своём кабинете, а\u00a0время снова станет свободным для\u00a0записи.", { alias: session.client.alias, v: when(session.scheduled_at).toLowerCase() })}
         </p>
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
           <Button variant="ghost" onClick={() => setConfirm(false)}>
-            Оставить
+            {t("Оставить")}
           </Button>
           <Button variant="danger" loading={busy === "cancel"} onClick={() => run("cancel")}>
-            Отменить созвон
+            {t("Отменить созвон")}
           </Button>
         </div>
       </Modal>

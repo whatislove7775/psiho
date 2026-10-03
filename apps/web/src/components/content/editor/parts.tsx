@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt, tj } from "@/lib/i18n";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Clock } from "lucide-react";
 import { MAX_TOPICS, TOPICS, topicLabel, type ArticleCard, type Source } from "@/lib/api/content";
@@ -14,10 +15,10 @@ import e from "./editor.module.css";
 export function TopicPicker({ value, onChange, error }: { value: string[]; onChange: (v: string[]) => void; error?: ReactNode }) {
   const full = value.length >= MAX_TOPICS;
   return (
-    <div className={e.topics} role="group" aria-label="Темы статьи">
+    <div className={e.topics} role="group" aria-label={tt("Темы статьи")}>
       <div className={e.topicsHead}>
-        Темы
-        <span>до&nbsp;{MAX_TOPICS}, первая&nbsp;— основная</span>
+        {tt("Темы")}
+        <span>{tj("до\u00a0{MAX_TOPICS}, первая\u00a0— основная", { MAX_TOPICS })}</span>
       </div>
       <div className={e.chips}>
         {TOPICS.map((t) => {
@@ -30,7 +31,7 @@ export function TopicPicker({ value, onChange, error }: { value: string[]; onCha
               className={e.chip}
               aria-pressed={on}
               disabled={!on && full}
-              title={!on && full ? `Можно выбрать не больше ${MAX_TOPICS}` : undefined}
+              title={!on && full ? tt(`Можно выбрать не больше {MAX_TOPICS}`, { MAX_TOPICS }) : undefined}
               onClick={() => onChange(on ? value.filter((v) => v !== t.value) : [...value, t.value])}
             >
               {on && <span className={e.chipN}>{i + 1}</span>}
@@ -45,7 +46,7 @@ export function TopicPicker({ value, onChange, error }: { value: string[]; onCha
 }
 
 /** Big title field that grows with the text (the page's only h1 when published). */
-export function TitleField({ value, onChange, error, placeholder = "Заголовок" }: { value: string; onChange: (v: string) => void; error?: ReactNode; placeholder?: string }) {
+export function TitleField({ value, onChange, error, placeholder = tt("Заголовок") }: { value: string; onChange: (v: string) => void; error?: ReactNode; placeholder?: string }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     const el = ref.current;
@@ -62,7 +63,7 @@ export function TitleField({ value, onChange, error, placeholder = "Заголо
         rows={1}
         maxLength={200}
         placeholder={placeholder}
-        aria-label="Заголовок"
+        aria-label={tt("Заголовок")}
         onChange={(ev) => onChange(ev.target.value.replace(/\n/g, " "))}
         onKeyDown={(ev) => {
           // Enter → into the text
@@ -100,10 +101,10 @@ export function ArticlePreview({
           ))}
           <span>
             <Clock size={14} strokeWidth={1.8} aria-hidden />
-            {a.reading_minutes} мин чтения
+            {a.reading_minutes}{" "}{tt("мин чтения")}
           </span>
         </div>
-        <h1 className={pub.title}>{typo(a.title || "Заголовок статьи")}</h1>
+        <h1 className={pub.title}>{typo(a.title || tt("Заголовок статьи"))}</h1>
         {a.summary && <p className={pub.lead}>{typo(a.summary)}</p>}
       </header>
       <RichText html={content} />
@@ -163,6 +164,6 @@ export function useLocalDraft(key: string, title: string, content: string, saved
 export function wordsLabel(n: number): string {
   const m10 = n % 10;
   const m100 = n % 100;
-  const w = m10 === 1 && m100 !== 11 ? "слово" : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? "слова" : "слов";
+  const w = m10 === 1 && m100 !== 11 ? tt("слово") : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? tt("слова") : tt("слов");
   return `${n} ${w}`;
 }

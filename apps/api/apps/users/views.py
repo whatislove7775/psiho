@@ -58,6 +58,10 @@ class AnonymousSignupView(AuthThrottleMixin, APIView):
                 )
                 user.recovery_key_hash = hash_recovery_key(recovery_key)
                 user.save(update_fields=["recovery_key_hash"])
+                # S2: подтверждение 18+ и (для ЕС/UK) явное согласие на данные о здоровье
+                from apps.intl.services import record_signup_consents
+
+                record_signup_consents(user, request)
         except IntegrityError:
             # Ник заняли между проверкой и созданием
             return Response({"alias": ["Этот ник уже занят."]}, status=status.HTTP_400_BAD_REQUEST)

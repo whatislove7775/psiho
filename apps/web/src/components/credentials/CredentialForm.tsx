@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useEffect, useRef, useState } from "react";
 import { Eye, EyeOff, Paperclip, ShieldCheck, X } from "lucide-react";
 import { Button, Combobox, Input, Modal, Select } from "@/ui";
@@ -55,8 +56,8 @@ export interface PickedFile {
 }
 
 export function checkFile(f: File): string | null {
-  if (f.size > CREDENTIAL_MAX_BYTES) return `«${f.name}» больше 10\u00a0МБ. Сожмите скан или\u00a0разбейте на\u00a0части.`;
-  if (f.type && !CREDENTIAL_TYPES.includes(f.type)) return `«${f.name}»: подойдёт PDF, JPG, PNG или\u00a0WebP.`;
+  if (f.size > CREDENTIAL_MAX_BYTES) return t(`«{name}» больше 10\u00a0МБ. Сожмите скан или\u00a0разбейте на\u00a0части.`, { name: f.name });
+  if (f.type && !CREDENTIAL_TYPES.includes(f.type)) return t(`«{name}»: подойдёт PDF, JPG, PNG или\u00a0WebP.`, { name: f.name });
   return null;
 }
 
@@ -106,17 +107,17 @@ export function CredentialForm({
 
   const submit = async () => {
     const e: typeof errors = {};
-    if (f.title.trim().length < 3) e.title = "Напишите название полностью";
-    if (fields.issuer && !fields.issuer.includes("если есть") && !f.issuer.trim()) e.issuer = "Укажите организацию";
-    if (fields.supervisor && !f.supervisor.trim()) e.supervisor = "Укажите супервизора";
+    if (f.title.trim().length < 3) e.title = t("Напишите название полностью");
+    if (fields.issuer && !fields.issuer.includes("если есть") && !f.issuer.trim()) e.issuer = t("Укажите организацию");
+    if (fields.supervisor && !f.supervisor.trim()) e.supervisor = t("Укажите супервизора");
     const year = f.year ? Number(f.year) : null;
     const yearEnd = f.year_end ? Number(f.year_end) : null;
     const now = new Date().getFullYear();
-    if (year !== null && (!Number.isInteger(year) || year < 1950 || year > now + 1)) e.year = `Год от\u00a01950\u00a0до\u00a0${now}`;
-    if (yearEnd !== null && (!Number.isInteger(yearEnd) || yearEnd < (year ?? 1950) || yearEnd > now + 1)) e.year_end = "Не\u00a0раньше начала";
+    if (year !== null && (!Number.isInteger(year) || year < 1950 || year > now + 1)) e.year = t(`Год от\u00a01950\u00a0до\u00a0{now}`, { now });
+    if (yearEnd !== null && (!Number.isInteger(yearEnd) || yearEnd < (year ?? 1950) || yearEnd > now + 1)) e.year_end = t("Не\u00a0раньше начала");
     const hours = f.hours ? Number(f.hours) : null;
-    if (hours !== null && (!Number.isInteger(hours) || hours < 1)) e.hours = "Целое число часов";
-    if (!item && f.kind !== "publication" && !files.length && !f.url.trim()) e.files = "Приложите скан или\u00a0фото документа: без\u00a0него сотрудник не\u00a0сможет проверить пункт";
+    if (hours !== null && (!Number.isInteger(hours) || hours < 1)) e.hours = t("Целое число часов");
+    if (!item && f.kind !== "publication" && !files.length && !f.url.trim()) e.files = t("Приложите скан или\u00a0фото документа: без\u00a0него сотрудник не\u00a0сможет проверить пункт");
     setErrors(e);
     if (Object.keys(e).length) return;
 
@@ -140,7 +141,7 @@ export function CredentialForm({
         try {
           await credentialsApi.upload(saved.id, p.file, p.isPublic);
         } catch (err) {
-          warning = err instanceof ApiError ? err.message : `Не\u00a0получилось загрузить «${p.file.name}».`;
+          warning = err instanceof ApiError ? err.message : t(`Не\u00a0получилось загрузить «{name}».`, { name: p.file.name });
         }
       }
       if (files.length) saved = (await credentialsApi.mine()).find((x) => x.id === saved.id) ?? saved;
@@ -159,10 +160,10 @@ export function CredentialForm({
   };
 
   return (
-    <Modal open={open} onClose={() => !busy && onClose()} title={item ? "Изменить документ" : "Добавить документ"} width={600}>
+    <Modal open={open} onClose={() => !busy && onClose()} title={item ? t("Изменить документ") : t("Добавить документ")} width={600}>
       <div className={s.form}>
         <Select<CredentialKind>
-          label="Что&nbsp;это"
+          label={t("Что\u00a0это")}
           value={f.kind}
           onChange={(v) => set("kind", v)}
           disabled={!!item}
@@ -201,10 +202,10 @@ export function CredentialForm({
         ))}
         {fields.supervisor && (
           <Input
-            label="Супервизор"
+            label={t("Супервизор")}
             value={f.supervisor}
             maxLength={120}
-            placeholder="Фамилия и&nbsp;инициалы"
+            placeholder={t("Фамилия и\u00a0инициалы")}
             onChange={(e) => set("supervisor", e.target.value)}
             error={errors.supervisor}
           />
@@ -225,17 +226,17 @@ export function CredentialForm({
               inputMode="numeric"
               value={f.year_end}
               maxLength={4}
-              placeholder="Если ещё идёт, оставьте пустым"
+              placeholder={t("Если ещё идёт, оставьте пустым")}
               onChange={(e) => set("year_end", e.target.value.replace(/\D/g, ""))}
               error={errors.year_end}
             />
           ) : fields.hours ? (
             <Input
-              label="Часов"
+              label={t("Часов")}
               inputMode="numeric"
               value={f.hours}
               maxLength={5}
-              placeholder="Необязательно"
+              placeholder={t("Необязательно")}
               onChange={(e) => set("hours", e.target.value.replace(/\D/g, ""))}
               error={errors.hours}
             />
@@ -245,11 +246,11 @@ export function CredentialForm({
         </div>
         {fields.yearEnd && fields.hours && (
           <Input
-            label="Часов"
+            label={t("Часов")}
             inputMode="numeric"
             value={f.hours}
             maxLength={5}
-            placeholder="Например, 60"
+            placeholder={t("Например, 60")}
             onChange={(e) => set("hours", e.target.value.replace(/\D/g, ""))}
             error={errors.hours}
           />
@@ -259,11 +260,11 @@ export function CredentialForm({
             label={fields.number}
             value={f.number}
             maxLength={60}
-            placeholder="Необязательно"
+            placeholder={t("Необязательно")}
             hint={
               f.number_public
-                ? "Клиенты увидят номер полностью и смогут сами проверить документ."
-                : "Клиенты увидят только последние 4 символа. Полный номер знает сотрудник, который проверяет документ."
+                ? t("Клиенты увидят номер полностью и смогут сами проверить документ.")
+                : t("Клиенты увидят только последние 4 символа. Полный номер знает сотрудник, который проверяет документ.")
             }
             onChange={(e) => set("number", e.target.value)}
           />
@@ -271,17 +272,17 @@ export function CredentialForm({
         {fields.number && f.number.trim() && (
           <label className={s.check}>
             <input type="checkbox" checked={f.number_public} onChange={(e) => set("number_public", e.target.checked)} />
-            Показывать номер клиентам полностью
+            {t("Показывать номер клиентам полностью")}
           </label>
         )}
         {fields.links && (
           <Input
-            label="Ссылка"
+            label={t("Ссылка")}
             type="url"
             value={f.url}
             maxLength={500}
             placeholder="https://"
-            hint={f.kind === "membership" ? "Страница в\u00a0реестре ассоциации, если есть" : "Где можно прочитать или\u00a0проверить"}
+            hint={f.kind === "membership" ? t("Страница в\u00a0реестре ассоциации, если есть") : t("Где можно прочитать или\u00a0проверить")}
             onChange={(e) => set("url", e.target.value)}
             error={errors.url}
           />
@@ -301,7 +302,7 @@ export function CredentialForm({
           <div className={s.picked}>
             <label className={s.addTile} style={{ width: "100%", height: "auto", minHeight: 72, gridAutoFlow: "column", justifyContent: "center", gap: 10 }}>
               <Paperclip size={18} aria-hidden />
-              <span>Приложить скан или&nbsp;фото: PDF, JPG, PNG, WebP до&nbsp;10&nbsp;МБ</span>
+              <span>{t("Приложить скан или\u00a0фото: PDF, JPG, PNG, WebP до\u00a010\u00a0МБ")}</span>
               <input
                 ref={inputRef}
                 type="file"
@@ -323,12 +324,12 @@ export function CredentialForm({
                   onClick={() => setFiles((xs) => xs.map((x, j) => (j === i ? { ...x, isPublic: !x.isPublic } : x)))}
                 >
                   {p.isPublic ? <Eye size={13} /> : <EyeOff size={13} />}
-                  {p.isPublic ? "Показывать публично" : "Только для\u00a0проверки"}
+                  {p.isPublic ? t("Показывать публично") : t("Только для\u00a0проверки")}
                 </button>
                 <button
                   type="button"
                   className={s.tileDel}
-                  aria-label={`Убрать ${p.file.name}`}
+                  aria-label={t(`Убрать {name}`, { name: p.file.name })}
                   onClick={() => setFiles((xs) => xs.filter((_, j) => j !== i))}
                 >
                   <X size={14} />
@@ -343,17 +344,16 @@ export function CredentialForm({
         <div className={s.privacy}>
           <ShieldCheck size={18} aria-hidden />
           <span>
-            Файлы хранятся зашифрованными. Их&nbsp;видит только сотрудник, который проверяет документ. Клиентам покажем лишь те&nbsp;файлы,
-            что&nbsp;вы&nbsp;отметили «Показывать публично», и&nbsp;только после проверки. Из&nbsp;фото удаляем геометку и&nbsp;данные камеры.
-            {approvedEdit && " Если измените подтверждённый пункт, он\u00a0снова уйдёт на\u00a0проверку."}
+            {t("Файлы хранятся зашифрованными. Их\u00a0видит только сотрудник, который проверяет документ. Клиентам покажем лишь те\u00a0файлы, что\u00a0вы\u00a0отметили «Показывать публично», и\u00a0только после проверки. Из\u00a0фото удаляем геометку и\u00a0данные камеры.")}
+            {approvedEdit && t(" Если измените подтверждённый пункт, он\u00a0снова уйдёт на\u00a0проверку.")}
           </span>
         </div>
         <div className={s.actions}>
           <Button variant="ghost" onClick={onClose} disabled={busy}>
-            Отмена
+            {t("Отмена")}
           </Button>
           <Button variant="primary" loading={busy} onClick={submit}>
-            {item ? "Сохранить" : "Отправить на\u00a0проверку"}
+            {item ? t("Сохранить") : t("Отправить на\u00a0проверку")}
           </Button>
         </div>
       </div>

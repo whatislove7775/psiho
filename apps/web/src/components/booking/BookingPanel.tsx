@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt, tj, intlLocale } from "@/lib/i18n";
 import { HelpLine } from "@/components/client/HelpLine";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -119,17 +120,17 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
       }
       toast(
         r.status === "awaiting_payment"
-          ? "Время за\u00a0вами\u00a0— осталось оплатить созвон"
+          ? tt("Время за\u00a0вами\u00a0— осталось оплатить созвон")
           : isIntro
-            ? "Знакомство назначено"
-            : "Созвон назначен",
+            ? tt("Знакомство назначено")
+            : tt("Созвон назначен"),
       );
       router.push(`/app/dialogs?d=${encodeURIComponent(r.dialogue_id)}`);
     } catch (e) {
       setConfirm(false);
       setSlot(null);
       if (e instanceof ApiError && e.status === 400) {
-        setNotice(`${e.message} Свободное время обновлено.`);
+        setNotice(tt(`{message} Свободное время обновлено.`, { message: e.message }));
         res.reload();
       } else {
         setNotice(errorText(e));
@@ -143,16 +144,16 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
     <section className={s.panel} id="booking" aria-labelledby="booking-title">
       <div className={s.head}>
         <h2 id="booking-title" className={s.title}>
-          Назначить созвон
+          {tt("Назначить созвон")}
         </h2>
         <p className={s.sub}>
-          Время по&nbsp;вашему часовому поясу, {offsetLabel()}{TZ_LOCAL && TZ_LOCAL.includes("/") ? ` (${TZ_LOCAL.split("/").pop()?.replace(/_/g, " ")})` : ""}
+          {tj("Время по\u00a0вашему часовому поясу, {offsetLabel}{v}", { offsetLabel: offsetLabel(), v: TZ_LOCAL && TZ_LOCAL.includes("/") ? ` (${TZ_LOCAL.split("/").pop()?.replace(/_/g, " ")})` : "" })}
         </p>
       </div>
 
       <div className={s.block}>
-        <div className={s.label}>Длительность</div>
-        <div className={s.durs} role="group" aria-label="Длительность созвона">
+        <div className={s.label}>{tt("Длительность")}</div>
+        <div className={s.durs} role="group" aria-label={tt("Длительность созвона")}>
           {options.map((o) => (
             <button
               key={o.minutes}
@@ -183,8 +184,8 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
           >
             <Handshake size={16} strokeWidth={1.8} aria-hidden />
             <span>
-              Сначала познакомиться&nbsp;— {INTRO_MINUTES} мин{" "}
-              {intro!.price_rub ? `за\u00a0${rub(intro!.price_rub)}` : "бесплатно"}
+              {tt("Сначала познакомиться\u00a0—")}{" "}{INTRO_MINUTES}{" "}{tt("мин")}{" "}
+              {intro!.price_rub ? tt(`за\u00a0{rub}`, { rub: rub(intro!.price_rub) }) : tt("бесплатно")}
             </span>
           </button>
         )}
@@ -207,7 +208,7 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
               className={s.inlineBtn}
               onClick={res.reload}
             >
-              Загрузить снова
+              {tt("Загрузить снова")}
             </button>
           </span>
         </div>
@@ -219,23 +220,23 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
       ) : usable.length === 0 ? (
         <div className={s.none}>
           <CalendarDays size={22} strokeWidth={1.8} aria-hidden />
-          <strong>Нет свободного времени</strong>
+          <strong>{tt("Нет свободного времени")}</strong>
           <span>
             {options.length > 1 && minutes !== options[0].minutes
-              ? `Для\u00a0${durationLabel(minutes)} окон не\u00a0нашлось. Попробуйте созвон короче или\u00a0другого специалиста.`
-              : "Загляните через пару дней или\u00a0выберите другого специалиста."}
+              ? tt(`Для\u00a0{durationLabel} окон не\u00a0нашлось. Попробуйте созвон короче или\u00a0другого специалиста.`, { durationLabel: durationLabel(minutes) })
+              : tt("Загляните через пару дней или\u00a0выберите другого специалиста.")}
           </span>
           <Button size="sm" variant="secondary" href="/app/specialists">
-            Другие специалисты
+            {tt("Другие специалисты")}
           </Button>
         </div>
       ) : (
         <>
           <div className={s.block}>
             <div className={s.label}>
-              {activeDay ? monthOf(activeDay) : "День"}
+              {activeDay ? monthOf(activeDay) : tt("День")}
             </div>
-            <div className={s.days} role="group" aria-label="День">
+            <div className={s.days} role="group" aria-label={tt("День")}>
               {days.map((d) => {
                 const n = byDay.get(d.key)?.length ?? 0;
                 return (
@@ -249,7 +250,7 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
                       setDayKey(d.key);
                       setSlot(null);
                     }}
-                    aria-label={`${day(d.date)}, ${n ? `${n} ${plural(n, "окно", "окна", "окон")}` : "нет окон"}`}
+                    aria-label={`${day(d.date)}, ${n ? `${n} ${plural(n, "окно", "окна", "окон")}` : tt("нет окон")}`}
                   >
                     <span className={s.wd}>
                       {WEEKDAYS_SHORT[(d.date.getDay() + 6) % 7]}
@@ -267,7 +268,7 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
               {activeDay && dayLabel(new Date(`${activeDay}T12:00:00`))},{" "}
               {times.length} {plural(times.length, "окно", "окна", "окон")}
             </div>
-            <div className={s.times} role="group" aria-label="Время">
+            <div className={s.times} role="group" aria-label={tt("Время")}>
               {times.map((t) => (
                 <button
                   key={t.start}
@@ -288,8 +289,8 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
         <div className={s.total}>
           <span>
             {chosen
-              ? `${dayLabel(chosen.start)} в\u00a0${time(chosen.start)}`
-              : "Выберите время"}
+              ? tt(`{dayLabel} в\u00a0{time}`, { dayLabel: dayLabel(chosen.start), time: time(chosen.start) })
+              : tt("Выберите время")}
           </span>
           <strong>{rub(price)}</strong>
         </div>
@@ -300,14 +301,14 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
           disabled={!chosen}
           onClick={() => setConfirm(true)}
         >
-          Назначить созвон
+          {tt("Назначить созвон")}
         </Button>
       </div>
 
       <Modal
         open={confirm && !!chosen}
         onClose={() => !busy && setConfirm(false)}
-        title="Проверьте запись"
+        title={tt("Проверьте запись")}
         width={480}
       >
         {chosen && (
@@ -316,13 +317,13 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
               <SpecialistPhoto url={psy.photo_url} name={psy.display_name} size={56} />
               <div>
                 <strong>{psy.display_name}</strong>
-                <span>{isIntro ? "Знакомство, 15\u00a0минут" : "Видеосозвон с\u00a0аватаром"}</span>
+                <span>{isIntro ? tt("Знакомство, 15\u00a0минут") : tt("Видеосозвон с\u00a0аватаром")}</span>
               </div>
             </div>
             <dl className={s.summary}>
               <div>
                 <dt>
-                  <CalendarDays size={16} strokeWidth={1.8} aria-hidden /> День
+                  <CalendarDays size={16} strokeWidth={1.8} aria-hidden />{" "}{tt("День")}
                 </dt>
                 <dd>
                   {capital(
@@ -332,7 +333,7 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
               </div>
               <div>
                 <dt>
-                  <Clock size={16} strokeWidth={1.8} aria-hidden /> Время
+                  <Clock size={16} strokeWidth={1.8} aria-hidden />{" "}{tt("Время")}
                 </dt>
                 <dd>
                   {time(chosen.start)} –{" "}
@@ -346,13 +347,13 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
               </div>
               <div>
                 <dt>
-                  <Wallet size={16} strokeWidth={1.8} aria-hidden /> Стоимость
+                  <Wallet size={16} strokeWidth={1.8} aria-hidden />{" "}{tt("Стоимость")}
                 </dt>
                 <dd>{rub(price)}</dd>
               </div>
             </dl>
             <p className={s.note}>
-              {isIntro ? "Знакомство бывает одно на\u00a0специалиста. " : ""}Отменить или&nbsp;перенести бесплатно можно за&nbsp;24&nbsp;часа.
+              {isIntro ? tt("Знакомство бывает одно на\u00a0специалиста. ") : ""}{tt("Отменить или\u00a0перенести бесплатно можно за\u00a024\u00a0часа.")}
             </p>
             <HelpLine />
             <div className={s.actions}>
@@ -361,10 +362,10 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
                 onClick={() => setConfirm(false)}
                 disabled={busy}
               >
-                Изменить
+                {tt("Изменить")}
               </Button>
               <Button variant="primary" onClick={book} loading={busy}>
-                {price ? `Назначить за\u00a0${rub(price)}` : "Назначить бесплатно"}
+                {price ? tt(`Назначить за\u00a0{rub}`, { rub: rub(price) }) : tt("Назначить бесплатно")}
               </Button>
             </div>
           </div>
@@ -383,6 +384,6 @@ function capital(x: string) {
 }
 function monthOf(key: string) {
   return capital(
-    new Date(`${key}T12:00:00`).toLocaleDateString("ru-RU", { month: "long" }),
+    new Date(`${key}T12:00:00`).toLocaleDateString(intlLocale(), { month: "long" }),
   );
 }

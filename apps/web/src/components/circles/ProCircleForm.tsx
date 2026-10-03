@@ -1,6 +1,7 @@
 "use client";
 
 /** Specialist: create / edit a circle. After publication only the text, rules and room settings can change. */
+import { t as tt, intlLocale } from "@/lib/i18n";
 import { useMemo, useState } from "react";
 import { Button, Input, NumberInput, Segmented, Select, Textarea } from "@/ui";
 import { ApiError } from "@/lib/api/client";
@@ -77,111 +78,111 @@ export function ProCircleForm({
       if (e instanceof ApiError) {
         setErrors(e.fields);
         setFormError(e.message);
-      } else setFormError("Не\u00a0получилось сохранить. Проверьте интернет.");
+      } else setFormError(tt("Не\u00a0получилось сохранить. Проверьте интернет."));
     }
   };
 
   return (
     <div className={s.form}>
-      {live && <p className={s.note}>Круг опубликован: тему, расписание, места и&nbsp;цену изменить нельзя&nbsp;— на&nbsp;них уже записываются люди.</p>}
+      {live && <p className={s.note}>{tt("Круг опубликован: тему, расписание, места и\u00a0цену изменить нельзя\u00a0— на\u00a0них уже записываются люди.")}</p>}
       <div className={s.formRow}>
         <Select<CircleTopic>
-          label="Тема"
+          label={tt("Тема")}
           value={f.topic}
           onChange={(v) => set("topic", v)}
           disabled={live}
           options={(Object.keys(TOPIC_LABEL) as CircleTopic[]).map((t) => ({ value: t, label: TOPIC_LABEL[t] }))}
         />
-        <Input label="Название" value={f.title} maxLength={120} disabled={live} onChange={(e) => set("title", e.target.value)} error={err("title")} placeholder="Например, «Тревога без&nbsp;стыда»" />
+        <Input label={tt("Название")} value={f.title} maxLength={120} disabled={live} onChange={(e) => set("title", e.target.value)} error={err("title")} placeholder={tt("Например, «Тревога без\u00a0стыда»")} />
       </div>
       <Textarea
-        label="О&nbsp;чём круг"
+        label={tt("О\u00a0чём круг")}
         rows={5}
         value={f.description}
         maxLength={3000}
         onChange={(e) => set("description", e.target.value)}
         error={err("description")}
-        hint="Для&nbsp;кого круг, о&nbsp;чём будете говорить, чем&nbsp;он&nbsp;поможет. Простыми словами, от&nbsp;40&nbsp;символов."
+        hint={tt("Для\u00a0кого круг, о\u00a0чём будете говорить, чем\u00a0он\u00a0поможет. Простыми словами, от\u00a040\u00a0символов.")}
       />
       <Textarea
-        label="Правила круга"
+        label={tt("Правила круга")}
         rows={5}
         value={f.rules}
         maxLength={2000}
         onChange={(e) => set("rules", e.target.value)}
         error={err("rules")}
-        hint="Каждое правило&nbsp;— с&nbsp;новой строки. Участники видят их&nbsp;до&nbsp;записи."
+        hint={tt("Каждое правило\u00a0— с\u00a0новой строки. Участники видят их\u00a0до\u00a0записи.")}
       />
       <div className={s.formRow}>
         <div>
           <div className={s.note} style={{ marginBottom: 6, fontWeight: 600, color: "var(--c-text)" }}>
-            Формат
+            {tt("Формат")}
           </div>
           <Segmented
-            ariaLabel="Формат"
+            ariaLabel={tt("Формат")}
             value={f.format}
             onChange={(v) => !live && set("format", v)}
             options={[
-              { value: "series", label: "Цикл встреч" },
-              { value: "single", label: "Одна встреча" },
+              { value: "series", label: tt("Цикл встреч") },
+              { value: "single", label: tt("Одна встреча") },
             ]}
           />
         </div>
         {f.format === "series" && (
           <Select<number>
-            label="Сколько встреч"
+            label={tt("Сколько встреч")}
             value={f.meetings_count}
             disabled={live}
             onChange={(v) => set("meetings_count", v)}
-            options={Array.from({ length: 11 }, (_, i) => i + 2).map((n) => ({ value: n, label: `${n} ${plural(n, "встреча", "встречи", "встреч")}, раз в\u00a0неделю` }))}
+            options={Array.from({ length: 11 }, (_, i) => i + 2).map((n) => ({ value: n, label: tt(`{n} {plural}, раз в\u00a0неделю`, { n, plural: plural(n, "встреча", "встречи", "встреч") }) }))}
           />
         )}
       </div>
       <div className={s.formRow}>
         <Input
-          label={f.format === "series" ? "Первая встреча" : "Дата и\u00a0время"}
+          label={f.format === "series" ? tt("Первая встреча") : tt("Дата и\u00a0время")}
           type="datetime-local"
           value={f.first_meeting_at}
           disabled={live}
           onChange={(e) => set("first_meeting_at", e.target.value)}
           error={err("first_meeting_at")}
-          hint="Не&nbsp;раньше чем&nbsp;через сутки: круг сначала проверяет команда Aprosop"
+          hint={tt("Не\u00a0раньше чем\u00a0через сутки: круг сначала проверяет команда Aprosop")}
         />
         <Select<number>
-          label="Длительность встречи"
+          label={tt("Длительность встречи")}
           value={f.meeting_minutes}
           disabled={live}
           onChange={(v) => set("meeting_minutes", v)}
-          options={[60, 75, 90, 120].map((m) => ({ value: m, label: `${m} минут` }))}
+          options={[60, 75, 90, 120].map((m) => ({ value: m, label: tt(`{m} минут`, { m }) }))}
         />
         <Select<number>
-          label="Мест в&nbsp;круге"
+          label={tt("Мест в\u00a0круге")}
           value={f.capacity}
           disabled={live}
           onChange={(v) => set("capacity", v)}
-          options={[5, 6, 7, 8, 9, 10, 11, 12].map((n) => ({ value: n, label: `${n} участников` }))}
-          hint="Плюс вы и&nbsp;ко-терапевт. Больше 12&nbsp;— уже не&nbsp;круг"
+          options={[5, 6, 7, 8, 9, 10, 11, 12].map((n) => ({ value: n, label: tt(`{n} участников`, { n }) }))}
+          hint={tt("Плюс вы и\u00a0ко-терапевт. Больше 12\u00a0— уже не\u00a0круг")}
         />
       </div>
       <div className={s.formRow}>
         {f.format === "series" && (
           <div>
             <div className={s.note} style={{ marginBottom: 6, fontWeight: 600, color: "var(--c-text)" }}>
-              Оплата
+              {tt("Оплата")}
             </div>
             <Segmented
-              ariaLabel="Как&nbsp;платят участники"
+              ariaLabel={tt("Как\u00a0платят участники")}
               value={f.billing}
               onChange={(v) => !live && set("billing", v)}
               options={[
-                { value: "per_meeting", label: "За\u00a0встречу" },
-                { value: "series", label: "За\u00a0весь цикл" },
+                { value: "per_meeting", label: tt("За\u00a0встречу") },
+                { value: "series", label: tt("За\u00a0весь цикл") },
               ]}
             />
           </div>
         )}
         <NumberInput
-          label={f.billing === "series" && f.format === "series" ? "Цена за\u00a0цикл, ₽" : "Цена за\u00a0встречу, ₽"}
+          label={f.billing === "series" && f.format === "series" ? tt("Цена за\u00a0цикл, ₽") : tt("Цена за\u00a0встречу, ₽")}
           min={300}
           max={60000}
           step={50}
@@ -189,25 +190,25 @@ export function ProCircleForm({
           disabled={live}
           onChange={(v) => set("price_rub", v ?? 0)}
           error={err("price_rub")}
-          hint={`Участник заплатит ${total.toLocaleString("ru-RU")} ₽ за\u00a0${f.format === "single" ? "встречу" : "весь круг"}`}
+          hint={tt(`Участник заплатит {v} ₽ за\u00a0{v2}`, { v: total.toLocaleString(intlLocale()), v2: f.format === "single" ? tt("встречу") : tt("весь круг") })}
         />
       </div>
       <div className={s.formRow}>
         <Select<CircleRetention>
-          label="Сообщения в&nbsp;чате круга"
+          label={tt("Сообщения в\u00a0чате круга")}
           value={f.chat_retention}
           onChange={(v) => set("chat_retention", v)}
           options={[
-            { value: "forever", label: "Хранить, пока идёт круг" },
-            { value: "24h", label: "Исчезают через сутки" },
-            { value: "1h", label: "Исчезают через час" },
+            { value: "forever", label: tt("Хранить, пока идёт круг") },
+            { value: "24h", label: tt("Исчезают через сутки") },
+            { value: "1h", label: tt("Исчезают через час") },
           ]}
         />
         <label className={s.toggle}>
           <input type="checkbox" checked={f.allow_real_faces} onChange={(e) => set("allow_real_faces", e.target.checked)} />
           <span>
-            Разрешить участникам показывать лицо
-            <small>По&nbsp;умолчанию все&nbsp;— только в&nbsp;аватарах. Если включить, каждый сам решает, показывать&nbsp;ли камеру.</small>
+            {tt("Разрешить участникам показывать лицо")}
+            <small>{tt("По\u00a0умолчанию все\u00a0— только в\u00a0аватарах. Если включить, каждый сам решает, показывать\u00a0ли камеру.")}</small>
           </span>
         </label>
       </div>
@@ -218,7 +219,7 @@ export function ProCircleForm({
       )}
       <div>
         <Button variant="primary" size="lg" loading={saving} onClick={submit}>
-          {initial ? "Сохранить" : "Создать черновик"}
+          {initial ? tt("Сохранить") : tt("Создать черновик")}
         </Button>
       </div>
     </div>

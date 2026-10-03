@@ -1,5 +1,7 @@
 "use client";
 
+import { t as tt, translatedList } from "@/lib/i18n";
+import { lp } from "@/lib/i18n";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, RefreshCw } from "lucide-react";
@@ -10,20 +12,20 @@ import s from "./landing.module.css";
 
 /** Sample identities: what a client looks like to a specialist. */
 const PRESETS = [
-  { seed: "aprosop-kit", alias: "тихий-кит-4821" },
-  { seed: "aprosop-sova-7", alias: "смелая-сова-1937" },
-  { seed: "aprosop-lis-2", alias: "рыжий-лис-5520" },
-  { seed: "aprosop-ezh-11", alias: "сонный-ёж-0342" },
+  { seed: "aprosop-kit", get alias() { return tt("тихий-кит-4821"); } },
+  { seed: "aprosop-sova-7", get alias() { return tt("смелая-сова-1937"); } },
+  { seed: "aprosop-lis-2", get alias() { return tt("рыжий-лис-5520"); } },
+  { seed: "aprosop-ezh-11", get alias() { return tt("сонный-ёж-0342"); } },
 ];
 
-const EXTRA_ALIASES = [
+const EXTRA_ALIASES = translatedList([
   "добрый-лось-2710",
   "ясная-луна-6604",
   "тёплый-чай-1185",
   "лёгкий-ветер-9053",
   "мудрая-рысь-3378",
   "синий-клён-4410",
-];
+]);
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
@@ -150,24 +152,24 @@ export function Hero() {
       <div className={s.heroText}>
         <h1 id="hero-title" className={s.heroTitle}>
           {/* three fixed lines; spaces between the line spans keep the text readable for bots/copy */}
-          <span className={s.heroLine}>Психолог онлайн,</span>{" "}
+          <span className={s.heroLine}>{tt("Психолог онлайн,")}</span>{" "}
           <span className={s.heroAccent}>
-            <span className={`${s.heroLine} ${s.heroLineWrap}`}>и&nbsp;никто не&nbsp;узнает,</span>{" "}
-            <span className={s.heroLine}>кто&nbsp;вы</span>
+            <span className={`${s.heroLine} ${s.heroLineWrap}`}>{tt("и\u00a0никто не\u00a0узнает,")}</span>{" "}
+            <span className={s.heroLine}>{tt("кто\u00a0вы")}</span>
           </span>
         </h1>
-        <p className={s.heroLead}>Без&nbsp;почты и&nbsp;телефона. Вместо имени псевдоним, вместо лица 3D-аватар с&nbsp;вашей мимикой.</p>
+        <p className={s.heroLead}>{tt("Без\u00a0почты и\u00a0телефона. Вместо имени псевдоним, вместо лица 3D-аватар с\u00a0вашей мимикой.")}</p>
         <div className={s.heroActions}>
-          <Button href="/start" variant="primary" size="lg">
-            Начать анонимно
+          <Button href={lp("/start")} variant="primary" size="lg">
+            {tt("Начать анонимно")}
           </Button>
-          <Button href="/join" variant="ghost" size="lg" className={s.heroSecondary}>
-            Я&nbsp;специалист
+          <Button href={lp("/join")} variant="ghost" size="lg" className={s.heroSecondary}>
+            {tt("Я\u00a0специалист")}
           </Button>
         </div>
         {/* H1: public matching quiz, works without login */}
-        <Link href="/match" className={s.heroQuiz}>
-          Не&nbsp;знаете, к&nbsp;кому идти? <span>Подобрать по&nbsp;анкете</span>
+        <Link href={lp("/match")} className={s.heroQuiz}>
+          {tt("Не\u00a0знаете, к\u00a0кому идти?")}{" "}<span>{tt("Подобрать по\u00a0анкете")}</span>
           <ArrowRight size={15} strokeWidth={2} aria-hidden />
         </Link>
       </div>
@@ -180,7 +182,7 @@ export function Hero() {
           <figcaption className={s.nameTag} aria-live="polite">
             {current.alias}
           </figcaption>
-          <button type="button" className={s.shuffle} aria-label="Показать другой аватар" title="Другой аватар" onClick={shuffle}>
+          <button type="button" className={s.shuffle} aria-label={tt("Показать другой аватар")} title={tt("Другой аватар")} onClick={shuffle}>
             <RefreshCw size={16} strokeWidth={2} aria-hidden />
           </button>
         </div>

@@ -1,3 +1,5 @@
+import { t, msg } from "@/lib/i18n";
+import { lp } from "@/lib/i18n";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PracticeCard } from "@/components/content/Cards";
@@ -7,7 +9,7 @@ import { PublicShell } from "@/components/public/PublicShell";
 import { StartCta } from "@/components/public/StartCta";
 import { PRACTICE_KINDS } from "@/lib/api/content";
 import { serverContent } from "@/lib/content/server";
-import { abs, alternates, ORG_ID, WEBSITE_ID } from "@/lib/seo";
+import { abs, alternates, ORG_ID, WEBSITE_ID, inLanguage } from "@/lib/seo";
 import s from "@/components/public/public.module.css";
 import { ogMeta } from "@/lib/og/sections";
 import { Breathing } from "@/components/illustrations";
@@ -16,16 +18,18 @@ import { AvatarDecor } from "@/components/decor/AvatarDecor";
 // Data comes from the 5-minute content cache; rendering per request keeps the list fresh after deploys.
 export const dynamic = "force-dynamic";
 
-const TITLE = "Практики самопомощи: дыхание, заземление, расслабление";
+const TITLE = msg("Практики самопомощи: дыхание, заземление, расслабление");
 const DESCRIPTION =
-  "Короткие упражнения, которые помогают справиться с\u00a0тревогой и\u00a0напряжением: дыхание с\u00a0длинным выдохом, заземление 5-4-3-2-1, мышечное расслабление, дневник. С\u00a0объяснением, почему это\u00a0работает, и\u00a0предостережениями.";
+  msg("Короткие упражнения, которые помогают справиться с\u00a0тревогой и\u00a0напряжением: дыхание с\u00a0длинным выдохом, заземление 5-4-3-2-1, мышечное расслабление, дневник. С\u00a0объяснением, почему это\u00a0работает, и\u00a0предостережениями.");
 
-export const metadata: Metadata = {
-  title: TITLE,
-  description: DESCRIPTION,
-  alternates: alternates("/practices"),
-  ...ogMeta("/practices", "Практики для\u00a0себя", DESCRIPTION),
-};
+export function generateMetadata(): Metadata {
+  return {
+    title: t(TITLE),
+    description: t(DESCRIPTION),
+    alternates: alternates("/practices"),
+    ...ogMeta("/practices", t("Практики для\u00a0себя"), t(DESCRIPTION)),
+  };
+}
 
 export default async function PracticesPage() {
   const practices = await serverContent.practices();
@@ -39,8 +43,8 @@ export default async function PracticesPage() {
     <PublicShell>
       <Breadcrumbs
         items={[
-          { name: "Главная", href: "/" },
-          { name: "Практики", href: "/practices" },
+          { name: t("Главная"), href: "/" },
+          { name: t("Практики"), href: "/practices" },
         ]}
       />
       <JsonLd
@@ -49,9 +53,9 @@ export default async function PracticesPage() {
           "@type": "CollectionPage",
           "@id": abs("/practices"),
           url: abs("/practices"),
-          name: TITLE,
-          description: DESCRIPTION,
-          inLanguage: "ru-RU",
+          name: t(TITLE),
+          description: t(DESCRIPTION),
+          inLanguage: inLanguage(),
           isPartOf: { "@id": WEBSITE_ID },
           publisher: { "@id": ORG_ID },
           mainEntity: {
@@ -62,15 +66,15 @@ export default async function PracticesPage() {
       />
       <header className={s.intro}>
         <div>
-          <h1>Практики</h1>
-          <p>Короткие упражнения на&nbsp;3–10&nbsp;минут, чтобы немного успокоиться.</p>
+          <h1>{t("Практики")}</h1>
+          <p>{t("Короткие упражнения на\u00a03–10\u00a0минут, чтобы немного успокоиться.")}</p>
         </div>
         <Breathing className={s.introArt} />
       </header>
 
       {groups.length === 0 ? (
         <p className={s.empty}>
-          Практики скоро появятся. А&nbsp;пока загляните в <Link href="/articles">статьи</Link>.
+          {t("Практики скоро появятся. А\u00a0пока загляните в")}{" "}<Link href={lp("/articles")}>{t("статьи")}</Link>.
         </p>
       ) : (
         groups.map((g, i) => (
@@ -90,7 +94,7 @@ export default async function PracticesPage() {
         ))
       )}
 
-      <StartCta title="Если практики помогают не&nbsp;до&nbsp;конца" />
+      <StartCta title={t("Если практики помогают не\u00a0до\u00a0конца")} />
     </PublicShell>
   );
 }

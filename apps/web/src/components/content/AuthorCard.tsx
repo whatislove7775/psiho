@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -37,17 +38,17 @@ export function AuthorCard({ specialist: p }: { specialist: NonNullable<Article[
       const d = await dialogsApi.startWithSpecialist(p.id);
       router.push(`/app/dialogs?d=${encodeURIComponent(d.id)}`);
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "Не\u00a0получилось начать диалог", { error: true });
+      toast(e instanceof ApiError ? e.message : tt("Не\u00a0получилось начать диалог"), { error: true });
       setBusy(false);
     }
   };
 
   const href = status === "authed" ? profile : guestHref;
-  const sub = ["Специалист Aprosop", p.experience_years ? experienceLabel(p.experience_years, "опыт") : ""].filter(Boolean).join(" · ");
+  const sub = [tt("Специалист Aprosop"), p.experience_years ? experienceLabel(p.experience_years, tt("опыт")) : ""].filter(Boolean).join(" · ");
   const canWrite = isClient || status !== "authed";
 
   return (
-    <aside className={s.card} aria-label="Автор статьи">
+    <aside className={s.card} aria-label={tt("Автор статьи")}>
       <Link href={href} className={s.photo} tabIndex={-1} aria-hidden>
         <SpecialistPhoto url={p.photo_url} name={p.name} size={40} alt="" />
       </Link>
@@ -60,17 +61,17 @@ export function AuthorCard({ specialist: p }: { specialist: NonNullable<Article[
       </div>
       <div className={s.actions}>
         <Link href={href} className={s.more}>
-          Профиль
+          {tt("Профиль")}
           <ArrowRight size={14} strokeWidth={2} aria-hidden />
         </Link>
         {canWrite &&
           (isClient ? (
             <Button variant="soft" size="sm" loading={busy} onClick={write} icon={<MessageCircle size={15} strokeWidth={1.8} />}>
-              Начать диалог
+              {tt("Начать диалог")}
             </Button>
           ) : (
             <Button variant="soft" size="sm" href={guestHref} icon={<MessageCircle size={15} strokeWidth={1.8} />}>
-              Начать диалог
+              {tt("Начать диалог")}
             </Button>
           ))}
       </div>

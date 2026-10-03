@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useVoiceTransform, type VoicePreset } from "@/hooks/useVoiceTransform";
 import { loadModel, sttManifest, startRecognition, sttWasReady } from "@/lib/captions/engine";
@@ -140,7 +141,7 @@ export function useVoiceRecorder() {
       setPhase("ready");
       if (withText && sttOk) loadModel().catch(() => undefined); // be ready before the first word
     } catch {
-      setError("Нет доступа к\u00a0микрофону. Разрешите его в\u00a0настройках браузера.");
+      setError(tt("Нет доступа к\u00a0микрофону. Разрешите его в\u00a0настройках браузера."));
       setPhase("error");
     }
   }, [withText, sttOk]);
@@ -148,7 +149,7 @@ export function useVoiceRecorder() {
   const start = useCallback(() => {
     const stream = transformedStream;
     if (!stream || typeof MediaRecorder === "undefined") {
-      setError("Запись голоса не\u00a0поддерживается в\u00a0этом браузере.");
+      setError(tt("Запись голоса не\u00a0поддерживается в\u00a0этом браузере."));
       setPhase("error");
       return;
     }
@@ -157,7 +158,7 @@ export function useVoiceRecorder() {
     try {
       rec = mime ? new MediaRecorder(stream, { mimeType: mime, audioBitsPerSecond: 48000 }) : new MediaRecorder(stream);
     } catch {
-      setError("Не\u00a0получилось начать запись.");
+      setError(tt("Не\u00a0получилось начать запись."));
       setPhase("error");
       return;
     }

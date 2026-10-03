@@ -26,6 +26,7 @@
  * pressed «Показать настоящее лицо» and confirmed) `faceStream` carries a
  * clone of the camera track. It is stopped as soon as the option goes false.
  */
+import { t as tt } from "@/lib/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AvatarConfig } from "@/lib/avatar/schema";
 import type { AvatarRendererApi } from "@/lib/avatar/kit/types";
@@ -211,10 +212,10 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
         setState(name === "NotAllowedError" || name === "SecurityError" ? "denied" : "error");
         setError(
           name === "NotAllowedError"
-            ? "Доступ к\u00a0камере запрещён. Разрешите камеру и\u00a0микрофон в\u00a0настройках браузера и\u00a0попробуйте ещё раз."
+            ? tt("Доступ к\u00a0камере запрещён. Разрешите камеру и\u00a0микрофон в\u00a0настройках браузера и\u00a0попробуйте ещё раз.")
             : name === "NotFoundError"
-              ? "Камера или\u00a0микрофон не\u00a0найдены. Подключите устройство и\u00a0попробуйте ещё раз."
-              : "Не\u00a0получилось включить камеру. Закройте другие приложения, которые её\u00a0используют, и\u00a0попробуйте ещё раз.",
+              ? tt("Камера или\u00a0микрофон не\u00a0найдены. Подключите устройство и\u00a0попробуйте ещё раз.")
+              : tt("Не\u00a0получилось включить камеру. Закройте другие приложения, которые её\u00a0используют, и\u00a0попробуйте ещё раз."),
         );
         return;
       }
@@ -291,7 +292,7 @@ export function useAvatarCamera(config: AvatarConfig, options: AvatarCameraOptio
         if (cancelled) return;
         setState("error");
         setError(
-          "Не\u00a0получилось показать аватар: браузер не\u00a0поддерживает 3D-графику или\u00a0она выключена. Откройте страницу в\u00a0свежей версии Chrome, Safari или\u00a0Firefox и\u00a0включите аппаратное ускорение.",
+          tt("Не\u00a0получилось показать аватар: браузер не\u00a0поддерживает 3D-графику или\u00a0она выключена. Откройте страницу в\u00a0свежей версии Chrome, Safari или\u00a0Firefox и\u00a0включите аппаратное ускорение."),
         );
         return;
       }

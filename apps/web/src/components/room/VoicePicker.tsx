@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { AudioLines, Bot, Mic, MoveDown, MoveUp, Sparkles } from "lucide-react";
 import { VOICE_PRESETS, type VoicePreset } from "@/hooks/useVoiceTransform";
 import s from "./Room.module.css";
@@ -16,7 +17,7 @@ const ICONS: Record<VoicePreset, React.ReactNode> = {
 /** Voice filter choice: a radio list with a one-line explanation per preset. */
 export function VoicePicker({ value, onChange, compact }: { value: VoicePreset; onChange: (v: VoicePreset) => void; compact?: boolean }) {
   return (
-    <div className={`${s.voices} ${compact ? s.voicesCompact : ""}`} role="radiogroup" aria-label="Фильтр голоса">
+    <div className={`${s.voices} ${compact ? s.voicesCompact : ""}`} role="radiogroup" aria-label={t("Фильтр голоса")}>
       {VOICE_PRESETS.map((p) => (
         <button
           key={p.value}

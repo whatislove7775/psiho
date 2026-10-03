@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Camera, CameraOff, Headphones, Lamp, Mic, MicOff, RotateCw, Wifi } from "lucide-react";
 import { Badge, Button, Card, CardHead } from "@/ui";
@@ -11,14 +12,14 @@ type State = "idle" | "asking" | "ok" | "error";
 function explain(e: unknown): string {
   const name = (e as DOMException)?.name;
   if (name === "NotAllowedError" || name === "SecurityError")
-    return "Браузер запретил доступ. Нажмите на\u00a0значок замка в\u00a0адресной строке, разрешите камеру и\u00a0микрофон, затем нажмите «Проверить снова».";
+    return tt("Браузер запретил доступ. Нажмите на\u00a0значок замка в\u00a0адресной строке, разрешите камеру и\u00a0микрофон, затем нажмите «Проверить снова».");
   if (name === "NotFoundError" || name === "OverconstrainedError")
-    return "Камера или\u00a0микрофон не\u00a0найдены. Подключите устройство и\u00a0нажмите «Проверить снова».";
+    return tt("Камера или\u00a0микрофон не\u00a0найдены. Подключите устройство и\u00a0нажмите «Проверить снова».");
   if (name === "NotReadableError" || name === "AbortError")
-    return "Камера занята другой программой. Закройте Zoom, Teams или\u00a0другую вкладку со\u00a0звонком и\u00a0нажмите «Проверить снова».";
+    return tt("Камера занята другой программой. Закройте Zoom, Teams или\u00a0другую вкладку со\u00a0звонком и\u00a0нажмите «Проверить снова».");
   if (typeof navigator !== "undefined" && !navigator.mediaDevices)
-    return "Этот браузер не\u00a0даёт доступ к\u00a0камере. Откройте страницу в\u00a0свежей версии Chrome, Safari или\u00a0Firefox.";
-  return "Не\u00a0получилось включить камеру и\u00a0микрофон. Нажмите «Проверить снова» или\u00a0перезапустите браузер.";
+    return tt("Этот браузер не\u00a0даёт доступ к\u00a0камере. Откройте страницу в\u00a0свежей версии Chrome, Safari или\u00a0Firefox.");
+  return tt("Не\u00a0получилось включить камеру и\u00a0микрофон. Нажмите «Проверить снова» или\u00a0перезапустите браузер.");
 }
 
 const BARS = 24;
@@ -116,11 +117,11 @@ export default function CheckPage() {
   return (
     <>
       <PageHeader
-        title="Проверка камеры и&nbsp;микрофона"
-        sub="Клиент видит ваше настоящее видео"
+        title={tt("Проверка камеры и\u00a0микрофона")}
+        sub={tt("Клиент видит ваше настоящее видео")}
         action={
           <Button variant="primary" icon={<RotateCw size={18} />} onClick={start} loading={state === "asking"}>
-            Проверить снова
+            {tt("Проверить снова")}
           </Button>
         }
       />
@@ -131,10 +132,10 @@ export default function CheckPage() {
             {state !== "ok" && (
               <div className={c.placeholder}>
                 {state === "error" ? <CameraOff size={32} strokeWidth={1.6} /> : <Camera size={32} strokeWidth={1.6} />}
-                <p>{state === "error" ? error : "Разрешите браузеру доступ к\u00a0камере и\u00a0микрофону"}</p>
+                <p>{state === "error" ? error : tt("Разрешите браузеру доступ к\u00a0камере и\u00a0микрофону")}</p>
               </div>
             )}
-            <span className={c.private}>Так вас увидит клиент</span>
+            <span className={c.private}>{tt("Так вас увидит клиент")}</span>
           </div>
 
           <div className={c.checks}>
@@ -143,11 +144,11 @@ export default function CheckPage() {
                 {state === "ok" && hasVideo ? <Camera size={20} /> : <CameraOff size={20} />}
               </span>
               <div className={c.checkText}>
-                <strong>Камера</strong>
-                <span>{state === "ok" && hasVideo ? labels.cam || "Работает" : state === "asking" ? "Ждём разрешения" : "Не\u00a0подключена"}</span>
+                <strong>{tt("Камера")}</strong>
+                <span>{state === "ok" && hasVideo ? labels.cam || tt("Работает") : state === "asking" ? tt("Ждём разрешения") : tt("Не\u00a0подключена")}</span>
               </div>
               <Badge tone={state === "ok" && hasVideo ? "success" : state === "error" ? "danger" : "neutral"}>
-                {state === "ok" && hasVideo ? "Работает" : state === "error" ? "Нет доступа" : "Проверяем"}
+                {state === "ok" && hasVideo ? tt("Работает") : state === "error" ? tt("Нет доступа") : tt("Проверяем")}
               </Badge>
             </div>
             <div className={c.check}>
@@ -155,22 +156,22 @@ export default function CheckPage() {
                 {state === "ok" && hasAudio ? <Mic size={20} /> : <MicOff size={20} />}
               </span>
               <div className={c.checkText}>
-                <strong>Микрофон</strong>
+                <strong>{tt("Микрофон")}</strong>
                 <span>
                   {state === "ok" && hasAudio
                     ? micHeard
-                      ? labels.mic || "Вас слышно"
-                      : "Скажите что-нибудь, полоска должна ожить"
+                      ? labels.mic || tt("Вас слышно")
+                      : tt("Скажите что-нибудь, полоска должна ожить")
                     : state === "asking"
-                      ? "Ждём разрешения"
-                      : "Не\u00a0подключён"}
+                      ? tt("Ждём разрешения")
+                      : tt("Не\u00a0подключён")}
                 </span>
               </div>
               <Badge tone={micHeard ? "success" : state === "error" ? "danger" : "warning"}>
-                {micHeard ? "Вас слышно" : state === "error" ? "Нет доступа" : "Скажите пару слов"}
+                {micHeard ? tt("Вас слышно") : state === "error" ? tt("Нет доступа") : tt("Скажите пару слов")}
               </Badge>
             </div>
-            <div className={c.meter} role="meter" aria-label="Громкость микрофона" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(level * 100)}>
+            <div className={c.meter} role="meter" aria-label={tt("Громкость микрофона")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(level * 100)}>
               {Array.from({ length: BARS }, (_, i) => (
                 <span key={i} data-on={i < lit || undefined} data-hot={i >= BARS - 4 || undefined} />
               ))}
@@ -184,14 +185,14 @@ export default function CheckPage() {
 
 function Tips() {
   const tips = [
-    { icon: <Lamp size={20} />, title: "Свет спереди", text: "Окно или\u00a0лампа за\u00a0камерой, а\u00a0не\u00a0за\u00a0спиной. Клиенту важно видеть ваше лицо и\u00a0мимику." },
-    { icon: <Camera size={20} />, title: "Кадр и\u00a0фон", text: "Камера на\u00a0уровне глаз, лицо и\u00a0плечи в\u00a0кадре. Спокойный фон без\u00a0личных вещей и\u00a0документов." },
-    { icon: <Headphones size={20} />, title: "Наушники", text: "Так клиент не\u00a0услышит эхо своего голоса, а\u00a0разговор не\u00a0будет слышен рядом с\u00a0вами." },
-    { icon: <Wifi size={20} />, title: "Стабильная сеть", text: "Видео идёт напрямую между вами и\u00a0клиентом. Если связь слабая, закройте загрузки и\u00a0другие звонки." },
+    { icon: <Lamp size={20} />, title: tt("Свет спереди"), text: tt("Окно или\u00a0лампа за\u00a0камерой, а\u00a0не\u00a0за\u00a0спиной. Клиенту важно видеть ваше лицо и\u00a0мимику.") },
+    { icon: <Camera size={20} />, title: tt("Кадр и\u00a0фон"), text: tt("Камера на\u00a0уровне глаз, лицо и\u00a0плечи в\u00a0кадре. Спокойный фон без\u00a0личных вещей и\u00a0документов.") },
+    { icon: <Headphones size={20} />, title: tt("Наушники"), text: tt("Так клиент не\u00a0услышит эхо своего голоса, а\u00a0разговор не\u00a0будет слышен рядом с\u00a0вами.") },
+    { icon: <Wifi size={20} />, title: tt("Стабильная сеть"), text: tt("Видео идёт напрямую между вами и\u00a0клиентом. Если связь слабая, закройте загрузки и\u00a0другие звонки.") },
   ];
   return (
     <Card as="section">
-      <CardHead title="Перед созвоном" />
+      <CardHead title={tt("Перед созвоном")} />
       <ul className={c.tips}>
         {tips.map((t) => (
           <li key={t.title}>

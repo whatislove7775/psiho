@@ -3,6 +3,7 @@
  * evidence badge, key research facts, «Когда нужен специалист», mechanism, cautions, sources.
  * Citation markers in texts ([1]) link to #source-N anchors rendered by <Sources>.
  */
+import { t } from "@/lib/i18n";
 import { AlertTriangle, BookMarked, FlaskConical, HeartHandshake, Lightbulb, ShieldCheck, Sparkles, Stethoscope } from "lucide-react";
 import type { EvidenceLevel, KeyFact, Source } from "@/lib/api/content";
 import { EVIDENCE_LEVELS } from "@/lib/api/content";
@@ -33,7 +34,7 @@ export function EvidenceBadge({ level, compact }: { level?: EvidenceLevel | null
   );
 }
 
-export function KeyFacts({ facts, title = "Главное из\u00a0исследований" }: { facts?: KeyFact[]; title?: string }) {
+export function KeyFacts({ facts, title = t("Главное из\u00a0исследований") }: { facts?: KeyFact[]; title?: string }) {
   if (!facts?.length) return null;
   return (
     <section className={s.facts} aria-labelledby="key-facts">
@@ -60,7 +61,7 @@ export function SeekHelp({ text, cta }: { text?: string; cta?: React.ReactNode }
     <section className={s.help} aria-labelledby="seek-help">
       <h2 id="seek-help" className={s.sectionTitle}>
         <Stethoscope size={18} strokeWidth={1.9} aria-hidden />
-        Когда нужен специалист
+        {t("Когда нужен специалист")}
       </h2>
       {text?.trim() && <Markdown source={text} className={s.helpText} />}
       {cta && <div className={s.helpCta}>{cta}</div>}
@@ -74,7 +75,7 @@ export function Mechanism({ text }: { text?: string }) {
     <section className={s.block} aria-labelledby="mechanism">
       <h2 id="mechanism" className={s.sectionTitle}>
         <HeartHandshake size={18} strokeWidth={1.9} aria-hidden />
-        Почему это&nbsp;может помочь
+        {t("Почему это\u00a0может помочь")}
       </h2>
       <Markdown source={text} className={s.blockText} />
     </section>
@@ -87,7 +88,7 @@ export function Cautions({ text }: { text?: string }) {
     <section className={`${s.block} ${s.caution}`} aria-labelledby="cautions">
       <h2 id="cautions" className={s.sectionTitle}>
         <AlertTriangle size={18} strokeWidth={1.9} aria-hidden />
-        Когда остановиться или&nbsp;пропустить
+        {t("Когда остановиться или\u00a0пропустить")}
       </h2>
       <Markdown source={text} className={s.blockText} />
     </section>
@@ -113,7 +114,7 @@ export function Sources({
     <details className={s.sources}>
       <summary className={s.sourcesSummary}>
         <BookMarked size={16} strokeWidth={1.9} aria-hidden />
-        Источники <span className={s.sourcesCount}>{sources.length}</span>
+        {t("Источники")}{" "}<span className={s.sourcesCount}>{sources.length}</span>
       </summary>
       <ol className={s.sourceList}>
         {sources.map((src, i) => (

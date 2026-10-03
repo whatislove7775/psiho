@@ -2,6 +2,7 @@
  * Scene illustrations. Each is a self-contained SVG; pass `title` when the
  * picture carries meaning, otherwise it is decorative (aria-hidden).
  */
+import { t as tt } from "@/lib/i18n";
 import { Blob, bubblePath, Dot, Face, Ground, Hand, INK, LogoFace, Person, Plant, SHADE, Spark, Svg, Tex, type U } from "./kit";
 import s from "./illustrations.module.css";
 
@@ -94,7 +95,7 @@ export function HeroConversation({ title, className }: IllProps) {
           <g className={s.float}>
             <path d={bubblePath(26, 26, 104, 42, "br", 18)} fill={u("cyan")} />
             <text x="78" y="53" textAnchor="middle" fontSize="17" fill={INK} style={TXT}>
-              Привет!
+              {tt("Привет!")}
             </text>
           </g>
           <g className={s.float} style={{ animationDelay: "-3s" }}>
@@ -146,7 +147,7 @@ export function MaskFriend({ title, className }: IllProps) {
 }
 
 /** Waving person in a straw hat with a cyan "Привет!" bubble (the reference). */
-export function Hello({ title, className, text = "Привет!" }: IllProps & { text?: string }) {
+export function Hello({ title, className, text = tt("Привет!") }: IllProps & { text?: string }) {
   return (
     <Svg viewBox="0 0 240 220" title={title} className={className}>
       {(u) => (

@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt, tj } from "@/lib/i18n";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowDownLeft,
@@ -24,11 +25,11 @@ import { dayShort, time } from "@/lib/format";
 import s from "@/components/billing/billing.module.css";
 
 const HOLD_LABEL: Record<string, string> = {
-  active: "Заморожено",
-  captured: "Списано",
-  partial: "Частичный возврат",
-  released: "Возвращено",
-  refunded: "Возвращено",
+  get active() { return tt("Заморожено"); },
+  get captured() { return tt("Списано"); },
+  get partial() { return tt("Частичный возврат"); },
+  get released() { return tt("Возвращено"); },
+  get refunded() { return tt("Возвращено"); },
 };
 
 function itemIcon(x: HistoryItem) {
@@ -59,14 +60,14 @@ export default function BalancePage() {
       try {
         const t = await billingApi.topUp(id);
         if (t.status === "succeeded") {
-          toast(`Баланс пополнен на\u00a0${rubK(t.amount_kopecks)}`);
+          toast(tt(`Баланс пополнен на\u00a0{rubK}`, { rubK: rubK(t.amount_kopecks) }));
         } else if (t.status === "canceled") {
-          toast("Оплата не\u00a0прошла. Деньги не\u00a0списаны.", { error: true });
+          toast(tt("Оплата не\u00a0прошла. Деньги не\u00a0списаны."), { error: true });
         } else if (++tries < 10) {
           setTimeout(poll, 2500);
           return;
         } else {
-          toast("Платёж ещё обрабатывается. Баланс обновится сам.");
+          toast(tt("Платёж ещё обрабатывается. Баланс обновится сам."));
         }
       } catch {
         /* ignore */
@@ -89,7 +90,7 @@ export default function BalancePage() {
 
   return (
     <>
-      <PageHeader title="Баланс" />
+      <PageHeader title={tt("Баланс")} />
       {summary.error ? (
         <ErrorBlock message={summary.error} onRetry={summary.reload} />
       ) : (
@@ -97,51 +98,51 @@ export default function BalancePage() {
           rail={
             <>
               <CompanyAllowance onChanged={refresh} />
-              <CollapsibleCard title="Подарочный код" icon={<Gift size={18} />} defaultOpen={false}>
+              <CollapsibleCard title={tt("Подарочный код")} icon={<Gift size={18} />} defaultOpen={false}>
                 <RedeemForm onRedeemed={refresh} />
               </CollapsibleCard>
               {sm && (
-                <CollapsibleCard title="Как&nbsp;возвращаются деньги" icon={<Undo2 size={18} />} defaultOpen={false}>
+                <CollapsibleCard title={tt("Как\u00a0возвращаются деньги")} icon={<Undo2 size={18} />} defaultOpen={false}>
                   <ul className={s.rules}>
-                    <li>Отмена за {sm.cancel_rules.free_cancel_hours} ч&nbsp;и&nbsp;раньше&nbsp;— вся сумма на&nbsp;баланс.</li>
+                    <li>{tj("Отмена за {free_cancel_hours} ч\u00a0и\u00a0раньше\u00a0— вся сумма на\u00a0баланс.", { free_cancel_hours: sm.cancel_rules.free_cancel_hours })}</li>
                     {sm.cancel_rules.late_cancel_penalty_percent > 0 && (
-                      <li>Отмена позже&nbsp;— возвращается {100 - sm.cancel_rules.late_cancel_penalty_percent}%.</li>
+                      <li>{tj("Отмена позже\u00a0— возвращается {v}%.", { v: 100 - sm.cancel_rules.late_cancel_penalty_percent })}</li>
                     )}
-                    <li>Специалист отменил или&nbsp;не&nbsp;пришёл&nbsp;— возвращаем всё.</li>
-                    <li>Остаток можно вернуть на&nbsp;карту через поддержку.</li>
+                    <li>{tt("Специалист отменил или\u00a0не\u00a0пришёл\u00a0— возвращаем всё.")}</li>
+                    <li>{tt("Остаток можно вернуть на\u00a0карту через поддержку.")}</li>
                   </ul>
                 </CollapsibleCard>
               )}
             </>
           }
         >
-          <section className={s.hero} aria-label="Баланс">
+          <section className={s.hero} aria-label={tt("Баланс")}>
             <div>
               <div className={s.heroLabel}>
-                <Wallet size={18} aria-hidden /> На&nbsp;балансе
+                <Wallet size={18} aria-hidden />{" "}{tt("На\u00a0балансе")}
               </div>
               <div className={s.heroAmount}>{sm ? rubK(sm.balance_kopecks) : "…"}</div>
               <div className={s.heroMeta}>
                 {sm && sm.held_kopecks > 0 && (
                   <span className={s.heroPill}>
-                    <Snowflake size={14} aria-hidden /> {rubK(sm.held_kopecks)} заморожено под&nbsp;созвоны
+                    <Snowflake size={14} aria-hidden /> {rubK(sm.held_kopecks)}{" "}{tt("заморожено под\u00a0созвоны")}
                   </span>
                 )}
-                {sm?.topup.test_mode && <span className={s.heroPill}>Тестовый режим</span>}
+                {sm?.topup.test_mode && <span className={s.heroPill}>{tt("Тестовый режим")}</span>}
               </div>
             </div>
             <div className={s.heroActions}>
               <Button variant="white" size="lg" icon={<Plus size={18} />} onClick={() => setTopupOpen(true)} disabled={!sm}>
-                Пополнить
+                {tt("Пополнить")}
               </Button>
             </div>
           </section>
 
-          <p className={s.quiet}>Мы&nbsp;храним только сумму&nbsp;— без&nbsp;имени и&nbsp;карты. Специалист получает оплату после созвона.</p>
+          <p className={s.quiet}>{tt("Мы\u00a0храним только сумму\u00a0— без\u00a0имени и\u00a0карты. Специалист получает оплату после созвона.")}</p>
 
           {hs && hs.holds.length > 0 && (
             <Card as="section">
-              <CardHead title="Оплаченные созвоны" icon={<Snowflake size={18} />} />
+              <CardHead title={tt("Оплаченные созвоны")} icon={<Snowflake size={18} />} />
               <div className={s.list}>
                 {hs.holds.map((h) => (
                   <div key={h.id} className={s.item}>
@@ -149,9 +150,9 @@ export default function BalancePage() {
                       <CalendarClock size={18} />
                     </span>
                     <span className={s.itemMain}>
-                      <span className={s.itemTitle}>{h.specialist?.name ?? "Созвон"}</span>
+                      <span className={s.itemTitle}>{h.specialist?.name ?? tt("Созвон")}</span>
                       <span className={s.itemSub}>
-                        {h.scheduled_at ? `${dayShort(h.scheduled_at)}, ${time(h.scheduled_at)}` : ""}, {h.duration_minutes} мин
+                        {tj("{v}, {duration_minutes} мин", { v: h.scheduled_at ? `${dayShort(h.scheduled_at)}, ${time(h.scheduled_at)}` : "", duration_minutes: h.duration_minutes })}
                       </span>
                     </span>
                     <span className={s.itemAmount}>{rubK(h.amount_kopecks)}</span>
@@ -162,7 +163,7 @@ export default function BalancePage() {
           )}
 
           <Card as="section">
-            <CardHead title="История" icon={<ArrowDownLeft size={18} />} />
+            <CardHead title={tt("История")} icon={<ArrowDownLeft size={18} />} />
             {!hs ? (
               <div className={s.stack}>
                 {[0, 1, 2].map((i) => (
@@ -170,7 +171,7 @@ export default function BalancePage() {
                 ))}
               </div>
             ) : hs.items.length === 0 ? (
-              <p className={s.quiet}>Операций пока нет.</p>
+              <p className={s.quiet}>{tt("Операций пока нет.")}</p>
             ) : (
               <div className={s.list}>
                 {hs.items.map((x) => {
@@ -187,7 +188,7 @@ export default function BalancePage() {
                       <span className={`${s.itemIcon} ${s[ic.tone]}`}>{ic.icon}</span>
                       <span className={s.itemMain}>
                         <span className={s.itemTitle}>
-                          {x.label} {x.test && <Badge tone="sun">тест</Badge>}{" "}
+                          {x.label} {x.test && <Badge tone="sun">{tt("тест")}</Badge>}{" "}
                           {x.kind === "hold" && x.call && x.call.status !== "active" && (
                             <Badge tone={x.call.status === "captured" ? "neutral" : "success"}>{HOLD_LABEL[x.call.status]}</Badge>
                           )}
@@ -206,7 +207,7 @@ export default function BalancePage() {
         </WithRail>
       )}
 
-      <Modal open={topupOpen && !!sm} onClose={() => setTopupOpen(false)} title="Пополнить баланс" width={520}>
+      <Modal open={topupOpen && !!sm} onClose={() => setTopupOpen(false)} title={tt("Пополнить баланс")} width={520}>
         {sm && (
           <div className={s.stack}>
             <div style={{ display: "flex", justifyContent: "center" }}>

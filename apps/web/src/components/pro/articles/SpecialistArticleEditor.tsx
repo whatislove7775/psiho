@@ -1,8 +1,10 @@
 "use client";
 
+import { t as tt, tj, getLocale } from "@/lib/i18n";
+import { CONTENT_LANGUAGES } from "@/lib/i18n/languages";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Eye, Send, Trash2, Undo2 } from "lucide-react";
-import { Badge, Button, Segmented, Textarea, useToast } from "@/ui";
+import { Badge, Button, Segmented, Textarea, useToast, Select } from "@/ui";
 import { ApiError } from "@/lib/api/client";
 import { topicLabel, type Cover, type Source } from "@/lib/api/content";
 import { myArticlesApi, STATUS_LABEL, type ArticleStatus, type CoverImage, type MyArticle, type MyArticleInput } from "@/lib/api/authoring";
@@ -15,7 +17,7 @@ import { ArticlePreview, TitleField, TopicPicker, useLocalDraft, wordsLabel } fr
 import e from "@/components/content/editor/editor.module.css";
 import p from "./articles.module.css";
 
-type Form = { title: string; summary: string; content: string; topics: string[]; sources: Source[]; cover_image: CoverImage | null };
+type Form = { title: string; summary: string; content: string; topics: string[]; sources: Source[]; cover_image: CoverImage | null; language: string };
 
 const toForm = (a: MyArticle | null): Form => ({
   title: a?.title ?? "",
@@ -24,6 +26,7 @@ const toForm = (a: MyArticle | null): Form => ({
   topics: a?.topics?.length ? a.topics : a?.topic ? [a.topic] : [],
   sources: a?.sources ?? [],
   cover_image: a?.cover_image ?? null,
+  language: a?.language ?? getLocale(),
 });
 
 export const STATUS_TONE: Record<ArticleStatus, "neutral" | "warning" | "success" | "danger"> = {
@@ -79,7 +82,7 @@ export function SpecialistArticleEditor({
     if (x instanceof ApiError) {
       setErrors(x.fields);
       toast(x.message, { error: true });
-    } else toast("Не получилось сохранить. Попробуйте ещё раз.", { error: true });
+    } else toast(tt("Не получилось сохранить. Попробуйте ещё раз."), { error: true });
   };
 
   /** Save the current form; edits made while the request is in flight stay dirty. */
@@ -92,6 +95,7 @@ export function SpecialistArticleEditor({
         content: form.content,
         ...(form.topics.length ? { topics: form.topics } : {}),
         sources: cleanSources(form.sources),
+        language: form.language,
         ...((form.cover_image?.id ?? null) !== baseCover.current ? { cover_image_id: form.cover_image?.id ?? null } : {}),
       };
       const id = idRef.current;
@@ -139,7 +143,7 @@ export function SpecialistArticleEditor({
     try {
       const saved = dirty || !idRef.current ? await persist(f) : article!;
       const sent = await myArticlesApi.submit(saved.id);
-      toast("Статья отправлена на модерацию");
+      toast(tt("Статья отправлена на модерацию"));
       onSaved(sent);
     } catch (x) {
       fail(x);
@@ -153,7 +157,7 @@ export function SpecialistArticleEditor({
     setBusy("withdraw");
     try {
       const a = await myArticlesApi.withdraw(idRef.current);
-      toast(status === "approved" ? "Статья снята с публикации" : "Статья вернулась в черновики");
+      toast(status === "approved" ? tt("Статья снята с публикации") : tt("Статья вернулась в черновики"));
       onSaved(a);
     } catch (x) {
       fail(x);
@@ -168,7 +172,7 @@ export function SpecialistArticleEditor({
     try {
       await myArticlesApi.remove(idRef.current);
       local.clear();
-      toast("Статья удалена");
+      toast(tt("Статья удалена"));
       onDeleted();
     } catch (x) {
       fail(x);
@@ -180,7 +184,7 @@ export function SpecialistArticleEditor({
   const preview = {
     id: 0,
     slug: article?.slug ?? "preview",
-    title: f.title || "Заголовок статьи",
+    title: f.title || tt("Заголовок статьи"),
     summary: f.summary,
     topic: f.topics[0] ?? "therapy",
     topic_label: topicLabel(f.topics[0] ?? "therapy"),
@@ -198,13 +202,13 @@ export function SpecialistArticleEditor({
   const saveLabel = locked
     ? null
     : saving === "saving"
-      ? ["saving", "Сохраняю…"]
+      ? ["saving", tt("Сохраняю…")]
       : saving === "error" && dirty
-        ? ["error", "Не сохранилось"]
+        ? ["error", tt("Не сохранилось")]
         : dirty
-          ? ["dirty", f.title.trim().length >= 3 ? "Изменения" : "Нужен заголовок"]
+          ? ["dirty", f.title.trim().length >= 3 ? tt("Изменения") : tt("Нужен заголовок")]
           : idRef.current
-            ? ["saved", "Сохранено"]
+            ? ["saved", tt("Сохранено")]
             : null;
 
   return (
@@ -219,32 +223,32 @@ export function SpecialistArticleEditor({
           )}
           <span>
             {wordsLabel(words)}
-            {words > 0 && ` · ${minutes} мин`}
+            {words > 0 && tt(` · {minutes} мин`, { minutes })}
           </span>
         </div>
         <div className={e.barActions}>
           <Segmented
             value={mode}
             onChange={setMode}
-            ariaLabel="Режим"
+            ariaLabel={tt("Режим")}
             options={[
-              { value: "write", label: "Текст" },
-              { value: "preview", label: "Просмотр" },
+              { value: "write", label: tt("Текст") },
+              { value: "preview", label: tt("Просмотр") },
             ]}
           />
           {!locked && (
             <Button variant="primary" size="sm" loading={busy === "submit"} disabled={!!busy} onClick={submit} icon={<Send size={16} />}>
-              На&nbsp;модерацию
+              {tt("На\u00a0модерацию")}
             </Button>
           )}
           {status === "approved" && article && (
             <Button variant="ghost" size="sm" href={`/app/articles/${article.slug}`} icon={<Eye size={16} />}>
-              Открыть
+              {tt("Открыть")}
             </Button>
           )}
           {locked && (
             <Button variant="secondary" size="sm" loading={busy === "withdraw"} disabled={!!busy} onClick={withdraw} icon={<Undo2 size={16} />}>
-              {status === "approved" ? "Снять с публикации" : "Вернуть в черновики"}
+              {status === "approved" ? tt("Снять с публикации") : tt("Вернуть в черновики")}
             </Button>
           )}
         </div>
@@ -253,7 +257,7 @@ export function SpecialistArticleEditor({
       {status === "rejected" && article?.moderation_comment && (
         <p className={e.notice} data-tone="danger" role="status">
           <span>
-            <strong>Комментарий редакции.</strong> {article.moderation_comment}
+            <strong>{tt("Комментарий редакции.")}</strong> {article.moderation_comment}
           </span>
         </p>
       )}
@@ -261,14 +265,14 @@ export function SpecialistArticleEditor({
         <p className={e.notice}>
           <span>
             {status === "pending"
-              ? "Статья на модерации. Чтобы что-то поменять, верните её в черновики."
-              : `Опубликована${article?.reads ? ` · ${article.reads} прочтений` : ""}. Чтобы изменить текст, снимите её с публикации.`}
+              ? tt("Статья на модерации. Чтобы что-то поменять, верните её в черновики.")
+              : tt(`Опубликована{v}. Чтобы изменить текст, снимите её с публикации.`, { v: article?.reads ? tt(` · {reads} прочтений`, { reads: article.reads }) : "" })}
           </span>
         </p>
       )}
       {local.restore && !locked && (
         <div className={e.notice}>
-          <span>На&nbsp;этом устройстве есть более новая версия текста.</span>
+          <span>{tt("На\u00a0этом устройстве есть более новая версия текста.")}</span>
           <Button
             size="sm"
             variant="secondary"
@@ -277,10 +281,10 @@ export function SpecialistArticleEditor({
               local.dismiss();
             }}
           >
-            Восстановить
+            {tt("Восстановить")}
           </Button>
           <Button size="sm" variant="ghost" onClick={local.dismiss}>
-            Не&nbsp;нужно
+            {tt("Не\u00a0нужно")}
           </Button>
         </div>
       )}
@@ -288,7 +292,7 @@ export function SpecialistArticleEditor({
       <div className={e.column} data-writing>
         {mode === "write" ? (
           <>
-            <TitleField value={f.title} onChange={(v) => set("title", v)} error={err("title")} placeholder="Заголовок" />
+            <TitleField value={f.title} onChange={(v) => set("title", v)} error={err("title")} placeholder={tt("Заголовок")} />
             <RichEditor
               value={f.content}
               onChange={(v) => set("content", v)}
@@ -298,7 +302,7 @@ export function SpecialistArticleEditor({
             />
             {err("content") && <div className={e.fieldError}>{err("content")}</div>}
             {!locked && words > 0 && words < MIN_WORDS && (
-              <p className={p.note}>Для&nbsp;модерации нужно от&nbsp;{MIN_WORDS}&nbsp;слов.</p>
+              <p className={p.note}>{tj("Для\u00a0модерации нужно от\u00a0{MIN_WORDS}\u00a0слов.", { MIN_WORDS })}</p>
             )}
           </>
         ) : (
@@ -306,31 +310,38 @@ export function SpecialistArticleEditor({
         )}
       </div>
 
-      <section className={e.details} aria-label="Для ленты">
-        <h2 className={e.detailsTitle}>Для&nbsp;ленты</h2>
+      <section className={e.details} aria-label={tt("Для ленты")}>
+        <h2 className={e.detailsTitle}>{tt("Для\u00a0ленты")}</h2>
         <div className={e.detailsGrid}>
           <fieldset className={`${e.detailsMain} ${p.fieldset}`} disabled={locked}>
             <Textarea
-              label="Короткое описание"
+              label={tt("Короткое описание")}
               value={f.summary}
               onChange={(ev) => set("summary", ev.target.value)}
               error={err("summary")}
               rows={2}
               maxLength={400}
-              hint="1–2&nbsp;предложения для&nbsp;карточки"
+              hint={tt("1–2\u00a0предложения для\u00a0карточки")}
             />
             <TopicPicker value={f.topics} onChange={(v) => set("topics", v)} error={err("topics") ?? err("topic")} />
+            <Select<string>
+              label={tt("Язык статьи")}
+              hint={tt("Читатели с\u00a0другим языком интерфейса увидят пометку языка.")}
+              value={f.language}
+              onChange={(v) => set("language", v)}
+              options={CONTENT_LANGUAGES.map((l) => ({ value: l.code, label: l.native }))}
+            />
             <CoverUploader value={f.cover_image} onChange={(v) => set("cover_image", v)} error={err("cover_image_id")} />
           </fieldset>
           <div className={e.detailsSide}>
-            <span className={e.sideLabel}>Так выглядит карточка</span>
+            <span className={e.sideLabel}>{tt("Так выглядит карточка")}</span>
             <ArticleCard a={preview} />
           </div>
         </div>
         <fieldset className={p.fieldset} disabled={locked}>
           <EvidenceFields
-            title="Источники"
-            sub="Необязательно. Исследования и&nbsp;книги, на&nbsp;которые вы&nbsp;опираетесь; в&nbsp;тексте&nbsp;— [1], [2]."
+            title={tt("Источники")}
+            sub={tt("Необязательно. Исследования и\u00a0книги, на\u00a0которые вы\u00a0опираетесь; в\u00a0тексте\u00a0— [1], [2].")}
             sources={f.sources}
             onSources={(v) => set("sources", v)}
             errors={err}
@@ -340,17 +351,17 @@ export function SpecialistArticleEditor({
           <div>
             {confirmDelete ? (
               <div className={e.notice}>
-                <span>Удалить статью навсегда?</span>
+                <span>{tt("Удалить статью навсегда?")}</span>
                 <Button variant="danger" size="sm" loading={busy === "delete"} onClick={remove}>
-                  Удалить
+                  {tt("Удалить")}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>
-                  Отмена
+                  {tt("Отмена")}
                 </Button>
               </div>
             ) : (
               <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(true)} icon={<Trash2 size={16} strokeWidth={1.8} />}>
-                Удалить статью
+                {tt("Удалить статью")}
               </Button>
             )}
           </div>

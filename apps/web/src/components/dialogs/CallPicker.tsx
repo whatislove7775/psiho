@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { AlertCircle, CalendarDays, Handshake } from "lucide-react";
 import { Button, Modal, Skeleton } from "@/ui";
@@ -65,7 +66,7 @@ export function CallPicker({
     dialogsApi
       .starts(dialogId, minutes)
       .then((d) => alive && setData(d))
-      .catch((e) => alive && setError(e instanceof ApiError ? e.message : "Не\u00a0получилось загрузить свободное время"));
+      .catch((e) => alive && setError(e instanceof ApiError ? e.message : tt("Не\u00a0получилось загрузить свободное время")));
     return () => {
       alive = false;
     };
@@ -109,8 +110,8 @@ export function CallPicker({
       <div className={s.picker}>
         {!fixedMinutes && (options.length > 1 || canIntro) && (
           <div className={b.block}>
-            <div className={b.label}>Длительность</div>
-            <div className={b.durs} role="group" aria-label="Длительность созвона">
+            <div className={b.label}>{tt("Длительность")}</div>
+            <div className={b.durs} role="group" aria-label={tt("Длительность созвона")}>
               {options.map((o) => (
                 <button
                   key={o.minutes}
@@ -139,7 +140,7 @@ export function CallPicker({
               >
                 <Handshake size={16} strokeWidth={1.8} aria-hidden />
                 <span>
-                  Сначала познакомиться&nbsp;— {INTRO_MINUTES} мин {intro!.price_rub ? `за\u00a0${rub(intro!.price_rub)}` : "бесплатно"}
+                  {tt("Сначала познакомиться\u00a0—")}{" "}{INTRO_MINUTES}{" "}{tt("мин")}{" "}{intro!.price_rub ? tt(`за\u00a0{rub}`, { rub: rub(intro!.price_rub) }) : tt("бесплатно")}
                 </span>
               </button>
             )}
@@ -161,18 +162,18 @@ export function CallPicker({
         ) : data && days.length === 0 ? (
           <div className={b.none}>
             <CalendarDays size={22} strokeWidth={1.8} aria-hidden />
-            <strong>Нет свободного времени</strong>
+            <strong>{tt("Нет свободного времени")}</strong>
             <span>
               {options.length > 1 && !fixedMinutes
-                ? "Попробуйте другую длительность или\u00a0напишите в\u00a0диалоге, какое время вам удобно."
-                : "Напишите в\u00a0диалоге, какое время вам удобно,\u00a0— специалист может открыть дополнительные часы."}
+                ? tt("Попробуйте другую длительность или\u00a0напишите в\u00a0диалоге, какое время вам удобно.")
+                : tt("Напишите в\u00a0диалоге, какое время вам удобно,\u00a0— специалист может открыть дополнительные часы.")}
             </span>
           </div>
         ) : data ? (
           <>
             <div className={b.block}>
-              <div className={b.label}>День</div>
-              <div className={b.days} role="group" aria-label="День">
+              <div className={b.label}>{tt("День")}</div>
+              <div className={b.days} role="group" aria-label={tt("День")}>
                 {days.map((k) => {
                   const d = new Date(`${k}T12:00:00`);
                   const n = byDay.get(k)?.length ?? 0;
@@ -201,7 +202,7 @@ export function CallPicker({
                 {activeDay && dayLabel(new Date(`${activeDay}T12:00:00`))}, {times.length}{" "}
                 {plural(times.length, "окно", "окна", "окон")}
               </div>
-              <div className={b.times} role="group" aria-label="Время">
+              <div className={b.times} role="group" aria-label={tt("Время")}>
                 {times.map((t) => (
                   <button key={t} type="button" className={b.time} aria-pressed={chosen === t} onClick={() => setChosen(t)}>
                     {time(t)}
@@ -216,7 +217,7 @@ export function CallPicker({
 
         <div className={s.pickerFoot}>
           <div className={s.pickerTotal}>
-            <span>{chosen ? `${dayLabel(chosen)} в\u00a0${time(chosen)}, ${durationLabel(minutes)}` : "Выберите время"}</span>
+            <span>{chosen ? tt(`{dayLabel} в\u00a0{time}, {durationLabel}`, { dayLabel: dayLabel(chosen), time: time(chosen), durationLabel: durationLabel(minutes) }) : tt("Выберите время")}</span>
             <strong>{rub(price)}</strong>
           </div>
           <Button variant="primary" onClick={submit} disabled={!chosen} loading={busy}>

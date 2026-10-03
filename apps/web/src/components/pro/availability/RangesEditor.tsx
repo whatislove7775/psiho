@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import { Plus, Trash2 } from "lucide-react";
 import { Button, Select } from "@/ui";
 import { TIME_OPTIONS, toHHMM, toMin, type Range } from "@/components/pro/schedule";
@@ -33,16 +34,16 @@ export function RangesEditor({
         return (
           <div key={j} className={c.rangeWrap}>
             <div className={c.range} data-invalid={err && !warn ? true : undefined} data-warn={warn || undefined}>
-              <TimeSelect label={`${label}, интервал ${j + 1}, начало`} value={r.from} onChange={(v) => set(j, { from: v })} />
+              <TimeSelect label={tt(`{label}, интервал {v}, начало`, { label, v: j + 1 })} value={r.from} onChange={(v) => set(j, { from: v })} />
               <span className={c.dash} aria-hidden>
                 –
               </span>
-              <TimeSelect label={`${label}, интервал ${j + 1}, конец`} value={r.to} onChange={(v) => set(j, { to: v })} />
+              <TimeSelect label={tt(`{label}, интервал {v}, конец`, { label, v: j + 1 })} value={r.to} onChange={(v) => set(j, { to: v })} />
               <Button
                 size="sm"
                 variant="ghost"
                 iconOnly
-                aria-label={`Удалить интервал ${r.from}–${r.to}`}
+                aria-label={tt(`Удалить интервал {from}–{to}`, { from: r.from, to: r.to })}
                 icon={<Trash2 size={16} />}
                 onClick={() => onChange(ranges.filter((_, i) => i !== j))}
               />
@@ -57,7 +58,7 @@ export function RangesEditor({
       })}
       <button type="button" className={c.add} onClick={() => onChange([...ranges, nextRange(ranges)])}>
         <Plus size={16} aria-hidden />
-        Добавить интервал
+        {tt("Добавить интервал")}
       </button>
     </div>
   );

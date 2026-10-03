@@ -1,12 +1,14 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import { useEffect, useRef, useState } from "react";
 import { Eye, Trash2 } from "lucide-react";
-import { Badge, Button, Input, NumberInput, Segmented, Textarea, useToast } from "@/ui";
+import { Badge, Button, Input, NumberInput, Segmented, Textarea, useToast, Select } from "@/ui";
 import { ApiError } from "@/lib/api/client";
 import { contentAdminApi, slugify, topicLabel, type ArticleDraft, type Cover, type EvidenceLevel, type KeyFact, type Source } from "@/lib/api/content";
 import { cleanFacts, cleanSources, EvidenceFields } from "./EvidenceFields";
 import { ArticleCard } from "../Cards";
+import { CONTENT_LANGUAGES } from "@/lib/i18n/languages";
 import { CoverUploader } from "@/components/media/CoverUploader";
 import type { CoverImage } from "@/lib/api/authoring";
 import { RichEditor } from "../editor/RichEditor";
@@ -36,6 +38,8 @@ type Form = {
   when_to_seek_help: string;
   sources: Source[];
   key_facts: KeyFact[];
+  /** S2: language of the article */
+  language: string;
 };
 
 function toForm(a: ArticleDraft | null): Form {
@@ -57,6 +61,7 @@ function toForm(a: ArticleDraft | null): Form {
     is_published: a?.is_published ?? false,
     evidence_level: a?.evidence_level ?? "",
     when_to_seek_help: a?.when_to_seek_help ?? "",
+    language: a?.language ?? "ru",
     sources: a?.sources ?? [],
     key_facts: a?.key_facts ?? [],
   };
@@ -127,6 +132,7 @@ export function ArticleEditor({
     when_to_seek_help: form.when_to_seek_help,
     sources: cleanSources(form.sources),
     key_facts: cleanFacts(form.key_facts),
+    language: form.language,
   });
 
   const save = async (publish?: boolean) => {
@@ -141,13 +147,13 @@ export function ArticleEditor({
       setF(next);
       setBase(next);
       local.clear();
-      toast(publish === true ? "Статья опубликована" : publish === false ? "Статья снята с публикации" : "Изменения сохранены");
+      toast(publish === true ? tt("Статья опубликована") : publish === false ? tt("Статья снята с публикации") : tt("Изменения сохранены"));
       onSaved(saved);
     } catch (x) {
       if (x instanceof ApiError) {
         setErrors(x.fields);
         toast(x.message, { error: true });
-      } else toast("Не получилось сохранить. Попробуйте ещё раз.", { error: true });
+      } else toast(tt("Не получилось сохранить. Попробуйте ещё раз."), { error: true });
     } finally {
       setBusy(false);
     }
@@ -179,10 +185,10 @@ export function ArticleEditor({
     try {
       await contentAdminApi.deleteArticle(article.id);
       local.clear();
-      toast("Статья удалена");
+      toast(tt("Статья удалена"));
       onDeleted();
     } catch (x) {
-      toast(x instanceof ApiError ? x.message : "Не получилось удалить", { error: true });
+      toast(x instanceof ApiError ? x.message : tt("Не получилось удалить"), { error: true });
       setBusy(false);
     }
   };
@@ -191,7 +197,7 @@ export function ArticleEditor({
   const previewCard = {
     id: 0,
     slug: f.slug || "preview",
-    title: f.title || "Заголовок статьи",
+    title: f.title || tt("Заголовок статьи"),
     summary: f.summary,
     topic: f.topics[0] ?? "therapy",
     topic_label: topicLabel(f.topics[0] ?? "therapy"),
@@ -209,54 +215,54 @@ export function ArticleEditor({
     <div className={e.page}>
       <div className={e.bar}>
         <div className={e.barInfo}>
-          {article?.is_published ? <Badge tone="success">Опубликована</Badge> : <Badge>Черновик</Badge>}
+          {article?.is_published ? <Badge tone="success">{tt("Опубликована")}</Badge> : <Badge>{tt("Черновик")}</Badge>}
           {autosaving ? (
             <span className={e.saveState} data-state="saving">
-              Сохраняю…
+              {tt("Сохраняю…")}
             </span>
           ) : dirty ? (
             <span className={e.saveState} data-state="dirty">
-              Есть изменения
+              {tt("Есть изменения")}
             </span>
           ) : article ? (
-            <span className={e.saveState}>Сохранено</span>
+            <span className={e.saveState}>{tt("Сохранено")}</span>
           ) : null}
           <span>
             {wordsLabel(words)}
-            {words > 0 && ` · ${minutes} мин`}
+            {words > 0 && tt(` · {minutes} мин`, { minutes })}
           </span>
         </div>
         <div className={e.barActions}>
           <Segmented
             value={mode}
             onChange={setMode}
-            ariaLabel="Режим"
+            ariaLabel={tt("Режим")}
             options={[
-              { value: "write", label: "Текст" },
-              { value: "preview", label: "Просмотр" },
+              { value: "write", label: tt("Текст") },
+              { value: "preview", label: tt("Просмотр") },
             ]}
           />
           {article?.is_published ? (
             <>
               <Button variant="primary" size="sm" loading={busy} onClick={() => save()} disabled={!dirty}>
-                Сохранить
+                {tt("Сохранить")}
               </Button>
               <Button variant="ghost" size="sm" disabled={busy} onClick={() => save(false)}>
-                Снять
+                {tt("Снять")}
               </Button>
               <Button variant="ghost" size="sm" href={`/articles/${article.slug}`} icon={<Eye size={16} strokeWidth={1.8} />}>
-                На&nbsp;сайте
+                {tt("На\u00a0сайте")}
               </Button>
             </>
           ) : (
             <>
               {!article && (
                 <Button variant="secondary" size="sm" disabled={busy} onClick={() => save(false)}>
-                  Сохранить черновик
+                  {tt("Сохранить черновик")}
                 </Button>
               )}
               <Button variant="primary" size="sm" loading={busy} onClick={() => save(true)}>
-                Опубликовать
+                {tt("Опубликовать")}
               </Button>
             </>
           )}
@@ -265,7 +271,7 @@ export function ArticleEditor({
 
       {local.restore && (
         <div className={e.notice}>
-          <span>На&nbsp;этом устройстве есть более новая версия текста.</span>
+          <span>{tt("На\u00a0этом устройстве есть более новая версия текста.")}</span>
           <Button
             size="sm"
             variant="secondary"
@@ -274,10 +280,10 @@ export function ArticleEditor({
               local.dismiss();
             }}
           >
-            Восстановить
+            {tt("Восстановить")}
           </Button>
           <Button size="sm" variant="ghost" onClick={local.dismiss}>
-            Не&nbsp;нужно
+            {tt("Не\u00a0нужно")}
           </Button>
         </div>
       )}
@@ -294,23 +300,23 @@ export function ArticleEditor({
         )}
       </div>
 
-      <section className={e.details} aria-label="Для ленты">
-        <h2 className={e.detailsTitle}>Для&nbsp;ленты</h2>
+      <section className={e.details} aria-label={tt("Для ленты")}>
+        <h2 className={e.detailsTitle}>{tt("Для\u00a0ленты")}</h2>
         <div className={e.detailsGrid}>
           <div className={e.detailsMain}>
             <Textarea
-              label="Короткое описание"
+              label={tt("Короткое описание")}
               value={f.summary}
               onChange={(ev) => set("summary", ev.target.value)}
               error={err("summary")}
               rows={2}
               maxLength={400}
-              hint="В&nbsp;карточке и&nbsp;под&nbsp;заголовком, до&nbsp;400&nbsp;знаков"
+              hint={tt("В\u00a0карточке и\u00a0под\u00a0заголовком, до\u00a0400\u00a0знаков")}
             />
             <TopicPicker value={f.topics} onChange={(v) => set("topics", v)} error={err("topics") ?? err("topic")} />
             <div className={s.grid}>
               <Input
-                label="Адрес"
+                label={tt("Адрес")}
                 value={f.slug}
                 onChange={(ev) => {
                   setSlugTouched(true);
@@ -319,41 +325,47 @@ export function ArticleEditor({
                 error={err("slug")}
                 hint={`/articles/${f.slug || "…"}`}
               />
-              <Input label="Теги" value={f.tags} onChange={(ev) => set("tags", ev.target.value)} error={err("tags")} hint="Через запятую" />
+              <Input label={tt("Теги")} value={f.tags} onChange={(ev) => set("tags", ev.target.value)} error={err("tags")} hint={tt("Через запятую")} />
+              <Select<string>
+                label={tt("Язык статьи")}
+                value={f.language}
+                onChange={(v) => set("language", v)}
+                options={CONTENT_LANGUAGES.map((l) => ({ value: l.code, label: l.native }))}
+              />
               <CoverPicker value={f.cover} onChange={(v) => set("cover", v)} error={err("cover")} />
               <div className={s.pair}>
-                <Input label="Эмодзи" value={f.emoji} onChange={(ev) => set("emoji", ev.target.value)} maxLength={8} error={err("emoji")} />
+                <Input label={tt("Эмодзи")} value={f.emoji} onChange={(ev) => set("emoji", ev.target.value)} maxLength={8} error={err("emoji")} />
                 <NumberInput
-                  label="Минут чтения"
+                  label={tt("Минут чтения")}
                   min={1}
                   max={90}
                   value={minutes}
                   onChange={(v) => setF((x) => ({ ...x, auto_minutes: false, reading_minutes: v ?? 1 }))}
                   error={err("reading_minutes")}
-                  hint={f.auto_minutes ? "По числу слов" : undefined}
+                  hint={f.auto_minutes ? tt("По числу слов") : undefined}
                 />
               </div>
             </div>
             <CoverUploader value={f.cover_image} onChange={(v) => set("cover_image", v)} error={err("cover_image_id")} />
           </div>
           <div className={e.detailsSide}>
-            <span className={e.sideLabel}>Так выглядит карточка</span>
+            <span className={e.sideLabel}>{tt("Так выглядит карточка")}</span>
             <ArticleCard a={previewCard} />
             <Input
-              label="Редактор"
+              label={tt("Редактор")}
               value={f.author_name}
               onChange={(ev) => set("author_name", ev.target.value)}
               error={err("author_name")}
-              placeholder="Ваше имя"
-              hint={article ? undefined : "Пусто — подставим ваше имя"}
+              placeholder={tt("Ваше имя")}
+              hint={article ? undefined : tt("Пусто — подставим ваше имя")}
             />
             <Input
-              label="Дата публикации"
+              label={tt("Дата публикации")}
               type="date"
               value={f.published_date}
               onChange={(ev) => set("published_date", ev.target.value)}
               error={err("published_at")}
-              hint={f.published_date ? undefined : "Поставим при публикации"}
+              hint={f.published_date ? undefined : tt("Поставим при публикации")}
             />
           </div>
         </div>
@@ -368,12 +380,12 @@ export function ArticleEditor({
           errors={err}
         >
           <Textarea
-            label="Когда нужен специалист"
+            label={tt("Когда нужен специалист")}
             value={f.when_to_seek_help}
             onChange={(ev) => set("when_to_seek_help", ev.target.value)}
             error={err("when_to_seek_help")}
             rows={5}
-            hint="Список признаков: каждая строка с&nbsp;«- ». Строка про&nbsp;112&nbsp;добавляется автоматически."
+            hint={tt("Список признаков: каждая строка с\u00a0«- ». Строка про\u00a0112\u00a0добавляется автоматически.")}
           />
         </EvidenceFields>
 
@@ -381,17 +393,17 @@ export function ArticleEditor({
           <div>
             {confirmDelete ? (
               <div className={e.notice}>
-                <span>Удалить статью навсегда?</span>
+                <span>{tt("Удалить статью навсегда?")}</span>
                 <Button variant="danger" size="sm" loading={busy} onClick={remove}>
-                  Удалить
+                  {tt("Удалить")}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>
-                  Отмена
+                  {tt("Отмена")}
                 </Button>
               </div>
             ) : (
               <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(true)} icon={<Trash2 size={16} strokeWidth={1.8} />}>
-                Удалить статью
+                {tt("Удалить статью")}
               </Button>
             )}
           </div>

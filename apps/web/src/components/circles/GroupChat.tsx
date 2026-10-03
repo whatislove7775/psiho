@@ -5,6 +5,7 @@
  * with a seeded avatar; the host under their name. Live updates come through the shared
  * chat WebSocket (/ws/chat/) as "circle.message" events.
  */
+import { t as tt } from "@/lib/i18n";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Hourglass, Send, ShieldCheck } from "lucide-react";
 import { Button, Spinner, useToast } from "@/ui";
@@ -18,9 +19,9 @@ import { cx, toneClass } from "./bits";
 import s from "./circles.module.css";
 
 const RETENTION_NOTE: Record<string, string> = {
-  "1h": "Сообщения исчезают через час",
-  "24h": "Сообщения исчезают через сутки",
-  forever: "Сообщения видны только участникам круга",
+  get "1h"() { return tt("Сообщения исчезают через час"); },
+  get "24h"() { return tt("Сообщения исчезают через сутки"); },
+  get forever() { return tt("Сообщения видны только участникам круга"); },
 };
 
 type CircleEvent =
@@ -53,7 +54,7 @@ export function GroupChat({
         setData(d);
         setError(null);
       })
-      .catch((e) => setError(e instanceof ApiError ? e.message : "Не\u00a0получилось загрузить чат."));
+      .catch((e) => setError(e instanceof ApiError ? e.message : tt("Не\u00a0получилось загрузить чат.")));
   }, [circleId]);
 
   useEffect(() => {
@@ -103,7 +104,7 @@ export function GroupChat({
       setData((d) => (d && !d.results.some((m) => m.id === msg.id) ? { ...d, results: [...d.results, { ...msg, mine: true }] } : d));
       setText("");
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "Не\u00a0получилось отправить.", { error: true });
+      toast(e instanceof ApiError ? e.message : tt("Не\u00a0получилось отправить."), { error: true });
     } finally {
       setBusy(false);
     }
@@ -114,12 +115,12 @@ export function GroupChat({
       await circlesApi.deleteMessage(circleId, id);
       setData((d) => d && { ...d, results: d.results.map((m) => (m.id === id ? { ...m, deleted: true, text: "" } : m)) });
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "Не\u00a0получилось удалить.", { error: true });
+      toast(e instanceof ApiError ? e.message : tt("Не\u00a0получилось удалить."), { error: true });
     }
   };
 
   if (error) return <p className={s.note}>{error}</p>;
-  if (!data) return <Spinner label="Загружаем чат" />;
+  if (!data) return <Spinner label={tt("Загружаем чат")} />;
   const isHost = data.my_role === "host" || data.my_role === "cohost";
   const myHandle = data.me?.handle;
 
@@ -128,7 +129,7 @@ export function GroupChat({
       <p className={s.chatNote}>
         {data.retention === "forever" ? <ShieldCheck size={14} /> : <Hourglass size={14} />}
         {RETENTION_NOTE[data.retention]}
-        {data.me ? `. Вы\u00a0пишете как\u00a0${data.me.name}` : ""}
+        {data.me ? tt(`. Вы\u00a0пишете как\u00a0{name}`, { name: data.me.name }) : ""}
       </p>
       <div
         className={s.chatScroll}
@@ -139,7 +140,7 @@ export function GroupChat({
         }}
         aria-live="polite"
       >
-        {data.results.length === 0 && <p className={s.sys}>Здесь пока тихо. Можно поздороваться первым.</p>}
+        {data.results.length === 0 && <p className={s.sys}>{tt("Здесь пока тихо. Можно поздороваться первым.")}</p>}
         {data.results.map((m) => {
           if (m.author.kind === "system") {
             return (
@@ -162,14 +163,14 @@ export function GroupChat({
                   <AvatarThumb config={null} seed={m.author.handle || m.author.name} size={30} />
                 ))}
               <div className={s.msgBody}>
-                {!mine && <span className={s.msgName}>{host ? `${m.author.name}, ${m.author.kind === "cohost" ? "ко-терапевт" : "ведущий"}` : m.author.name}</span>}
-                <div className={cx(s.bubble, m.deleted && s.bubbleDeleted)}>{m.deleted ? "Сообщение удалено" : m.text}</div>
+                {!mine && <span className={s.msgName}>{host ? `${m.author.name}, ${m.author.kind === "cohost" ? tt("ко-терапевт") : tt("ведущий")}` : m.author.name}</span>}
+                <div className={cx(s.bubble, m.deleted && s.bubbleDeleted)}>{m.deleted ? tt("Сообщение удалено") : m.text}</div>
                 <span className={s.msgTime}>
                   {time(m.created_at)}
-                  {m.expires_at && <Hourglass size={10} aria-label="Исчезающее сообщение" />}
+                  {m.expires_at && <Hourglass size={10} aria-label={tt("Исчезающее сообщение")} />}
                   {canDelete && (
                     <button type="button" className={s.msgDel} onClick={() => remove(m.id)}>
-                      Удалить
+                      {tt("Удалить")}
                     </button>
                   )}
                 </span>
@@ -184,8 +185,8 @@ export function GroupChat({
             value={text}
             rows={1}
             maxLength={2000}
-            placeholder={isHost ? "Написать участникам" : "Написать в\u00a0круг"}
-            aria-label="Сообщение в&nbsp;чат круга"
+            placeholder={isHost ? tt("Написать участникам") : tt("Написать в\u00a0круг")}
+            aria-label={tt("Сообщение в\u00a0чат круга")}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -194,11 +195,11 @@ export function GroupChat({
               }
             }}
           />
-          <Button variant="primary" iconOnly aria-label="Отправить" loading={busy} disabled={!text.trim()} onClick={send} icon={<Send size={18} />} />
+          <Button variant="primary" iconOnly aria-label={tt("Отправить")} loading={busy} disabled={!text.trim()} onClick={send} icon={<Send size={18} />} />
         </div>
       ) : (
         <p className={s.fine}>
-          {data.me?.chat_muted ? "Ведущий временно выключил вам сообщения. Читать чат можно." : "Круг закрыт, чат доступен только для\u00a0чтения."}
+          {data.me?.chat_muted ? tt("Ведущий временно выключил вам сообщения. Читать чат можно.") : tt("Круг закрыт, чат доступен только для\u00a0чтения.")}
         </p>
       )}
     </div>

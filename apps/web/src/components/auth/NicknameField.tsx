@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Check, PencilLine, RefreshCw, Shuffle } from "lucide-react";
 import { nicknameApi, aliasHint } from "@/lib/api/nickname";
@@ -21,7 +22,7 @@ export function NicknameField({
   initial,
   onChange,
   startCustom = false,
-  label = "Ваш ник",
+  label = tt("Ваш ник"),
 }: {
   /** Current alias (profile). Without it a fresh suggestion is fetched. */
   initial?: string;
@@ -81,7 +82,7 @@ export function NicknameField({
       try {
         const r = await nicknameApi.check(text, ctl.signal);
         const same = initial && r.alias === initial;
-        setStatus(r.available ? { kind: "ok", msg: same ? "Это\u00a0ваш текущий ник" : "Свободен · не\u00a0используйте настоящее имя" } : { kind: "error", msg: r.error ?? "Недоступен" });
+        setStatus(r.available ? { kind: "ok", msg: same ? tt("Это\u00a0ваш текущий ник") : tt("Свободен · не\u00a0используйте настоящее имя") } : { kind: "error", msg: r.error ?? tt("Недоступен") });
         onChangeRef.current({ alias: r.alias, ok: r.available && !same, custom: true });
       } catch (e) {
         if ((e as Error).name === "AbortError") return;
@@ -113,7 +114,7 @@ export function NicknameField({
         </label>
         <button type="button" className={s.switch} onClick={custom ? toGenerated : toCustom}>
           {custom ? <Shuffle size={14} strokeWidth={2} aria-hidden /> : <PencilLine size={14} strokeWidth={2} aria-hidden />}
-          {custom ? "Сгенерировать" : "Ввести своё"}
+          {custom ? tt("Сгенерировать") : tt("Ввести своё")}
         </button>
       </div>
 
@@ -130,7 +131,7 @@ export function NicknameField({
             autoCapitalize="off"
             autoCorrect="off"
             spellCheck={false}
-            placeholder="например, тихая-сова"
+            placeholder={tt("например, тихая-сова")}
             aria-invalid={status.kind === "error" || undefined}
             aria-describedby={`${id}-st`}
           />
@@ -142,9 +143,9 @@ export function NicknameField({
             ) : status.kind === "error" ? (
               status.msg
             ) : status.kind === "checking" ? (
-              "Проверяем…"
+              tt("Проверяем…")
             ) : (
-              "Не\u00a0используйте настоящее имя. 3–32\u00a0символа: буквы, цифры, пробел, - и\u00a0_"
+              tt("Не\u00a0используйте настоящее имя. 3–32\u00a0символа: буквы, цифры, пробел, - и\u00a0_")
             )}
           </p>
         </>
@@ -159,11 +160,11 @@ export function NicknameField({
             onClick={regenerate}
             disabled={spinning}
             data-spin={spinning || undefined}
-            aria-label="Придумать другое"
-            title="Придумать другое"
+            aria-label={tt("Придумать другое")}
+            title={tt("Придумать другое")}
           >
             <RefreshCw size={16} strokeWidth={2} aria-hidden />
-            <span className={s.regenText}>Придумать другое</span>
+            <span className={s.regenText}>{tt("Придумать другое")}</span>
           </button>
         </div>
       )}

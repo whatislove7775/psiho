@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Clock, Leaf } from "lucide-react";
 import { Button, Card, EmptyState, Skeleton } from "@/ui";
@@ -25,7 +26,7 @@ export default function PracticePage() {
 
   const back = (
     <Button variant="ghost" size="sm" href="/app/practices" icon={<ArrowLeft size={18} strokeWidth={1.8} />} className={s.back}>
-      Все практики
+      {t("Все практики")}
     </Button>
   );
 
@@ -36,9 +37,9 @@ export default function PracticePage() {
         {/не найден|not found|No .* matches/i.test(practice.error) ? (
           <EmptyState art={<EmptyArt scene="lost" />}
             icon={<Leaf size={28} strokeWidth={1.8} />}
-            title="Практика не&nbsp;найдена"
-            text="Возможно, её&nbsp;убрали или&nbsp;ссылка неполная."
-            action={<Button href="/app/practices">Все практики</Button>}
+            title={t("Практика не\u00a0найдена")}
+            text={t("Возможно, её\u00a0убрали или\u00a0ссылка неполная.")}
+            action={<Button href="/app/practices">{t("Все практики")}</Button>}
           />
         ) : (
           <ErrorBlock message={practice.error} onRetry={practice.reload} />
@@ -57,8 +58,8 @@ export default function PracticePage() {
         rail={
           <>
             {others.length > 0 && (
-              <section className={s.related} aria-label="Другие практики">
-                <div className={s.railTitle}>Другие практики</div>
+              <section className={s.related} aria-label={t("Другие практики")}>
+                <div className={s.railTitle}>{t("Другие практики")}</div>
                 {others.map((o) => (
                   <PracticeCard key={o.id} p={o} />
                 ))}
@@ -84,7 +85,7 @@ export default function PracticePage() {
                   <span>{p.kind_label}</span>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                     <Clock size={14} strokeWidth={1.8} aria-hidden />
-                    {p.duration_minutes} мин
+                    {p.duration_minutes}{" "}{t("мин")}
                   </span>
                   <EvidenceBadge level={p.evidence_level} />
                 </div>
@@ -96,7 +97,7 @@ export default function PracticePage() {
                   <BreathingCircle pattern={p.pattern} tone={p.cover} />
                   {p.steps.length > 0 && (
                     <details className={s.howto}>
-                      <summary>Как&nbsp;выполнять</summary>
+                      <summary>{t("Как\u00a0выполнять")}</summary>
                       <ol>
                         {p.steps.map((st, i) => (
                           <li key={i}>

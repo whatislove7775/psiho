@@ -1,14 +1,17 @@
+import { t } from "@/lib/i18n";
 import Link from "next/link";
 import { LegalPage, type LegalSection } from "@/components/landing/LegalPage";
 import { DRAFT_UPDATED, legalMetadata } from "@/components/legal/meta";
 import { Tbd, TbdBlock } from "@/components/legal/Placeholder";
 
-export const metadata = legalMetadata("terms");
+export function generateMetadata() {
+  return legalMetadata("terms");
+}
 
 const SECTIONS: LegalSection[] = [
   {
     id: "parties",
-    title: "Стороны и\u00a0предмет соглашения",
+    get title() { return t("Стороны и\u00a0предмет соглашения"); },
     body: (
       <>
         <p>
@@ -21,7 +24,7 @@ const SECTIONS: LegalSection[] = [
   },
   {
     id: "what",
-    title: "Что\u00a0такое Aprosop",
+    get title() { return t("Что\u00a0такое Aprosop"); },
     body: (
       <>
         <p>
@@ -37,7 +40,7 @@ const SECTIONS: LegalSection[] = [
   },
   {
     id: "emergency",
-    title: "Это\u00a0не\u00a0экстренная помощь",
+    get title() { return t("Это\u00a0не\u00a0экстренная помощь"); },
     body: (
       <p>
         Психологическая консультация не&nbsp;заменяет врача и&nbsp;неотложную помощь. Если вам или&nbsp;кому-то рядом угрожает
@@ -47,8 +50,19 @@ const SECTIONS: LegalSection[] = [
     ),
   },
   {
+    id: "age",
+    get title() { return t("Возраст"); },
+    body: (
+      <p>
+        Сервис для&nbsp;взрослых. Создавая аккаунт, вы&nbsp;подтверждаете, что&nbsp;вам исполнилось 18&nbsp;лет. Если вы&nbsp;младше,
+        поговорите со&nbsp;взрослым, которому доверяете, или&nbsp;позвоните на&nbsp;детский телефон доверия <strong>8-800-2000-122</strong>{" "}
+        (бесплатно, круглосуточно).
+      </p>
+    ),
+  },
+  {
     id: "account",
-    title: "Аккаунт клиента",
+    get title() { return t("Аккаунт клиента"); },
     body: (
       <ul>
         <li>Для&nbsp;регистрации нужен только пароль. Имя и&nbsp;ключ восстановления создаются автоматически.</li>
@@ -63,7 +77,7 @@ const SECTIONS: LegalSection[] = [
   },
   {
     id: "sessions",
-    title: "Запись, оплата и\u00a0отмена",
+    get title() { return t("Запись, оплата и\u00a0отмена"); },
     body: (
       <ul>
         <li>Стоимость созвона указана в&nbsp;профиле специалиста и&nbsp;видна до&nbsp;записи.</li>
@@ -79,7 +93,7 @@ const SECTIONS: LegalSection[] = [
   },
   {
     id: "conduct",
-    title: "Правила для\u00a0всех участников",
+    get title() { return t("Правила для\u00a0всех участников"); },
     body: (
       <ul>
         <li>Не&nbsp;записывайте звонки и&nbsp;не&nbsp;делайте снимки экрана без&nbsp;согласия собеседника.</li>
@@ -90,7 +104,7 @@ const SECTIONS: LegalSection[] = [
   },
   {
     id: "specialists",
-    title: "Для\u00a0специалистов",
+    get title() { return t("Для\u00a0специалистов"); },
     body: (
       <ul>
         <li>Сведения в&nbsp;анкете должны быть правдивыми. Профиль появляется в&nbsp;каталоге после ручной проверки.</li>
@@ -106,7 +120,7 @@ const SECTIONS: LegalSection[] = [
   },
   {
     id: "paid",
-    title: "Платные услуги",
+    get title() { return t("Платные услуги"); },
     body: (
       <p>
         Условия оплаты созвонов и&nbsp;пополнения баланса описаны в <Link href="/legal/offer">публичной оферте</Link> и{" "}
@@ -114,11 +128,11 @@ const SECTIONS: LegalSection[] = [
       </p>
     ),
   },
-  { id: "liability", title: "Ответственность сторон", body: <TbdBlock /> },
-  { id: "disputes", title: "Порядок разрешения споров", body: <TbdBlock /> },
+  { id: "liability", get title() { return t("Ответственность сторон"); }, body: <TbdBlock /> },
+  { id: "disputes", get title() { return t("Порядок разрешения споров"); }, body: <TbdBlock /> },
   {
     id: "changes",
-    title: "Изменения и\u00a0контакты",
+    get title() { return t("Изменения и\u00a0контакты"); },
     body: (
       <p>
         Если условия изменятся, мы&nbsp;обновим эту страницу и&nbsp;дату вверху. Как&nbsp;мы&nbsp;обращаемся с&nbsp;данными, описано на&nbsp;странице{" "}
@@ -134,13 +148,11 @@ export default function TermsPage() {
     <LegalPage
       slug="terms"
       draft
-      title="Пользовательское соглашение"
+      title={t("Пользовательское соглашение")}
       updated={DRAFT_UPDATED}
       summary={
         <p>
-          <strong>Коротко.</strong> Вы&nbsp;общаетесь с&nbsp;проверенным специалистом под&nbsp;анонимным именем и&nbsp;аватаром. Цена видна
-          заранее, запись можно отменить до&nbsp;начала. Сервис не&nbsp;заменяет экстренную помощь: в&nbsp;опасной ситуации звоните
-          112.
+          <strong>{t("Коротко.")}</strong>{" "}{t("Вы\u00a0общаетесь с\u00a0проверенным специалистом под\u00a0анонимным именем и\u00a0аватаром. Цена видна заранее, запись можно отменить до\u00a0начала. Сервис не\u00a0заменяет экстренную помощь: в\u00a0опасной ситуации звоните 112.")}
         </p>
       }
       sections={SECTIONS}

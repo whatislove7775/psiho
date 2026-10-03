@@ -14,6 +14,7 @@
  * With `labToken` (a signed invite from /admin/lab) it opens a staff test
  * room instead: no login, no booking, the side comes from the token.
  */
+import { t as tt, intlLocale, translatedList } from "@/lib/i18n";
 import { HelpLine } from "@/components/client/HelpLine";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -85,21 +86,21 @@ function labSession(res: LabJoinResponse): Session {
     amount_rub: 0,
     room_id: res.room_id,
     can_join: true,
-    psychologist: { id: 0, display_name: res.role === "client" ? res.peer.name : "Тестовый специалист", avatar_config: null, photo_url: null },
+    psychologist: { id: 0, display_name: res.role === "client" ? res.peer.name : tt("Тестовый специалист"), avatar_config: null, photo_url: null },
     // no avatar chosen in the lab → the same seeded random avatar on both sides
-    client: { alias: res.role === "psychologist" ? res.peer.name : "Тестовый клиент", avatar_config: t.client_avatar ?? randomAvatar(t.id) },
+    client: { alias: res.role === "psychologist" ? res.peer.name : tt("Тестовый клиент"), avatar_config: t.client_avatar ?? randomAvatar(t.id) },
     payment_url: null,
   };
 }
 
 function clock(iso: string) {
-  return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString(intlLocale(), { hour: "2-digit", minute: "2-digit" });
 }
 
 function minutesText(sec: number) {
   const m = Math.max(1, Math.round(sec / 60));
-  if (m < 60) return `${m} мин`;
-  return `${Math.floor(m / 60)} ч\u00a0${m % 60} мин`;
+  if (m < 60) return tt(`{m} мин`, { m });
+  return tt(`{v} ч\u00a0{v2} мин`, { v: Math.floor(m / 60), v2: m % 60 });
 }
 
 function browserName() {
@@ -156,7 +157,7 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
         setLabJoin(res);
         setSession(labSession(res));
       })
-      .catch((e) => setLoadError(e instanceof ApiError ? e.message : "Не\u00a0получилось открыть тестовую комнату."));
+      .catch((e) => setLoadError(e instanceof ApiError ? e.message : tt("Не\u00a0получилось открыть тестовую комнату.")));
   }, [labToken]);
 
   useEffect(() => {
@@ -164,7 +165,7 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
     sessionsApi
       .get(sessionId)
       .then(setSession)
-      .catch((e) => setLoadError(e instanceof ApiError ? e.message : "Не\u00a0получилось загрузить звонок."));
+      .catch((e) => setLoadError(e instanceof ApiError ? e.message : tt("Не\u00a0получилось загрузить звонок.")));
   }, [authStatus, sessionId, isLab]);
 
   // Clients are only ever seen as their avatar; specialists use their real camera.
@@ -300,7 +301,7 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
     textOnly: !isPro && textOnly,
   });
   const peerTextOnly = !!cc.remote.peer?.textOnly;
-  const ccLabel = (who: string) => (who === "me" ? "Вы" : isPro ? "Клиент" : "Специалист");
+  const ccLabel = (who: string) => (who === "me" ? tt("Вы") : isPro ? tt("Клиент") : tt("Специалист"));
   const toggleMic = call.toggleMute;
 
   // Specialist: a short, quiet note when the client switches between avatar and real camera.
@@ -310,7 +311,7 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
     if (prevRemoteFace.current === call.remoteFace) return;
     prevRemoteFace.current = call.remoteFace;
     if (!isPro) return;
-    setFaceNote(call.remoteFace === "real" ? "Клиент включил настоящую камеру" : "Клиент вернулся к\u00a0аватару");
+    setFaceNote(call.remoteFace === "real" ? tt("Клиент включил настоящую камеру") : tt("Клиент вернулся к\u00a0аватару"));
     const t = setTimeout(() => setFaceNote(null), 5000);
     return () => clearTimeout(t);
   }, [call.remoteFace, isPro]);
@@ -345,7 +346,7 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
   /** The other party: a client is shown as their avatar, a specialist as their real photo. */
   const peerPic = (size: number) =>
     isPro ? <AvatarThumb config={peerAvatar} seed={peer?.seed} size={size} /> : <SpecialistPhoto url={peerPhoto} name={peerName} size={size} />;
-  const peerWord = isPro ? "Клиент" : "Специалист";
+  const peerWord = isPro ? tt("Клиент") : tt("Специалист");
 
   const conversationId = join?.conversation_id ?? session?.conversation_id ?? null;
   const dialogueId = join?.dialogue_id ?? session?.dialogue_id ?? conversationId;
@@ -361,7 +362,7 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
       setJoin(res);
       setPhase("call");
     } catch (e) {
-      setJoinError(e instanceof ApiError ? e.message : "Не\u00a0получилось войти. Попробуйте ещё раз.");
+      setJoinError(e instanceof ApiError ? e.message : tt("Не\u00a0получилось войти. Попробуйте ещё раз."));
     } finally {
       setJoining(false);
     }
@@ -392,10 +393,10 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
       const v = remoteEl.current as (HTMLVideoElement & { setSinkId?: (id: string) => Promise<void> }) | null;
       v?.setSinkId?.(id)
         .then(() => setSink(id))
-        .catch(() => toast("Не\u00a0получилось переключить динамик.", { error: true }));
+        .catch(() => toast(tt("Не\u00a0получилось переключить динамик."), { error: true }));
       return;
     }
-    cam.switchDevice(kind, id).catch(() => toast("Не\u00a0получилось переключить устройство. Возможно, оно занято другой программой.", { error: true }));
+    cam.switchDevice(kind, id).catch(() => toast(tt("Не\u00a0получилось переключить устройство. Возможно, оно занято другой программой."), { error: true }));
   };
   useEffect(() => {
     const on = () => setFullscreen(!!document.fullscreenElement);
@@ -476,10 +477,10 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
             <span className={s.bigIcon}>
               <WifiOff size={28} />
             </span>
-            <h2 className={s.h2}>Звонок недоступен</h2>
+            <h2 className={s.h2}>{tt("Звонок недоступен")}</h2>
             <p className={s.note}>{loadError}</p>
             <Button variant="primary" href={isLab ? "/admin/lab" : homeFor(user?.role)}>
-              {isLab ? "В\u00a0лабораторию" : "На\u00a0главную"}
+              {isLab ? tt("В\u00a0лабораторию") : tt("На\u00a0главную")}
             </Button>
           </div>
         </div>
@@ -491,7 +492,7 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
     return (
       <div className={s.room}>
         <div className={s.center}>
-          <Spinner label="Открываем звонок" />
+          <Spinner label={tt("Открываем звонок")} />
         </div>
       </div>
     );
@@ -525,30 +526,30 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
     const canJoin = session.can_join;
     const camReady = camState === "ready";
     const statusLine = isLab
-      ? `Тестовый звонок, ссылка действует до\u00a0${clock(labJoin?.test_room.expires_at ?? session.scheduled_at)}`
-      : `${when(session.scheduled_at)}, ${session.duration_minutes} мин`;
+      ? tt(`Тестовый звонок, ссылка действует до\u00a0{clock}`, { clock: clock(labJoin?.test_room.expires_at ?? session.scheduled_at) })
+      : tt(`{when}, {duration_minutes} мин`, { when: when(session.scheduled_at), duration_minutes: session.duration_minutes });
     const tag = !camReady
       ? null
       : isPro
-        ? "Так вас увидит клиент"
+        ? tt("Так вас увидит клиент")
         : avatarCam.faceLost
-          ? "Лицо не\u00a0видно. Сядьте ближе к\u00a0свету"
+          ? tt("Лицо не\u00a0видно. Сядьте ближе к\u00a0свету")
           : !avatarCam.tracking
-            ? "Подключаем распознавание мимики"
+            ? tt("Подключаем распознавание мимики")
             : showingFace
-              ? "Специалист увидит ваше настоящее лицо"
+              ? tt("Специалист увидит ваше настоящее лицо")
               : avatarCam.calibrating
-                ? "Запоминаем спокойное лицо. Расслабьтесь и\u00a0смотрите в\u00a0камеру"
-                : "Так вас увидит специалист";
+                ? tt("Запоминаем спокойное лицо. Расслабьтесь и\u00a0смотрите в\u00a0камеру")
+                : tt("Так вас увидит специалист");
     return (
       <div className={s.room} ref={rootRef}>
         <PanicButton />
         <header className={s.lobbyHead}>
           <Button variant="ghost" size="sm" href={dialogueHref} icon={<ArrowLeft size={18} />}>
-            {isLab ? "В\u00a0лабораторию" : "К\u00a0диалогу"}
+            {isLab ? tt("В\u00a0лабораторию") : tt("К\u00a0диалогу")}
           </Button>
           <span className={s.secure}>
-            <Lock size={14} /> Зашифровано, без&nbsp;записи
+            <Lock size={14} />{" "}{tt("Зашифровано, без\u00a0записи")}
           </span>
         </header>
         <div className={s.lobby}>
@@ -573,18 +574,18 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
                   <AvatarThumb config={myAvatar} size={168} framing="portrait" background="transparent" />
                 )}
                 {camState === "starting" ? (
-                  <Spinner label="Включаем камеру" />
+                  <Spinner label={tt("Включаем камеру")} />
                 ) : (
                   <p className={s.previewText}>
                     {isPro
-                      ? "Клиент увидит ваше настоящее видео. Проверьте свет и\u00a0кадр перед входом."
-                      : "Камера нужна, чтобы аватар повторял вашу мимику. Собеседник видит только аватар, картинка с\u00a0камеры остаётся на\u00a0этом устройстве."}
+                      ? tt("Клиент увидит ваше настоящее видео. Проверьте свет и\u00a0кадр перед входом.")
+                      : tt("Камера нужна, чтобы аватар повторял вашу мимику. Собеседник видит только аватар, картинка с\u00a0камеры остаётся на\u00a0этом устройстве.")}
                   </p>
                 )}
                 {camError && <p className={s.errorText}>{camError}</p>}
                 {camState !== "starting" && (
                   <Button variant="primary" onClick={cam.start} icon={<Morph icon={MI.Camera} size={18} />}>
-                    Включить камеру
+                    {tt("Включить камеру")}
                   </Button>
                 )}
               </div>
@@ -596,7 +597,7 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
               </div>
             )}
             {camReady && (
-              <div className={s.previewMic} title="Уровень микрофона">
+              <div className={s.previewMic} title={tt("Уровень микрофона")}>
                 <Morph icon={MI.Mic} size={16} />
                 <MicMeter stream={micStream} />
               </div>
@@ -614,51 +615,51 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
             {!isLab && (
               <div className={`${s.presence} ${peerHere ? s.presenceOn : ""}`} aria-live="polite">
                 <span className={s.presenceDot} />
-                {peerHere ? `${peerWord} уже в\u00a0звонке и\u00a0ждёт вас` : `${peerWord} ещё не\u00a0подключился`}
+                {peerHere ? tt(`{peerWord} уже в\u00a0звонке и\u00a0ждёт вас`, { peerWord }) : tt(`{peerWord} ещё не\u00a0подключился`, { peerWord })}
               </div>
             )}
 
             {!isPro && (
               <section className={s.block}>
-                <div className={s.label}>Как&nbsp;вас увидит специалист</div>
+                <div className={s.label}>{tt("Как\u00a0вас увидит специалист")}</div>
                 <FaceChoice real={realFace} onAsk={() => setFaceAsk(true)} onAvatar={backToAvatar} />
                 <p className={s.note}>
                   {realFace
-                    ? "Специалист увидит ваше лицо с\u00a0камеры. Вернуться к\u00a0аватару можно в\u00a0любой момент."
-                    : "По\u00a0умолчанию только аватар. Лицо можно показать, если захотите."}
+                    ? tt("Специалист увидит ваше лицо с\u00a0камеры. Вернуться к\u00a0аватару можно в\u00a0любой момент.")
+                    : tt("По\u00a0умолчанию только аватар. Лицо можно показать, если захотите.")}
                 </p>
               </section>
             )}
             {!isPro && (
               <section className={s.block}>
-                <div className={s.label}>Фон за&nbsp;аватаром</div>
+                <div className={s.label}>{tt("Фон за\u00a0аватаром")}</div>
                 <BackdropPicker value={backdrop} onChange={setBackdrop} size="sm" />
               </section>
             )}
             {!isPro && (
               <section className={s.block}>
-                <div className={s.label}>Голос</div>
+                <div className={s.label}>{tt("Голос")}</div>
                 <VoicePicker value={voice} onChange={setVoice} compact />
-                <p className={s.note}>{VOICE_PRESETS.find((p) => p.value === voice)?.hint}. Можно поменять во&nbsp;время звонка.</p>
+                <p className={s.note}>{VOICE_PRESETS.find((p) => p.value === voice)?.hint}{tt(". Можно поменять во\u00a0время звонка.")}</p>
               </section>
             )}
             {!isPro && avatarCam.tracking && (
               <Button variant="ghost" size="sm" onClick={avatarCam.recalibrate} disabled={avatarCam.calibrating} icon={<RefreshCw size={16} />}>
-                {avatarCam.calibrating ? "Калибруем мимику…" : "Откалибровать мимику"}
+                {avatarCam.calibrating ? tt("Калибруем мимику…") : tt("Откалибровать мимику")}
               </Button>
             )}
 
             <Button variant="primary" size="lg" block disabled={!canJoin || !camReady} loading={joining} onClick={enter}>
-              {peerHere ? "Присоединиться" : "Войти в\u00a0звонок"}
+              {peerHere ? tt("Присоединиться") : tt("Войти в\u00a0звонок")}
             </Button>
-            {!canJoin && <p className={s.note}>Вход откроется за&nbsp;10&nbsp;минут до&nbsp;начала.</p>}
-            {canJoin && !camReady && camState !== "starting" && <p className={s.note}>Сначала включите камеру: без&nbsp;неё {isPro ? "клиент вас не\u00a0увидит" : "аватар не\u00a0оживёт"}.</p>}
+            {!canJoin && <p className={s.note}>{tt("Вход откроется за\u00a010\u00a0минут до\u00a0начала.")}</p>}
+            {canJoin && !camReady && camState !== "starting" && <p className={s.note}>{tt("Сначала включите камеру: без\u00a0неё")}{" "}{isPro ? tt("клиент вас не\u00a0увидит") : tt("аватар не\u00a0оживёт")}.</p>}
             {joinError && <p className={s.errorText}>{joinError}</p>}
             {isLab && (
               <p className={s.note} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
                 <FlaskConical size={16} style={{ flexShrink: 0, marginTop: 2 }} />
-                Тестовая комната из&nbsp;лаборатории: без&nbsp;записи, оплаты и&nbsp;статистики. Вы&nbsp;входите как{" "}
-                {isPro ? "специалист (настоящая камера)" : "клиент (аватар и\u00a0фильтр голоса)"}.
+                {tt("Тестовая комната из\u00a0лаборатории: без\u00a0записи, оплаты и\u00a0статистики. Вы\u00a0входите как")}{" "}
+                {isPro ? tt("специалист (настоящая камера)") : tt("клиент (аватар и\u00a0фильтр голоса)")}.
               </p>
             )}
           </div>
@@ -672,12 +673,12 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
   const connected = call.status === "connected" && call.hasRemote;
   const videoOff = call.isCameraOff;
   const panelTitle: Record<Exclude<Panel, null>, string> = {
-    chat: "Чат диалога",
-    voice: "Фильтр голоса",
-    more: "Настройки звонка",
-    notes: "Заметки",
-    breath: "Дыхательная пауза",
-    captions: "Субтитры",
+    chat: tt("Чат диалога"),
+    voice: tt("Фильтр голоса"),
+    more: tt("Настройки звонка"),
+    notes: tt("Заметки"),
+    breath: tt("Дыхательная пауза"),
+    captions: tt("Субтитры"),
   };
   const toggle = (p: Exclude<Panel, null>) => setPanel((cur) => (cur === p ? null : p));
   const showChrome = !idle || !connected || panel !== null;
@@ -703,9 +704,9 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
           {!call.hasRemote && call.status !== "failed" && call.status !== "reconnecting" && (
             <div className={s.waiting}>
               {isPro ? <div className={s.waitingPic}>{peerPic(132)}</div> : <TeaWait className={art.waitArt} />}
-              <h3 className={s.h3}>{call.status === "connecting" ? "Подключаемся" : `Ждём, когда ${isPro ? "клиент" : "специалист"} войдёт`}</h3>
+              <h3 className={s.h3}>{call.status === "connecting" ? tt("Подключаемся") : tt(`Ждём, когда {v} войдёт`, { v: isPro ? tt("клиент") : tt("специалист") })}</h3>
               <p className={s.note}>
-                {isPro ? "Как\u00a0только клиент подключится, вы\u00a0увидите его аватар." : "Специалист скоро подключится. Можно пока сделать пару спокойных вдохов."}
+                {isPro ? tt("Как\u00a0только клиент подключится, вы\u00a0увидите его аватар.") : tt("Специалист скоро подключится. Можно пока сделать пару спокойных вдохов.")}
               </p>
             </div>
           )}
@@ -713,7 +714,7 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
           {call.status === "reconnecting" && (
             <div className={s.reconnect} role="status" aria-live="polite">
               <span className={s.spinDot} />
-              Переподключаемся…
+              {tt("Переподключаемся…")}
             </div>
           )}
           {call.status === "failed" && (
@@ -722,14 +723,14 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
                 <span className={s.bigIcon}>
                   <WifiOff size={28} />
                 </span>
-                <h3 className={s.h3}>Связь прервалась</h3>
-                <p className={s.note}>Проверьте интернет. Мы&nbsp;попробуем соединиться заново, как&nbsp;только вы&nbsp;нажмёте кнопку.</p>
+                <h3 className={s.h3}>{tt("Связь прервалась")}</h3>
+                <p className={s.note}>{tt("Проверьте интернет. Мы\u00a0попробуем соединиться заново, как\u00a0только вы\u00a0нажмёте кнопку.")}</p>
                 <div className={s.row}>
                   <Button variant="primary" onClick={call.retryNow} icon={<RefreshCw size={18} />}>
-                    Переподключиться
+                    {tt("Переподключиться")}
                   </Button>
                   <Button variant="ghost" onClick={leave}>
-                    Завершить
+                    {tt("Завершить")}
                   </Button>
                 </div>
               </div>
@@ -748,9 +749,9 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
                       {remaining && <span className={remaining.left <= 5 ? s.warnText : ""}>{remaining.text}</span>}
                     </>
                   ) : call.status === "reconnecting" ? (
-                    "Переподключаемся"
+                    tt("Переподключаемся")
                   ) : (
-                    "Подключаемся"
+                    tt("Подключаемся")
                   )}
                 </span>
               </span>
@@ -758,31 +759,31 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
             <div className={s.topRight}>
               {isLab && (
                 <span className={s.pill}>
-                  <FlaskConical size={14} /> Тест
+                  <FlaskConical size={14} />{" "}{tt("Тест")}
                 </span>
               )}
               {isPro && connected && call.remoteFace === "real" && (
-                <span className={s.pill} title="Клиент сам решил показать лицо вместо аватара">
+                <span className={s.pill} title={tt("Клиент сам решил показать лицо вместо аватара")}>
                   <Eye size={14} />
-                  <span className={s.pillText}>Камера клиента</span>
+                  <span className={s.pillText}>{tt("Камера клиента")}</span>
                 </span>
               )}
               {connected && (
                 <span className={s.pill} title={QUALITY_LABEL[call.quality]}>
                   <QualityBars quality={call.quality} />
-                  <span className={s.pillText}>{call.quality === "poor" ? "Слабая связь" : call.quality === "fair" ? "Средняя связь" : "Связь"}</span>
+                  <span className={s.pillText}>{call.quality === "poor" ? tt("Слабая связь") : call.quality === "fair" ? tt("Средняя связь") : tt("Связь")}</span>
                 </span>
               )}
-              <span className={s.pill} title="Звук и&nbsp;видео идут напрямую и&nbsp;зашифрованы, ничего не&nbsp;записывается">
+              <span className={s.pill} title={tt("Звук и\u00a0видео идут напрямую и\u00a0зашифрованы, ничего не\u00a0записывается")}>
                 <Lock size={14} />
-                <span className={s.pillText}>Зашифровано</span>
+                <span className={s.pillText}>{tt("Зашифровано")}</span>
               </span>
             </div>
           </header>
 
           {!isPro && showingFace && <FaceBadge className={s.callFace} onBack={backToAvatar} />}
-          {!isPro && avatarCam.faceLost && !videoOff && !showingFace && <div className={s.toast}>Лицо не&nbsp;видно, аватар замер. Сядьте ближе к&nbsp;свету</div>}
-          {remaining && remaining.left === 5 && connected && <div className={`${s.toast} ${showingFace ? s.toastLow : ""}`}>До&nbsp;конца звонка 5&nbsp;минут</div>}
+          {!isPro && avatarCam.faceLost && !videoOff && !showingFace && <div className={s.toast}>{tt("Лицо не\u00a0видно, аватар замер. Сядьте ближе к\u00a0свету")}</div>}
+          {remaining && remaining.left === 5 && connected && <div className={`${s.toast} ${showingFace ? s.toastLow : ""}`}>{tt("До\u00a0конца звонка 5\u00a0минут")}</div>}
           <CaptionOverlay
             log={cc.log}
             version={cc.version}
@@ -791,7 +792,7 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
             lifted={showChrome}
             badge={
               (peerTextOnly || (!isPro && textOnly)) && connected ? (
-                <TextOnlyBadge>{isPro ? "Клиент общается текстом" : "Вы\u00a0общаетесь текстом"}</TextOnlyBadge>
+                <TextOnlyBadge>{isPro ? tt("Клиент общается текстом") : tt("Вы\u00a0общаетесь текстом")}</TextOnlyBadge>
               ) : null
             }
           />
@@ -801,7 +802,7 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
             </div>
           )}
 
-          <DraggablePip label={isPro || showingFace ? "Ваша камера" : "Ваш аватар"} wide={false}>
+          <DraggablePip label={isPro || showingFace ? tt("Ваша камера") : tt("Ваш аватар")} wide={false}>
             {isPro ? (
               <SelfVideo stream={realCam.videoStream} />
             ) : showingFace ? (
@@ -811,9 +812,9 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
             )}
             {!isPro && showingFace && <span className={s.pipFace} aria-hidden />}
             <ReactionLayer items={myBursts} small />
-            {videoOff && <div className={s.pipOff}>{isPro || showingFace ? "Камера выключена" : "Аватар скрыт"}</div>}
+            {videoOff && <div className={s.pipOff}>{isPro || showingFace ? tt("Камера выключена") : tt("Аватар скрыт")}</div>}
             {micOff && (
-              <span className={s.pipMuted} aria-label="Микрофон выключен">
+              <span className={s.pipMuted} aria-label={tt("Микрофон выключен")}>
                 <Morph icon={MI.MicOff} size={14} />
               </span>
             )}
@@ -821,10 +822,10 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
 
           {debug && <DebugOverlay stats={call.stats} status={call.status} avatar={!isPro} />}
 
-          <nav className={`${s.controls} ${showChrome ? "" : s.hidden}`} aria-label="Управление звонком">
+          <nav className={`${s.controls} ${showChrome ? "" : s.hidden}`} aria-label={tt("Управление звонком")}>
             <CtrlButton
-              label={textOnly ? (micOff ? "Возобновить текст" : "Приостановить текст") : micOff ? "Включить микрофон" : "Выключить микрофон"}
-              caption={textOnly ? "Текст" : "Микрофон"}
+              label={textOnly ? (micOff ? tt("Возобновить текст") : tt("Приостановить текст")) : micOff ? tt("Включить микрофон") : tt("Выключить микрофон")}
+              caption={textOnly ? tt("Текст") : tt("Микрофон")}
               off={micOff}
               onClick={toggleMic}
             >
@@ -832,23 +833,23 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
             </CtrlButton>
             <CtrlButton
               label={
-                isPro || showingFace ? (videoOff ? "Включить камеру" : "Выключить камеру") : videoOff ? "Показать аватар" : "Скрыть аватар"
+                isPro || showingFace ? (videoOff ? tt("Включить камеру") : tt("Выключить камеру")) : videoOff ? tt("Показать аватар") : tt("Скрыть аватар")
               }
-              caption={isPro || showingFace ? "Камера" : "Аватар"}
+              caption={isPro || showingFace ? tt("Камера") : tt("Аватар")}
               off={videoOff}
               onClick={call.toggleCamera}
             >
               <Morph icon={videoOff ? MI.VideoOff : MI.Video} size={22} />
             </CtrlButton>
             {!isPro && (
-              <CtrlButton label="Фильтр голоса" caption="Голос" active={panel === "voice"} dot={voice !== "off"} onClick={() => toggle("voice")}>
+              <CtrlButton label={tt("Фильтр голоса")} caption={tt("Голос")} active={panel === "voice"} dot={voice !== "off"} onClick={() => toggle("voice")}>
                 <Waves size={22} />
               </CtrlButton>
             )}
             {cc.available && (
               <CtrlButton
-                label="Субтитры: речь текстом. Распознаётся на устройстве говорящего, текст идёт напрямую собеседнику"
-                caption="Субтитры"
+                label={tt("Субтитры: речь текстом. Распознаётся на устройстве говорящего, текст идёт напрямую собеседнику")}
+                caption={tt("Субтитры")}
                 active={panel === "captions"}
                 dot={cc.show || textOnly}
                 onClick={() => toggle("captions")}
@@ -856,13 +857,13 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
                 <Captions size={22} />
               </CtrlButton>
             )}
-            <CtrlButton label={panel === "chat" ? "Закрыть чат" : "Открыть чат"} caption="Чат" active={panel === "chat"} onClick={() => toggle("chat")}>
+            <CtrlButton label={panel === "chat" ? tt("Закрыть чат") : tt("Открыть чат")} caption={tt("Чат")} active={panel === "chat"} onClick={() => toggle("chat")}>
               <Morph icon={panel === "chat" ? MI.X : CHAT_ICON} size={22} />
             </CtrlButton>
-            <CtrlButton label="Ещё" caption="Ещё" active={panel === "more" || panel === "notes" || panel === "breath"} onClick={() => toggle("more")}>
+            <CtrlButton label={tt("Ещё")} caption={tt("Ещё")} active={panel === "more" || panel === "notes" || panel === "breath"} onClick={() => toggle("more")}>
               <MoreHorizontal size={22} />
             </CtrlButton>
-            <CtrlButton label="Завершить звонок" caption="Завершить" end onClick={() => setConfirmEnd(true)}>
+            <CtrlButton label={tt("Завершить звонок")} caption={tt("Завершить")} end onClick={() => setConfirmEnd(true)}>
               <PhoneOff size={22} />
             </CtrlButton>
           </nav>
@@ -876,7 +877,7 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
                 {panel === "chat" && <MessageCircle size={18} />}
                 {panelTitle[panel]}
               </span>
-              <button type="button" className={s.iconBtn} aria-label="Закрыть" onClick={() => setPanel(null)}>
+              <button type="button" className={s.iconBtn} aria-label={tt("Закрыть")} onClick={() => setPanel(null)}>
                 <X size={18} />
               </button>
             </div>
@@ -887,13 +888,13 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
                 ) : (
                   <div className={s.panelEmpty}>
                     <Users size={28} />
-                    <p className={s.note}>{isLab ? "В\u00a0тестовой комнате нет чата диалога." : "Чат диалога появится здесь, как\u00a0только загрузится."}</p>
+                    <p className={s.note}>{isLab ? tt("В\u00a0тестовой комнате нет чата диалога.") : tt("Чат диалога появится здесь, как\u00a0только загрузится.")}</p>
                   </div>
                 ))}
               {panel === "voice" && (
                 <>
                   <VoicePicker value={voice} onChange={setVoice} />
-                  <p className={s.note}>Специалист услышит новый голос сразу после переключения. Фильтр работает на&nbsp;вашем устройстве.</p>
+                  <p className={s.note}>{tt("Специалист услышит новый голос сразу после переключения. Фильтр работает на\u00a0вашем устройстве.")}</p>
                 </>
               )}
               {panel === "more" && (
@@ -928,11 +929,11 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
                           if (on) cc.prepare();
                         }
                   }
-                  textOnlyHint="Специалист не слышит вас: видит аватар и читает ваши слова."
+                  textOnlyHint={tt("Специалист не\u00a0слышит вас: видит аватар и\u00a0читает ваши слова.")}
                   load={cc.load}
                   peerNote={
                     cc.show && cc.remote.peer && !cc.remote.peer.stt
-                      ? `${isPro ? "У клиента" : "У специалиста"} распознавание речи не работает в этом браузере.`
+                      ? tt(`{v} распознавание речи не работает в этом браузере.`, { v: isPro ? tt("У клиента") : tt("У специалиста") })
                       : null
                   }
                   log={cc.log}
@@ -948,18 +949,18 @@ export function Room({ sessionId, labToken }: { sessionId: string; labToken?: st
         )}
       </div>
 
-      <Modal open={confirmEnd} onClose={() => setConfirmEnd(false)} title="Завершить звонок?" width={420} className={s.modalDark}>
+      <Modal open={confirmEnd} onClose={() => setConfirmEnd(false)} title={tt("Завершить звонок?")} width={420} className={s.modalDark}>
         <p className={s.note}>
           {remaining && remaining.left > 0
-            ? `До\u00a0конца забронированного времени ${remaining.text.replace("ещё ", "")}. Вернуться можно, пока оно не\u00a0закончилось.`
-            : "Звонок закончится для\u00a0вас. Собеседник увидит, что\u00a0вы\u00a0вышли."}
+            ? tt(`До\u00a0конца забронированного времени {v}. Вернуться можно, пока оно не\u00a0закончилось.`, { v: remaining.text.replace("ещё ", "") })
+            : tt("Звонок закончится для\u00a0вас. Собеседник увидит, что\u00a0вы\u00a0вышли.")}
         </p>
         <div className={s.modalActions}>
           <Button variant="ghost" onClick={() => setConfirmEnd(false)}>
-            Остаться
+            {tt("Остаться")}
           </Button>
           <Button variant="danger" onClick={leave} icon={<PhoneOff size={18} />}>
-            Завершить
+            {tt("Завершить")}
           </Button>
         </div>
       </Modal>
@@ -1063,13 +1064,13 @@ function RemoteVideo({ attach, portrait, blur = true }: { attach: (el: HTMLVideo
         data-portrait={portrait ? "1" : "0"}
         autoPlay
         playsInline
-        aria-label="Собеседник"
+        aria-label={tt("Собеседник")}
       />
     </>
   );
 }
 
-const RATING_WORDS = ["", "Очень плохо", "Плохо", "Нормально", "Хорошо", "Отлично"];
+const RATING_WORDS = translatedList(["", "Очень плохо", "Плохо", "Нормально", "Хорошо", "Отлично"]);
 
 function EndScreen({
   peerPic,
@@ -1121,7 +1122,7 @@ function EndScreen({
       await callsApi.feedback(sessionId, { kind: "rating", rating, issues, tech: techRef.current });
       setSent(true);
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "Не\u00a0получилось отправить оценку.", { error: true });
+      toast(e instanceof ApiError ? e.message : tt("Не\u00a0получилось отправить оценку."), { error: true });
     } finally {
       setBusy(false);
     }
@@ -1147,7 +1148,7 @@ function EndScreen({
             <PhoneOff size={14} />
           </span>
         </div>
-        <h2 className={s.h2}>Звонок завершён</h2>
+        <h2 className={s.h2}>{tt("Звонок завершён")}</h2>
         <p className={s.meta}>
           {peerName}
           {spent > 0 ? `, ${minutesText(spent)}` : ""}
@@ -1155,8 +1156,8 @@ function EndScreen({
 
         {!sent ? (
           <section className={s.rate}>
-            <div className={s.label}>Как&nbsp;прошла связь?</div>
-            <div className={s.stars} role="radiogroup" aria-label="Оценка связи" onMouseLeave={() => setHover(0)}>
+            <div className={s.label}>{tt("Как\u00a0прошла связь?")}</div>
+            <div className={s.stars} role="radiogroup" aria-label={tt("Оценка связи")} onMouseLeave={() => setHover(0)}>
               {[1, 2, 3, 4, 5].map((n) => (
                 <button
                   key={n}
@@ -1173,17 +1174,17 @@ function EndScreen({
                 </button>
               ))}
             </div>
-            <div className={s.rateWord}>{shown ? RATING_WORDS[shown] : "Оценка поможет нам улучшить звонки"}</div>
+            <div className={s.rateWord}>{shown ? RATING_WORDS[shown] : tt("Оценка поможет нам улучшить звонки")}</div>
             {rating > 0 && rating <= 3 && <IssueChips value={issues} onChange={setIssues} isClient={!isPro} />}
             {rating > 0 && (
               <Button variant="soft" size="sm" loading={busy} onClick={send}>
-                Отправить оценку
+                {tt("Отправить оценку")}
               </Button>
             )}
           </section>
         ) : (
           <p className={s.thanks}>
-            <Check size={18} /> Спасибо за&nbsp;оценку
+            <Check size={18} />{" "}{tt("Спасибо за\u00a0оценку")}
           </p>
         )}
 
@@ -1191,21 +1192,21 @@ function EndScreen({
 
         <div className={s.endActions}>
           <Button variant="primary" block href={dialogueHref}>
-            {isLab ? "В\u00a0лабораторию" : "Вернуться в\u00a0диалог"}
+            {isLab ? tt("В\u00a0лабораторию") : tt("Вернуться в\u00a0диалог")}
           </Button>
           {canRejoin && (
             <Button variant="ghost" block onClick={onRejoin} icon={<RefreshCw size={18} />}>
-              Вернуться в&nbsp;звонок
+              {tt("Вернуться в\u00a0звонок")}
             </Button>
           )}
           {isPro && !isLab && !completed && (
             <Button variant="ghost" block loading={completing} onClick={complete} icon={<Check size={18} />}>
-              Отметить звонок проведённым
+              {tt("Отметить звонок проведённым")}
             </Button>
           )}
-          {completed && <p className={s.thanks}>Звонок отмечен проведённым</p>}
+          {completed && <p className={s.thanks}>{tt("Звонок отмечен проведённым")}</p>}
         </div>
-        <p className={s.note}>Видео и&nbsp;звук не&nbsp;записывались.</p>
+        <p className={s.note}>{tt("Видео и\u00a0звук не\u00a0записывались.")}</p>
         {!isPro && !isLab && <HelpLine />}
       </div>
     </div>

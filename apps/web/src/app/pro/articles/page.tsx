@@ -1,5 +1,6 @@
 "use client";
 
+import { t, intlLocale } from "@/lib/i18n";
 import { Suspense, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Plus } from "lucide-react";
@@ -17,7 +18,7 @@ import s from "@/components/content/cms/cms.module.css";
 import p from "@/components/pro/articles/articles.module.css";
 
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+  return new Date(iso).toLocaleDateString(intlLocale(), { day: "numeric", month: "short" });
 }
 
 function MyArticles() {
@@ -27,7 +28,7 @@ function MyArticles() {
   const edit = params?.get("edit") ?? null;
   const list = useLoad(() => myArticlesApi.list());
   const user = useAuth((x) => x.user);
-  const name = user?.psychologist?.display_name || "Вы";
+  const name = user?.psychologist?.display_name || t("Вы");
   const photo = user?.psychologist?.photo_url ?? null;
 
   // A new article gets its id on the first autosave; the editor must not remount then
@@ -50,12 +51,12 @@ function MyArticles() {
     return (
       <>
         <Button variant="ghost" size="sm" onClick={() => go(null)} icon={<ArrowLeft size={18} strokeWidth={1.8} />} style={{ marginLeft: -8, marginBottom: 12 }}>
-          Мои статьи
+          {t("Мои статьи")}
         </Button>
         {!isNew && !list.data ? (
           <Skeleton height={420} radius={22} />
         ) : !isNew && !article ? (
-          <EmptyState art={<EmptyArt scene="lost" />} title="Статья не&nbsp;найдена" text="Возможно, её&nbsp;уже удалили." action={<Button onClick={() => go(null)}>К&nbsp;списку</Button>} />
+          <EmptyState art={<EmptyArt scene="lost" />} title={t("Статья не\u00a0найдена")} text={t("Возможно, её\u00a0уже удалили.")} action={<Button onClick={() => go(null)}>{t("К\u00a0списку")}</Button>} />
         ) : (
           <SpecialistArticleEditor
             key={created !== null && Number(edit) === created ? "new" : edit}
@@ -76,14 +77,14 @@ function MyArticles() {
   return (
     <>
       <PageHeader
-        title="Мои статьи"
+        title={t("Мои статьи")}
         action={
           <Button variant="primary" onClick={() => go("new")} icon={<Plus size={18} strokeWidth={2} />}>
-            Новая статья
+            {t("Новая статья")}
           </Button>
         }
       />
-      <p className={p.intro}>Статьи проходят модерацию и&nbsp;выходят в&nbsp;ленте «От&nbsp;специалистов» с&nbsp;вашим именем и&nbsp;ссылкой на&nbsp;профиль.</p>
+      <p className={p.intro}>{t("Статьи проходят модерацию и\u00a0выходят в\u00a0ленте «От\u00a0специалистов» с\u00a0вашим именем и\u00a0ссылкой на\u00a0профиль.")}</p>
       {list.error ? (
         <ErrorBlock message={list.error} onRetry={list.reload} />
       ) : !list.data ? (
@@ -96,11 +97,11 @@ function MyArticles() {
         <Card>
           <EmptyState
             art={<EmptyArt scene="plane" />}
-            title="Пока нет статей"
-            text="Расскажите о&nbsp;том, в&nbsp;чём разбираетесь: клиенты читают и&nbsp;приходят к&nbsp;авторам."
+            title={t("Пока нет статей")}
+            text={t("Расскажите о\u00a0том, в\u00a0чём разбираетесь: клиенты читают и\u00a0приходят к\u00a0авторам.")}
             action={
               <Button variant="primary" onClick={() => go("new")} icon={<Plus size={18} />}>
-                Написать статью
+                {t("Написать статью")}
               </Button>
             }
           />
@@ -119,7 +120,7 @@ function MyArticles() {
                   </span>
                 )}
                 <span className={s.rowText}>
-                  <strong>{a.title || "Без\u00a0названия"}</strong>
+                  <strong>{a.title || t("Без\u00a0названия")}</strong>
                   <em className={p.mStatus} data-s={a.status}>
                     {STATUS_LABEL[a.status]}
                   </em>
@@ -128,7 +129,7 @@ function MyArticles() {
                   ) : (
                     <span>
                       {a.topic_label}
-                      {a.status === "approved" && a.reads ? ` · ${a.reads} прочтений` : ""}
+                      {a.status === "approved" && a.reads ? t(` · {reads} прочтений`, { reads: a.reads }) : ""}
                     </span>
                   )}
                 </span>

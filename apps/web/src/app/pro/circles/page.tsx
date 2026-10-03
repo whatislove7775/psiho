@@ -1,5 +1,6 @@
 "use client";
 
+import { t, tj } from "@/lib/i18n";
 import Link from "next/link";
 import { useState } from "react";
 import { ChevronRight, Plus, Users } from "lucide-react";
@@ -22,10 +23,10 @@ export default function ProCirclesPage() {
     setBusy(id);
     try {
       await circlesApi.cohostRespond(id, accept);
-      toast(accept ? "Вы ко-терапевт этого круга" : "Приглашение отклонено");
+      toast(accept ? t("Вы ко-терапевт этого круга") : t("Приглашение отклонено"));
       list.reload();
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "Не получилось.", { error: true });
+      toast(e instanceof ApiError ? e.message : t("Не получилось."), { error: true });
     } finally {
       setBusy(null);
     }
@@ -33,10 +34,10 @@ export default function ProCirclesPage() {
   return (
     <div className={s.page}>
       <PageHeader
-        title="Круги"
+        title={t("Круги")}
         action={
           <Button variant="primary" href="/pro/circles/new" icon={<Plus size={18} />}>
-            Новый круг
+            {t("Новый круг")}
           </Button>
         }
       />
@@ -49,17 +50,17 @@ export default function ProCirclesPage() {
           <span style={{ minWidth: 0 }}>
             <h3>{c.title}</h3>
             <span className={s.metaRow}>
-              <span>{c.host.name} приглашает вас ко-терапевтом</span>
+              <span>{tj("{name} приглашает вас ко-терапевтом", { name: c.host.name })}</span>
               <span>{meetingsLine(c)}</span>
-              <span>ваша доля {c.share_percent}&nbsp;%</span>
+              <span>{tj("ваша доля {share_percent}\u00a0%", { share_percent: c.share_percent })}</span>
             </span>
           </span>
           <span className={s.rowActions}>
             <Button size="sm" variant="ghost" disabled={busy === c.id} onClick={() => respond(c.id, false)}>
-              Отклонить
+              {t("Отклонить")}
             </Button>
             <Button size="sm" variant="primary" loading={busy === c.id} onClick={() => respond(c.id, true)}>
-              Принять
+              {t("Принять")}
             </Button>
           </span>
         </div>
@@ -69,11 +70,11 @@ export default function ProCirclesPage() {
         <Card>
           <EmptyState
             art={<EmptyArt scene="cozy" />}
-            title="У&nbsp;вас пока нет кругов"
-            text="Перед публикацией команда проверит описание и&nbsp;расписание."
+            title={t("У\u00a0вас пока нет кругов")}
+            text={t("Перед публикацией команда проверит описание и\u00a0расписание.")}
             action={
               <Button variant="primary" href="/pro/circles/new">
-                Создать круг
+                {t("Создать круг")}
               </Button>
             }
           />
@@ -93,18 +94,18 @@ export default function ProCirclesPage() {
                   <span>{meetingsLine(c)}</span>
                   {c.next_meeting_at && (
                     <span>
-                      Ближайшая {dayShort(c.next_meeting_at)}, {time(c.next_meeting_at)}
+                      {tj("Ближайшая {dayShort}, {time}", { dayShort: dayShort(c.next_meeting_at), time: time(c.next_meeting_at) })}
                     </span>
                   )}
                   <span>{priceLine(c)}</span>
                 </span>
               </span>
               <span className={s.rowActions}>
-                {c.my_role === "cohost" && <Badge tone="lilac">Ко-терапевт</Badge>}
+                {c.my_role === "cohost" && <Badge tone="lilac">{t("Ко-терапевт")}</Badge>}
                 <Badge tone={STATUS_TONE[c.status]}>{STATUS_LABEL[c.status]}</Badge>
                 <Badge>
-                  {c.members_count} из {c.capacity}
-                  {c.waitlist_count ? `, ждут ${c.waitlist_count}` : ""}
+                  {c.members_count}{" "}{t("из")}{" "}{c.capacity}
+                  {c.waitlist_count ? t(`, ждут {waitlist_count}`, { waitlist_count: c.waitlist_count }) : ""}
                 </Badge>
                 <ChevronRight size={18} aria-hidden />
               </span>
@@ -112,10 +113,9 @@ export default function ProCirclesPage() {
           ))}
         </div>
       )}
-      <CollapsibleCard title="Как&nbsp;это&nbsp;работает" defaultOpen={false}>
+      <CollapsibleCard title={t("Как\u00a0это\u00a0работает")} defaultOpen={false}>
         <p className={s.note}>
-          Вы&nbsp;создаёте черновик и&nbsp;отправляете его на&nbsp;проверку. После одобрения круг появляется в&nbsp;каталоге, и&nbsp;клиенты записываются: оплата
-          замораживается на&nbsp;их&nbsp;балансе и&nbsp;списывается после каждой встречи (или&nbsp;после первой, если цена за&nbsp;цикл). Если вы&nbsp;не&nbsp;придёте на&nbsp;встречу, деньги вернутся участникам. Встречи проходят в&nbsp;групповой комнате прямо на&nbsp;сайте: вы&nbsp;с&nbsp;камерой, участники&nbsp;— в&nbsp;аватарах и&nbsp;с&nbsp;маской голоса.
+          {t("Вы\u00a0создаёте черновик и\u00a0отправляете его на\u00a0проверку. После одобрения круг появляется в\u00a0каталоге, и\u00a0клиенты записываются: оплата замораживается на\u00a0их\u00a0балансе и\u00a0списывается после каждой встречи (или\u00a0после первой, если цена за\u00a0цикл). Если вы\u00a0не\u00a0придёте на\u00a0встречу, деньги вернутся участникам. Встречи проходят в\u00a0групповой комнате прямо на\u00a0сайте: вы\u00a0с\u00a0камерой, участники\u00a0— в\u00a0аватарах и\u00a0с\u00a0маской голоса.")}
         </p>
       </CollapsibleCard>
     </div>

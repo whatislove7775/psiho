@@ -1,15 +1,16 @@
 /** B2B «Для компаний» (/api/v1/business/…): client allowances, HR portal (aggregates only), staff console. See docs/API.md. */
+import { t, intlLocale } from "@/lib/i18n";
 import { api, API_BASE, ApiError, tokens } from "./client";
 
 export type Service = "calls" | "circles" | "ai";
 export type Period = "month" | "quarter" | "year";
 
 export const SERVICE_LABEL: Record<Service, string> = {
-  calls: "Созвоны со\u00a0специалистом",
-  circles: "Групповые «Круги»",
-  ai: "ИИ-помощник",
+  get calls() { return t("Созвоны со\u00a0специалистом"); },
+  get circles() { return t("Групповые «Круги»"); },
+  get ai() { return t("ИИ-помощник"); },
 };
-export const PERIOD_LABEL: Record<Period, string> = { month: "месяц", quarter: "квартал", year: "год" };
+export const PERIOD_LABEL: Record<Period, string> = { get month() { return t("месяц"); }, get quarter() { return t("квартал"); }, get year() { return t("год"); } };
 
 /* ── client ─────────────────────────────────────────────────────── */
 
@@ -187,7 +188,7 @@ export interface ProgramInput {
 /** Download a CSV that needs the bearer token. */
 async function downloadCsv(path: string, filename: string) {
   const res = await fetch(`${API_BASE}${path}`, { headers: tokens.access ? { Authorization: `Bearer ${tokens.access}` } : {} });
-  if (!res.ok) throw new ApiError(res.status, "Не\u00a0получилось скачать файл.");
+  if (!res.ok) throw new ApiError(res.status, t("Не\u00a0получилось скачать файл."));
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -201,7 +202,7 @@ async function downloadCsv(path: string, filename: string) {
 
 /** Save codes that are shown once (right after generation) as CSV. */
 export function saveCodesCsv(codes: string[], name = "aprosop-codes.csv") {
-  const rows = ["Код;Как активировать", ...codes.map((c) => `${c};aprosop.ru → Баланс → Программа компании`)];
+  const rows = [t("Код;Как активировать"), ...codes.map((c) => t(`{c};aprosop.ru → Баланс → Программа компании`, { c }))];
   const blob = new Blob(["﻿" + rows.join("\n")], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -284,7 +285,7 @@ export const businessApi = {
 export function dateRu(iso: string | null | undefined, opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "long" }) {
   if (!iso) return "";
   const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
-  return new Intl.DateTimeFormat("ru-RU", opts).format(new Date(y, m - 1, d)).replace(/\s?г\.$/, "");
+  return new Intl.DateTimeFormat(intlLocale(), opts).format(new Date(y, m - 1, d)).replace(/\s?г\.$/, "");
 }
 
 export function monthRu(iso: string) {

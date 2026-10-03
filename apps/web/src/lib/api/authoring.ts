@@ -1,4 +1,5 @@
 /** L1: статьи специалистов, модерация, обложки, живое селфи для проверки. */
+import { t, msg } from "@/lib/i18n";
 import { api, API_BASE } from "./client";
 import type { ArticleDraft, Source } from "./content";
 
@@ -24,10 +25,10 @@ export interface CoverCrop {
 export type ArticleStatus = "draft" | "pending" | "approved" | "rejected";
 
 export const STATUS_LABEL: Record<ArticleStatus, string> = {
-  draft: "Черновик",
-  pending: "На\u00a0модерации",
-  approved: "Опубликована",
-  rejected: "Отклонена",
+  get draft() { return t("Черновик"); },
+  get pending() { return t("На\u00a0модерации"); },
+  get approved() { return t("Опубликована"); },
+  get rejected() { return t("Отклонена"); },
 };
 
 export interface MyArticle {
@@ -56,9 +57,11 @@ export interface MyArticle {
   reads: number;
   created_at: string;
   updated_at: string;
+  /** S2: language the article is written in (lib/i18n/languages.ts) */
+  language?: string;
 }
 
-export type MyArticleInput = Partial<Pick<MyArticle, "title" | "summary" | "content" | "topics" | "sources">> & {
+export type MyArticleInput = Partial<Pick<MyArticle, "title" | "summary" | "content" | "topics" | "sources" | "language">> & {
   cover_image_id?: string | null;
 };
 
@@ -134,5 +137,5 @@ export const staffSelfieApi = {
     api<{ frames: string[]; challenge_text: string; taken_at: string }>(`/staff/specialists/${profileId}/selfie/frames/`),
 };
 
-export const COVER_HINT = "Рекомендуем 1600×900, JPG, PNG или\u00a0WebP, до\u00a05\u00a0МБ";
-export const PHOTO_HINT = "Квадрат от\u00a0800×800, JPG, PNG или\u00a0WebP, до\u00a05\u00a0МБ";
+export const COVER_HINT = msg("Рекомендуем 1600×900, JPG, PNG или\u00a0WebP, до\u00a05\u00a0МБ");
+export const PHOTO_HINT = msg("Квадрат от\u00a0800×800, JPG, PNG или\u00a0WebP, до\u00a05\u00a0МБ");

@@ -1,5 +1,6 @@
 "use client";
 
+import { t, tj } from "@/lib/i18n";
 import { DoorOpen, EyeOff, Keyboard, ScanEye, Smartphone, BellOff } from "lucide-react";
 import { Button, Card, CardHead, Segmented } from "@/ui";
 import { usePrivacyPrefs } from "@/lib/privacy/usePrivacy";
@@ -24,21 +25,21 @@ export function PrivacySettings() {
     <>
       <Card as="section">
         <CardHead
-          title="Незаметный режим"
-          sub="Нейтральная вкладка и&nbsp;быстрый выход по&nbsp;двойному Esc"
+          title={t("Незаметный режим")}
+          sub={t("Нейтральная вкладка и\u00a0быстрый выход по\u00a0двойному Esc")}
           icon={<EyeOff size={20} />}
-          action={<Switch checked={st.enabled} onChange={(v) => setStealth({ enabled: v })} label="Незаметный режим" />}
+          action={<Switch checked={st.enabled} onChange={(v) => setStealth({ enabled: v })} label={t("Незаметный режим")} />}
         />
         <details className={s.more}>
-          <summary>Как&nbsp;это&nbsp;работает</summary>
+          <summary>{t("Как\u00a0это\u00a0работает")}</summary>
         <ul className={s.how}>
           <li>
             <span className={s.howIcon}>
               <img src={preset.icon} alt="" width={18} height={18} />
             </span>
             <span>
-              <strong>Нейтральная вкладка.</strong>{" "}
-              <span>Вкладка браузера называется «{preset.title}» и&nbsp;получает обычный значок&nbsp;— по&nbsp;ней не&nbsp;понять, что&nbsp;это&nbsp;за&nbsp;сайт.</span>
+              <strong>{t("Нейтральная вкладка.")}</strong>{" "}
+              <span>{tj("Вкладка браузера называется «{title}» и\u00a0получает обычный значок\u00a0— по\u00a0ней не\u00a0понять, что\u00a0это\u00a0за\u00a0сайт.", { title: preset.title })}</span>
             </span>
           </li>
           <li>
@@ -47,11 +48,10 @@ export function PrivacySettings() {
             </span>
             <span>
               <strong>
-                Быстрый выход: дважды <kbd className={s.kbd}>Esc</kbd>.
+                {t("Быстрый выход: дважды")}{" "}<kbd className={s.kbd}>Esc</kbd>.
               </strong>{" "}
               <span>
-                Страница мгновенно сменяется нейтральным сайтом ({EXIT_TARGETS[st.exit].label.toLowerCase()}). Работает в&nbsp;кабинете и&nbsp;во&nbsp;время
-                звонка&nbsp;— звонок при&nbsp;этом завершится.
+                {tj("Страница мгновенно сменяется нейтральным сайтом ({v}). Работает в\u00a0кабинете и\u00a0во\u00a0время звонка\u00a0— звонок при\u00a0этом завершится.", { v: EXIT_TARGETS[st.exit].label.toLowerCase() })}
               </span>
             </span>
           </li>
@@ -60,8 +60,8 @@ export function PrivacySettings() {
               <Smartphone size={17} />
             </span>
             <span>
-              <strong>На&nbsp;телефоне&nbsp;— кнопка с&nbsp;перечёркнутым глазом</strong>{" "}
-              <span>рядом с&nbsp;нижним меню, в&nbsp;открытой переписке и&nbsp;в&nbsp;звонке. Одно касание&nbsp;— и&nbsp;вы&nbsp;на&nbsp;другом сайте.</span>
+              <strong>{t("На\u00a0телефоне\u00a0— кнопка с\u00a0перечёркнутым глазом")}</strong>{" "}
+              <span>{t("рядом с\u00a0нижним меню, в\u00a0открытой переписке и\u00a0в\u00a0звонке. Одно касание\u00a0— и\u00a0вы\u00a0на\u00a0другом сайте.")}</span>
             </span>
           </li>
           <li>
@@ -69,19 +69,19 @@ export function PrivacySettings() {
               <BellOff size={17} />
             </span>
             <span>
-              <strong>Никаких уведомлений.</strong>{" "}
-              <span>Мы&nbsp;не&nbsp;присылаем писем, СМС и&nbsp;пуш-уведомлений и&nbsp;не&nbsp;издаём звуков&nbsp;— на&nbsp;экране блокировки ничего не&nbsp;появится.</span>
+              <strong>{t("Никаких уведомлений.")}</strong>{" "}
+              <span>{t("Мы\u00a0не\u00a0присылаем писем, СМС и\u00a0пуш-уведомлений и\u00a0не\u00a0издаём звуков\u00a0— на\u00a0экране блокировки ничего не\u00a0появится.")}</span>
             </span>
           </li>
         </ul>
-          <p className={s.honestLine}>Адрес сайта останется в&nbsp;истории браузера&nbsp;— надёжнее открывать Aprosop в&nbsp;режиме инкогнито.</p>
+          <p className={s.honestLine}>{t("Адрес сайта останется в\u00a0истории браузера\u00a0— надёжнее открывать Aprosop в\u00a0режиме инкогнито.")}</p>
         </details>
 
         {st.enabled && (
           <div style={{ marginTop: 16 }}>
             <div className={s.block}>
-              <span className={s.blockTitle}>Как&nbsp;называется вкладка</span>
-              <div className={s.presets} role="radiogroup" aria-label="Название и&nbsp;значок вкладки">
+              <span className={s.blockTitle}>{t("Как\u00a0называется вкладка")}</span>
+              <div className={s.presets} role="radiogroup" aria-label={t("Название и\u00a0значок вкладки")}>
                 {(Object.keys(STEALTH_PRESETS) as StealthPreset[]).map((k) => (
                   <button
                     key={k}
@@ -98,9 +98,9 @@ export function PrivacySettings() {
               </div>
             </div>
             <div className={s.block}>
-              <span className={s.blockTitle}>Куда уходить при&nbsp;быстром выходе</span>
+              <span className={s.blockTitle}>{t("Куда уходить при\u00a0быстром выходе")}</span>
               <Segmented<ExitTarget>
-                ariaLabel="Нейтральный сайт"
+                ariaLabel={t("Нейтральный сайт")}
                 value={st.exit}
                 onChange={(v) => setStealth({ exit: v })}
                 options={(Object.keys(EXIT_TARGETS) as ExitTarget[]).map((k) => ({ value: k, label: EXIT_TARGETS[k].short ?? EXIT_TARGETS[k].label }))}
@@ -109,25 +109,25 @@ export function PrivacySettings() {
             <div className={s.rows} style={{ borderTop: "1px solid var(--c-line)", paddingTop: 14 }}>
               <div className={s.row}>
                 <span className={s.rowText}>
-                  <strong>При&nbsp;выходе&nbsp;— выйти из&nbsp;аккаунта</strong>
-                  <span>Стираем вход и&nbsp;данные сайта в&nbsp;этом браузере.</span>
+                  <strong>{t("При\u00a0выходе\u00a0— выйти из\u00a0аккаунта")}</strong>
+                  <span>{t("Стираем вход и\u00a0данные сайта в\u00a0этом браузере.")}</span>
                 </span>
-                <Switch checked={st.wipe} onChange={(v) => setStealth({ wipe: v })} label="Выйти из&nbsp;аккаунта при&nbsp;быстром выходе" />
+                <Switch checked={st.wipe} onChange={(v) => setStealth({ wipe: v })} label={t("Выйти из\u00a0аккаунта при\u00a0быстром выходе")} />
               </div>
               <div className={s.row}>
                 <span className={s.rowText}>
-                  <strong>Запомнить в&nbsp;аккаунте</strong>
-                  <span>Режим включится и&nbsp;на&nbsp;других устройствах.</span>
+                  <strong>{t("Запомнить в\u00a0аккаунте")}</strong>
+                  <span>{t("Режим включится и\u00a0на\u00a0других устройствах.")}</span>
                 </span>
-                <Switch checked={prefs.sync} onChange={(v) => update((p) => ({ ...p, sync: v }))} label="Запомнить настройку в&nbsp;аккаунте" />
+                <Switch checked={prefs.sync} onChange={(v) => update((p) => ({ ...p, sync: v }))} label={t("Запомнить настройку в\u00a0аккаунте")} />
               </div>
               <div className={s.row}>
                 <span className={s.rowText}>
-                  <strong>Проверить</strong>
-                  <span>Откроется нейтральный сайт.</span>
+                  <strong>{t("Проверить")}</strong>
+                  <span>{t("Откроется нейтральный сайт.")}</span>
                 </span>
                 <Button variant="secondary" size="sm" icon={<DoorOpen size={16} />} onClick={panicExit}>
-                  Выйти сейчас
+                  {t("Выйти сейчас")}
                 </Button>
               </div>
             </div>
@@ -138,26 +138,26 @@ export function PrivacySettings() {
 
       <Card as="section">
         <CardHead
-          title="Защита от&nbsp;скриншотов"
-          sub="Размытие и&nbsp;запрет копирования в&nbsp;переписках"
+          title={t("Защита от\u00a0скриншотов")}
+          sub={t("Размытие и\u00a0запрет копирования в\u00a0переписках")}
           icon={<ScanEye size={20} />}
           action={
             <Switch
               checked={prefs.screen_protect}
               onChange={(v) => update((p) => ({ ...p, screen_protect: v }))}
-              label="Защита от&nbsp;скриншотов"
+              label={t("Защита от\u00a0скриншотов")}
             />
           }
         />
         <details className={s.more}>
-          <summary>Как&nbsp;это&nbsp;работает</summary>
+          <summary>{t("Как\u00a0это\u00a0работает")}</summary>
         <ul className={s.how}>
           <li>
             <span className={s.howIcon}>
               <EyeOff size={17} />
             </span>
             <span>
-              <strong>Размываем переписку,</strong> <span>когда окно или&nbsp;вкладка не&nbsp;активны: в&nbsp;списке приложений и&nbsp;при&nbsp;переключении окон её&nbsp;не&nbsp;видно.</span>
+              <strong>{t("Размываем переписку,")}</strong> <span>{t("когда окно или\u00a0вкладка не\u00a0активны: в\u00a0списке приложений и\u00a0при\u00a0переключении окон её\u00a0не\u00a0видно.")}</span>
             </span>
           </li>
           <li>
@@ -165,12 +165,12 @@ export function PrivacySettings() {
               <ScanEye size={17} />
             </span>
             <span>
-              <strong>Отключаем выделение, копирование и&nbsp;печать</strong>{" "}
-              <span>сообщений и&nbsp;добавляем едва заметный водяной знак с&nbsp;вашим псевдонимом.</span>
+              <strong>{t("Отключаем выделение, копирование и\u00a0печать")}</strong>{" "}
+              <span>{t("сообщений и\u00a0добавляем едва заметный водяной знак с\u00a0вашим псевдонимом.")}</span>
             </span>
           </li>
         </ul>
-          <p className={s.honestLine}>Системный скриншот или&nbsp;фото экрана браузер запретить не&nbsp;может. Для&nbsp;обеих сторон диалога&nbsp;— в&nbsp;меню «⋮».</p>
+          <p className={s.honestLine}>{t("Системный скриншот или\u00a0фото экрана браузер запретить не\u00a0может. Для\u00a0обеих сторон диалога\u00a0— в\u00a0меню «⋮».")}</p>
         </details>
       </Card>
     </>

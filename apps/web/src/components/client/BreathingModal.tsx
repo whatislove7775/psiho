@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { Button, Modal, Segmented } from "@/ui";
 import { plural } from "@/lib/format";
@@ -20,22 +21,22 @@ const PATTERNS: Record<
 > = {
   box: {
     phases: [
-      { label: "Вдох", seconds: 4, scale: 1 },
-      { label: "Пауза", seconds: 4, scale: 1 },
-      { label: "Выдох", seconds: 4, scale: 0.45 },
-      { label: "Пауза", seconds: 4, scale: 0.45 },
+      { get label() { return tt("Вдох"); }, seconds: 4, scale: 1 },
+      { get label() { return tt("Пауза"); }, seconds: 4, scale: 1 },
+      { get label() { return tt("Выдох"); }, seconds: 4, scale: 0.45 },
+      { get label() { return tt("Пауза"); }, seconds: 4, scale: 0.45 },
     ],
     rounds: 5,
-    note: "Дышите носом, плечи опущены. Если задержка даётся тяжело, просто дышите в\u00a0своём ритме.",
+    get note() { return tt("Дышите носом, плечи опущены. Если задержка даётся тяжело, просто дышите в\u00a0своём ритме."); },
   },
   "478": {
     phases: [
-      { label: "Вдох носом", seconds: 4, scale: 1 },
-      { label: "Задержка", seconds: 7, scale: 1 },
-      { label: "Выдох ртом", seconds: 8, scale: 0.45 },
+      { get label() { return tt("Вдох носом"); }, seconds: 4, scale: 1 },
+      { get label() { return tt("Задержка"); }, seconds: 7, scale: 1 },
+      { get label() { return tt("Выдох ртом"); }, seconds: 8, scale: 0.45 },
     ],
     rounds: 4,
-    note: "Выдыхайте медленно, будто через трубочку. Четырёх кругов достаточно, при\u00a0головокружении остановитесь.",
+    get note() { return tt("Выдыхайте медленно, будто через трубочку. Четырёх кругов достаточно, при\u00a0головокружении остановитесь."); },
   },
 };
 
@@ -100,18 +101,18 @@ export function BreathingModal({
   const minutes = Math.max(1, Math.round(totalSec / 60));
 
   return (
-    <Modal open={open} onClose={onClose} title="Дыхательная пауза" width={460}>
+    <Modal open={open} onClose={onClose} title={tt("Дыхательная пауза")} width={460}>
       <div className={s.breathe}>
         <Segmented<Pattern>
-          ariaLabel="Техника дыхания"
+          ariaLabel={tt("Техника дыхания")}
           value={pattern}
           onChange={(p) => {
             reset();
             setPattern(p);
           }}
           options={[
-            { value: "box", label: "Квадрат 4-4-4-4" },
-            { value: "478", label: "Техника 4-7-8" },
+            { value: "box", label: tt("Квадрат 4-4-4-4") },
+            { value: "478", label: tt("Техника 4-7-8") },
           ]}
         />
 
@@ -132,30 +133,30 @@ export function BreathingModal({
                 <span className={s.count}>{left}</span>
               </>
             ) : done ? (
-              <span className={s.phase}>Хорошо</span>
+              <span className={s.phase}>{tt("Хорошо")}</span>
             ) : (
-              <span className={s.phase}>Готовы?</span>
+              <span className={s.phase}>{tt("Готовы?")}</span>
             )}
           </div>
         </div>
 
         <div className={s.rounds}>
           {running
-            ? `Круг ${round} из\u00a0${cfg.rounds}`
+            ? tt(`Круг {round} из\u00a0{rounds}`, { round, rounds: cfg.rounds })
             : done
-              ? "Вы\u00a0сделали паузу. Возвращайтесь, когда захочется."
-              : `${cfg.rounds} ${plural(cfg.rounds, "круг", "круга", "кругов")}, около ${minutes} ${plural(minutes, "минуты", "минут", "минут")}`}
+              ? tt("Вы\u00a0сделали паузу. Возвращайтесь, когда захочется.")
+              : tt(`{rounds} {plural}, около {minutes} {plural2}`, { rounds: cfg.rounds, plural: plural(cfg.rounds, "круг", "круга", "кругов"), minutes, plural2: plural(minutes, "минуты", "минут", "минут") })}
         </div>
 
         <p className={s.breatheNote}>{cfg.note}</p>
 
         {running ? (
           <Button variant="secondary" size="lg" block onClick={reset}>
-            Остановить
+            {tt("Остановить")}
           </Button>
         ) : (
           <Button variant="primary" size="lg" block onClick={start}>
-            {done ? "Ещё раз" : "Начать"}
+            {done ? tt("Ещё раз") : tt("Начать")}
           </Button>
         )}
       </div>

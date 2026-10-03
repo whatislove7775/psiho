@@ -1,5 +1,7 @@
 "use client";
 
+import { t as tt, tj } from "@/lib/i18n";
+import { useApprox } from "@/lib/i18n/currency";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, FlaskConical, Lock } from "lucide-react";
 import { Button, Input } from "@/ui";
@@ -34,6 +36,7 @@ export function TopUpForm({
   returnTo?: string;
   onDone?: (t: TopUp) => void;
 }) {
+  const approx = useApprox();
   const min = settings.min_kopecks / 100;
   const max = settings.max_kopecks / 100;
   const initial = useMemo(() => {
@@ -63,7 +66,7 @@ export function TopUpForm({
       const w = new window.YooMoneyCheckoutWidget({
         confirmation_token: widgetToken,
         return_url: `${window.location.origin}${returnTo ?? "/app/balance"}`,
-        error_callback: () => setError("Платёжная форма не\u00a0загрузилась. Обновите страницу."),
+        error_callback: () => setError(tt("Платёжная форма не\u00a0загрузилась. Обновите страницу.")),
       });
       widgetRef.current = w;
       w.render("yookassa-widget");
@@ -73,7 +76,7 @@ export function TopUpForm({
       const sc = document.createElement("script");
       sc.src = "https://yookassa.ru/checkout-widget/v1/checkout-widget.js";
       sc.onload = start;
-      sc.onerror = () => setError("Платёжная форма не\u00a0загрузилась. Проверьте интернет.");
+      sc.onerror = () => setError(tt("Платёжная форма не\u00a0загрузилась. Проверьте интернет."));
       document.head.appendChild(sc);
     }
     return () => {
@@ -84,11 +87,11 @@ export function TopUpForm({
 
   const submit = async () => {
     if (!valid) {
-      setError(`Сумма\u00a0— от\u00a0${rubK(settings.min_kopecks)} до\u00a0${rubK(settings.max_kopecks)}.`);
+      setError(tt(`Сумма\u00a0— от\u00a0{rubK} до\u00a0{rubK2}.`, { rubK: rubK(settings.min_kopecks), rubK2: rubK(settings.max_kopecks) }));
       return;
     }
     if (receipt !== "none" && !contact.trim()) {
-      setError(receipt === "email" ? "Укажите email для\u00a0чека или\u00a0выберите «Без\u00a0чека на\u00a0почту»." : "Укажите телефон для\u00a0чека.");
+      setError(receipt === "email" ? tt("Укажите email для\u00a0чека или\u00a0выберите «Без\u00a0чека на\u00a0почту».") : tt("Укажите телефон для\u00a0чека."));
       return;
     }
     setBusy(true);
@@ -112,9 +115,9 @@ export function TopUpForm({
         window.location.href = c.url;
         return;
       }
-      setError("Платёжный сервис не\u00a0вернул ссылку. Попробуйте ещё раз.");
+      setError(tt("Платёжный сервис не\u00a0вернул ссылку. Попробуйте ещё раз."));
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Не\u00a0получилось начать оплату. Попробуйте ещё раз.");
+      setError(e instanceof ApiError ? e.message : tt("Не\u00a0получилось начать оплату. Попробуйте ещё раз."));
     }
     setBusy(false);
   };
@@ -137,8 +140,7 @@ export function TopUpForm({
       <div className={s.testNote}>
         <AlertCircle size={16} aria-hidden />
         <span>
-          Пополнение картой и&nbsp;через СБП скоро появится. Сейчас баланс можно пополнить подарочным кодом&nbsp;— поле для&nbsp;кода
-          ниже на&nbsp;этой странице.
+          {tt("Пополнение картой и\u00a0через СБП скоро появится. Сейчас баланс можно пополнить подарочным кодом\u00a0— поле для\u00a0кода ниже на\u00a0этой странице.")}
         </span>
       </div>
     );
@@ -149,13 +151,13 @@ export function TopUpForm({
       {settings.test_mode && (
         <div className={s.testNote}>
           <FlaskConical size={16} aria-hidden />
-          <span>Тестовый режим: оплата проходит на&nbsp;нашей тестовой странице, настоящие деньги не&nbsp;списываются.</span>
+          <span>{tt("Тестовый режим: оплата проходит на\u00a0нашей тестовой странице, настоящие деньги не\u00a0списываются.")}</span>
         </div>
       )}
 
       <div>
         <div className={s.label} id="topup-amount">
-          Сумма
+          {tt("Сумма")}
         </div>
         <div className={s.presets} role="group" aria-labelledby="topup-amount">
           {presets.map((p) => (
@@ -171,18 +173,25 @@ export function TopUpForm({
           inputMode="decimal"
           value={amount}
           onChange={(e) => setAmount(e.target.value.replace(/[^\d\s,.]/g, ""))}
-          aria-label="Другая сумма, рублей"
+          aria-label={tt("Другая сумма, рублей")}
         />
         <span aria-hidden>₽</span>
       </label>
       <div className={s.hint}>
-        От {rubK(settings.min_kopecks)} до {rubK(settings.max_kopecks)} за&nbsp;раз.
+        {tj("От {rubK} до {rubK2} за\u00a0раз.", { rubK: rubK(settings.min_kopecks), rubK2: rubK(settings.max_kopecks) })}
+        {approx && valid && value ? ` ${approx(value)}.` : ""}
       </div>
+      {approx && (
+        // Visitors from other countries: prices and payments are in roubles (YooKassa); see docs/INTERNATIONAL.md
+        <div className={s.hint}>
+          {tt("Оплата только в\u00a0рублях, банк пересчитает по\u00a0своему курсу. Карты, выпущенные не\u00a0в\u00a0России, пока могут не\u00a0пройти.")}
+        </div>
+      )}
 
       {settings.methods.length > 1 && (
         <div>
           <div className={s.label} id="topup-method">
-            Способ оплаты
+            {tt("Способ оплаты")}
           </div>
           <div className={s.methods} role="group" aria-labelledby="topup-method">
             {settings.methods.map((m) => (
@@ -197,22 +206,22 @@ export function TopUpForm({
       {settings.receipts.enabled && (
         <fieldset className={s.receipt} style={{ border: 0, margin: 0 }}>
           <legend className={s.label} style={{ padding: 0 }}>
-            Чек
+            {tt("Чек")}
           </legend>
           <div className={s.radios}>
             {!settings.receipts.required && (
               <label className={s.radio}>
                 <input type="radio" name="receipt" checked={receipt === "none"} onChange={() => setReceipt("none")} />
-                Без&nbsp;чека на&nbsp;почту
+                {tt("Без\u00a0чека на\u00a0почту")}
               </label>
             )}
             <label className={s.radio}>
               <input type="radio" name="receipt" checked={receipt === "email"} onChange={() => setReceipt("email")} />
-              На&nbsp;email
+              {tt("На\u00a0email")}
             </label>
             <label className={s.radio}>
               <input type="radio" name="receipt" checked={receipt === "phone"} onChange={() => setReceipt("phone")} />
-              По&nbsp;SMS
+              {tt("По\u00a0SMS")}
             </label>
           </div>
           {receipt !== "none" && (
@@ -221,13 +230,12 @@ export function TopUpForm({
               value={contact}
               onChange={(e) => setContact(e.target.value)}
               placeholder={receipt === "email" ? "mail@example.ru" : "+7 900 000-00-00"}
-              aria-label={receipt === "email" ? "Email для\u00a0чека" : "Телефон для\u00a0чека"}
+              aria-label={receipt === "email" ? tt("Email для\u00a0чека") : tt("Телефон для\u00a0чека")}
               autoComplete="off"
             />
           )}
           <div className={s.hint}>
-            <Lock size={12} aria-hidden /> Контакт уходит только в&nbsp;ЮKassa для&nbsp;отправки чека и&nbsp;у&nbsp;нас не&nbsp;сохраняется. Можно
-            указать любой ящик, не&nbsp;связанный с&nbsp;вами.
+            <Lock size={12} aria-hidden />{" "}{tt("Контакт уходит только в\u00a0ЮKassa для\u00a0отправки чека и\u00a0у\u00a0нас не\u00a0сохраняется. Можно указать любой ящик, не\u00a0связанный с\u00a0вами.")}
           </div>
         </fieldset>
       )}
@@ -239,12 +247,12 @@ export function TopUpForm({
       )}
 
       <Button variant="primary" size="lg" block loading={busy} disabled={!valid} onClick={submit}>
-        {valid ? `Пополнить на\u00a0${rubK(Math.round(value * 100))}` : "Пополнить"}
+        {valid ? tt(`Пополнить на\u00a0{rubK}`, { rubK: rubK(Math.round(value * 100)) }) : tt("Пополнить")}
       </Button>
       <div className={s.hint}>
-        Платёжный сервис видит только сумму. Имя, карта и&nbsp;псевдоним к&nbsp;балансу не&nbsp;привязываются.
+        {tt("Платёжный сервис видит только сумму. Имя, карта и\u00a0псевдоним к\u00a0балансу не\u00a0привязываются.")}
       </div>
-      <ConsentNote kind="payment" action="Пополнить" />
+      <ConsentNote kind="payment" action={tt("Пополнить")} />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { EyeOff } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth/store";
@@ -80,7 +81,7 @@ export function ScreenShield({ active, children }: { active: boolean; children: 
       {hide && (
         <div className={s.veil} role="status">
           <EyeOff size={22} />
-          <span>Переписка скрыта, пока окно не&nbsp;активно</span>
+          <span>{t("Переписка скрыта, пока окно не\u00a0активно")}</span>
         </div>
       )}
     </div>

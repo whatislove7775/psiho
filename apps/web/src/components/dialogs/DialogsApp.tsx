@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import { CalendarPlus, EyeOff, Flag, History, Info, Lock, NotebookPen, Timer, Video, Mic, AlertCircle, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -60,7 +61,7 @@ export function DialogsApp({ mode }: { mode: Mode }) {
       if (st) setAi(st);
     } catch (e) {
       setItems((x) => x ?? []);
-      toast(e instanceof ApiError ? e.message : "Не\u00a0получилось загрузить диалоги", { error: true });
+      toast(e instanceof ApiError ? e.message : tt("Не\u00a0получилось загрузить диалоги"), { error: true });
     }
   }, [mode, toast]);
 
@@ -87,7 +88,7 @@ export function DialogsApp({ mode }: { mode: Mode }) {
       setDetailError(null);
       setItems((list) => (list ? list.map((x) => (x.id === d.id ? { ...x, ...pickItem(d) } : x)) : list));
     } catch (e) {
-      setDetailError(e instanceof ApiError ? e.message : "Не\u00a0получилось загрузить диалог");
+      setDetailError(e instanceof ApiError ? e.message : tt("Не\u00a0получилось загрузить диалог"));
     }
   }, [selected, isSpecialistDialog]);
 
@@ -124,7 +125,7 @@ export function DialogsApp({ mode }: { mode: Mode }) {
           return list;
         }
         const x = list[idx];
-        const text = m.kind === "voice" ? "Голосовое сообщение" : m.kind === "file" ? "Файл" : m.text.slice(0, 120);
+        const text = m.kind === "voice" ? tt("Голосовое сообщение") : m.kind === "file" ? tt("Файл") : m.text.slice(0, 120);
         const card = m.kind === "system" ? m.card ?? null : null;
         const isOpen = selectedRef.current === x.id || selectedRef.current === x.conversation_id;
         const next = list.slice();
@@ -156,7 +157,7 @@ export function DialogsApp({ mode }: { mode: Mode }) {
           await loadList();
           select(conv.id);
         })
-        .catch((e) => toast(e instanceof ApiError ? e.message : "Не\u00a0получилось открыть поддержку", { error: true }))
+        .catch((e) => toast(e instanceof ApiError ? e.message : tt("Не\u00a0получилось открыть поддержку"), { error: true }))
         .finally(() => setOpening(false));
     } else if (sel && sel.conversation_id && sel.id !== sel.conversation_id) {
       select(sel.conversation_id);
@@ -193,7 +194,7 @@ export function DialogsApp({ mode }: { mode: Mode }) {
       size="md"
       iconOnly
       className={s.infoBtn}
-      aria-label="О&nbsp;диалоге"
+      aria-label={tt("О\u00a0диалоге")}
       aria-expanded={!!details}
       onClick={() => setDetails((v) => (v ? null : "top"))}
       icon={<Info size={20} strokeWidth={1.8} />}
@@ -237,11 +238,11 @@ export function DialogsApp({ mode }: { mode: Mode }) {
       <div className={c.placeholder}>
         <EmptyState
           art={<EmptyArt scene="search" />}
-          title="Диалог не&nbsp;найден"
-          text="Возможно, у&nbsp;вас нет к&nbsp;нему доступа или&nbsp;ссылка устарела."
+          title={tt("Диалог не\u00a0найден")}
+          text={tt("Возможно, у\u00a0вас нет к\u00a0нему доступа или\u00a0ссылка устарела.")}
           action={
             <Button variant="secondary" onClick={() => select(null)}>
-              К&nbsp;списку диалогов
+              {tt("К\u00a0списку диалогов")}
             </Button>
           }
         />
@@ -272,11 +273,11 @@ export function DialogsApp({ mode }: { mode: Mode }) {
       <div className={c.placeholder}>
         <EmptyState
           art={<EmptyArt scene="search" />}
-          title="Диалог недоступен"
+          title={tt("Диалог недоступен")}
           text={detailError}
           action={
             <Button variant="secondary" onClick={() => select(null)}>
-              К&nbsp;списку диалогов
+              {tt("К\u00a0списку диалогов")}
             </Button>
           }
         />
@@ -290,21 +291,21 @@ export function DialogsApp({ mode }: { mode: Mode }) {
         onChange={updateConv}
         onTitleClick={() => setDetails("top")}
         menuItems={[
-          { key: "info", icon: <Info size={17} />, label: "О\u00a0диалоге", hint: role === "client" ? "Специалист, приватность" : "Клиент, приватность", onClick: () => setDetails("top") },
-          { key: "history", icon: <History size={17} />, label: "Созвоны и\u00a0файлы", hint: "История созвонов, материалы", onClick: () => setDetails("history") },
+          { key: "info", icon: <Info size={17} />, label: tt("О\u00a0диалоге"), hint: role === "client" ? tt("Специалист, приватность") : tt("Клиент, приватность"), onClick: () => setDetails("top") },
+          { key: "history", icon: <History size={17} />, label: tt("Созвоны и\u00a0файлы"), hint: tt("История созвонов, материалы"), onClick: () => setDetails("history") },
           ...(role === "specialist"
-            ? [{ key: "notes", icon: <NotebookPen size={17} />, label: "Заметки о\u00a0клиенте", hint: "Видны только вам", onClick: () => setDetails("notes") }]
+            ? [{ key: "notes", icon: <NotebookPen size={17} />, label: tt("Заметки о\u00a0клиенте"), hint: tt("Видны только вам"), onClick: () => setDetails("notes") }]
             : []),
           {
             key: "report",
             icon: <Flag size={17} />,
-            label: "Пожаловаться",
-            hint: "Откроем чат с\u00a0поддержкой",
+            label: tt("Пожаловаться"),
+            hint: tt("Откроем чат с\u00a0поддержкой"),
             danger: true,
             onClick: () => select("support"),
           },
         ]}
-        subtitle={role === "client" ? "Психолог" : "Анонимный клиент"}
+        subtitle={role === "client" ? tt("Психолог") : tt("Анонимный клиент")}
         headerActions={infoButton}
         banner={<DialogSummary item={item} detail={detail} />}
         composerNotice={
@@ -313,8 +314,8 @@ export function DialogsApp({ mode }: { mode: Mode }) {
               <AlertCircle size={16} strokeWidth={1.8} aria-hidden />
               <span>
                 {left > 0
-                  ? `Пока специалист не\u00a0ответил, можно отправить ещё ${left} ${left === 1 ? "сообщение" : left < 5 ? "сообщения" : "сообщений"}. Опишите коротко, с\u00a0чем\u00a0хотите прийти.`
-                  : "Вы\u00a0отправили несколько сообщений\u00a0— дождитесь ответа специалиста или\u00a0назначьте созвон."}
+                  ? tt(`Пока специалист не\u00a0ответил, можно отправить ещё {left} {v}. Опишите коротко, с\u00a0чем\u00a0хотите прийти.`, { left, v: left === 1 ? tt("сообщение") : left < 5 ? tt("сообщения") : tt("сообщений") })
+                  : tt("Вы\u00a0отправили несколько сообщений\u00a0— дождитесь ответа специалиста или\u00a0назначьте созвон.")}
               </span>
             </div>
           ) : null
@@ -359,10 +360,10 @@ export function DialogsApp({ mode }: { mode: Mode }) {
                 tabIndex={-1}
                 onClick={() => setDetails(null)}
               />
-              <aside className={s.sheet} data-open={sheetOpen ? "" : undefined} aria-label="О&nbsp;диалоге" aria-hidden={!sheetOpen}>
+              <aside className={s.sheet} data-open={sheetOpen ? "" : undefined} aria-label={tt("О\u00a0диалоге")} aria-hidden={!sheetOpen}>
                 <div className={s.sheetHead}>
-                  <span className={s.sheetTitle}>О&nbsp;диалоге</span>
-                  <Button ref={sheetClose} variant="ghost" size="md" iconOnly aria-label="Закрыть" onClick={() => setDetails(null)} icon={<X size={20} />} />
+                  <span className={s.sheetTitle}>{tt("О\u00a0диалоге")}</span>
+                  <Button ref={sheetClose} variant="ghost" size="md" iconOnly aria-label={tt("Закрыть")} onClick={() => setDetails(null)} icon={<X size={20} />} />
                 </div>
                 <div className={s.sheetBody}>
                   <DialogDetails item={item} detail={isSpecialistDialog ? detail : null} focus={details ?? undefined} />
@@ -374,14 +375,14 @@ export function DialogsApp({ mode }: { mode: Mode }) {
       </div>
       {modals}
 
-      <Modal open={newOpen} onClose={() => setNewOpen(false)} title="Написать клиенту" width={460}>
+      <Modal open={newOpen} onClose={() => setNewOpen(false)} title={tt("Написать клиенту")} width={460}>
         {!contacts ? (
           <div style={{ display: "grid", gap: 10 }}>
             <Skeleton height={52} />
             <Skeleton height={52} />
           </div>
         ) : contacts.length === 0 ? (
-          <p className={s.modalText}>Когда клиент назначит с&nbsp;вами созвон, здесь можно будет начать с&nbsp;ним диалог.</p>
+          <p className={s.modalText}>{tt("Когда клиент назначит с\u00a0вами созвон, здесь можно будет начать с\u00a0ним диалог.")}</p>
         ) : (
           <div className={c.contacts}>
             {contacts.map((x) => (
@@ -396,14 +397,14 @@ export function DialogsApp({ mode }: { mode: Mode }) {
                     await loadList();
                     select(d.id);
                   } catch (e) {
-                    toast(e instanceof ApiError ? e.message : "Не\u00a0получилось начать диалог", { error: true });
+                    toast(e instanceof ApiError ? e.message : tt("Не\u00a0получилось начать диалог"), { error: true });
                   }
                 }}
               >
                 <ConvAvatar who={{ type: x.type, name: x.name, avatar_config: x.avatar_config }} size={42} />
                 <span className={c.itemBody}>
                   <span className={c.itemName}>{x.name}</span>
-                  <span className={c.itemPreview}>Анонимный клиент</span>
+                  <span className={c.itemPreview}>{tt("Анонимный клиент")}</span>
                 </span>
               </button>
             ))}
@@ -430,31 +431,31 @@ function Placeholder({ mode }: { mode: Mode }) {
   return (
     <div className={c.placeholder}>
       <ChatBubbles className={art.placeholderArt} />
-      <h2 className={c.placeholderTitle}>Переписка и&nbsp;созвоны в&nbsp;одном месте</h2>
+      <h2 className={c.placeholderTitle}>{tt("Переписка и\u00a0созвоны в\u00a0одном месте")}</h2>
       <p className={c.placeholderText}>
         {mode === "client"
-          ? "Выберите диалог слева. С\u00a0каждым специалистом у\u00a0вас один диалог:"
-          : "Выберите диалог слева. С\u00a0каждым клиентом у\u00a0вас один диалог:"}
+          ? tt("Выберите диалог слева. С\u00a0каждым специалистом у\u00a0вас один диалог:")
+          : tt("Выберите диалог слева. С\u00a0каждым клиентом у\u00a0вас один диалог:")}
       </p>
       <ul className={c.features}>
         <li>
           <CalendarPlus size={18} />{" "}
-          {mode === "client" ? "Созвоны назначаются прямо в\u00a0диалоге по\u00a0расписанию специалиста" : "Предлагайте клиенту время созвона прямо в\u00a0диалоге"}
+          {mode === "client" ? tt("Созвоны назначаются прямо в\u00a0диалоге по\u00a0расписанию специалиста") : tt("Предлагайте клиенту время созвона прямо в\u00a0диалоге")}
         </li>
         <li>
-          <Video size={18} /> Когда созвон начнётся, в&nbsp;диалоге появится кнопка «Присоединиться»
+          <Video size={18} />{" "}{tt("Когда созвон начнётся, в\u00a0диалоге появится кнопка «Присоединиться»")}
         </li>
         <li>
-          <Lock size={18} /> Сообщения и&nbsp;файлы хранятся в&nbsp;зашифрованном виде
+          <Lock size={18} />{" "}{tt("Сообщения и\u00a0файлы хранятся в\u00a0зашифрованном виде")}
         </li>
         <li>
-          <Timer size={18} /> Исчезающие сообщения: новые исчезают сами через 1&nbsp;час или&nbsp;1&nbsp;день
+          <Timer size={18} />{" "}{tt("Исчезающие сообщения: новые исчезают сами через 1\u00a0час или\u00a01\u00a0день")}
         </li>
         <li>
-          <Mic size={18} /> Голосовые можно записать с&nbsp;маской голоса
+          <Mic size={18} />{" "}{tt("Голосовые можно записать с\u00a0маской голоса")}
         </li>
         <li>
-          <EyeOff size={18} /> Сотрудники платформы не&nbsp;читают диалоги клиентов и&nbsp;специалистов
+          <EyeOff size={18} />{" "}{tt("Сотрудники платформы не\u00a0читают диалоги клиентов и\u00a0специалистов")}
         </li>
       </ul>
     </div>

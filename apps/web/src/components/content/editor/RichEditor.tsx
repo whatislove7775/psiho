@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { BubbleMenu, EditorContent, FloatingMenu, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -42,14 +43,14 @@ type Block = { key: string; label: string; hint?: string; icon: ReactNode; run: 
 
 function blocks(pickImage: () => void): Block[] {
   return [
-    { key: "h2", label: "Подзаголовок", hint: "##", icon: <Heading2 size={18} />, run: (ed) => ed.chain().focus().setNode("heading", { level: 2 }).run() },
-    { key: "h3", label: "Подзаголовок поменьше", hint: "###", icon: <Heading3 size={18} />, run: (ed) => ed.chain().focus().setNode("heading", { level: 3 }).run() },
-    { key: "ul", label: "Список", hint: "-", icon: <List size={18} />, run: (ed) => ed.chain().focus().toggleBulletList().run() },
-    { key: "ol", label: "Нумерованный список", hint: "1.", icon: <ListOrdered size={18} />, run: (ed) => ed.chain().focus().toggleOrderedList().run() },
-    { key: "quote", label: "Цитата", hint: ">", icon: <Quote size={18} />, run: (ed) => ed.chain().focus().toggleBlockquote().run() },
-    { key: "callout", label: "Врезка", icon: <Lightbulb size={18} />, run: (ed) => ed.chain().focus().toggleCallout().run() },
-    { key: "hr", label: "Разделитель", hint: "---", icon: <Minus size={18} />, run: (ed) => ed.chain().focus().setHorizontalRule().run() },
-    { key: "image", label: "Картинка", icon: <ImagePlus size={18} />, run: () => pickImage() },
+    { key: "h2", label: tt("Подзаголовок"), hint: "##", icon: <Heading2 size={18} />, run: (ed) => ed.chain().focus().setNode("heading", { level: 2 }).run() },
+    { key: "h3", label: tt("Подзаголовок поменьше"), hint: "###", icon: <Heading3 size={18} />, run: (ed) => ed.chain().focus().setNode("heading", { level: 3 }).run() },
+    { key: "ul", label: tt("Список"), hint: "-", icon: <List size={18} />, run: (ed) => ed.chain().focus().toggleBulletList().run() },
+    { key: "ol", label: tt("Нумерованный список"), hint: "1.", icon: <ListOrdered size={18} />, run: (ed) => ed.chain().focus().toggleOrderedList().run() },
+    { key: "quote", label: tt("Цитата"), hint: ">", icon: <Quote size={18} />, run: (ed) => ed.chain().focus().toggleBlockquote().run() },
+    { key: "callout", label: tt("Врезка"), icon: <Lightbulb size={18} />, run: (ed) => ed.chain().focus().toggleCallout().run() },
+    { key: "hr", label: tt("Разделитель"), hint: "---", icon: <Minus size={18} />, run: (ed) => ed.chain().focus().setHorizontalRule().run() },
+    { key: "image", label: tt("Картинка"), icon: <ImagePlus size={18} />, run: () => pickImage() },
   ];
 }
 
@@ -80,7 +81,7 @@ export function RichEditor({
   onWords,
   onError,
   editable = true,
-  label = "Текст статьи",
+  label = tt("Текст статьи"),
 }: {
   value: string;
   onChange: (html: string) => void;
@@ -102,7 +103,7 @@ export function RichEditor({
   const upload = async (files: File[], pos?: number) => {
     const ok = files.filter((f) => /^image\/(jpeg|png|webp)$/.test(f.type));
     if (!ok.length) {
-      if (files.length) cb.current.onError?.("Подойдёт JPG, PNG или WebP.");
+      if (files.length) cb.current.onError?.(tt("Подойдёт JPG, PNG или WebP."));
       return;
     }
     setUploading((n) => n + ok.length);
@@ -113,7 +114,7 @@ export function RichEditor({
         if (ed && !ed.isDestroyed) ed.chain().focus().insertFigure({ src: img.url }, pos).run();
         pos = undefined;
       } catch (err) {
-        cb.current.onError?.(err instanceof ApiError ? err.message : "Не получилось загрузить картинку.");
+        cb.current.onError?.(err instanceof ApiError ? err.message : tt("Не получилось загрузить картинку."));
       } finally {
         setUploading((n) => n - 1);
       }
@@ -141,10 +142,10 @@ export function RichEditor({
       Placeholder.configure({
         placeholder: ({ node, editor: ed }) =>
           node.type.name === "heading"
-            ? "Подзаголовок"
+            ? tt("Подзаголовок")
             : ed.isEmpty
-              ? "Начните писать. Выделите текст, чтобы оформить, или нажмите «+» на пустой строке"
-              : "Пишите дальше или нажмите «/»",
+              ? tt("Начните писать. Выделите текст, чтобы оформить, или нажмите «+» на пустой строке")
+              : tt("Пишите дальше или нажмите «/»"),
       }),
       Figure,
       Callout,
@@ -235,7 +236,7 @@ export function RichEditor({
   };
 
   const blockMenu = (
-    <div className={e.blockMenu} role="menu" aria-label="Вставить блок">
+    <div className={e.blockMenu} role="menu" aria-label={tt("Вставить блок")}>
       {items.map((b, i) => (
         <button
           key={b.key}
@@ -271,26 +272,26 @@ export function RichEditor({
 
   const tools = editor && (
     <>
-      {mark("bold", "Жирный (⌘B)", <Bold size={17} />, () => editor.chain().focus().toggleBold().run())}
-      {mark("italic", "Курсив (⌘I)", <Italic size={17} />, () => editor.chain().focus().toggleItalic().run())}
-      {mark("link", "Ссылка (⌘K)", <Link2 size={17} />, () => setLinkMode(true))}
+      {mark("bold", tt("Жирный (⌘B)"), <Bold size={17} />, () => editor.chain().focus().toggleBold().run())}
+      {mark("italic", tt("Курсив (⌘I)"), <Italic size={17} />, () => editor.chain().focus().toggleItalic().run())}
+      {mark("link", tt("Ссылка (⌘K)"), <Link2 size={17} />, () => setLinkMode(true))}
       <span className={e.sep} aria-hidden />
-      {mark("heading", "Подзаголовок", <Heading2 size={17} />, () => editor.chain().focus().toggleHeading({ level: 2 }).run(), { level: 2 })}
-      {mark("heading", "Подзаголовок поменьше", <Heading3 size={17} />, () => editor.chain().focus().toggleHeading({ level: 3 }).run(), { level: 3 })}
-      {mark("blockquote", "Цитата", <Quote size={17} />, () => editor.chain().focus().toggleBlockquote().run())}
-      {mark("bulletList", "Список", <List size={17} />, () => editor.chain().focus().toggleBulletList().run())}
-      {mark("orderedList", "Нумерованный список", <ListOrdered size={17} />, () => editor.chain().focus().toggleOrderedList().run())}
+      {mark("heading", tt("Подзаголовок"), <Heading2 size={17} />, () => editor.chain().focus().toggleHeading({ level: 2 }).run(), { level: 2 })}
+      {mark("heading", tt("Подзаголовок поменьше"), <Heading3 size={17} />, () => editor.chain().focus().toggleHeading({ level: 3 }).run(), { level: 3 })}
+      {mark("blockquote", tt("Цитата"), <Quote size={17} />, () => editor.chain().focus().toggleBlockquote().run())}
+      {mark("bulletList", tt("Список"), <List size={17} />, () => editor.chain().focus().toggleBulletList().run())}
+      {mark("orderedList", tt("Нумерованный список"), <ListOrdered size={17} />, () => editor.chain().focus().toggleOrderedList().run())}
     </>
   );
 
   return (
     <div className={e.editorWrap}>
       {editor && editable && (
-        <div className={e.mobileBar} role="toolbar" aria-label="Оформление">
+        <div className={e.mobileBar} role="toolbar" aria-label={tt("Оформление")}>
           <button
             type="button"
             className={e.tool}
-            aria-label="Вставить блок"
+            aria-label={tt("Вставить блок")}
             aria-expanded={menu.open && menu.from === "bar"}
             onMouseDown={(ev) => ev.preventDefault()}
             onClick={() => setMenu((x) => ({ open: !(x.open && x.from === "bar"), i: 0, from: "bar" }))}
@@ -310,7 +311,7 @@ export function RichEditor({
             ed.isEditable && !state.selection.empty && !(state.selection instanceof NodeSelection)
           }
         >
-          <div className={e.bubble} role="toolbar" aria-label="Оформление выделенного">
+          <div className={e.bubble} role="toolbar" aria-label={tt("Оформление выделенного")}>
             {linkMode ? <LinkInput editor={editor} onDone={() => setLinkMode(false)} /> : tools}
           </div>
         </BubbleMenu>
@@ -326,7 +327,7 @@ export function RichEditor({
             <button
               type="button"
               className={e.plus}
-              aria-label="Вставить блок"
+              aria-label={tt("Вставить блок")}
               aria-expanded={menu.open && menu.from === "plus"}
               data-open={(menu.open && menu.from === "plus") || undefined}
               onMouseDown={(ev) => ev.preventDefault()}
@@ -344,7 +345,7 @@ export function RichEditor({
 
       {uploading > 0 && (
         <p className={e.uploading} role="status">
-          <Loader2 size={15} className={e.spin} aria-hidden /> Загружаю картинку…
+          <Loader2 size={15} className={e.spin} aria-hidden />{" "}{tt("Загружаю картинку…")}
         </p>
       )}
       <input
@@ -390,11 +391,11 @@ function LinkInput({ editor, onDone }: { editor: Editor; onDone: () => void }) {
             onDone();
           }
         }}
-        placeholder="Вставьте ссылку"
-        aria-label="Адрес ссылки"
+        placeholder={tt("Вставьте ссылку")}
+        aria-label={tt("Адрес ссылки")}
         inputMode="url"
       />
-      <button type="submit">{v.trim() ? "Готово" : "Убрать"}</button>
+      <button type="submit">{v.trim() ? tt("Готово") : tt("Убрать")}</button>
     </form>
   );
 }

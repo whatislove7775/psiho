@@ -154,3 +154,12 @@
     display: none;
   }
 }
+
+/* Language + country (settings → «Это устройство») */
+.settingSelects {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  padding: var(--s-3) 0;
+  border-top: 1px solid var(--c-line);
+}

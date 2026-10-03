@@ -3,6 +3,7 @@
  * Answers are never stored on the server; the browser keeps them locally so a person can come back
  * (and so a public visitor's answers survive «Начать анонимно»). See docs/API.md «Подбор по анкете».
  */
+import { t } from "@/lib/i18n";
 import { api } from "./client";
 import type { PsychologistPublic } from "./types";
 
@@ -41,46 +42,46 @@ export const EMPTY_ANSWERS: MatchAnswers = {
 };
 
 export const TOPICS: { value: TopicKey; label: string }[] = [
-  { value: "anxiety", label: "Тревога" },
-  { value: "burnout", label: "Выгорание" },
-  { value: "relationships", label: "Отношения" },
-  { value: "self_esteem", label: "Самооценка" },
-  { value: "grief", label: "Горе и\u00a0утрата" },
-  { value: "depression", label: "Апатия и\u00a0депрессия" },
-  { value: "panic", label: "Панические атаки" },
-  { value: "sleep", label: "Сон" },
-  { value: "anger", label: "Гнев и\u00a0раздражение" },
-  { value: "loneliness", label: "Одиночество" },
-  { value: "family", label: "Семья и\u00a0дети" },
-  { value: "crisis", label: "Кризис, перемены" },
-  { value: "addiction", label: "Зависимости" },
+  { value: "anxiety", get label() { return t("Тревога"); } },
+  { value: "burnout", get label() { return t("Выгорание"); } },
+  { value: "relationships", get label() { return t("Отношения"); } },
+  { value: "self_esteem", get label() { return t("Самооценка"); } },
+  { value: "grief", get label() { return t("Горе и\u00a0утрата"); } },
+  { value: "depression", get label() { return t("Апатия и\u00a0депрессия"); } },
+  { value: "panic", get label() { return t("Панические атаки"); } },
+  { value: "sleep", get label() { return t("Сон"); } },
+  { value: "anger", get label() { return t("Гнев и\u00a0раздражение"); } },
+  { value: "loneliness", get label() { return t("Одиночество"); } },
+  { value: "family", get label() { return t("Семья и\u00a0дети"); } },
+  { value: "crisis", get label() { return t("Кризис, перемены"); } },
+  { value: "addiction", get label() { return t("Зависимости"); } },
 ];
 
 export const DURATIONS: { value: DurationKey; label: string }[] = [
-  { value: "weeks", label: "Несколько недель" },
-  { value: "months", label: "Несколько месяцев" },
-  { value: "year", label: "Больше года" },
+  { value: "weeks", get label() { return t("Несколько недель"); } },
+  { value: "months", get label() { return t("Несколько месяцев"); } },
+  { value: "year", get label() { return t("Больше года"); } },
 ];
 export const INTENSITY: { value: IntensityKey; label: string }[] = [
-  { value: "mild", label: "Немного мешает" },
-  { value: "notable", label: "Заметно мешает жить" },
-  { value: "heavy", label: "Очень тяжело" },
+  { value: "mild", get label() { return t("Немного мешает"); } },
+  { value: "notable", get label() { return t("Заметно мешает жить"); } },
+  { value: "heavy", get label() { return t("Очень тяжело"); } },
 ];
 export const SAFETY: { value: SafetyKey; label: string }[] = [
-  { value: "no", label: "Нет" },
-  { value: "sometimes", label: "Иногда бывают" },
-  { value: "now", label: "Да, сейчас" },
+  { value: "no", get label() { return t("Нет"); } },
+  { value: "sometimes", get label() { return t("Иногда бывают"); } },
+  { value: "now", get label() { return t("Да, сейчас"); } },
 ];
 export const STYLES: { value: StyleKey; label: string; hint: string }[] = [
-  { value: "support", label: "Поддержка и\u00a0разговор", hint: "Выговориться, почувствовать, что\u00a0вас слышат и\u00a0не\u00a0оценивают" },
-  { value: "techniques", label: "Конкретные техники и\u00a0задания", hint: "Понятные упражнения между встречами: КПТ, ACT и\u00a0похожие подходы" },
-  { value: "depth", label: "Глубокая работа с\u00a0причинами", hint: "Разобраться, откуда это\u00a0берётся: прошлый опыт, повторяющиеся сценарии" },
+  { value: "support", get label() { return t("Поддержка и\u00a0разговор"); }, get hint() { return t("Выговориться, почувствовать, что\u00a0вас слышат и\u00a0не\u00a0оценивают"); } },
+  { value: "techniques", get label() { return t("Конкретные техники и\u00a0задания"); }, get hint() { return t("Понятные упражнения между встречами: КПТ, ACT и\u00a0похожие подходы"); } },
+  { value: "depth", get label() { return t("Глубокая работа с\u00a0причинами"); }, get hint() { return t("Разобраться, откуда это\u00a0берётся: прошлый опыт, повторяющиеся сценарии"); } },
 ];
 export const TIMES: { value: TimeKey; label: string; hint: string }[] = [
-  { value: "morning", label: "Утро", hint: "6–12" },
-  { value: "day", label: "День", hint: "12–18" },
-  { value: "evening", label: "Вечер", hint: "после 18" },
-  { value: "weekend", label: "Выходные", hint: "сб\u00a0и\u00a0вс" },
+  { value: "morning", get label() { return t("Утро"); }, hint: "6–12" },
+  { value: "day", get label() { return t("День"); }, hint: "12–18" },
+  { value: "evening", get label() { return t("Вечер"); }, get hint() { return t("после 18"); } },
+  { value: "weekend", get label() { return t("Выходные"); }, get hint() { return t("сб\u00a0и\u00a0вс"); } },
 ];
 export const BUDGETS = [2000, 3000, 4000, 5000];
 

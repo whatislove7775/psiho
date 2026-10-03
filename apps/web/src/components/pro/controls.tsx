@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import { useState, type KeyboardEvent } from "react";
 import { Plus, RotateCw, X } from "lucide-react";
 import { Button, Input } from "@/ui";
@@ -69,7 +70,7 @@ export function ChipsField({
           {value.map((t) => (
             <span key={t} className={s.chip}>
               {t}
-              <button type="button" aria-label={`Убрать «${t}»`} onClick={() => remove(t)}>
+              <button type="button" aria-label={tt(`Убрать «{t}»`, { t })} onClick={() => remove(t)}>
                 <X size={14} />
               </button>
             </span>
@@ -82,7 +83,7 @@ export function ChipsField({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKey}
-          placeholder={value.length >= max ? `Можно указать до\u00a0${max}` : placeholder}
+          placeholder={value.length >= max ? tt(`Можно указать до\u00a0{max}`, { max }) : placeholder}
           disabled={value.length >= max}
           maxLength={40}
         />
@@ -99,7 +100,7 @@ export function ChipsField({
         </Button>
       </div>
       {rest.length > 0 && value.length < max && (
-        <div className={s.chips} aria-label="Подсказки">
+        <div className={s.chips} aria-label={tt("Подсказки")}>
           {rest.map((t) => (
             <button key={t} type="button" className={s.suggest} onClick={() => add(t)}>
               <Plus size={14} aria-hidden />
@@ -117,7 +118,7 @@ export function LoadError({ text, onRetry }: { text: string; onRetry: () => void
     <div className={s.errorBox} role="alert">
       <span>{text}</span>
       <Button size="sm" variant="secondary" icon={<RotateCw size={16} />} onClick={onRetry}>
-        Повторить
+        {tt("Повторить")}
       </Button>
     </div>
   );

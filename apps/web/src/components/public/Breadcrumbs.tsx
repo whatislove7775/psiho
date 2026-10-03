@@ -1,7 +1,9 @@
+import { t } from "@/lib/i18n";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { breadcrumbLd } from "@/lib/seo";
 import { JsonLd } from "./JsonLd";
+import { lp } from "@/lib/i18n";
 import s from "./public.module.css";
 
 export interface Crumb {
@@ -10,10 +12,12 @@ export interface Crumb {
 }
 
 /** Visible breadcrumb trail + BreadcrumbList JSON-LD. The last item is the current page. */
-export function Breadcrumbs({ items }: { items: Crumb[] }) {
+export function Breadcrumbs({ items: raw }: { items: Crumb[] }) {
+  // Links stay in the page language (/en/…)
+  const items = raw.map((it) => ({ ...it, href: lp(it.href) }));
   return (
     <>
-      <nav aria-label="Навигационная цепочка" className={s.crumbs}>
+      <nav aria-label={t("Навигационная цепочка")} className={s.crumbs}>
         <ol>
           {items.map((it, i) => {
             const last = i === items.length - 1;

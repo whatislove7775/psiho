@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Camera, RotateCcw } from "lucide-react";
 import { Button } from "@/ui";
@@ -116,11 +117,11 @@ export function CameraCapture({
         <Camera size={28} strokeWidth={1.6} aria-hidden />
         <p>
           {phase === "denied"
-            ? "Нет доступа к\u00a0камере. Разрешите его в\u00a0настройках браузера для\u00a0этого сайта и\u00a0попробуйте снова."
-            : "Камера не\u00a0найдена или\u00a0занята другим приложением."}
+            ? tt("Нет доступа к\u00a0камере. Разрешите его в\u00a0настройках браузера для\u00a0этого сайта и\u00a0попробуйте снова.")
+            : tt("Камера не\u00a0найдена или\u00a0занята другим приложением.")}
         </p>
         <Button type="button" variant="secondary" size="sm" onClick={onCancel}>
-          Закрыть
+          {tt("Закрыть")}
         </Button>
       </div>
     );
@@ -141,14 +142,14 @@ export function CameraCapture({
                   <i key={i} data-on={i <= step || undefined} />
                 ))}
               </span>
-              Шаг {step + 1} из {steps.length}
+              {tt("Шаг")}{" "}{step + 1}{" "}{tt("из")}{" "}{steps.length}
             </span>
           )}
-          <p className={s.camHint}>{phase === "live" ? cur.hint : "Включаем камеру…"}</p>
+          <p className={s.camHint}>{phase === "live" ? cur.hint : tt("Включаем камеру…")}</p>
         </div>
       )}
       <div className={s.camView} data-mask={mask} data-flash={flash || undefined}>
-        <video ref={video} playsInline muted autoPlay aria-label="Камера" />
+        <video ref={video} playsInline muted autoPlay aria-label={tt("Камера")} />
         <svg className={s.camGuide} viewBox="0 0 300 400" preserveAspectRatio="xMidYMid slice" aria-hidden>
           <defs>
             <mask id={`cam-${mask}`}>
@@ -160,14 +161,14 @@ export function CameraCapture({
           <ellipse {...guide} fill="none" stroke="white" strokeOpacity="0.9" strokeWidth="2" strokeDasharray={mask === "oval" ? "6 6" : undefined} />
         </svg>
         {count !== null && count > 0 && (
-          <span key={count} className={s.camCount} role="timer" aria-label={`Снимок через ${count}`}>
+          <span key={count} className={s.camCount} role="timer" aria-label={tt(`Снимок через {count}`, { count })}>
             {count}
           </span>
         )}
       </div>
       <div className={s.camActions}>
         <Button type="button" variant="ghost" onClick={onCancel}>
-          Отмена
+          {tt("Отмена")}
         </Button>
         {steps.length > 1 && step > 0 && (
           <Button type="button"
@@ -178,12 +179,12 @@ export function CameraCapture({
               setStep(0);
             }}
           >
-            Сначала
+            {tt("Сначала")}
           </Button>
         )}
         {!cur?.countdown && (
           <Button type="button" variant="primary" icon={<Camera size={18} />} onClick={shoot} disabled={phase !== "live"}>
-            Снять
+            {tt("Снять")}
           </Button>
         )}
       </div>

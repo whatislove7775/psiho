@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import type { ReactNode } from "react";
 import { AlertCircle, CalendarDays, Clock } from "lucide-react";
 import { Badge, Button } from "@/ui";
@@ -12,7 +13,7 @@ import s from "./client.module.css";
 export function ErrorBlock({
   message,
   onRetry,
-  title = "Не\u00a0получилось загрузить",
+  title = t("Не\u00a0получилось загрузить"),
 }: {
   message: string;
   onRetry?: () => void;
@@ -27,7 +28,7 @@ export function ErrorBlock({
       </div>
       {onRetry && (
         <Button size="sm" variant="secondary" onClick={onRetry}>
-          Повторить
+          {t("Повторить")}
         </Button>
       )}
     </div>
@@ -57,7 +58,7 @@ export function SessionRow({
           </span>
           <span>
             <Clock size={14} strokeWidth={1.8} aria-hidden />
-            {session.duration_minutes} минут
+            {session.duration_minutes}{" "}{t("минут")}
           </span>
         </div>
       </div>

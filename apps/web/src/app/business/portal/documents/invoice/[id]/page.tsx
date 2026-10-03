@@ -1,5 +1,6 @@
 "use client";
 
+import { t, tj } from "@/lib/i18n";
 import { Skeleton } from "@/ui";
 import { useLoad } from "@/components/client/useLoad";
 import { ErrorBlock } from "@/components/client/ClientBits";
@@ -13,48 +14,48 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
   if (docs.error) return <ErrorBlock message={docs.error} onRetry={docs.reload} />;
   if (!docs.data) return <Skeleton height={480} radius={22} />;
   const inv = docs.data.invoices.find((i) => i.id === params.id);
-  if (!inv) return <ErrorBlock message="Счёт не&nbsp;найден." onRetry={docs.reload} />;
+  if (!inv) return <ErrorBlock message={t("Счёт не\u00a0найден.")} onRetry={docs.reload} />;
   const c = docs.data.company;
   const req = docs.data.requisites;
   return (
     <Paper>
-      <h2>Счёт на&nbsp;оплату № {inv.number}</h2>
-      <div>от {dateRu(inv.created_at, { day: "numeric", month: "long", year: "numeric" })}</div>
+      <h2>{tj("Счёт на\u00a0оплату № {number}", { number: inv.number })}</h2>
+      <div>{tj("от {dateRu}", { dateRu: dateRu(inv.created_at, { day: "numeric", month: "long", year: "numeric" }) })}</div>
       <div className={s.paperMeta}>
-        <span>Исполнитель</span>
+        <span>{t("Исполнитель")}</span>
         <span>
-          {req.name}, ИНН {req.inn}
+          {tj("{name}, ИНН {inn}", { name: req.name, inn: req.inn })}
         </span>
-        <span>Заказчик</span>
+        <span>{t("Заказчик")}</span>
         <span>
           {c.legal_name || c.name}
-          {c.inn ? `, ИНН ${c.inn}` : ""}
+          {c.inn ? t(`, ИНН {inn}`, { inn: c.inn }) : ""}
         </span>
-        <span>Основание</span>
-        <span>{c.contract_number ? `Договор № ${c.contract_number}` : "Договор (заглушка)"}</span>
+        <span>{t("Основание")}</span>
+        <span>{c.contract_number ? t(`Договор № {contract_number}`, { contract_number: c.contract_number }) : t("Договор (заглушка)")}</span>
       </div>
       <table>
         <thead>
           <tr>
             <th>№</th>
-            <th>Наименование</th>
-            <th className={s.num}>Сумма</th>
+            <th>{t("Наименование")}</th>
+            <th className={s.num}>{t("Сумма")}</th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <td>1</td>
-            <td>Предоплата программы психологической поддержки сотрудников (пополнение бюджета)</td>
+            <td>{t("Предоплата программы психологической поддержки сотрудников (пополнение бюджета)")}</td>
             <td className={s.num}>{rubK(inv.amount_kopecks, { cents: true })}</td>
           </tr>
         </tbody>
       </table>
       <div>
-        <strong>Итого: {rubK(inv.amount_kopecks, { cents: true })}</strong>, без&nbsp;НДС (заглушка).
+        <strong>{tj("Итого: {rubK}", { rubK: rubK(inv.amount_kopecks, { cents: true }) })}</strong>{t(", без\u00a0НДС (заглушка).")}
       </div>
-      <div>Статус: {inv.status_label.toLowerCase()}</div>
+      <div>{tj("Статус: {v}", { v: inv.status_label.toLowerCase() })}</div>
       <div className={s.paperStamp}>
-        Образец. Реквизиты, банковские данные и&nbsp;подпись появятся после оформления юрлица. Документ сформирован автоматически.
+        {t("Образец. Реквизиты, банковские данные и\u00a0подпись появятся после оформления юрлица. Документ сформирован автоматически.")}
       </div>
     </Paper>
   );

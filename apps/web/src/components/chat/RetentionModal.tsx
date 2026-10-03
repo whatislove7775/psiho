@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { Hourglass, Infinity as InfinityIcon, Timer } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button, Modal } from "@/ui";
@@ -9,20 +10,20 @@ import s from "./chat.module.css";
 const OPTIONS: { value: Retention; title: string; text: string; icon: typeof Timer }[] = [
   {
     value: "forever",
-    title: "Выкл\u00a0— хранить всегда",
-    text: "Сообщения хранятся, пока вы\u00a0или\u00a0собеседник их\u00a0не\u00a0удалите. Удобно возвращаться к\u00a0договорённостям и\u00a0материалам.",
+    get title() { return t("Выкл\u00a0— хранить всегда"); },
+    get text() { return t("Сообщения хранятся, пока вы\u00a0или\u00a0собеседник их\u00a0не\u00a0удалите. Удобно возвращаться к\u00a0договорённостям и\u00a0материалам."); },
     icon: InfinityIcon,
   },
   {
     value: "24h",
-    title: "1\u00a0день",
-    text: "Каждое новое сообщение, голосовое и\u00a0файл исчезают у\u00a0обоих через сутки после отправки.",
+    get title() { return t("1\u00a0день"); },
+    get text() { return t("Каждое новое сообщение, голосовое и\u00a0файл исчезают у\u00a0обоих через сутки после отправки."); },
     icon: Timer,
   },
   {
     value: "1h",
-    title: "1\u00a0час",
-    text: "Новые сообщения исчезают у\u00a0обоих через час после отправки. Для\u00a0самых личных разговоров.",
+    get title() { return t("1\u00a0час"); },
+    get text() { return t("Новые сообщения исчезают у\u00a0обоих через час после отправки. Для\u00a0самых личных разговоров."); },
     icon: Hourglass,
   },
 ];
@@ -42,11 +43,11 @@ export function RetentionModal({
   useEffect(() => {
     if (open) setValue(conv.retention);
   }, [open, conv.retention]);
-  const who = conv.kind === "specialist_support" ? "специалист" : "клиент";
+  const who = conv.kind === "specialist_support" ? t("специалист") : t("клиент");
 
   return (
-    <Modal open={open} onClose={onClose} title="Исчезающие сообщения" width={480}>
-      <div className={s.retOptions} role="radiogroup" aria-label="Исчезающие сообщения">
+    <Modal open={open} onClose={onClose} title={t("Исчезающие сообщения")} width={480}>
+      <div className={s.retOptions} role="radiogroup" aria-label={t("Исчезающие сообщения")}>
         {OPTIONS.map((o) => {
           const Icon = o.icon;
           const active = value === o.value;
@@ -66,7 +67,7 @@ export function RetentionModal({
               <span>
                 <span className={s.retTitle}>
                   {o.title}
-                  {conv.retention === o.value && <span className={s.retNow}>сейчас</span>}
+                  {conv.retention === o.value && <span className={s.retNow}>{t("сейчас")}</span>}
                 </span>
                 <span className={s.retText}>{o.text}</span>
               </span>
@@ -76,17 +77,17 @@ export function RetentionModal({
       </div>
       <p className={s.modalNote}>
         {conv.can_change_retention
-          ? "Режим действует для\u00a0новых сообщений\u00a0— уже отправленные не\u00a0меняются. Собеседник увидит в\u00a0чате отметку о\u00a0смене."
-          : `Этот режим выбирает ${who}. Если нужно, попросите его поменять.`}{" "}
-        Любое своё сообщение можно удалить у&nbsp;всех в&nbsp;любой момент.
+          ? t("Режим действует для\u00a0новых сообщений\u00a0— уже отправленные не\u00a0меняются. Собеседник увидит в\u00a0чате отметку о\u00a0смене.")
+          : t(`Этот режим выбирает {who}. Если нужно, попросите его поменять.`, { who })}{" "}
+        {t("Любое своё сообщение можно удалить у\u00a0всех в\u00a0любой момент.")}
       </p>
       <div className={s.modalActions}>
         <Button variant="ghost" onClick={onClose}>
-          {conv.can_change_retention ? "Отмена" : "Понятно"}
+          {conv.can_change_retention ? t("Отмена") : t("Понятно")}
         </Button>
         {conv.can_change_retention && (
           <Button variant="primary" onClick={() => onSave(value)} disabled={value === conv.retention}>
-            Сохранить
+            {t("Сохранить")}
           </Button>
         )}
       </div>

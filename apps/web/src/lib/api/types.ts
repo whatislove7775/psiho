@@ -38,6 +38,10 @@ export interface PsychologistPublic {
   age?: number | null;
   /** ISO date: profile approval (or sign-up) — «На Aprosop 3 мес.» */
   on_service_since?: string | null;
+  /** S2: countries whose clients the specialist accepts (lib/i18n/countries.ts codes; empty — not set) */
+  serves_countries?: string[];
+  /** S2: where the specialist is licensed / allowed to practise — free text, not verified by the service */
+  licensure?: string;
 }
 
 export interface PsychologistPrivate extends PsychologistPublic {

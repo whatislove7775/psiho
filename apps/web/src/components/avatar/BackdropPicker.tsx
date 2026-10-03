@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useEffect } from "react";
 import { Check } from "lucide-react";
 import { BACKDROP_GROUPS, PHOTO_BACKDROPS, preloadBackdrop, type BackdropId } from "@/lib/avatar/backdrops";
@@ -30,7 +31,7 @@ export function BackdropPicker({
           <div className={s.row} role="radiogroup" aria-labelledby={`bd-${group.label}`}>
             {group.items.map((b) => {
               const on = b.id === value;
-              const title = b.credit ? `${b.label} · фото: ${b.credit}` : b.label;
+              const title = b.credit ? t(`{label} · фото: {credit}`, { label: b.label, credit: b.credit }) : b.label;
               return (
                 <button
                   key={b.id}
@@ -54,7 +55,7 @@ export function BackdropPicker({
       ))}
       {PHOTO_BACKDROPS.length > 0 && (
         <a className={s.credit} href="/backdrops/CREDITS.txt" target="_blank" rel="noopener">
-          Фото пейзажей: Unsplash и&nbsp;Pexels, авторы
+          {t("Фото пейзажей: Unsplash и\u00a0Pexels, авторы")}
         </a>
       )}
     </div>

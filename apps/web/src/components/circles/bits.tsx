@@ -1,6 +1,7 @@
 "use client";
 
 /** Shared pieces of «Круги»: circle card, topic chips, seats meter, the anonymity banner, decorative ring. */
+import { t as tt } from "@/lib/i18n";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { CalendarDays, Clock, Repeat } from "lucide-react";
@@ -29,9 +30,9 @@ export function toneClass(tone: string | undefined): string {
 export const topicClass = (t: CircleTopic) => toneClass(TOPIC_TONE[t]);
 
 export function meetingsLine(c: Pick<CircleCard, "format" | "meetings_count" | "meeting_minutes">): string {
-  const dur = `${c.meeting_minutes} мин`;
-  if (c.format === "single") return `Одна встреча, ${dur}`;
-  return `${c.meetings_count} ${plural(c.meetings_count, "встреча", "встречи", "встреч")} раз в\u00a0неделю, ${dur}`;
+  const dur = tt(`{meeting_minutes} мин`, { meeting_minutes: c.meeting_minutes });
+  if (c.format === "single") return tt(`Одна встреча, {dur}`, { dur });
+  return tt(`{meetings_count} {plural} раз в\u00a0неделю, {dur}`, { meetings_count: c.meetings_count, plural: plural(c.meetings_count, "встреча", "встречи", "встреч"), dur });
 }
 
 /** Decorative ring of «seats» (avatars as soft dots) for card tops. */
@@ -62,10 +63,10 @@ export function SeatsMeter({ capacity, taken, compact }: { capacity: number; tak
       </span>
       <span className={left === 0 ? s.seatsFull : undefined}>
         {left === 0
-          ? "Мест нет, можно в\u00a0лист ожидания"
+          ? tt("Мест нет, можно в\u00a0лист ожидания")
           : compact
             ? `${left} ${plural(left, "место", "места", "мест")}`
-            : `Свободно ${left} ${plural(left, "место", "места", "мест")} из\u00a0${capacity}`}
+            : tt(`Свободно {left} {plural} из\u00a0{capacity}`, { left, plural: plural(left, "место", "места", "мест"), capacity })}
       </span>
     </div>
   );
@@ -88,7 +89,7 @@ export function CircleCardView({ c, href }: { c: CircleCard; href?: string }) {
         <div className={s.metaRow}>
           {when && (
             <span>
-              <CalendarDays size={15} /> {c.status === "running" ? "Следующая" : "Старт"} {dayShort(when)}, {time(when)}
+              <CalendarDays size={15} /> {c.status === "running" ? tt("Следующая") : tt("Старт")} {dayShort(when)}, {time(when)}
             </span>
           )}
           <span>
@@ -102,12 +103,12 @@ export function CircleCardView({ c, href }: { c: CircleCard; href?: string }) {
             <SpecialistPhoto url={c.host.photo_url} name={c.host.name} size={34} />
             <span style={{ minWidth: 0 }}>
               <b>{c.host.name}</b>
-              <small>Ведущий, психолог</small>
+              <small>{tt("Ведущий, психолог")}</small>
             </span>
           </div>
           <div className={s.price}>
             {rubK0(c.price_kopecks)}
-            <small>{c.billing === "series" && c.format !== "single" ? "за\u00a0весь цикл" : "за\u00a0встречу"}</small>
+            <small>{c.billing === "series" && c.format !== "single" ? tt("за\u00a0весь цикл") : tt("за\u00a0встречу")}</small>
           </div>
         </div>
       </div>
@@ -125,9 +126,9 @@ export function TopicChips({
   topics: { id: CircleTopic; label: string; count: number }[];
 }) {
   return (
-    <div className={s.chips} role="group" aria-label="Темы кругов">
+    <div className={s.chips} role="group" aria-label={tt("Темы кругов")}>
       <button type="button" className={s.chip} aria-pressed={value === ""} onClick={() => onChange("")}>
-        Все темы
+        {tt("Все темы")}
       </button>
       {topics.map((t) => (
         <button
@@ -151,11 +152,11 @@ export function AnonymityBanner({ title, children }: { title?: ReactNode; childr
   return (
     <p className={s.anon}>
       <span className={s.anonFaces} aria-hidden>
-        {["круг-лиса", "круг-сова", "круг-кит"].map((seed) => (
+        {[tt("круг-лиса"), tt("круг-сова"), tt("круг-кит")].map((seed) => (
           <AvatarThumb key={seed} config={null} seed={seed} size={26} />
         ))}
       </span>
-      <span>{children ?? title ?? "Новое имя в\u00a0каждом круге, только аватар и\u00a0маска голоса."}</span>
+      <span>{children ?? title ?? tt("Новое имя в\u00a0каждом круге, только аватар и\u00a0маска голоса.")}</span>
     </p>
   );
 }

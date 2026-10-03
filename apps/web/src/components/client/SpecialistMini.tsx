@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import Link from "next/link";
 import { CalendarClock } from "lucide-react";
 import type { PsychologistPublic } from "@/lib/api/types";
@@ -24,7 +25,7 @@ export function SpecialistMini({ p, compact }: { p: PsychologistPublic; compact?
       </span>
       <span className={s.body}>
         <span className={s.name}>{p.display_name}</span>
-        <span className={s.tags}>{p.specializations.slice(0, 2).join(", ") || p.approach || "Психолог"}</span>
+        <span className={s.tags}>{p.specializations.slice(0, 2).map((x) => t(x)).join(", ") || p.approach || t("Психолог")}</span>
         <span className={s.foot}>
           <span className={s.rate}>{rub(p.session_rate_rub)}</span>
           {p.next_slot && (

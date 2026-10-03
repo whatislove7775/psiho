@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { Paperclip } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Card, CardHead, useToast } from "@/ui";
@@ -26,19 +27,19 @@ export function ChatFilesSetting() {
       await chatApi.setSettings(v);
     } catch (e) {
       setValue(prev);
-      toast(e instanceof ApiError ? e.message : "Не\u00a0получилось сохранить", { error: true });
+      toast(e instanceof ApiError ? e.message : t("Не\u00a0получилось сохранить"), { error: true });
     }
   };
 
   return (
     <Card as="section">
       <CardHead
-        title="Принимать файлы от&nbsp;клиентов"
-        sub="Фото и&nbsp;документы&nbsp;— только после записи на&nbsp;созвон"
+        title={t("Принимать файлы от\u00a0клиентов")}
+        sub={t("Фото и\u00a0документы\u00a0— только после записи на\u00a0созвон")}
         icon={<Paperclip size={20} />}
         action={
           value === null ? undefined : (
-            <Switch checked={value} onChange={change} label="Принимать файлы от&nbsp;клиентов" />
+            <Switch checked={value} onChange={change} label={t("Принимать файлы от\u00a0клиентов")} />
           )
         }
       />

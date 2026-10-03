@@ -1,5 +1,6 @@
 "use client";
 
+import { t, tj } from "@/lib/i18n";
 import { FactsLine } from "@/components/specialists/SpecialistFacts";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
@@ -10,6 +11,7 @@ import { contentApi } from "@/lib/api/content";
 import type { PsychologistPublic } from "@/lib/api/types";
 import { dialogHref } from "@/lib/api/dialogs";
 import { rub, when } from "@/lib/format";
+import { otherLanguageLabel } from "@/lib/i18n/languages";
 import { typo } from "@/lib/typography";
 import { useLoad } from "@/components/client/useLoad";
 import { ErrorBlock } from "@/components/client/ClientBits";
@@ -24,10 +26,10 @@ import s from "./home.module.css";
 
 function greeting(d = new Date()) {
   const h = d.getHours();
-  if (h < 5) return "Доброй ночи";
-  if (h < 12) return "Доброе утро";
-  if (h < 18) return "Добрый день";
-  return "Добрый вечер";
+  if (h < 5) return t("Доброй ночи");
+  if (h < 12) return t("Доброе утро");
+  if (h < 18) return t("Добрый день");
+  return t("Добрый вечер");
 }
 
 export default function ClientHome() {
@@ -36,7 +38,7 @@ export default function ClientHome() {
   const specialists = useLoad(() => psychologistsApi.list());
   const articles = useLoad(() => contentApi.articles({ limit: 6 }));
   const practices = useLoad(() => contentApi.practices({ limit: 4 }));
-  const [hello, setHello] = useState("Здравствуйте");
+  const [hello, setHello] = useState(t("Здравствуйте"));
 
   useEffect(() => setHello(greeting()), []);
 
@@ -51,20 +53,20 @@ export default function ClientHome() {
             {user?.alias ?? ""}
           </span>
         </h1>
-        <Link href="/app/avatar" className={s.greetAvatar} aria-label="Мой аватар">
+        <Link href="/app/avatar" className={s.greetAvatar} aria-label={t("Мой аватар")}>
           <AvatarThumb config={user?.avatar_config} seed={user?.id} size={160} framing="portrait" />
         </Link>
         <div className={s.heroBody}>
           <CallsLine dialogs={dialogs} />
           <SearchTrigger variant="primary" size="lg" className={s.find} icon={<Search size={20} strokeWidth={2} />}>
-            Найти специалиста
+            {t("Найти специалиста")}
           </SearchTrigger>
         </div>
       </header>
 
       {dialogs.error && <ErrorBlock message={dialogs.error} onRetry={dialogs.reload} />}
 
-      <Section title="Специалисты" href="/app/specialists">
+      <Section title={t("Специалисты")} href="/app/specialists">
         {specialists.error ? (
           <ErrorBlock message={specialists.error} onRetry={specialists.reload} />
         ) : (
@@ -87,12 +89,12 @@ export default function ClientHome() {
       <Link href="/app/circles" className={s.entry}>
         <Users size={20} strokeWidth={1.8} aria-hidden />
         <span>
-          <strong>Круги</strong> · группы поддержки с&nbsp;психологом
+          <strong>{t("Круги")}</strong>{" "}{t("· группы поддержки с\u00a0психологом")}
         </span>
         <ChevronRight size={18} strokeWidth={2} aria-hidden />
       </Link>
 
-      <Section title="Полезное" href="/app/articles">
+      <Section title={t("Полезное")} href="/app/articles">
         <ScrollRow trackClassName={s.scroller}>
           {articles.loading && !articles.data
             ? [0, 1, 2].map((i) => <Skeleton key={i} width={260} height={72} radius={16} />)
@@ -102,8 +104,11 @@ export default function ClientHome() {
                     <TopicArt topic={a.topic} />
                   </span>
                   <span className={s.articleText}>
-                    <strong>{typo(a.title)}</strong>
-                    <span>{a.reading_minutes} мин</span>
+                    <strong lang={a.language}>{typo(a.title)}</strong>
+                    <span>
+                      {tj("{reading_minutes} мин", { reading_minutes: a.reading_minutes })}
+                      {otherLanguageLabel(a.language) ? ` · ${otherLanguageLabel(a.language)}` : ""}
+                    </span>
                   </span>
                 </Link>
               ))}
@@ -116,7 +121,7 @@ export default function ClientHome() {
                   <TopicArt topic={p.kind} />
                 </span>
                 {p.title}
-                <span className={s.practiceMin}>{p.duration_minutes} мин</span>
+                <span className={s.practiceMin}>{tj("{duration_minutes} мин", { duration_minutes: p.duration_minutes })}</span>
               </Link>
             ))}
           </div>
@@ -134,22 +139,22 @@ function CallsLine({ dialogs }: { dialogs: ReturnType<typeof useDialogsSummary> 
   if (!item || !call) {
     return (
       <p className={s.calls}>
-        Запланированные звонки: <span className={s.callsValue}>нет звонков</span>
+        {t("Запланированные звонки:")}{" "}<span className={s.callsValue}>{t("нет звонков")}</span>
       </p>
     );
   }
   const live = isLive(call);
   const w = when(call.scheduled_at);
-  const text = `${live ? "идёт сейчас" : w.charAt(0).toLowerCase() + w.slice(1)} · ${item.counterpart.name}`;
+  const text = `${live ? t("идёт сейчас") : w.charAt(0).toLowerCase() + w.slice(1)} · ${item.counterpart.name}`;
   return (
     <div className={s.callsRow}>
       <Link href={dialogHref("client", item.id)} className={s.calls}>
-        Запланированные звонки: <span className={s.callsValue}>{text}</span>
-        {call.status === "awaiting_payment" && <span className={s.callsNote}> · ждёт оплаты</span>}
+        {t("Запланированные звонки:")}{" "}<span className={s.callsValue}>{text}</span>
+        {call.status === "awaiting_payment" && <span className={s.callsNote}>{" "}{t("· ждёт оплаты")}</span>}
       </Link>
       {call.can_join && (
         <Button variant="soft" size="sm" href={`/room/${call.id}`} icon={<Video size={16} strokeWidth={1.9} />}>
-          Присоединиться
+          {t("Присоединиться")}
         </Button>
       )}
     </div>
@@ -173,7 +178,7 @@ function initials(name: string) {
 function SpecCard({ p }: { p: PsychologistPublic }) {
   const [broken, setBroken] = useState(false);
   const [a, b] = TINTS[p.id % TINTS.length];
-  const topics = p.specializations.join(", ") || p.approach || "Психолог";
+  const topics = p.specializations.map((x) => t(x)).join(", ") || p.approach || t("Психолог");
   return (
     <Link role="listitem" href={`/app/specialists/${p.id}`} className={s.spec}>
       <span className={s.specPhoto} style={{ background: `linear-gradient(160deg, ${a}, ${b})` }}>
@@ -199,8 +204,8 @@ function Section({ title, href, children }: { title: string; href: string; child
     <section className={s.section}>
       <div className={s.sectionHead}>
         <h2 className={s.sectionTitle}>{title}</h2>
-        <Link href={href} className={s.seeAll} aria-label={`${title}: все`}>
-          Все
+        <Link href={href} className={s.seeAll} aria-label={t(`{title}: все`, { title })}>
+          {t("Все")}
           <ChevronRight size={16} strokeWidth={2} aria-hidden />
         </Link>
       </div>

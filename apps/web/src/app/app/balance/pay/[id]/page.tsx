@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { ArrowLeft, CalendarDays, Clock, MessagesSquare } from "lucide-react";
@@ -43,10 +44,10 @@ export default function PayCallPage() {
     <div style={{ maxWidth: 560, width: "100%", margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
       <div>
         <Button variant="ghost" size="sm" href="/app/dialogs" icon={<ArrowLeft size={16} />}>
-          К&nbsp;диалогам
+          {tt("К\u00a0диалогам")}
         </Button>
       </div>
-      <PageHeader title={paid || c?.paid ? "Созвон оплачен" : "Оплата созвона"} />
+      <PageHeader title={paid || c?.paid ? tt("Созвон оплачен") : tt("Оплата созвона")} />
       {call.error ? (
         <ErrorBlock message={call.error} onRetry={call.reload} />
       ) : !c ? (
@@ -56,7 +57,7 @@ export default function PayCallPage() {
           <CardHead
             icon={<SpecialistPhoto url={c.specialist.photo_url} name={c.specialist.name} size={44} alt="" />}
             title={c.specialist.name}
-            sub="Видеосозвон с&nbsp;аватаром"
+            sub={tt("Видеосозвон с\u00a0аватаром")}
           />
           <div className={s.stack}>
             <div className={s.methods}>
@@ -64,13 +65,13 @@ export default function PayCallPage() {
                 <CalendarDays size={14} aria-hidden /> {dayLabel(c.scheduled_at)}
               </span>
               <span className={s.method} aria-pressed="true" style={{ cursor: "default" }}>
-                <Clock size={14} aria-hidden /> {time(c.scheduled_at)}, {c.duration_minutes} мин
+                <Clock size={14} aria-hidden /> {time(c.scheduled_at)}, {c.duration_minutes}{" "}{tt("мин")}
               </span>
             </div>
             <PayForCall key={key} sessionId={id} amountRub={c.amount_kopecks / 100} onPaid={() => setPaid(true)} />
             {(paid || c.paid) && (
               <Button variant="secondary" block href="/app/dialogs" icon={<MessagesSquare size={18} />}>
-                Вернуться в&nbsp;диалог
+                {tt("Вернуться в\u00a0диалог")}
               </Button>
             )}
           </div>

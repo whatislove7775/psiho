@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import { Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { BookOpen } from "lucide-react";
@@ -31,16 +32,16 @@ function Articles() {
 
   return (
     <>
-      <PageHeader title="Полезное" />
+      <PageHeader title={tt("Полезное")} />
       <UsefulTabs />
 
-      <div className={s.chips} role="group" aria-label="Темы статей">
+      <div className={s.chips} role="group" aria-label={tt("Темы статей")}>
         <button type="button" className={s.chip} aria-pressed={!topic && !fromPros} onClick={() => pick("")}>
-          Все
+          {tt("Все")}
         </button>
         {(pros.data?.length ?? 0) > 0 && (
           <button type="button" className={s.chip} aria-pressed={fromPros} onClick={() => pick("specialists")}>
-            От&nbsp;специалистов
+            {tt("От\u00a0специалистов")}
             <span className={s.count}>{pros.data!.length}</span>
           </button>
         )}
@@ -63,8 +64,8 @@ function Articles() {
       ) : articles.data && articles.data.length === 0 ? (
         <EmptyState art={<EmptyArt scene="moon" />}
           icon={<BookOpen size={28} strokeWidth={1.8} />}
-          title="Здесь пока пусто"
-          text="Статьи на&nbsp;эту тему скоро появятся. Загляните в&nbsp;другие разделы."
+          title={tt("Здесь пока пусто")}
+          text={tt("Статьи на\u00a0эту тему скоро появятся. Загляните в\u00a0другие разделы.")}
         />
       ) : (
         <div className={`${c.articleGrid} ${c.articleRows}`} style={{ opacity: articles.loading ? 0.6 : 1 }}>

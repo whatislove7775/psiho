@@ -35,6 +35,7 @@ urlpatterns = [
     path("api/v1/reports/", include("apps.staff.urls_reports")),
     path("api/v1/payments/", include("apps.payments.urls")),
     path("api/v1/content/", include("apps.content.urls")),
+    path("api/v1/intl/", include("apps.intl.urls")),  # S2: курсы для подсказки цены в валюте
     path("api/v1/chat/", include("apps.chat.urls")),
     path("api/v1/lab/", include("apps.lab.urls")),
     path("api/v1/billing/", include("apps.billing.urls")),

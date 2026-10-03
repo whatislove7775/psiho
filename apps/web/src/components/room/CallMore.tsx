@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { Camera, Expand, Flag, Hand, ImageIcon, Mic, NotebookPen, RefreshCw, ScanFace, Shrink, Smile, Speaker, ThumbsUp, Wind } from "lucide-react";
 import { Select } from "@/ui";
@@ -108,10 +109,10 @@ export function CallMore({
   return (
     <div className={s.more}>
       <div className={s.moreGroup}>
-        <DeviceSelect icon={<Camera size={18} />} label="Камера" kind="videoinput" devices={devices} value={choice.videoinput} onChange={(id) => onDevice("videoinput", id)} />
-        <DeviceSelect icon={<Mic size={18} />} label="Микрофон" kind="audioinput" devices={devices} value={choice.audioinput} onChange={(id) => onDevice("audioinput", id)} />
+        <DeviceSelect icon={<Camera size={18} />} label={t("Камера")} kind="videoinput" devices={devices} value={choice.videoinput} onChange={(id) => onDevice("videoinput", id)} />
+        <DeviceSelect icon={<Mic size={18} />} label={t("Микрофон")} kind="audioinput" devices={devices} value={choice.audioinput} onChange={(id) => onDevice("audioinput", id)} />
         {canPickSpeaker() && (
-          <DeviceSelect icon={<Speaker size={18} />} label="Динамик" kind="audiooutput" devices={devices} value={choice.audiooutput} onChange={(id) => onDevice("audiooutput", id)} />
+          <DeviceSelect icon={<Speaker size={18} />} label={t("Динамик")} kind="audiooutput" devices={devices} value={choice.audiooutput} onChange={(id) => onDevice("audiooutput", id)} />
         )}
       </div>
       {(onRealFace || onAmbient || !isPro) && (
@@ -119,29 +120,29 @@ export function CallMore({
           {!isPro && !realFace && (
             <button type="button" className={s.moreItem} role="switch" aria-checked={hands} onClick={() => setHands(!hands)}>
               <Hand size={18} />
-              <span className={s.moreGrow}>Показывать руки</span>
-              <span className={s.moreState}>{hands ? "Вкл" : "Выкл"}</span>
+              <span className={s.moreGrow}>{t("Показывать руки")}</span>
+              <span className={s.moreState}>{hands ? t("Вкл") : t("Выкл")}</span>
             </button>
           )}
           {!isPro && !realFace && handsAutoOff && <p className={reactionStyles.quiet}>{SLOW_NET_NOTE}</p>}
           {!isPro && !realFace && hands && (
             <button type="button" className={s.moreItem} role="switch" aria-checked={gestures} onClick={() => setGestures(!gestures)}>
               <ThumbsUp size={18} />
-              <span className={s.moreGrow}>Реакции жестами</span>
-              <span className={s.moreState}>{gestures ? "Вкл" : "Выкл"}</span>
+              <span className={s.moreGrow}>{t("Реакции жестами")}</span>
+              <span className={s.moreState}>{gestures ? t("Вкл") : t("Выкл")}</span>
             </button>
           )}
           {onRealFace && (
             <button type="button" className={s.moreItem} onClick={onRealFace}>
               {realFace ? <Smile size={18} /> : <ScanFace size={18} />}
-              {realFace ? "Вернуть аватар" : "Показать настоящее лицо"}
+              {realFace ? t("Вернуть аватар") : t("Показать настоящее лицо")}
             </button>
           )}
           {onAmbient && (
             <button type="button" className={s.moreItem} role="switch" aria-checked={!!ambient} onClick={onAmbient}>
               <ImageIcon size={18} />
-              <span className={s.moreGrow}>Размытый пейзаж на&nbsp;фоне</span>
-              <span className={s.moreState}>{ambient ? "Вкл" : "Выкл"}</span>
+              <span className={s.moreGrow}>{t("Размытый пейзаж на\u00a0фоне")}</span>
+              <span className={s.moreState}>{ambient ? t("Вкл") : t("Выкл")}</span>
             </button>
           )}
         </div>
@@ -149,27 +150,27 @@ export function CallMore({
       <div className={s.moreGroup}>
         <button type="button" className={s.moreItem} onClick={onFullscreen}>
           {fullscreen ? <Shrink size={18} /> : <Expand size={18} />}
-          {fullscreen ? "Выйти из\u00a0полноэкранного режима" : "На\u00a0весь экран"}
+          {fullscreen ? t("Выйти из\u00a0полноэкранного режима") : t("На\u00a0весь экран")}
         </button>
         {!isPro && onRecalibrate && (
           <button type="button" className={s.moreItem} onClick={onRecalibrate} disabled={recalibrating}>
             <RefreshCw size={18} />
-            {recalibrating ? "Запоминаем спокойное лицо…" : "Откалибровать мимику"}
+            {recalibrating ? t("Запоминаем спокойное лицо…") : t("Откалибровать мимику")}
           </button>
         )}
         <button type="button" className={s.moreItem} onClick={onBreath}>
           <Wind size={18} />
-          Дыхательная пауза
+          {t("Дыхательная пауза")}
         </button>
         {onNotes && (
           <button type="button" className={s.moreItem} onClick={onNotes}>
             <NotebookPen size={18} />
-            Заметки к&nbsp;звонку
+            {t("Заметки к\u00a0звонку")}
           </button>
         )}
         <button type="button" className={s.moreItem} onClick={onReport}>
           <Flag size={18} />
-          Сообщить о&nbsp;проблеме со&nbsp;связью
+          {t("Сообщить о\u00a0проблеме со\u00a0связью")}
         </button>
       </div>
     </div>

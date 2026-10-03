@@ -1,5 +1,8 @@
 "use client";
 
+import { CrisisLinks } from "@/components/client/HelpLine";
+import { useCountry } from "@/lib/i18n/client";
+import { t as tt, intlLocale } from "@/lib/i18n";
 import { ArrowLeft, Eraser, LifeBuoy, MoreVertical, ScanEye, ShieldOff, Timer, Infinity as InfinityIcon } from "lucide-react";
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Button, Modal, Spinner, useToast } from "@/ui";
@@ -30,10 +33,10 @@ import type { FileSendOptions } from "./AttachSheet";
 import s from "./chat.module.css";
 
 const ROLE_SUB: Record<string, string> = {
-  specialist: "Специалист",
-  client: "Клиент",
-  support: "Обычно отвечаем в\u00a0течение нескольких часов",
-  ai: "ИИ-помощник, не\u00a0психолог",
+  get specialist() { return tt("Специалист"); },
+  get client() { return tt("Клиент"); },
+  get support() { return tt("Обычно отвечаем в\u00a0течение нескольких часов"); },
+  get ai() { return tt("ИИ-помощник, не\u00a0психолог"); },
 };
 
 function dayLabel(iso: string) {
@@ -41,9 +44,9 @@ function dayLabel(iso: string) {
   const today = new Date();
   const y = new Date();
   y.setDate(today.getDate() - 1);
-  if (d.toDateString() === today.toDateString()) return "Сегодня";
-  if (d.toDateString() === y.toDateString()) return "Вчера";
-  return d.toLocaleDateString("ru-RU", {
+  if (d.toDateString() === today.toDateString()) return tt("Сегодня");
+  if (d.toDateString() === y.toDateString()) return tt("Вчера");
+  return d.toLocaleDateString(intlLocale(), {
     day: "numeric",
     month: "long",
     year: d.getFullYear() === today.getFullYear() ? undefined : "numeric",
@@ -51,7 +54,7 @@ function dayLabel(iso: string) {
 }
 
 /** «Исчезающие сообщения»: short label of the mode for chips and toasts. */
-export const RETENTION_LABEL: Record<Retention, string> = { forever: "выкл", "24h": "1\u00a0день", "1h": "1\u00a0час" };
+export const RETENTION_LABEL: Record<Retention, string> = { get forever() { return tt("выкл"); }, get "24h"() { return tt("1\u00a0день"); }, get "1h"() { return tt("1\u00a0час"); } };
 
 function upsert(list: ChatMessage[], msg: ChatMessage): ChatMessage[] {
   const i = list.findIndex((m) => m.id === msg.id);
@@ -104,6 +107,7 @@ export function ConversationView({
   const toast = useToast();
   const [blockedMsg, setBlockedMsg] = useState<string | null>(null);
   const isAI = conv.kind === "ai";
+  const country = useCountry();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -172,7 +176,7 @@ export function ConversationView({
         setHasMore(page.has_more);
         markRead();
       })
-      .catch((e) => alive && toast(e instanceof ApiError ? e.message : "Не\u00a0получилось загрузить сообщения", { error: true }))
+      .catch((e) => alive && toast(e instanceof ApiError ? e.message : tt("Не\u00a0получилось загрузить сообщения"), { error: true }))
       .finally(() => alive && setLoading(false));
     return () => {
       alive = false;
@@ -249,7 +253,7 @@ export function ConversationView({
       setMessages((xs) => [...page.results.filter((m) => !xs.some((x) => x.id === m.id)), ...xs]);
       setHasMore(page.has_more);
     } catch {
-      toast("Не\u00a0получилось загрузить более ранние сообщения", { error: true });
+      toast(tt("Не\u00a0получилось загрузить более ранние сообщения"), { error: true });
     } finally {
       setLoadingOlder(false);
     }
@@ -311,7 +315,7 @@ export function ConversationView({
       return true;
     } catch (e) {
       setMessages((xs) => xs.filter((m) => m.id !== tempId && m.id !== streamId));
-      toast(e instanceof ApiError ? e.message : "Тиша сейчас не\u00a0может ответить", { error: true });
+      toast(e instanceof ApiError ? e.message : tt("Тиша сейчас не\u00a0может ответить"), { error: true });
       return false;
     } finally {
       setAiBusy(false);
@@ -327,7 +331,7 @@ export function ConversationView({
         return true;
       } catch (e) {
         if (e instanceof ApiError && e.status === 422) setBlockedMsg(e.message);
-        else toast(e instanceof ApiError ? e.message : "Не\u00a0получилось изменить", { error: true });
+        else toast(e instanceof ApiError ? e.message : tt("Не\u00a0получилось изменить"), { error: true });
         return false;
       }
     }
@@ -348,7 +352,7 @@ export function ConversationView({
       setMessages((xs) => xs.filter((m) => m.id !== tempId));
       // 422 — в тексте контакты (до первого созвона): показываем под полем ввода, текст остаётся
       if (e instanceof ApiError && e.status === 422) setBlockedMsg(e.message);
-      else toast(e instanceof ApiError ? e.message : "Не\u00a0получилось отправить", { error: true });
+      else toast(e instanceof ApiError ? e.message : tt("Не\u00a0получилось отправить"), { error: true });
       return false;
     }
   };
@@ -363,22 +367,22 @@ export function ConversationView({
       setMessages((xs) => upsert(xs, { ...msg, mine: true }));
       return true;
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "Не\u00a0получилось отправить голосовое", { error: true });
+      toast(e instanceof ApiError ? e.message : tt("Не\u00a0получилось отправить голосовое"), { error: true });
       return false;
     }
   };
 
   const sendFile = async (file: File, opts?: FileSendOptions) => {
     if (file.size > 20 * 1024 * 1024) {
-      toast("Файл больше 20\u00a0МБ", { error: true });
+      toast(tt("Файл больше 20\u00a0МБ"), { error: true });
       return false;
     }
     if (conv.contacts_locked && findContacts(file.name.replace(/\.[^.]+$/, "")).length) {
-      toast("Название файла похоже на\u00a0контакт\u00a0— переименуйте файл.", { error: true });
+      toast(tt("Название файла похоже на\u00a0контакт\u00a0— переименуйте файл."), { error: true });
       return false;
     }
     if (conv.contacts_locked && opts?.text && findContacts(opts.text).length) {
-      toast("В\u00a0подписи похоже на\u00a0контакт\u00a0— до\u00a0первого созвона так нельзя.", { error: true });
+      toast(tt("В\u00a0подписи похоже на\u00a0контакт\u00a0— до\u00a0первого созвона так нельзя."), { error: true });
       return false;
     }
     setSending(true);
@@ -390,7 +394,7 @@ export function ConversationView({
       setMessages((xs) => upsert(xs, { ...msg, mine: true }));
       return true;
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "Не\u00a0получилось отправить файл", { error: true });
+      toast(e instanceof ApiError ? e.message : tt("Не\u00a0получилось отправить файл"), { error: true });
       return false;
     } finally {
       setSending(false);
@@ -399,7 +403,7 @@ export function ConversationView({
 
   const actions: MessageActions = {
     onCopy: (m) => {
-      navigator.clipboard?.writeText(m.text).then(() => toast("Скопировано"), () => undefined);
+      navigator.clipboard?.writeText(m.text).then(() => toast(tt("Скопировано")), () => undefined);
       setMenuFor(null);
     },
     onEdit: (m) => {
@@ -423,7 +427,7 @@ export function ConversationView({
       else if (res) setMessages((xs) => upsert(xs, { ...res, mine: true }));
       if (editing?.id === m.id) setEditing(null);
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "Не\u00a0получилось удалить", { error: true });
+      toast(e instanceof ApiError ? e.message : tt("Не\u00a0получилось удалить"), { error: true });
     }
   };
 
@@ -435,11 +439,11 @@ export function ConversationView({
       setMessages(page.results);
       toast(
         r === "forever"
-          ? "Исчезающие сообщения выключены"
-          : `Исчезающие сообщения: ${RETENTION_LABEL[r]}. Новые сообщения исчезнут у\u00a0обоих`,
+          ? tt("Исчезающие сообщения выключены")
+          : tt(`Исчезающие сообщения: {v}. Новые сообщения исчезнут у\u00a0обоих`, { v: RETENTION_LABEL[r] }),
       );
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "Не\u00a0получилось изменить режим", { error: true });
+      toast(e instanceof ApiError ? e.message : tt("Не\u00a0получилось изменить режим"), { error: true });
     }
   };
 
@@ -448,9 +452,9 @@ export function ConversationView({
     try {
       const updated = await chatApi.setScreenProtect(conv.id, next);
       onChange(updated);
-      toast(next ? "Защита от\u00a0скриншотов включена для\u00a0обеих сторон" : "Защита от\u00a0скриншотов выключена");
+      toast(next ? tt("Защита от\u00a0скриншотов включена для\u00a0обеих сторон") : tt("Защита от\u00a0скриншотов выключена"));
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "Не\u00a0получилось изменить настройку", { error: true });
+      toast(e instanceof ApiError ? e.message : tt("Не\u00a0получилось изменить настройку"), { error: true });
     }
   };
 
@@ -462,9 +466,9 @@ export function ConversationView({
       setMessages([]);
       setHasMore(false);
       onChange(updated);
-      toast("Чат очищен у\u00a0вас");
+      toast(tt("Чат очищен у\u00a0вас"));
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "Не\u00a0получилось очистить чат", { error: true });
+      toast(e instanceof ApiError ? e.message : tt("Не\u00a0получилось очистить чат"), { error: true });
     }
   };
 
@@ -474,14 +478,14 @@ export function ConversationView({
       const st = await chatApi.aiRevoke();
       onAIStatus?.(st);
     } catch {
-      toast("Не\u00a0получилось отозвать согласие", { error: true });
+      toast(tt("Не\u00a0получилось отозвать согласие"), { error: true });
     }
   };
 
   const ownSide = (m: ChatMessage) => (m.pending ? true : m.sender_role === conv.my_role);
   const readAt = peerReadAt ? new Date(peerReadAt).getTime() : 0;
   const sub = typing
-    ? "печатает…"
+    ? tt("печатает…")
     : isAI
       ? ROLE_SUB.ai
       : subtitle
@@ -492,16 +496,16 @@ export function ConversationView({
 
   let lastDay = "";
   return (
-    <section className={s.view} aria-label={`Диалог: ${conv.counterpart.name}`} data-compact={compact ? "" : undefined}>
+    <section className={s.view} aria-label={tt(`Диалог: {name}`, { name: conv.counterpart.name })} data-compact={compact ? "" : undefined}>
       {!compact && (
       <header className={s.viewHead}>
         {onBack && (
-          <button type="button" className={`${s.iconBtn} ${s.backBtn}`} onClick={onBack} aria-label="Назад к&nbsp;списку диалогов" data-back="">
+          <button type="button" className={`${s.iconBtn} ${s.backBtn}`} onClick={onBack} aria-label={tt("Назад к\u00a0списку диалогов")} data-back="">
             <ArrowLeft size={20} />
           </button>
         )}
         {onTitleClick ? (
-          <button type="button" className={s.viewTitleBtn} onClick={onTitleClick} aria-label={`${conv.counterpart.name}: о\u00a0диалоге`}>
+          <button type="button" className={s.viewTitleBtn} onClick={onTitleClick} aria-label={tt(`{name}: о\u00a0диалоге`, { name: conv.counterpart.name })}>
             <ConvAvatar who={conv.counterpart} size={42} />
             <span className={s.viewTitle}>
               <span className={s.viewName} style={{ display: "block" }}>{conv.counterpart.name}</span>
@@ -524,7 +528,7 @@ export function ConversationView({
             type="button"
             className={s.iconBtn}
             onClick={() => setHeadMenu((v) => !v)}
-            aria-label="Настройки чата"
+            aria-label={tt("Настройки чата")}
             aria-expanded={headMenu}
           >
             <MoreVertical size={20} />
@@ -539,8 +543,8 @@ export function ConversationView({
                   {
                     key: "retention",
                     icon: <Timer size={17} />,
-                    label: "Исчезающие сообщения",
-                    hint: conv.retention === "forever" ? "Выключены: переписка хранится" : `Новые исчезают через\u00a0${RETENTION_LABEL[conv.retention]}`,
+                    label: tt("Исчезающие сообщения"),
+                    hint: conv.retention === "forever" ? tt("Выключены: переписка хранится") : tt(`Новые исчезают через\u00a0{v}`, { v: RETENTION_LABEL[conv.retention] }),
                     onClick: () => setRetentionOpen(true),
                   },
                   ...(conv.can_change_retention && !isAI
@@ -548,8 +552,8 @@ export function ConversationView({
                         {
                           key: "screen",
                           icon: <ScanEye size={17} />,
-                          label: "Защита от\u00a0скриншотов",
-                          hint: "Скрывает переписку, когда окно не\u00a0активно",
+                          label: tt("Защита от\u00a0скриншотов"),
+                          hint: tt("Скрывает переписку, когда окно не\u00a0активно"),
                           checked: !!conv.screen_protect,
                           onClick: () => void toggleScreenProtect(),
                         },
@@ -558,9 +562,9 @@ export function ConversationView({
                 ],
                 [
                   ...(menuItems ?? []).filter((it) => it.danger),
-                  { key: "clear", icon: <Eraser size={17} />, label: "Очистить чат у\u00a0себя", hint: "У\u00a0собеседника переписка останется", danger: true, onClick: () => setClearOpen(true) },
+                  { key: "clear", icon: <Eraser size={17} />, label: tt("Очистить чат у\u00a0себя"), hint: tt("У\u00a0собеседника переписка останется"), danger: true, onClick: () => setClearOpen(true) },
                   ...(isAI
-                    ? [{ key: "revoke", icon: <ShieldOff size={17} />, label: "Отозвать согласие", hint: "Тиша перестанет отвечать", danger: true, onClick: () => void revokeAI() }]
+                    ? [{ key: "revoke", icon: <ShieldOff size={17} />, label: tt("Отозвать согласие"), hint: tt("Тиша перестанет отвечать"), danger: true, onClick: () => void revokeAI() }]
                     : []),
                 ],
               ]}
@@ -575,12 +579,12 @@ export function ConversationView({
           {conv.retention !== "forever" ? <Timer size={14} /> : <InfinityIcon size={14} />}
           <span className={s.retentionText}>
             {conv.retention !== "forever"
-              ? `Исчезают через ${RETENTION_LABEL[conv.retention]}`
-              : "Сообщения хранятся, пока вы\u00a0их\u00a0не\u00a0удалите"}
+              ? tt(`Исчезают через {v}`, { v: RETENTION_LABEL[conv.retention] })
+              : tt("Сообщения хранятся, пока вы\u00a0их\u00a0не\u00a0удалите")}
           </span>
           {shielded && (
-            <span className={s.retentionShield} title="Защита от&nbsp;скриншотов включена">
-              <ScanEye size={14} aria-label="Защита от&nbsp;скриншотов включена" />
+            <span className={s.retentionShield} title={tt("Защита от\u00a0скриншотов включена")}>
+              <ScanEye size={14} aria-label={tt("Защита от\u00a0скриншотов включена")} />
             </span>
           )}
         </button>
@@ -592,8 +596,7 @@ export function ConversationView({
         <div className={s.aiNotice}>
           <LifeBuoy size={16} />
           <span>
-            Тиша&nbsp;— ИИ, а&nbsp;не&nbsp;психолог. Если очень тяжело: <a href="tel:88003334434" title="8-800-333-44-34">телефон доверия</a> или{" "}
-            <a href="tel:112">112</a>.
+            {tt("Тиша\u00a0— ИИ, а\u00a0не\u00a0психолог. Если очень тяжело:")} <CrisisLinks country={country} />.
           </span>
         </div>
       )}
@@ -609,13 +612,13 @@ export function ConversationView({
             {hasMore && (
               <div className={s.olderWrap}>
                 <Button variant="ghost" size="sm" onClick={loadOlder} loading={loadingOlder}>
-                  Показать более ранние
+                  {tt("Показать более ранние")}
                 </Button>
               </div>
             )}
             {messages.length === 0 && !isAI && (
               <div className={s.emptyConv}>
-                <p>Здесь пока пусто. Напишите первое сообщение или&nbsp;запишите голосовое.</p>
+                <p>{tt("Здесь пока пусто. Напишите первое сообщение или\u00a0запишите голосовое.")}</p>
               </div>
             )}
             {messages.map((m, i) => {
@@ -654,7 +657,7 @@ export function ConversationView({
             {isAI && aiBusy && !messages.some((m) => m.streaming) && (
               <div className={s.aiTyping}>
                 <Tisha size={44} state="typing" />
-                <span>Тиша думает…</span>
+                <span>{tt("Тиша думает…")}</span>
               </div>
             )}
             {typing && !isAI && (
@@ -675,8 +678,8 @@ export function ConversationView({
       {isAI && ai && (
         <div className={s.aiLimit}>
           {ai.remaining_today > 0
-            ? `Сегодня можно отправить Тише ещё ${ai.remaining_today}`
-            : "Лимит сообщений Тише на\u00a0сегодня исчерпан\u00a0— завтра можно продолжить"}
+            ? tt(`Сегодня можно отправить Тише ещё {remaining_today}`, { remaining_today: ai.remaining_today })
+            : tt("Лимит сообщений Тише на\u00a0сегодня исчерпан\u00a0— завтра можно продолжить")}
         </div>
       )}
       {composerNotice}
@@ -691,7 +694,7 @@ export function ConversationView({
         guardContacts={!!conv.contacts_locked}
         blockedMessage={blockedMsg}
         onBlockedClear={() => setBlockedMsg(null)}
-        placeholder={isAI ? "Напишите Тише" : "Сообщение"}
+        placeholder={isAI ? tt("Напишите Тише") : tt("Сообщение")}
         editing={editing}
         onCancelEdit={() => setEditing(null)}
         busy={aiBusy || sending}
@@ -708,40 +711,40 @@ export function ConversationView({
         }}
       />
 
-      <Modal open={clearOpen} onClose={() => setClearOpen(false)} title="Очистить чат у&nbsp;себя?" width={440}>
+      <Modal open={clearOpen} onClose={() => setClearOpen(false)} title={tt("Очистить чат у\u00a0себя?")} width={440}>
         <p className={s.modalText}>
-          Сообщения исчезнут только у&nbsp;вас.{" "}
+          {tt("Сообщения исчезнут только у\u00a0вас.")}{" "}
           {isAI
-            ? "Тиша тоже перестанет их\u00a0учитывать в\u00a0разговоре."
-            : "У\u00a0собеседника переписка останется\u00a0— чтобы убрать сообщение у\u00a0всех, удалите его через меню сообщения."}
+            ? tt("Тиша тоже перестанет их\u00a0учитывать в\u00a0разговоре.")
+            : tt("У\u00a0собеседника переписка останется\u00a0— чтобы убрать сообщение у\u00a0всех, удалите его через меню сообщения.")}
         </p>
         <div className={s.modalActions}>
           <Button variant="ghost" onClick={() => setClearOpen(false)}>
-            Отмена
+            {tt("Отмена")}
           </Button>
           <Button variant="danger" onClick={clearChat}>
-            Очистить
+            {tt("Очистить")}
           </Button>
         </div>
       </Modal>
 
-      <Modal open={!!deleting} onClose={() => setDeleting(null)} title="Удалить сообщение?" width={440}>
+      <Modal open={!!deleting} onClose={() => setDeleting(null)} title={tt("Удалить сообщение?")} width={440}>
         <p className={s.modalText}>
           {deleting?.mine
-            ? "«Удалить у\u00a0всех» уберёт сообщение и\u00a0у\u00a0собеседника\u00a0— останется только отметка, что\u00a0оно было удалено."
-            : "Сообщение исчезнет только у\u00a0вас."}
+            ? tt("«Удалить у\u00a0всех» уберёт сообщение и\u00a0у\u00a0собеседника\u00a0— останется только отметка, что\u00a0оно было удалено.")
+            : tt("Сообщение исчезнет только у\u00a0вас.")}
         </p>
         <div className={s.modalActionsCol}>
           {deleting && deleting.mine && (
             <Button variant="danger" block onClick={() => doDelete("all")}>
-              Удалить у&nbsp;всех
+              {tt("Удалить у\u00a0всех")}
             </Button>
           )}
           <Button variant="secondary" block onClick={() => doDelete("me")}>
-            Удалить у&nbsp;меня
+            {tt("Удалить у\u00a0меня")}
           </Button>
           <Button variant="ghost" block onClick={() => setDeleting(null)}>
-            Отмена
+            {tt("Отмена")}
           </Button>
         </div>
       </Modal>

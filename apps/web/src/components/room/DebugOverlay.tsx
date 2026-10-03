@@ -5,6 +5,7 @@
  * Shows only numbers: avatar pipeline (detector backend, tracking fps, model
  * time, camera→avatar latency, render/send fps) and WebRTC stats.
  */
+import { t as tt } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { avatarPerf, type AvatarPerfSnapshot } from "@/lib/tracking/perf";
 import type { CallStats, P2PStatus } from "@/hooks/useP2PCall";
@@ -24,25 +25,25 @@ export function DebugOverlay({ stats, status, avatar }: { stats: CallStats | nul
   const rows: [string, string][] = [];
   if (avatar && snap) {
     rows.push(
-      ["детектор", snap.backend],
-      ["камера / трекинг", `${snap.camFps} / ${snap.detectFps} fps`],
-      ["модель", `${snap.detectMs} ms (p95 ${snap.detectP95})`],
-      ["кадр → аватар", `${snap.latencyMs} ms (p95 ${snap.latencyP95})`],
-      ["рендер", `${snap.renderFps} fps, ${snap.renderMs} ms`],
-      ["в\u00a0звонок", `${snap.sendFps} fps`],
-      ["пропущено кадров", String(snap.dropped)],
+      [tt("детектор"), snap.backend],
+      [tt("камера / трекинг"), `${snap.camFps} / ${snap.detectFps} fps`],
+      [tt("модель"), `${snap.detectMs} ms (p95 ${snap.detectP95})`],
+      [tt("кадр → аватар"), `${snap.latencyMs} ms (p95 ${snap.latencyP95})`],
+      [tt("рендер"), `${snap.renderFps} fps, ${snap.renderMs} ms`],
+      [tt("в\u00a0звонок"), `${snap.sendFps} fps`],
+      [tt("пропущено кадров"), String(snap.dropped)],
     );
-    if (decision) rows.push(["выбор", decision.replace(/^\S+ /, "")]);
+    if (decision) rows.push([tt("выбор"), decision.replace(/^\S+ /, "")]);
   }
   rows.push(
-    ["соединение", `${status}${stats?.relay ? " (TURN)" : ""}`],
+    [tt("соединение"), `${status}${stats?.relay ? " (TURN)" : ""}`],
     ["RTT", stats?.rttMs != null ? `${stats.rttMs} ms` : "—"],
-    ["потери вх\u00a0/ исх", `${pct(stats?.lossIn)} / ${pct(stats?.lossOut)}`],
-    ["битрейт вх\u00a0/ исх", stats ? `${stats.recvKbps} / ${stats.sendKbps} кбит/с` : "—"],
-    ["лимит видео", stats ? `${stats.capKbps} кбит/с` : "—"],
-    ["кодек", stats?.codec ?? "—"],
-    ["приём", stats ? `${stats.recvSize ?? "—"} ${stats.recvFps ?? "—"} fps` : "—"],
-    ["отправка", stats ? `${stats.sendFps ?? "—"} fps${stats.limitation && stats.limitation !== "none" ? `, ограничено: ${stats.limitation}` : ""}` : "—"],
+    [tt("потери вх\u00a0/ исх"), `${pct(stats?.lossIn)} / ${pct(stats?.lossOut)}`],
+    [tt("битрейт вх\u00a0/ исх"), stats ? tt(`{recvKbps} / {sendKbps} кбит/с`, { recvKbps: stats.recvKbps, sendKbps: stats.sendKbps }) : "—"],
+    [tt("лимит видео"), stats ? tt(`{capKbps} кбит/с`, { capKbps: stats.capKbps }) : "—"],
+    [tt("кодек"), stats?.codec ?? "—"],
+    [tt("приём"), stats ? `${stats.recvSize ?? "—"} ${stats.recvFps ?? "—"} fps` : "—"],
+    [tt("отправка"), stats ? `${stats.sendFps ?? "—"} fps${stats.limitation && stats.limitation !== "none" ? tt(`, ограничено: {limitation}`, { limitation: stats.limitation }) : ""}` : "—"],
   );
   return (
     <div className={s.debug} aria-hidden>

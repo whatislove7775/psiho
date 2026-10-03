@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FocusEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
@@ -59,58 +60,58 @@ export interface NavItem {
 export const NAV: Record<Role, { items: NavItem[]; cta: { label: string; href: string } }> = {
   client: {
     items: [
-      { href: "/app", label: "Главная", icon: LayoutGrid, tab: true },
-      { href: "/app/specialists", label: "Специалисты", icon: Users, tab: true },
-      { href: "/app/dialogs", label: "Диалоги", icon: MessagesSquare, tab: true, unread: true },
+      { href: "/app", get label() { return tt("Главная"); }, icon: LayoutGrid, tab: true },
+      { href: "/app/specialists", get label() { return tt("Специалисты"); }, icon: Users, tab: true },
+      { href: "/app/dialogs", get label() { return tt("Диалоги"); }, icon: MessagesSquare, tab: true, unread: true },
       // H2: групповые «Круги» (группы поддержки с психологом)
-      { href: "/app/circles", label: "Круги", icon: CirclesIcon },
+      { href: "/app/circles", get label() { return tt("Круги"); }, icon: CirclesIcon },
       // «Полезное»: статьи (первыми) и практики — одна страница с вкладками
-      { href: "/app/articles", label: "Полезное", icon: BookOpen, tab: true, also: ["/app/practices"] },
+      { href: "/app/articles", get label() { return tt("Полезное"); }, icon: BookOpen, tab: true, also: ["/app/practices"] },
       // Аватар, зеркало и приватность — одна страница с вкладками
-      { href: "/app/avatar", label: "Аватар", icon: Smile, tab: true, group: "Анонимность" },
-      { href: "/app/balance", label: "Баланс", icon: Wallet, group: "Анонимность" },
+      { href: "/app/avatar", get label() { return tt("Аватар"); }, icon: Smile, tab: true, get group() { return tt("Анонимность"); } },
+      { href: "/app/balance", get label() { return tt("Баланс"); }, icon: Wallet, get group() { return tt("Анонимность"); } },
     ],
-    cta: { label: "Найти специалиста", href: "/app/specialists" },
+    cta: { get label() { return tt("Найти специалиста"); }, href: "/app/specialists" },
   },
   psychologist: {
     items: [
-      { href: "/pro", label: "Сводка", icon: LayoutGrid, tab: true },
-      { href: "/pro/dialogs", label: "Диалоги", icon: MessagesSquare, tab: true, unread: true },
-      { href: "/pro/schedule", label: "Расписание", icon: CalendarClock, tab: true },
-      { href: "/pro/circles", label: "Круги", icon: CirclesIcon },
-      { href: "/pro/articles", label: "Мои статьи", icon: BookOpen },
-      { href: "/pro/profile", label: "Профиль", icon: UserRound, tab: true, group: "Кабинет" },
-      { href: "/pro/earnings", label: "Доходы", icon: Banknote, group: "Кабинет" },
-      { href: "/pro/check", label: "Проверка камеры", icon: Camera, tab: true, tabLabel: "Камера", group: "Кабинет" },
+      { href: "/pro", get label() { return tt("Сводка"); }, icon: LayoutGrid, tab: true },
+      { href: "/pro/dialogs", get label() { return tt("Диалоги"); }, icon: MessagesSquare, tab: true, unread: true },
+      { href: "/pro/schedule", get label() { return tt("Расписание"); }, icon: CalendarClock, tab: true },
+      { href: "/pro/circles", get label() { return tt("Круги"); }, icon: CirclesIcon },
+      { href: "/pro/articles", get label() { return tt("Мои статьи"); }, icon: BookOpen },
+      { href: "/pro/profile", get label() { return tt("Профиль"); }, icon: UserRound, tab: true, get group() { return tt("Кабинет"); } },
+      { href: "/pro/earnings", get label() { return tt("Доходы"); }, icon: Banknote, get group() { return tt("Кабинет"); } },
+      { href: "/pro/check", get label() { return tt("Проверка камеры"); }, icon: Camera, tab: true, get tabLabel() { return tt("Камера"); }, get group() { return tt("Кабинет"); } },
     ],
-    cta: { label: "Открыть расписание", href: "/pro/schedule" },
+    cta: { get label() { return tt("Открыть расписание"); }, href: "/pro/schedule" },
   },
   admin: {
     items: [
-      { href: "/admin", label: "Сводка", icon: LayoutGrid, tab: true },
-      { href: "/admin/psychologists", label: "Проверка специалистов", icon: BadgeCheck, tab: true },
-      { href: "/admin/sessions", label: "Созвоны", icon: CalendarDays, tab: true },
+      { href: "/admin", get label() { return tt("Сводка"); }, icon: LayoutGrid, tab: true },
+      { href: "/admin/psychologists", get label() { return tt("Проверка специалистов"); }, icon: BadgeCheck, tab: true },
+      { href: "/admin/sessions", get label() { return tt("Созвоны"); }, icon: CalendarDays, tab: true },
     ],
-    cta: { label: "Проверить заявки", href: "/admin/psychologists" },
+    cta: { get label() { return tt("Проверить заявки"); }, href: "/admin/psychologists" },
   },
   // HR компании (B2B): только агрегаты своей компании
   business: {
     items: [
-      { href: "/business/portal", label: "Сводка", icon: LayoutGrid, tab: true },
-      { href: "/business/portal/codes", label: "Коды сотрудников", icon: KeyRound, tab: true, tabLabel: "Коды" },
-      { href: "/business/portal/program", label: "Программа", icon: SlidersHorizontal, tab: true },
-      { href: "/business/portal/documents", label: "Документы", icon: FileText, tab: true, group: "Компания" },
-      { href: "/business/portal/support", label: "Поддержка", icon: LifeBuoy, group: "Компания" },
+      { href: "/business/portal", get label() { return tt("Сводка"); }, icon: LayoutGrid, tab: true },
+      { href: "/business/portal/codes", get label() { return tt("Коды сотрудников"); }, icon: KeyRound, tab: true, get tabLabel() { return tt("Коды"); } },
+      { href: "/business/portal/program", get label() { return tt("Программа"); }, icon: SlidersHorizontal, tab: true },
+      { href: "/business/portal/documents", get label() { return tt("Документы"); }, icon: FileText, tab: true, get group() { return tt("Компания"); } },
+      { href: "/business/portal/support", get label() { return tt("Поддержка"); }, icon: LifeBuoy, get group() { return tt("Компания"); } },
     ],
-    cta: { label: "Выпустить коды", href: "/business/portal/codes" },
+    cta: { get label() { return tt("Выпустить коды"); }, href: "/business/portal/codes" },
   },
 };
 
 const ROLE_LABEL: Record<Role, string> = {
-  client: "Анонимный клиент",
-  psychologist: "Специалист",
-  admin: "Администратор",
-  business: "HR компании",
+  get client() { return tt("Анонимный клиент"); },
+  get psychologist() { return tt("Специалист"); },
+  get admin() { return tt("Администратор"); },
+  get business() { return tt("HR компании"); },
 };
 
 /** Where the sidebar profile card leads. */
@@ -223,7 +224,7 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
     const el = (e.target as HTMLElement).closest<HTMLElement>("[data-tip]");
     if (!el) return;
     let text = el.dataset.tip || "";
-    if (text === "@balance") text = (el.querySelector("a")?.getAttribute("aria-label") ?? "Баланс").replace(/\. Открыть$/, "");
+    if (text === "@balance") text = (el.querySelector("a")?.getAttribute("aria-label") ?? tt("Баланс")).replace(/\. Открыть$/, "");
     const r = el.getBoundingClientRect();
     setTip({ text, top: r.top + r.height / 2, left: r.right + 10 });
   };
@@ -233,7 +234,7 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
     <div className={s.root} data-rail={rail ? "" : undefined}>
       <aside
         className={s.sidebar}
-        aria-label="Навигация кабинета"
+        aria-label={tt("Навигация кабинета")}
         onMouseOver={showTip}
         onMouseLeave={hideTip}
         onFocus={showTip}
@@ -241,14 +242,14 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
       >
         {/* Theme switch lives here in every cabinet: one stable spot that never overlaps content */}
         <div className={s.brandRow}>
-          <Link href="/" className={s.brand} data-tip="На главную сайта">
+          <Link href="/" className={s.brand} data-tip={tt("На\u00a0главную сайта")}>
             <LogoMark className={s.brandMark} />
             <span className={s.label}>Aprosop</span>
           </Link>
           <ThemeToggle className={s.topToggle} />
         </div>
 
-        <Link href={PROFILE_HREF[role]} className={s.profile} title={rail ? undefined : `${name}, открыть профиль`} data-tip={name}>
+        <Link href={PROFILE_HREF[role]} className={s.profile} title={rail ? undefined : tt(`{name}, открыть профиль`, { name })} data-tip={name}>
           <span className={s.profileAvatar}>
             {user.psychologist ? (
               <SpecialistPhoto url={user.psychologist.photo_url} name={name} size={48} alt="" />
@@ -292,7 +293,7 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
             );
           })}
           <div style={{ flex: 1 }} />
-          <div className={s.railToggle} data-tip="Сменить тему">
+          <div className={s.railToggle} data-tip={tt("Сменить тему")}>
             <ThemeToggle />
           </div>
           <button
@@ -300,11 +301,11 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
             className={s.navItem}
             onClick={onLogout}
             style={{ border: 0, background: "none", width: "100%" }}
-            aria-label={rail ? "Выйти" : undefined}
-            data-tip="Выйти"
+            aria-label={rail ? tt("Выйти") : undefined}
+            data-tip={tt("Выйти")}
           >
             <LogOut size={20} strokeWidth={1.8} />
-            <span className={s.label}>Выйти</span>
+            <span className={s.label}>{tt("Выйти")}</span>
           </button>
         </nav>
 
@@ -339,7 +340,7 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
             variant="ghost"
             size="md"
             iconOnly
-            aria-label={menuOpen ? "Закрыть меню" : "Открыть меню"}
+            aria-label={menuOpen ? tt("Закрыть меню") : tt("Открыть меню")}
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
             onClick={() => setMenuOpen((v) => !v)}
@@ -348,8 +349,8 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
         </div>
       </header>
 
-      {menuOpen && <button type="button" className={s.menuScrim} aria-label="Закрыть меню" onClick={() => setMenuOpen(false)} />}
-      <nav id="mobile-menu" className={s.menuSheet} data-open={menuOpen ? "" : undefined} aria-label="Все разделы" aria-hidden={!menuOpen}>
+      {menuOpen && <button type="button" className={s.menuScrim} aria-label={tt("Закрыть меню")} onClick={() => setMenuOpen(false)} />}
+      <nav id="mobile-menu" className={s.menuSheet} data-open={menuOpen ? "" : undefined} aria-label={tt("Все разделы")} aria-hidden={!menuOpen}>
         {(() => {
           let prev: string | undefined;
           return nav.items.map((item) => {
@@ -375,7 +376,7 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
         })()}
         <button type="button" tabIndex={menuOpen ? 0 : -1} className={`${s.navItem} ${s.menuLogout}`} onClick={onLogout}>
           <LogOut size={20} strokeWidth={1.8} />
-          Выйти
+          {tt("Выйти")}
         </button>
       </nav>
 

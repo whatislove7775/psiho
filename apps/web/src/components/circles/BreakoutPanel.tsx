@@ -8,6 +8,7 @@
  *  - Participants see the rooms and where they are; they move themselves only if the host allowed it.
  * Everyone is shown by the circle pseudonym only. Transport: useGroupCall (rooms = separate meshes).
  */
+import { t as tt, tj } from "@/lib/i18n";
 import { useEffect, useMemo, useState } from "react";
 import { DoorOpen, Megaphone, Timer, Undo2 } from "lucide-react";
 import { Button, Segmented } from "@/ui";
@@ -33,7 +34,7 @@ export function useRoomsCountdown(rooms: RoomsState): number | null {
 }
 
 export function roomName(rooms: RoomsState, id: string): string {
-  return id === MAIN_ROOM ? "Общий зал" : rooms.rooms.find((r) => r.id === id)?.name ?? "Общий зал";
+  return id === MAIN_ROOM ? tt("Общий зал") : rooms.rooms.find((r) => r.id === id)?.name ?? tt("Общий зал");
 }
 
 export function BreakoutPanel({
@@ -81,7 +82,7 @@ export function BreakoutPanel({
     [...members].sort(() => Math.random() - 0.5).forEach((p, i) => (assign[p.id] = `r${(i % n) + 1}`));
     onAction({
       type: "rooms-open",
-      rooms: Array.from({ length: n }, (_, i) => `Комната ${i + 1}`),
+      rooms: Array.from({ length: n }, (_, i) => tt(`Комната {v}`, { v: i + 1 })),
       assign,
       minutes: minutes === "0" ? null : +minutes,
       free,
@@ -94,12 +95,12 @@ export function BreakoutPanel({
         <p className={s.roomsNote}>
           {left !== null ? (
             <>
-              <Timer size={14} /> Осталось {Math.floor(left / 60)}:{String(left % 60).padStart(2, "0")}
+              <Timer size={14} />{" "}{tt("Осталось")}{" "}{Math.floor(left / 60)}:{String(left % 60).padStart(2, "0")}
             </>
           ) : (
-            "Без таймера"
+            tt("Без таймера")
           )}
-          {rooms.free ? ", можно переходить самим" : ""}
+          {rooms.free ? tt(", можно переходить самим") : ""}
         </p>
       )}
       {ids.map((rid) => {
@@ -127,15 +128,15 @@ export function BreakoutPanel({
               <b>{roomName(rooms, rid)}</b>
               <small>{inRoom.length}</small>
               {here ? (
-                <span className={s.roomYou}>вы здесь</span>
+                <span className={s.roomYou}>{tt("вы здесь")}</span>
               ) : (isMod || (rooms.free && open)) ? (
                 <Button size="sm" variant="ghost" icon={<DoorOpen size={15} />} onClick={() => (isMod && selfId ? onAction({ type: "move", peers: [selfId], room: rid }) : onMoveSelf(rid))}>
-                  Зайти
+                  {tt("Зайти")}
                 </Button>
               ) : null}
               {isMod && sel.size > 0 && (
                 <Button size="sm" variant="secondary" onClick={() => move([...sel], rid)}>
-                  Сюда {sel.size}
+                  {tj("Сюда {size}", { size: sel.size })}
                 </Button>
               )}
             </header>
@@ -158,11 +159,11 @@ export function BreakoutPanel({
                     aria-pressed={movable ? sel.has(p.id) : undefined}
                     disabled={!movable}
                   >
-                    {p.me ? `${p.name} (вы)` : p.name}
+                    {p.me ? tt(`{name} (вы)`, { name: p.name }) : p.name}
                   </button>
                 );
               })}
-              {inRoom.length === 0 && <span className={s.roomEmpty}>Пусто</span>}
+              {inRoom.length === 0 && <span className={s.roomEmpty}>{tt("Пусто")}</span>}
             </div>
           </section>
         );
@@ -171,30 +172,30 @@ export function BreakoutPanel({
       {isMod && !open && (
         <div className={s.roomsSetup}>
           <div>
-            <div className={s.label}>Комнат</div>
-            <Segmented ariaLabel="Сколько комнат" value={count} onChange={setCount} options={["2", "3", "4"].map((v) => ({ value: v, label: v }))} />
+            <div className={s.label}>{tt("Комнат")}</div>
+            <Segmented ariaLabel={tt("Сколько комнат")} value={count} onChange={setCount} options={["2", "3", "4"].map((v) => ({ value: v, label: v }))} />
           </div>
           <div>
-            <div className={s.label}>Таймер</div>
+            <div className={s.label}>{tt("Таймер")}</div>
             <Segmented
-              ariaLabel="Таймер"
+              ariaLabel={tt("Таймер")}
               value={minutes}
               onChange={setMinutes}
               options={[
-                { value: "0", label: "Нет" },
-                { value: "5", label: "5 мин" },
+                { value: "0", label: tt("Нет") },
+                { value: "5", label: tt("5 мин") },
                 { value: "10", label: "10" },
                 { value: "15", label: "15" },
               ]}
             />
           </div>
           <label className={s.check}>
-            <input type="checkbox" checked={free} onChange={(e) => setFree(e.target.checked)} /> Участники могут переходить сами
+            <input type="checkbox" checked={free} onChange={(e) => setFree(e.target.checked)} />{" "}{tt("Участники могут переходить сами")}
           </label>
           <Button variant="primary" block onClick={start} disabled={members.length < 2}>
-            Разделить на&nbsp;комнаты
+            {tt("Разделить на\u00a0комнаты")}
           </Button>
-          <p className={s.roomsNote}>Участники распределятся поровну; потом можно перетащить или выбрать нескольких и&nbsp;нажать «Сюда».</p>
+          <p className={s.roomsNote}>{tt("Участники распределятся поровну; потом можно перетащить или выбрать нескольких и\u00a0нажать «Сюда».")}</p>
         </div>
       )}
 
@@ -208,15 +209,15 @@ export function BreakoutPanel({
               setText("");
             }}
           >
-            <input value={text} onChange={(e) => setText(e.target.value)} maxLength={300} placeholder="Сообщение во все комнаты" aria-label="Сообщение во все комнаты" />
-            <Button size="sm" variant="secondary" type="submit" iconOnly aria-label="Отправить во все комнаты" icon={<Megaphone size={16} />} />
+            <input value={text} onChange={(e) => setText(e.target.value)} maxLength={300} placeholder={tt("Сообщение во все комнаты")} aria-label={tt("Сообщение во все комнаты")} />
+            <Button size="sm" variant="secondary" type="submit" iconOnly aria-label={tt("Отправить во все комнаты")} icon={<Megaphone size={16} />} />
           </form>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <Button size="sm" variant="ghost" icon={<Timer size={15} />} onClick={() => onAction({ type: "rooms-timer", minutes: Math.max(1, Math.ceil((left ?? 0) / 60)) + 5 })}>
-              +5 минут
+              {tt("+5 минут")}
             </Button>
             <Button size="sm" variant="primary" icon={<Undo2 size={15} />} onClick={() => onAction({ type: "rooms-close" })}>
-              Всех в&nbsp;общий зал
+              {tt("Всех в\u00a0общий зал")}
             </Button>
           </div>
         </div>

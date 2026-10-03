@@ -1,3 +1,4 @@
+import { t, tj } from "@/lib/i18n";
 import Link from "next/link";
 import { Award, Clock } from "lucide-react";
 import type { ArticleCard as TArticle, PracticeCard as TPractice } from "@/lib/api/content";
@@ -8,10 +9,15 @@ import art from "./art.module.css";
 import s from "./content.module.css";
 import { typo } from "@/lib/typography";
 import { RatingBadge } from "./ArticleRating";
+import { otherLanguageLabel } from "@/lib/i18n/languages";
+import { lp } from "@/lib/i18n";
+
+/** Public links keep the page language (/en/articles/…); cabinet links have no prefix. */
+const href = (base: string, path: string) => (base ? `${base}${path}` : lp(path));
 
 export function ArticleCard({ a, base = "/app", compact }: { a: TArticle; base?: string; compact?: boolean }) {
   return (
-    <Link href={`${base}/articles/${a.slug}`} className={s.article} data-compact={compact || undefined}>
+    <Link href={href(base, `/articles/${a.slug}`)} className={s.article} data-compact={compact || undefined}>
       {a.cover_image ? (
         <span className={`${s.cover} ${s.coverPhoto}`} aria-hidden>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -27,15 +33,16 @@ export function ArticleCard({ a, base = "/app", compact }: { a: TArticle; base?:
       <span className={s.articleBody}>
         <span className={s.kicker}>
           <span className={s.kickerTopic}>{a.topic_label}</span>
-          {a.specialist && <span className={s.fromPro}>От&nbsp;специалиста</span>}
+          {a.specialist && <span className={s.fromPro}>{t("От\u00a0специалиста")}</span>}
+          {otherLanguageLabel(a.language) && <span className={s.fromPro}>{otherLanguageLabel(a.language)}</span>}
         </span>
-        <span className={s.articleTitle}>{typo(a.title)}</span>
+        <span className={s.articleTitle} lang={a.language}>{typo(a.title)}</span>
         {!compact && a.summary && <span className={s.articleSummary}>{typo(a.summary)}</span>}
         <span className={s.metaClip}>
           <span className={`${s.meta} ${s.articleMeta}`}>
             <span className={s.metaItem}>
               <Clock size={14} strokeWidth={1.8} aria-hidden />
-              {a.reading_minutes}&nbsp;мин
+              {a.reading_minutes}{" "}{t("мин")}
             </span>
             <RatingBadge rating={a.rating} className={s.metaItem} />
             {byline(a).map((x) => (
@@ -53,9 +60,9 @@ export function ArticleCard({ a, base = "/app", compact }: { a: TArticle; base?:
 /** «Выбор редакции»: a small quiet badge (cards: over the cover; article page: next to the kicker). */
 export function EditorsChoice({ className }: { className?: string }) {
   return (
-    <span className={`${s.choice} ${className ?? ""}`} title="Выбор редакции">
+    <span className={`${s.choice} ${className ?? ""}`} title={t("Выбор редакции")}>
       <Award size={12} strokeWidth={2} aria-hidden />
-      <span className={s.choiceText}>Выбор редакции</span>
+      <span className={s.choiceText}>{t("Выбор редакции")}</span>
     </span>
   );
 }
@@ -89,14 +96,15 @@ export function ArticleCardSkeleton() {
 
 export function PracticeCard({ p, base = "/app" }: { p: TPractice; base?: string }) {
   return (
-    <Link href={`${base}/practices/${p.slug}`} className={s.practice}>
+    <Link href={href(base, `/practices/${p.slug}`)} className={s.practice}>
       <span className={`${s.practiceIcon} ${s.tone}`} data-tone={p.cover} aria-hidden>
         <TopicArt topic={p.kind} className={art.practiceArt} />
       </span>
       <span className={s.practiceText}>
-        <span className={s.practiceTitle}>{typo(p.title)}</span>
+        <span className={s.practiceTitle} lang={p.language}>{typo(p.title)}</span>
         <span className={s.meta}>
-          {p.kind_label}, {p.duration_minutes} мин
+          {tj("{kind_label}, {duration_minutes} мин", { kind_label: p.kind_label, duration_minutes: p.duration_minutes })}
+          {otherLanguageLabel(p.language) ? ` · ${otherLanguageLabel(p.language)}` : ""}
         </span>
       </span>
     </Link>

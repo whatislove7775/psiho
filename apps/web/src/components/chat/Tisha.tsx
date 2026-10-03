@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useId } from "react";
 import s from "./tisha.module.css";
 
@@ -23,7 +24,7 @@ export function Tisha({ size = 96, state = "idle", className }: { size?: number;
       height={size}
       className={[s.root, s[state], className].filter(Boolean).join(" ")}
       role="img"
-      aria-label="Тиша, ИИ-помощник"
+      aria-label={t("Тиша, ИИ-помощник")}
     >
       <defs>
         <radialGradient id={body} cx="38%" cy="30%" r="80%">

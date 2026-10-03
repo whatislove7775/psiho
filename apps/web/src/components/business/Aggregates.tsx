@@ -1,15 +1,16 @@
 "use client";
 
+import { t, tj, intlLocale } from "@/lib/i18n";
 import { rubK } from "@/lib/api/billing";
 import type { MonthRow } from "@/lib/api/business";
 import s from "./business.module.css";
 
 /** A k-anonymous number: null → «менее k». */
 export function Hidden({ value, k, suffix = "" }: { value: number | null; k: number; suffix?: string }) {
-  if (value === null) return <span className={s.hidden} title={`Меньше ${k} человек\u00a0— число скрыто`}>менее {k}</span>;
+  if (value === null) return <span className={s.hidden} title={t(`Меньше {k} человек\u00a0— число скрыто`, { k })}>{tj("менее {k}", { k })}</span>;
   return (
     <>
-      {value.toLocaleString("ru-RU")}
+      {value.toLocaleString(intlLocale())}
       {suffix}
     </>
   );
@@ -25,18 +26,18 @@ export function MonthlyTable({ rows, k }: { rows: MonthRow[]; k: number }) {
       <table className={s.table}>
         <thead>
           <tr>
-            <th scope="col">Месяц</th>
+            <th scope="col">{t("Месяц")}</th>
             <th scope="col" className={s.num}>
-              Сотрудников
+              {t("Сотрудников")}
             </th>
             <th scope="col" className={s.num}>
-              Созвонов
+              {t("Созвонов")}
             </th>
             <th scope="col" className={s.num}>
-              Часов
+              {t("Часов")}
             </th>
             <th scope="col" className={s.num}>
-              Списано
+              {t("Списано")}
             </th>
           </tr>
         </thead>

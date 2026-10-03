@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { X } from "lucide-react";
 import { WEEKDAYS, WEEKDAYS_SHORT } from "@/lib/format";
@@ -139,7 +140,7 @@ export function WeekTimeline({
 
   return (
     <div className={c.tl}>
-      <div className={c.tlHint}>Проведите по&nbsp;дню, чтобы добавить часы. Блок можно двигать и&nbsp;растягивать за&nbsp;края</div>
+      <div className={c.tlHint}>{t("Проведите по\u00a0дню, чтобы добавить часы. Блок можно двигать и\u00a0растягивать за\u00a0края")}</div>
       <div className={c.tlGrid}>
         {week.map((d, day) => {
           const ranges = d.on ? d.ranges : [];
@@ -163,7 +164,7 @@ export function WeekTimeline({
                 onPointerMove={(e) => onMove(day, e)}
                 onPointerUp={(e) => onUp(day, e)}
                 onPointerCancel={cancel}
-                aria-label={`${WEEKDAYS[day]}: ${ranges.length ? ranges.map((r) => `${r.from}–${r.to}`).join(", ") : "выходной"}`}
+                aria-label={`${WEEKDAYS[day]}: ${ranges.length ? ranges.map((r) => `${r.from}–${r.to}`).join(", ") : t("выходной")}`}
                 role="group"
               >
                 {shown.map(({ r, i }) => {
@@ -186,7 +187,7 @@ export function WeekTimeline({
                       <button
                         type="button"
                         className={c.tlRemove}
-                        aria-label={`Убрать ${WEEKDAYS[day].toLowerCase()} ${r.from}–${r.to}`}
+                        aria-label={t(`Убрать {v} {from}–{to}`, { v: WEEKDAYS[day].toLowerCase(), from: r.from, to: r.to })}
                         onClick={() => remove(day, i)}
                       >
                         <X size={12} strokeWidth={2.4} />

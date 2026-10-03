@@ -1,0 +1,55 @@
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--r-pill, 999px);
+  background: transparent;
+  color: var(--c-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+}
+.toggle:hover {
+  color: var(--c-text);
+  background: var(--c-raised);
+}
+.toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-pill, 999px);
+  background: transparent;
+  color: var(--c-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s, border-color 0.15s;
+}
+.chip:hover {
+  color: var(--c-text);
+}
+.chip[aria-pressed="true"] {
+  border-color: transparent;
+  background: var(--c-primary-soft);
+  color: var(--c-primary-ink);
+}
+.chip:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}

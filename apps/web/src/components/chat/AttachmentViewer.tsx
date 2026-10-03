@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import { Download, EyeOff, FileWarning, Minus, Plus, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -182,7 +183,7 @@ export function AttachmentViewer({
       className={s.overlay}
       role="dialog"
       aria-modal="true"
-      aria-label={name || "Вложение"}
+      aria-label={name || tt("Вложение")}
       data-view-once={viewOnce || undefined}
       onContextMenu={viewOnce ? (e) => e.preventDefault() : undefined}
     >
@@ -190,29 +191,29 @@ export function AttachmentViewer({
         <span className={s.name}>
           {viewOnce && (
             <span className={s.onceTag}>
-              <EyeOff size={14} aria-hidden /> Один просмотр
+              <EyeOff size={14} aria-hidden />{" "}{tt("Один просмотр")}
             </span>
           )}
         </span>
         {kind === "image" && url && (
           <span className={s.zoom}>
-            <button type="button" onClick={() => setScale((v) => clamp(v / 1.4, MIN, MAX))} disabled={scale <= MIN} aria-label="Уменьшить">
+            <button type="button" onClick={() => setScale((v) => clamp(v / 1.4, MIN, MAX))} disabled={scale <= MIN} aria-label={tt("Уменьшить")}>
               <Minus size={18} />
             </button>
-            <button type="button" className={s.pct} onClick={() => setScale(1)} aria-label="Исходный масштаб">
+            <button type="button" className={s.pct} onClick={() => setScale(1)} aria-label={tt("Исходный масштаб")}>
               {Math.round(scale * 100)}%
             </button>
-            <button type="button" onClick={() => setScale((v) => clamp(v * 1.4, MIN, MAX))} disabled={scale >= MAX} aria-label="Увеличить">
+            <button type="button" onClick={() => setScale((v) => clamp(v * 1.4, MIN, MAX))} disabled={scale >= MAX} aria-label={tt("Увеличить")}>
               <Plus size={18} />
             </button>
           </span>
         )}
         {!viewOnce && (
-          <button type="button" onClick={() => saveAttachment(msgId, name).catch(() => setFailed(true))} aria-label="Скачать">
+          <button type="button" onClick={() => saveAttachment(msgId, name).catch(() => setFailed(true))} aria-label={tt("Скачать")}>
             <Download size={18} />
           </button>
         )}
-        <button type="button" ref={close} onClick={onClose} aria-label="Закрыть">
+        <button type="button" ref={close} onClick={onClose} aria-label={tt("Закрыть")}>
           <X size={20} />
         </button>
       </div>
@@ -228,10 +229,10 @@ export function AttachmentViewer({
         {failed ? (
           <div className={s.fallback}>
             <FileWarning size={28} />
-            <p>Не&nbsp;получилось открыть файл.</p>
+            <p>{tt("Не\u00a0получилось открыть файл.")}</p>
           </div>
         ) : !url || (kind === "text" && text === null) ? (
-          <span className={s.spinner} aria-label="Загрузка" />
+          <span className={s.spinner} aria-label={tt("Загрузка")} />
         ) : kind === "image" ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -253,13 +254,13 @@ export function AttachmentViewer({
         ) : (
           <div className={s.fallback}>
             <FileWarning size={28} />
-            <p>Этот браузер не&nbsp;показывает PDF внутри страницы.</p>
+            <p>{tt("Этот браузер не\u00a0показывает PDF внутри страницы.")}</p>
             <div className={s.fallbackActions}>
               <a href={url} target="_blank" rel="noopener noreferrer">
-                Открыть в&nbsp;новой вкладке
+                {tt("Открыть в\u00a0новой вкладке")}
               </a>
               <button type="button" onClick={() => saveAttachment(msgId, name)}>
-                Скачать
+                {tt("Скачать")}
               </button>
             </div>
           </div>
@@ -269,7 +270,7 @@ export function AttachmentViewer({
       {/* file details live here, not in the chat bubble (like popular messengers) */}
       {(name || caption || viewOnce) && (
         <div className={s.foot}>
-          {viewOnce && <p className={s.fileInfo}>После закрытия файл исчезнет у&nbsp;обоих</p>}
+          {viewOnce && <p className={s.fileInfo}>{tt("После закрытия файл исчезнет у\u00a0обоих")}</p>}
           {caption && <p className={s.caption}>{caption}</p>}
           {name && (
             <p className={s.fileInfo}>
@@ -287,6 +288,6 @@ export function AttachmentViewer({
 function fileInfo(name: string, size?: number): string {
   const ext = name.includes(".") ? name.split(".").pop()!.toUpperCase() : "";
   if (size == null) return ext;
-  const sz = size < 1024 ? `${size}\u00a0Б` : size < 1024 * 1024 ? `${Math.round(size / 1024)}\u00a0КБ` : `${(size / 1024 / 1024).toFixed(1).replace(".", ",")}\u00a0МБ`;
+  const sz = size < 1024 ? tt(`{size}\u00a0Б`, { size }) : size < 1024 * 1024 ? tt(`{v}\u00a0КБ`, { v: Math.round(size / 1024) }) : tt(`{v}\u00a0МБ`, { v: (size / 1024 / 1024).toFixed(1).replace(".", ",") });
   return ext ? `${ext}, ${sz}` : sz;
 }

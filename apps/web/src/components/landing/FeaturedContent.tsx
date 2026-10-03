@@ -1,3 +1,5 @@
+import { t } from "@/lib/i18n";
+import { lp } from "@/lib/i18n";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { ArticleCard, PracticeCard } from "@/components/content/Cards";
@@ -15,16 +17,16 @@ export async function FeaturedContent() {
       <div className={l.sectionHead}>
         <div>
           <h2 id="useful-title" className={l.sectionTitle}>
-            Полезное
+            {t("Полезное")}
           </h2>
-          <p className={l.sectionSub}>Статьи с&nbsp;источниками и&nbsp;короткие практики. Без&nbsp;регистрации.</p>
+          <p className={l.sectionSub}>{t("Статьи с\u00a0источниками и\u00a0короткие практики. Без\u00a0регистрации.")}</p>
         </div>
-        <Link href="/articles" className={l.more}>
-          Все статьи
+        <Link href={lp("/articles")} className={l.more}>
+          {t("Все статьи")}
           <ArrowRight size={16} strokeWidth={2} aria-hidden />
         </Link>
       </div>
-      <ScrollRow className={s.bleed} trackClassName={s.row} label="Статьи и&nbsp;практики">
+      <ScrollRow className={s.bleed} trackClassName={s.row} label={t("Статьи и\u00a0практики")}>
         {articles.map((a) => (
           <div key={a.id} role="listitem" className={s.item}>
             <ArticleCard a={a} base="" />
@@ -32,7 +34,7 @@ export async function FeaturedContent() {
         ))}
         {practices.length > 0 && (
           <div role="listitem" className={`${s.item} ${s.practices}`}>
-            <h3 className={s.subTitle}>Практики на&nbsp;3–10&nbsp;минут</h3>
+            <h3 className={s.subTitle}>{t("Практики на\u00a03–10\u00a0минут")}</h3>
             <ul>
               {practices.slice(0, 3).map((p) => (
                 <li key={p.id}>
@@ -40,8 +42,8 @@ export async function FeaturedContent() {
                 </li>
               ))}
             </ul>
-            <Link href="/practices" className={s.moreSmall}>
-              Все практики
+            <Link href={lp("/practices")} className={s.moreSmall}>
+              {t("Все практики")}
               <ArrowRight size={14} strokeWidth={2} aria-hidden />
             </Link>
           </div>

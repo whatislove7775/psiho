@@ -33,14 +33,39 @@ NOUNS = [
 ]
 
 
-def random_alias() -> str:
-    adjective = secrets.choice(ADJECTIVES)
-    noun = secrets.choice(NOUNS)
+# S2: для англоязычного интерфейса — английские псевдонимы («quiet-whale-4821»), чтобы их было легко набрать
+EN_ADJECTIVES = [
+    "quiet", "bright", "kind", "clear", "wise", "brave", "swift", "gentle", "calm", "sunny", "lunar",
+    "forest", "ocean", "mountain", "river", "misty", "snowy", "summer", "autumn", "spring", "winter",
+    "morning", "evening", "silver", "golden", "amber", "emerald", "blue", "red", "velvet", "crystal",
+    "soft", "thoughtful", "honest", "loyal", "nimble", "cosy", "northern", "southern", "distant", "free",
+    "young", "fresh", "radiant", "sleepy", "cheerful", "smooth", "fluffy", "meadow", "starry", "warm",
+    "curious", "patient", "steady", "hidden", "little", "wild", "mellow", "tidal", "tender",
+]
+EN_NOUNS = [
+    "whale", "fox", "wolf", "badger", "beaver", "owl", "dolphin", "crane", "swan", "falcon", "hawk",
+    "cat", "hare", "deer", "moose", "bear", "seal", "penguin", "robin", "finch", "thrush", "stork",
+    "pelican", "raccoon", "hamster", "tiger", "lion", "leopard", "jaguar", "lynx", "giraffe", "elephant",
+    "otter", "crab", "octopus", "walrus", "lemur", "sloth", "bumblebee", "firefly", "woodpecker", "parrot",
+    "peacock", "sable", "chipmunk", "bison", "yak", "camel", "unicorn", "cedar", "oak", "maple", "willow",
+    "sunrise", "sunset", "mist", "brook", "lighthouse", "sail", "island", "comet", "harbor",
+]
+
+
+def random_alias(lang: str | None = None) -> str:
+    if lang is None:
+        from django.utils import translation
+
+        lang = (translation.get_language() or "ru").split("-")[0]
+    words = (EN_ADJECTIVES, EN_NOUNS) if lang == "en" else (ADJECTIVES, NOUNS)
+    adjective = secrets.choice(words[0])
+    noun = secrets.choice(words[1])
     number = 1000 + secrets.randbelow(9000)
     return f"{adjective}-{noun}-{number}"
 
 
 def generate_unique_alias(max_attempts: int = 50) -> str:
+    """Свободный псевдоним на языке запроса (английский для en, иначе русский)."""
     from .models import User
 
     for _ in range(max_attempts):

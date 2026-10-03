@@ -169,7 +169,7 @@ class MyArticleSerializer(ArticleWriteMixin, CoverImageMixin, serializers.ModelS
             "id", "slug", "title", "summary", "content", "body", "topic", "topic_label", "topics", "topic_labels",
             "sources", "cover", "cover_image",
             "cover_image_id", "reading_minutes", "status", "moderation_comment", "submitted_at", "moderated_at",
-            "published_at", "is_published", "editors_choice", "reads", "created_at", "updated_at",
+            "published_at", "is_published", "editors_choice", "reads", "created_at", "updated_at", "language",
         )
         read_only_fields = (
             "slug", "reading_minutes", "moderation_comment", "submitted_at", "moderated_at", "published_at",

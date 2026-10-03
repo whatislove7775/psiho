@@ -1,5 +1,7 @@
 "use client";
 
+import { t, tj } from "@/lib/i18n";
+import { lp } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -46,16 +48,16 @@ export function Specialists() {
       <div className={s.sectionHead}>
         <div>
           <h2 id="specialists-title" className={s.sectionTitle}>
-            Специалисты
+            {t("Специалисты")}
           </h2>
-          <p className={s.sectionSub}>Каждого проверяем вручную. Они видят только ваш аватар и&nbsp;псевдоним.</p>
+          <p className={s.sectionSub}>{t("Каждого проверяем вручную. Они видят только ваш аватар и\u00a0псевдоним.")}</p>
         </div>
-        <Link href="/match" className={s.more}>
-          Подобрать по&nbsp;анкете
+        <Link href={lp("/match")} className={s.more}>
+          {t("Подобрать по\u00a0анкете")}
           <ArrowRight size={16} strokeWidth={2} aria-hidden />
         </Link>
       </div>
-      <ScrollRow className={s.bleed} trackClassName={s.scroller} label="Специалисты">
+      <ScrollRow className={s.bleed} trackClassName={s.scroller} label={t("Специалисты")}>
         {state.kind === "loading"
           ? [0, 1, 2, 3].map((i) => (
               <div key={i} role="listitem" className={s.specCard} aria-hidden>
@@ -72,10 +74,10 @@ export function Specialists() {
                   <span className={s.specMeta}>
                     {p.experience_years > 0
                       ? experienceLabel(p.experience_years)
-                      : "Начинающий специалист"}
+                      : t("Начинающий специалист")}
                     {p.specializations[0] ? ` · ${p.specializations[0].toLowerCase()}` : ""}
                   </span>
-                  <span className={s.specRate}>от&nbsp;{rub(p.session_rate_rub)}</span>
+                  <span className={s.specRate}>{tj("от\u00a0{rub}", { rub: rub(p.session_rate_rub) })}</span>
                 </Link>
               </div>
             ))}

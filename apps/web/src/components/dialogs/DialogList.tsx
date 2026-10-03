@@ -1,5 +1,6 @@
 "use client";
 
+import { t, intlLocale } from "@/lib/i18n";
 import { Lock, MessageCirclePlus, Search, Timer } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button, EmptyState, Segmented, Skeleton } from "@/ui";
@@ -20,30 +21,30 @@ function when(iso: string | null) {
   const now = new Date();
   if (d.toDateString() === now.toDateString()) return fmtTime(iso);
   const diff = (now.getTime() - d.getTime()) / 86400000;
-  if (diff < 6) return d.toLocaleDateString("ru-RU", { weekday: "short" });
-  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+  if (diff < 6) return d.toLocaleDateString(intlLocale(), { weekday: "short" });
+  return d.toLocaleDateString(intlLocale(), { day: "numeric", month: "short" });
 }
 
 function callChip(d: DialogItem, now: number) {
   const call = d.next_call;
-  if (!call) return d.status === "proposal" ? { tone: "warn", text: "Предложено время созвона" } : null;
-  if (isLive(call)) return { tone: "live", text: "Идёт созвон" };
-  if (call.status === "awaiting_payment") return { tone: "warn", text: "Созвон ждёт оплаты" };
+  if (!call) return d.status === "proposal" ? { tone: "warn", text: t("Предложено время созвона") } : null;
+  if (isLive(call)) return { tone: "live", text: t("Идёт созвон") };
+  if (call.status === "awaiting_payment") return { tone: "warn", text: t("Созвон ждёт оплаты") };
   const start = new Date(call.scheduled_at);
   const today = new Date(now);
   const tomorrow = new Date(now + 86400000);
   const day =
     start.toDateString() === today.toDateString()
-      ? "сегодня"
+      ? t("сегодня")
       : start.toDateString() === tomorrow.toDateString()
-        ? "завтра"
+        ? t("завтра")
         : weekdayDay(call.scheduled_at);
-  return { tone: "call", text: `Созвон ${day} в\u00a0${hm(call.scheduled_at)}` };
+  return { tone: "call", text: t(`Созвон {day} в\u00a0{hm}`, { day, hm: hm(call.scheduled_at) }) };
 }
 
 const PRIVACY = {
-  client: "Специалист видит только псевдоним и\u00a0аватар.",
-  specialist: "Вы\u00a0видите только псевдоним и\u00a0аватар клиента.",
+  get client() { return t("Специалист видит только псевдоним и\u00a0аватар."); },
+  get specialist() { return t("Вы\u00a0видите только псевдоним и\u00a0аватар клиента."); },
 };
 
 export function DialogList({
@@ -90,11 +91,11 @@ export function DialogList({
     const preview =
       (d.last_message?.card ? cardPreview(d.last_message.card) : d.last_message?.text) ||
       (d.kind === "ai"
-        ? "ИИ-помощник: поддержка и\u00a0практики"
+        ? t("ИИ-помощник: поддержка и\u00a0практики")
         : d.kind === "support"
-          ? "Вопросы по\u00a0оплате, созвонам и\u00a0работе сервиса"
+          ? t("Вопросы по\u00a0оплате, созвонам и\u00a0работе сервиса")
           : d.conversation_id
-            ? "Нет сообщений"
+            ? t("Нет сообщений")
             : "");
     return (
       <button
@@ -112,7 +113,7 @@ export function DialogList({
           </span>
           <span className={c.itemBottom}>
             <span className={c.itemPreview}>
-              {d.retention !== "forever" && <Timer size={12} className={c.itemTimer} aria-label="Исчезающие сообщения" />}
+              {d.retention !== "forever" && <Timer size={12} className={c.itemTimer} aria-label={t("Исчезающие сообщения")} />}
               {preview}
             </span>
             {d.unread > 0 && <span className={c.unread}>{d.unread > 99 ? "99+" : d.unread}</span>}
@@ -129,12 +130,12 @@ export function DialogList({
   };
 
   return (
-    <aside className={c.listPane} aria-label="Список диалогов">
+    <aside className={c.listPane} aria-label={t("Список диалогов")}>
       <div className={c.listHead}>
-        <h1 className={c.listTitle}>Диалоги</h1>
+        <h1 className={c.listTitle}>{t("Диалоги")}</h1>
         {onNew && (
           <Button variant="soft" size="sm" onClick={onNew} icon={<MessageCirclePlus size={18} />} className={s.newBtn}>
-            {mode === "client" ? "Новый" : "Написать"}
+            {mode === "client" ? t("Новый") : t("Написать")}
           </Button>
         )}
       </div>
@@ -143,19 +144,19 @@ export function DialogList({
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={mode === "client" ? "Найти по\u00a0имени" : "Найти по\u00a0псевдониму"}
-          aria-label="Поиск по&nbsp;диалогам"
+          placeholder={mode === "client" ? t("Найти по\u00a0имени") : t("Найти по\u00a0псевдониму")}
+          aria-label={t("Поиск по\u00a0диалогам")}
         />
       </label>
       <div className={s.filters}>
         <Segmented<Filter>
-          ariaLabel="Какие диалоги показать"
+          ariaLabel={t("Какие диалоги показать")}
           value={filter}
           onChange={setFilter}
           options={[
-            { value: "all", label: "Все" },
-            { value: "calls", label: "С\u00a0созвоном" },
-            { value: "unread", label: unreadTotal ? `Новые ${unreadTotal > 99 ? "99+" : unreadTotal}` : "Новые" },
+            { value: "all", label: t("Все") },
+            { value: "calls", label: t("С\u00a0созвоном") },
+            { value: "unread", label: unreadTotal ? t(`Новые {v}`, { v: unreadTotal > 99 ? "99+" : unreadTotal }) : t("Новые") },
           ]}
         />
       </div>
@@ -173,16 +174,16 @@ export function DialogList({
         ) : pinned.length + rest.length === 0 ? (
           query || filter !== "all" ? (
             <p className={s.emptyFilter}>
-              {filter === "unread" ? "Все сообщения прочитаны." : filter === "calls" ? "Назначенных созвонов нет." : "Никого не\u00a0нашлось."}
+              {filter === "unread" ? t("Все сообщения прочитаны.") : filter === "calls" ? t("Назначенных созвонов нет.") : t("Никого не\u00a0нашлось.")}
             </p>
           ) : (
             <EmptyState
               art={<EmptyArt scene="chats" />}
-              title="Диалогов пока нет"
+              title={t("Диалогов пока нет")}
               text={
                 mode === "client"
-                  ? "Выберите специалиста и\u00a0напишите ему\u00a0— созвон можно назначить прямо в\u00a0диалоге."
-                  : "Когда клиент напишет вам или\u00a0назначит созвон, диалог появится здесь."
+                  ? t("Выберите специалиста и\u00a0напишите ему\u00a0— созвон можно назначить прямо в\u00a0диалоге.")
+                  : t("Когда клиент напишет вам или\u00a0назначит созвон, диалог появится здесь.")
               }
             />
           )
@@ -194,10 +195,10 @@ export function DialogList({
             {mode === "client" && rest.length === 0 && filter === "all" && !query && (
               <div style={{ padding: "12px 10px" }}>
                 <p className={s.muted} style={{ marginBottom: 10 }}>
-                  С&nbsp;каждым специалистом у&nbsp;вас будет один диалог: переписка, созвоны и&nbsp;файлы в&nbsp;одном месте.
+                  {t("С\u00a0каждым специалистом у\u00a0вас будет один диалог: переписка, созвоны и\u00a0файлы в\u00a0одном месте.")}
                 </p>
                 <SearchTrigger variant="secondary" size="sm">
-                  Выбрать специалиста
+                  {t("Выбрать специалиста")}
                 </SearchTrigger>
               </div>
             )}

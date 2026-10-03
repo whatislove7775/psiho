@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, ExternalLink, FileText, ImageIcon, X } from "lucide-react";
@@ -44,7 +45,7 @@ export function DocFrame({ file, title }: { file: CredentialFileInfo; title: str
   if (loading) {
     return (
       <div className={s.frameState}>
-        <Spinner label="Открываем документ" />
+        <Spinner label={t("Открываем документ")} />
       </div>
     );
   }
@@ -52,7 +53,7 @@ export function DocFrame({ file, title }: { file: CredentialFileInfo; title: str
     return (
       <div className={s.frameState}>
         <FileText size={28} strokeWidth={1.6} aria-hidden />
-        <p>{error ?? "Не\u00a0получилось открыть документ."}</p>
+        <p>{error ?? t("Не\u00a0получилось открыть документ.")}</p>
       </div>
     );
   }
@@ -61,7 +62,7 @@ export function DocFrame({ file, title }: { file: CredentialFileInfo; title: str
       <div className={s.pdfWrap}>
         <iframe className={s.pdf} src={url} title={title} />
         <a className={s.pdfFallback} href={url} target="_blank" rel="noopener noreferrer">
-          <ExternalLink size={16} aria-hidden /> Открыть PDF в&nbsp;новой вкладке
+          <ExternalLink size={16} aria-hidden />{" "}{t("Открыть PDF в\u00a0новой вкладке")}
         </a>
       </div>
     );
@@ -112,14 +113,14 @@ export function DocViewer({
   const file = open ? files[Math.min(i, files.length - 1)] : null;
   const { url } = useDocUrl(file);
   if (!open || !file || typeof document === "undefined") return null;
-  const name = file.name || (file.kind === "pdf" ? "Документ PDF" : "Скан документа");
+  const name = file.name || (file.kind === "pdf" ? t("Документ PDF") : t("Скан документа"));
 
   return createPortal(
     <div
       className={s.lightbox}
       role="dialog"
       aria-modal="true"
-      aria-label="Просмотр документа"
+      aria-label={t("Просмотр документа")}
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className={s.lbBar}>
@@ -127,31 +128,31 @@ export function DocViewer({
           {caption && <strong>{caption}</strong>}
           <span>
             {name}
-            {files.length > 1 ? `, ${Math.min(i, files.length - 1) + 1} из\u00a0${files.length}` : ""}
+            {files.length > 1 ? t(`, {v} из\u00a0{length}`, { v: Math.min(i, files.length - 1) + 1, length: files.length }) : ""}
           </span>
         </div>
         {url && (
           <Button
             variant="ghost"
             size="sm"
-            aria-label="Открыть отдельно"
+            aria-label={t("Открыть отдельно")}
             onClick={() => window.open(url, "_blank", "noopener")}
             icon={<ExternalLink size={16} />}
           >
-            <span className={s.hideSm}>Открыть отдельно</span>
+            <span className={s.hideSm}>{t("Открыть отдельно")}</span>
           </Button>
         )}
-        <Button ref={closeRef} variant="ghost" size="sm" iconOnly aria-label="Закрыть" onClick={onClose} icon={<X size={20} />} />
+        <Button ref={closeRef} variant="ghost" size="sm" iconOnly aria-label={t("Закрыть")} onClick={onClose} icon={<X size={20} />} />
       </div>
       <div className={s.lbStage} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
         <DocFrame key={file.id} file={file} title={name} />
       </div>
       {files.length > 1 && (
         <>
-          <button type="button" className={`${s.lbNav} ${s.lbPrev}`} aria-label="Предыдущий документ" onClick={() => go(-1)}>
+          <button type="button" className={`${s.lbNav} ${s.lbPrev}`} aria-label={t("Предыдущий документ")} onClick={() => go(-1)}>
             <ChevronLeft size={24} />
           </button>
-          <button type="button" className={`${s.lbNav} ${s.lbNext}`} aria-label="Следующий документ" onClick={() => go(1)}>
+          <button type="button" className={`${s.lbNav} ${s.lbNext}`} aria-label={t("Следующий документ")} onClick={() => go(1)}>
             <ChevronRight size={24} />
           </button>
         </>
@@ -175,7 +176,7 @@ export function DocTile({
 }) {
   return (
     <div className={s.tile}>
-      <button type="button" className={s.tileBtn} onClick={onOpen} aria-label={label ?? `Открыть ${file.name ?? "документ"}`}>
+      <button type="button" className={s.tileBtn} onClick={onOpen} aria-label={label ?? t(`Открыть {v}`, { v: file.name ?? t("документ") })}>
         {file.kind === "image" ? <Thumb file={file} /> : (
           <span className={s.tilePdf} aria-hidden>
             <FileText size={22} strokeWidth={1.7} />

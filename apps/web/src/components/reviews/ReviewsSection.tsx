@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { Flag, PenLine } from "lucide-react";
 import { Badge, Button, Card, CardHead, Modal, Select, Skeleton, Textarea, useToast } from "@/ui";
@@ -22,7 +23,7 @@ export function ReviewSummaryBlock({ summary }: { summary: ReviewSummary }) {
           {summary.count} {plural(summary.count, "отзыв", "отзыва", "отзывов")}
         </span>
       </div>
-      <div className={s.bars} aria-label="Распределение оценок">
+      <div className={s.bars} aria-label={tt("Распределение оценок")}>
         {(["5", "4", "3", "2", "1"] as const).map((k) => (
           <div key={k} className={s.bar}>
             <span>{k}</span>
@@ -53,16 +54,16 @@ export function ReviewItem({ r, onReport, children }: { r: Review; onReport?: (r
         <Stars value={r.rating} size={15} />
         <span className={s.who}>
           <b>{r.author_label}</b>, {monthLabel(r.month).toLowerCase()}
-          {r.edited ? ", изменён" : ""}
+          {r.edited ? tt(", изменён") : ""}
         </span>
-        {r.mine && <span className={s.mine}>Ваш отзыв</span>}
+        {r.mine && <span className={s.mine}>{tt("Ваш отзыв")}</span>}
         {onReport && !r.mine && (
           <Button
             variant="ghost"
             size="sm"
             iconOnly
             className={s.more}
-            aria-label="Пожаловаться на&nbsp;отзыв"
+            aria-label={tt("Пожаловаться на\u00a0отзыв")}
             icon={<Flag size={15} />}
             onClick={() => onReport(r)}
           />
@@ -78,7 +79,7 @@ export function ReviewItem({ r, onReport, children }: { r: Review; onReport?: (r
       {r.text && <p className={s.text}>{r.text}</p>}
       {r.reply && (
         <div className={s.reply}>
-          <b>Ответ специалиста</b>
+          <b>{tt("Ответ специалиста")}</b>
           {r.reply.text}
         </div>
       )}
@@ -128,21 +129,21 @@ export function ReviewsSection({ psychologistId, name }: { psychologistId: numbe
 
   const writeBtn = canReview.can ? (
     <Button variant="soft" size="sm" icon={<PenLine size={16} />} onClick={() => setWriting(true)}>
-      {canReview.has ? "Изменить отзыв" : "Оставить отзыв"}
+      {canReview.has ? tt("Изменить отзыв") : tt("Оставить отзыв")}
     </Button>
   ) : undefined;
 
   return (
     <Card as="section">
       <span id="reviews" style={{ display: "block", scrollMarginTop: 16 }} />
-      <CardHead title="Отзывы" action={writeBtn} />
+      <CardHead title={tt("Отзывы")} action={writeBtn} />
       {!data ? (
         <div style={{ display: "grid", gap: 12 }}>
           <Skeleton height={120} radius={18} />
           <Skeleton height={64} />
         </div>
       ) : data.summary.count === 0 ? (
-        <p className={s.headNote}>Отзывов пока нет</p>
+        <p className={s.headNote}>{tt("Отзывов пока нет")}</p>
       ) : (
         <>
           <ReviewSummaryBlock summary={data.summary} />
@@ -153,7 +154,7 @@ export function ReviewsSection({ psychologistId, name }: { psychologistId: numbe
           </div>
           {data.page < data.pages && (
             <Button variant="ghost" block loading={loadingMore} onClick={more}>
-              Показать ещё
+              {tt("Показать ещё")}
             </Button>
           )}
         </>
@@ -185,18 +186,18 @@ export function ReportReviewModal({ review, onClose }: { review: Review | null; 
     }
   }, [review]);
   return (
-    <Modal open={!!review} onClose={() => !busy && onClose()} title="Пожаловаться на&nbsp;отзыв">
+    <Modal open={!!review} onClose={() => !busy && onClose()} title={tt("Пожаловаться на\u00a0отзыв")}>
       <div className={s.form}>
         <Select<ReportReason>
-          label="Что&nbsp;не&nbsp;так"
+          label={tt("Что\u00a0не\u00a0так")}
           value={reason}
           onChange={setReason}
           options={REPORT_REASONS.filter((r) => ["abuse", "harassment", "spam", "fraud", "inappropriate", "other"].includes(r.value))}
         />
-        <Textarea label="Комментарий для&nbsp;модератора" rows={3} maxLength={1000} value={comment} onChange={(e) => setComment(e.target.value)} hint="Необязательно" />
+        <Textarea label={tt("Комментарий для\u00a0модератора")} rows={3} maxLength={1000} value={comment} onChange={(e) => setComment(e.target.value)} hint={tt("Необязательно")} />
         <div className={s.actions}>
           <Button variant="ghost" onClick={onClose} disabled={busy}>
-            Отмена
+            {tt("Отмена")}
           </Button>
           <Button
             variant="primary"
@@ -206,7 +207,7 @@ export function ReportReviewModal({ review, onClose }: { review: Review | null; 
               setBusy(true);
               try {
                 await reviewsApi.report(review.id, reason, comment.trim());
-                toast("Жалоба отправлена. Модератор посмотрит отзыв");
+                toast(tt("Жалоба отправлена. Модератор посмотрит отзыв"));
                 onClose();
               } catch (e) {
                 toast((e as Error).message, { error: true });
@@ -215,7 +216,7 @@ export function ReportReviewModal({ review, onClose }: { review: Review | null; 
               }
             }}
           >
-            Отправить
+            {tt("Отправить")}
           </Button>
         </div>
       </div>

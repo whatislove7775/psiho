@@ -1,5 +1,6 @@
 "use client";
 
+import { t, intlLocale } from "@/lib/i18n";
 import { EyeOff, Lock, MessageCirclePlus, Mic, PencilLine, Search, Timer } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -27,17 +28,14 @@ function when(iso: string | null) {
   const now = new Date();
   if (d.toDateString() === now.toDateString()) return fmtTime(iso);
   const diff = (now.getTime() - d.getTime()) / 86400000;
-  if (diff < 6) return d.toLocaleDateString("ru-RU", { weekday: "short" });
-  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+  if (diff < 6) return d.toLocaleDateString(intlLocale(), { weekday: "short" });
+  return d.toLocaleDateString(intlLocale(), { day: "numeric", month: "short" });
 }
 
 const PRIVACY: Record<MessengerMode, string> = {
-  client:
-    "Переписка хранится в\u00a0зашифрованном виде. Специалист видит только ваш псевдоним и\u00a0аватар, а\u00a0сотрудники платформы не\u00a0имеют доступа к\u00a0вашим чатам со\u00a0специалистами.",
-  specialist:
-    "Клиент видит ваше имя из\u00a0профиля, вы\u00a0— только его псевдоним. Отправлять файлы в\u00a0чатах можете вы\u00a0и\u00a0поддержка. Переписка хранится в\u00a0зашифрованном виде.",
-  support:
-    "Здесь только обращения в\u00a0поддержку. Личные чаты клиентов и\u00a0специалистов сотрудникам недоступны. Клиента вы\u00a0видите только по\u00a0псевдониму.",
+  get client() { return t("Переписка хранится в\u00a0зашифрованном виде. Специалист видит только ваш псевдоним и\u00a0аватар, а\u00a0сотрудники платформы не\u00a0имеют доступа к\u00a0вашим чатам со\u00a0специалистами."); },
+  get specialist() { return t("Клиент видит ваше имя из\u00a0профиля, вы\u00a0— только его псевдоним. Отправлять файлы в\u00a0чатах можете вы\u00a0и\u00a0поддержка. Переписка хранится в\u00a0зашифрованном виде."); },
+  get support() { return t("Здесь только обращения в\u00a0поддержку. Личные чаты клиентов и\u00a0специалистов сотрудникам недоступны. Клиента вы\u00a0видите только по\u00a0псевдониму."); },
 };
 
 interface Entry {
@@ -82,7 +80,7 @@ export function Messenger({ mode }: { mode: MessengerMode }) {
       if (st) setAi(st);
     } catch (e) {
       setConvs((c) => c ?? []);
-      toast(e instanceof ApiError ? e.message : "Не\u00a0получилось загрузить чаты", { error: true });
+      toast(e instanceof ApiError ? e.message : t("Не\u00a0получилось загрузить чаты"), { error: true });
     }
   }, [mode, toast]);
 
@@ -106,7 +104,7 @@ export function Messenger({ mode }: { mode: MessengerMode }) {
         }
         const c = list[idx];
         const preview =
-          m.kind === "voice" ? "Голосовое сообщение" : m.kind === "file" ? "Файл" : m.text.slice(0, 120);
+          m.kind === "voice" ? t("Голосовое сообщение") : m.kind === "file" ? t("Файл") : m.text.slice(0, 120);
         const isOpen = selected === c.id;
         const updated: Conversation = {
           ...c,
@@ -139,7 +137,7 @@ export function Messenger({ mode }: { mode: MessengerMode }) {
             setConvs((list) => [c, ...(list ?? []).filter((x) => x.id !== c.id)]);
             select(c.id);
           })
-          .catch((e) => toast(e instanceof ApiError ? e.message : "Не\u00a0получилось открыть чат", { error: true }))
+          .catch((e) => toast(e instanceof ApiError ? e.message : t("Не\u00a0получилось открыть чат"), { error: true }))
           .finally(() => setOpening(false));
       }
     }
@@ -173,12 +171,12 @@ export function Messenger({ mode }: { mode: MessengerMode }) {
           : {
               key: AI_KEY,
               conv: null,
-              name: "Тиша",
-              preview: ai?.enabled === false ? "ИИ-помощник скоро появится" : "ИИ-помощник для\u00a0поддержки и\u00a0практик",
+              name: t("Тиша"),
+              preview: ai?.enabled === false ? t("ИИ-помощник скоро появится") : t("ИИ-помощник для\u00a0поддержки и\u00a0практик"),
               time: null,
               unread: 0,
               pinned: true,
-              who: { type: "ai", name: "Тиша", avatar_config: null },
+              who: { type: "ai", name: t("Тиша"), avatar_config: null },
             },
       );
     }
@@ -189,12 +187,12 @@ export function Messenger({ mode }: { mode: MessengerMode }) {
         : {
             key: SUPPORT_KEY,
             conv: null,
-            name: "Поддержка Aprosop",
-            preview: "Вопросы по\u00a0оплате, записи и\u00a0работе сервиса",
+            name: t("Поддержка Aprosop"),
+            preview: t("Вопросы по\u00a0оплате, записи и\u00a0работе сервиса"),
             time: null,
             unread: 0,
             pinned: true,
-            who: { type: "support", name: "Поддержка Aprosop", avatar_config: null },
+            who: { type: "support", name: t("Поддержка Aprosop"), avatar_config: null },
           },
     );
     convs.filter((c) => c.kind === "specialist").forEach((c) => out.push(toEntry(c)));
@@ -228,27 +226,27 @@ export function Messenger({ mode }: { mode: MessengerMode }) {
       setNewOpen(false);
       select(conv.id);
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "Не\u00a0получилось начать чат", { error: true });
+      toast(e instanceof ApiError ? e.message : t("Не\u00a0получилось начать чат"), { error: true });
     }
   };
 
-  const title = mode === "support" ? "Поддержка" : "Чаты";
+  const title = mode === "support" ? t("Поддержка") : t("Чаты");
 
   return (
     <div className={s.messenger} data-open={open ? "" : undefined}>
-      <aside className={s.listPane} aria-label="Список чатов">
+      <aside className={s.listPane} aria-label={t("Список чатов")}>
         <div className={s.listHead}>
           <h1 className={s.listTitle}>{title}</h1>
           {mode !== "support" && (
             <Button variant="soft" size="sm" onClick={openNew} icon={<MessageCirclePlus size={18} />}>
-              Новый чат
+              {t("Новый чат")}
             </Button>
           )}
         </div>
         {mode === "support" && (
           <label className={s.search}>
             <Search size={16} />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Найти по&nbsp;псевдониму или&nbsp;имени" />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("Найти по\u00a0псевдониму или\u00a0имени")} />
           </label>
         )}
         <div className={s.list}>
@@ -264,8 +262,8 @@ export function Messenger({ mode }: { mode: MessengerMode }) {
             ))
           ) : entries.length === 0 ? (
             <EmptyState art={<EmptyArt scene="chats" />}
-              title={mode === "support" ? "Обращений пока нет" : "Чатов пока нет"}
-              text={mode === "support" ? "Когда клиент или\u00a0специалист напишет в\u00a0поддержку, разговор появится здесь." : undefined}
+              title={mode === "support" ? t("Обращений пока нет") : t("Чатов пока нет")}
+              text={mode === "support" ? t("Когда клиент или\u00a0специалист напишет в\u00a0поддержку, разговор появится здесь.") : undefined}
             />
           ) : (
             entries.map((e) => {
@@ -286,8 +284,8 @@ export function Messenger({ mode }: { mode: MessengerMode }) {
                     </span>
                     <span className={s.itemBottom}>
                       <span className={s.itemPreview}>
-                        {e.conv && e.conv.retention !== "forever" && <Timer size={12} className={s.itemTimer} aria-label="Исчезающие сообщения" />}
-                        {e.preview || (e.conv ? "Нет сообщений" : "")}
+                        {e.conv && e.conv.retention !== "forever" && <Timer size={12} className={s.itemTimer} aria-label={t("Исчезающие сообщения")} />}
+                        {e.preview || (e.conv ? t("Нет сообщений") : "")}
                       </span>
                       {e.unread > 0 && <span className={s.unread}>{e.unread > 99 ? "99+" : e.unread}</span>}
                     </span>
@@ -330,39 +328,39 @@ export function Messenger({ mode }: { mode: MessengerMode }) {
           <div className={s.placeholder}>
             {opening ? <Skeleton width={220} height={18} /> : (
               <EmptyState art={<EmptyArt scene="search" />}
-                title="Чат не&nbsp;найден"
-                text="Возможно, он&nbsp;был удалён или&nbsp;у&nbsp;вас нет к&nbsp;нему доступа."
-                action={<Button variant="secondary" onClick={() => select(null)}>К&nbsp;списку чатов</Button>}
+                title={t("Чат не\u00a0найден")}
+                text={t("Возможно, он\u00a0был удалён или\u00a0у\u00a0вас нет к\u00a0нему доступа.")}
+                action={<Button variant="secondary" onClick={() => select(null)}>{t("К\u00a0списку чатов")}</Button>}
               />
             )}
           </div>
         ) : (
           <div className={s.placeholder}>
             <ChatBubbles className={art.placeholderArt} />
-            <h2 className={s.placeholderTitle}>Спокойное место для&nbsp;разговора</h2>
-            <p className={s.placeholderText}>Выберите чат слева. Вот что&nbsp;защищает вашу переписку:</p>
+            <h2 className={s.placeholderTitle}>{t("Спокойное место для\u00a0разговора")}</h2>
+            <p className={s.placeholderText}>{t("Выберите чат слева. Вот что\u00a0защищает вашу переписку:")}</p>
             <ul className={s.features}>
               <li>
-                <Lock size={18} /> Сообщения и&nbsp;файлы хранятся на&nbsp;сервере в&nbsp;зашифрованном виде
+                <Lock size={18} />{" "}{t("Сообщения и\u00a0файлы хранятся на\u00a0сервере в\u00a0зашифрованном виде")}
               </li>
               <li>
-                <PencilLine size={18} /> Любое своё сообщение можно изменить или&nbsp;удалить&nbsp;— у&nbsp;себя или&nbsp;у&nbsp;всех
+                <PencilLine size={18} />{" "}{t("Любое своё сообщение можно изменить или\u00a0удалить\u00a0— у\u00a0себя или\u00a0у\u00a0всех")}
               </li>
               <li>
-                <Timer size={18} /> Исчезающие сообщения: новые исчезают сами через 1&nbsp;час или&nbsp;1&nbsp;день
+                <Timer size={18} />{" "}{t("Исчезающие сообщения: новые исчезают сами через 1\u00a0час или\u00a01\u00a0день")}
               </li>
               <li>
-                <Mic size={18} /> Голосовые можно записать с&nbsp;маской голоса&nbsp;— она применяется ещё на&nbsp;устройстве
+                <Mic size={18} />{" "}{t("Голосовые можно записать с\u00a0маской голоса\u00a0— она применяется ещё на\u00a0устройстве")}
               </li>
               <li>
-                <EyeOff size={18} /> {mode === "support" ? "Сотрудники видят только обращения в\u00a0поддержку" : "Сотрудники платформы не\u00a0читают ваши чаты со\u00a0специалистами"}
+                <EyeOff size={18} /> {mode === "support" ? t("Сотрудники видят только обращения в\u00a0поддержку") : t("Сотрудники платформы не\u00a0читают ваши чаты со\u00a0специалистами")}
               </li>
             </ul>
           </div>
         )}
       </div>
 
-      <Modal open={newOpen} onClose={() => setNewOpen(false)} title="Новый чат" width={460}>
+      <Modal open={newOpen} onClose={() => setNewOpen(false)} title={t("Новый чат")} width={460}>
         {!contacts ? (
           <div style={{ display: "grid", gap: 10 }}>
             <Skeleton height={52} />
@@ -372,15 +370,15 @@ export function Messenger({ mode }: { mode: MessengerMode }) {
           <div className={s.modalText}>
             {mode === "client" ? (
               <>
-                <p>Написать специалисту можно после записи на&nbsp;созвон. Пока можно поговорить с&nbsp;Тишей или&nbsp;написать в&nbsp;поддержку.</p>
+                <p>{t("Написать специалисту можно после записи на\u00a0созвон. Пока можно поговорить с\u00a0Тишей или\u00a0написать в\u00a0поддержку.")}</p>
                 <div className={s.modalActions}>
                   <SearchTrigger variant="primary">
-                    Выбрать специалиста
+                    {t("Выбрать специалиста")}
                   </SearchTrigger>
                 </div>
               </>
             ) : (
-              <p>Когда клиент запишется к&nbsp;вам на&nbsp;созвон, здесь можно будет начать с&nbsp;ним чат.</p>
+              <p>{t("Когда клиент запишется к\u00a0вам на\u00a0созвон, здесь можно будет начать с\u00a0ним чат.")}</p>
             )}
           </div>
         ) : (
@@ -390,7 +388,7 @@ export function Messenger({ mode }: { mode: MessengerMode }) {
                 <ConvAvatar who={{ type: c.type, name: c.name, avatar_config: c.avatar_config }} size={42} />
                 <span className={s.itemBody}>
                   <span className={s.itemName}>{c.name}</span>
-                  <span className={s.itemPreview}>{c.type === "specialist" ? "Специалист" : "Клиент"}</span>
+                  <span className={s.itemPreview}>{c.type === "specialist" ? t("Специалист") : t("Клиент")}</span>
                 </span>
               </button>
             ))}

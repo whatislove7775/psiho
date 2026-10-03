@@ -1,11 +1,14 @@
+import { t } from "@/lib/i18n";
 import type { Metadata } from "next";
 import { Room } from "@/components/room/Room";
 
-export const metadata: Metadata = {
-  title: "Звонок",
-  description: "Защищённый видеозвонок Aprosop без\u00a0записи.",
-  robots: { index: false, follow: false },
-};
+export function generateMetadata(): Metadata {
+  return {
+    title: t("Звонок"),
+    description: t("Защищённый видеозвонок Aprosop без\u00a0записи."),
+    robots: { index: false, follow: false },
+  };
+}
 
 export default function RoomPage({ params, searchParams }: { params: { id: string }; searchParams: { lab?: string } }) {
   // ?lab=<signed invite> — a staff test room from /admin/lab (see components/admin/lab)

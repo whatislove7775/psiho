@@ -1,8 +1,11 @@
+import { t } from "@/lib/i18n";
 import { DraftDoc } from "@/components/legal/DraftDoc";
 import { legalMetadata } from "@/components/legal/meta";
 import { Tbd } from "@/components/legal/Placeholder";
 
-export const metadata = legalMetadata("requisites");
+export function generateMetadata() {
+  return legalMetadata("requisites");
+}
 
 const ROWS = ["Полное наименование", "ИНН", "ОГРН / ОГРНИП", "КПП", "Юридический адрес", "Банк", "Расчётный счёт", "БИК", "Корреспондентский счёт"];
 
@@ -12,14 +15,13 @@ export default function RequisitesPage() {
       slug="requisites"
       summary={
         <p>
-          <strong>Сведения об&nbsp;операторе сервиса Aprosop.</strong> Реквизиты будут опубликованы здесь, когда будут готовы
-          документы. Мы&nbsp;не&nbsp;указываем данные, которые ещё не&nbsp;подтверждены.
+          <strong>{t("Сведения об\u00a0операторе сервиса Aprosop.")}</strong>{" "}{t("Реквизиты будут опубликованы здесь, когда будут готовы документы. Мы\u00a0не\u00a0указываем данные, которые ещё не\u00a0подтверждены.")}
         </p>
       }
       sections={[
         {
           id: "company",
-          title: "Оператор сервиса",
+          title: t("Оператор сервиса"),
           body: (
             <dl>
               {ROWS.map((r) => (
@@ -35,10 +37,10 @@ export default function RequisitesPage() {
         },
         {
           id: "contacts",
-          title: "Контакты",
+          title: t("Контакты"),
           body: (
             <p>
-              Электронная почта: <a href="mailto:support@aprosop.ru">support@aprosop.ru</a>. Почтовый адрес: <Tbd />
+              {t("Электронная почта:")}{" "}<a href="mailto:support@aprosop.ru">support@aprosop.ru</a>{t(". Почтовый адрес:")}{" "}<Tbd />
             </p>
           ),
         },

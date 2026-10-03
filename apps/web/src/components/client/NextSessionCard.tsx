@@ -1,5 +1,6 @@
 "use client";
 
+import { t, tj } from "@/lib/i18n";
 import Link from "next/link";
 import {
   CalendarDays,
@@ -70,26 +71,26 @@ export function NextSessionCard({
       <section className={s.accent} aria-labelledby={titleId}>
         <div className={s.head}>
           <h2 id={titleId} className={s.title}>
-            Первая встреча
+            {t("Первая встреча")}
           </h2>
         </div>
         <p className={s.lead}>
-          Выберите специалиста и&nbsp;удобное время. Сессия пройдёт по&nbsp;видео, но&nbsp;вместо лица специалист увидит ваш аватар.
+          {t("Выберите специалиста и\u00a0удобное время. Сессия пройдёт по\u00a0видео, но\u00a0вместо лица специалист увидит ваш аватар.")}
         </p>
         <div className={s.rows}>
           <Row
             icon={<CalendarDays size={18} strokeWidth={1.8} />}
-            title="От&nbsp;50&nbsp;минут до&nbsp;3&nbsp;часов"
-            sub="Длительность выбираете при&nbsp;записи, цена зависит от&nbsp;неё"
+            title={t("От\u00a050\u00a0минут до\u00a03\u00a0часов")}
+            sub={t("Длительность выбираете при\u00a0записи, цена зависит от\u00a0неё")}
           />
           <Row
             icon={<ShieldCheck size={18} strokeWidth={1.8} />}
-            title="Оплата после подтверждения"
-            sub="Отменить можно до&nbsp;начала созвона"
+            title={t("Оплата после подтверждения")}
+            sub={t("Отменить можно до\u00a0начала созвона")}
           />
         </div>
         <SearchTrigger variant="white" size="lg" block>
-          Выбрать специалиста
+          {t("Выбрать специалиста")}
         </SearchTrigger>
       </section>
     );
@@ -102,10 +103,10 @@ export function NextSessionCard({
     <section className={s.accent} aria-labelledby={titleId}>
       <div className={s.head}>
         <h2 id={titleId} className={s.title}>
-          Ближайший созвон
+          {t("Ближайший созвон")}
         </h2>
         <span className={s.pill}>
-          {session.can_join ? "Можно входить" : untilLabel(starts)}
+          {session.can_join ? t("Можно входить") : untilLabel(starts)}
         </span>
       </div>
 
@@ -114,7 +115,7 @@ export function NextSessionCard({
         <div className={s.personText}>
           <strong>{p.display_name}</strong>
           <span>
-            {session.duration_minutes} минут, {rub(session.amount_rub)}
+            {tj("{duration_minutes} минут, {rub}", { duration_minutes: session.duration_minutes, rub: rub(session.amount_rub) })}
           </span>
         </div>
       </div>
@@ -122,37 +123,34 @@ export function NextSessionCard({
       <div className={s.rows}>
         <Row
           icon={<CalendarDays size={18} strokeWidth={1.8} />}
-          title={`${dayLabel(starts)} в\u00a0${time(starts)}`}
+          title={t(`{dayLabel} в\u00a0{time}`, { dayLabel: dayLabel(starts), time: time(starts) })}
           sub={
             untilLabel(starts) === "уже началась"
-              ? "Сессия уже идёт"
-              : `Начало ${untilLabel(starts)}`
+              ? t("Сессия уже идёт")
+              : t(`Начало {untilLabel}`, { untilLabel: untilLabel(starts) })
           }
         />
         {session.can_join ? (
           <Row
             icon={<ShieldCheck size={18} strokeWidth={1.8} />}
-            title="Вы&nbsp;будете аватаром"
-            sub="Ваше лицо не&nbsp;передаётся, звонок зашифрован"
+            title={t("Вы\u00a0будете аватаром")}
+            sub={t("Ваше лицо не\u00a0передаётся, звонок зашифрован")}
           />
         ) : (
           <details className={s.tips}>
             <summary>
-              <strong>Как&nbsp;подготовиться</strong>
+              <strong>{t("Как\u00a0подготовиться")}</strong>
               <ChevronDown size={16} strokeWidth={2} aria-hidden className={s.tipsChevron} />
             </summary>
             <ul>
               <li>
-                <Lamp size={16} strokeWidth={1.8} aria-hidden /> Свет спереди,
-                чтобы аватар точнее повторял мимику
+                <Lamp size={16} strokeWidth={1.8} aria-hidden />{" "}{t("Свет спереди, чтобы аватар точнее повторял мимику")}
               </li>
               <li>
-                <Headphones size={16} strokeWidth={1.8} aria-hidden /> Наушники
-                и&nbsp;место, где вас не&nbsp;услышат
+                <Headphones size={16} strokeWidth={1.8} aria-hidden />{" "}{t("Наушники и\u00a0место, где вас не\u00a0услышат")}
               </li>
               <li>
-                <Sparkles size={16} strokeWidth={1.8} aria-hidden /> Пара мыслей
-                о&nbsp;том, с&nbsp;чем&nbsp;хотите прийти
+                <Sparkles size={16} strokeWidth={1.8} aria-hidden />{" "}{t("Пара мыслей о\u00a0том, с\u00a0чем\u00a0хотите прийти")}
               </li>
             </ul>
           </details>
@@ -167,16 +165,16 @@ export function NextSessionCard({
           href={`/room/${session.id}`}
           icon={<Video size={20} strokeWidth={1.8} />}
         >
-          Присоединиться
+          {t("Присоединиться")}
         </Button>
       ) : (
         <Button variant="white" size="lg" block href="/app/check">
-          Проверить камеру
+          {t("Проверить камеру")}
         </Button>
       )}
       {showAllLink && (
         <Link href="/app/sessions" className={s.link}>
-          Все диалоги
+          {t("Все диалоги")}
         </Link>
       )}
     </section>

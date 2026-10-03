@@ -1,5 +1,6 @@
 "use client";
 
+import { t, intlLocale } from "@/lib/i18n";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Camera, ChevronRight, PencilLine, Smile, Users, Wallet } from "lucide-react";
@@ -42,25 +43,25 @@ export default function ClientProfile() {
 
   if (!user) return null;
   const loading = sessions.loading && !sessions.data;
-  const talk = minutes < 120 ? `${minutes} мин` : `${hours.toLocaleString("ru-RU")} ч`;
+  const talk = minutes < 120 ? t(`{minutes} мин`, { minutes }) : t(`{v} ч`, { v: hours.toLocaleString(intlLocale()) });
 
   return (
     <div className={s.page}>
       <section className={s.head}>
-        <Link href="/app/avatar" className={s.avatar} aria-label="Изменить аватар">
+        <Link href="/app/avatar" className={s.avatar} aria-label={t("Изменить аватар")}>
           <AvatarThumb config={user.avatar_config} seed={user.id} size={64} />
         </Link>
         <div className={s.who}>
           <h1 className={s.alias}>
             {user.alias}
             {user.role === "client" && (
-              <button type="button" className={s.editNick} onClick={() => setNickOpen(true)} aria-label="Сменить ник" title="Сменить ник">
+              <button type="button" className={s.editNick} onClick={() => setNickOpen(true)} aria-label={t("Сменить ник")} title={t("Сменить ник")}>
                 <PencilLine size={16} strokeWidth={1.9} aria-hidden />
               </button>
             )}
           </h1>
           <span className={s.since}>
-            с {new Date(user.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" }).replace(" г.", "")}
+            {t("с")}{" "}{new Date(user.created_at).toLocaleDateString(intlLocale(), { day: "numeric", month: "long", year: "numeric" }).replace(" г.", "")}
           </span>
         </div>
       </section>
@@ -71,20 +72,20 @@ export default function ClientProfile() {
 
       <dl className={s.stats} aria-busy={loading || undefined}>
         <div>
-          <dt>Созвонов</dt>
+          <dt>{t("Созвонов")}</dt>
           <dd>{loading ? "·" : held}</dd>
         </div>
         <div>
-          <dt>Проведено</dt>
+          <dt>{t("Проведено")}</dt>
           <dd>{loading ? "·" : completed.length}</dd>
         </div>
         <div>
-          <dt>Разговора</dt>
+          <dt>{t("Разговора")}</dt>
           <dd>{loading ? "·" : completed.length ? talk : "0"}</dd>
         </div>
         {next && (
           <div>
-            <dt>Ближайший</dt>
+            <dt>{t("Ближайший")}</dt>
             <dd>
               {time(next.scheduled_at)} <small>{dayLabel(next.scheduled_at)}</small>
             </dd>
@@ -94,7 +95,7 @@ export default function ClientProfile() {
 
       {(loading || people.length > 0) && (
         <section className={s.section}>
-          <h2 className={s.sectionTitle}>Ваши специалисты</h2>
+          <h2 className={s.sectionTitle}>{t("Ваши специалисты")}</h2>
           {loading ? (
             <Skeleton height={56} radius={16} />
           ) : (
@@ -119,13 +120,13 @@ export default function ClientProfile() {
       )}
 
       <section className={s.section}>
-        <h2 className={s.sectionTitle}>Настройки</h2>
+        <h2 className={s.sectionTitle}>{t("Настройки")}</h2>
         <ul className={s.list}>
           {[
-            { href: "/app/avatar", icon: Smile, title: "Аватар" },
-            { href: "/app/avatar/mirror", icon: Camera, title: "Проверка камеры" },
-            { href: "/app/balance", icon: Wallet, title: "Баланс" },
-            { href: "/app/circles", icon: Users, title: "Круги" },
+            { href: "/app/avatar", icon: Smile, title: t("Аватар") },
+            { href: "/app/avatar/mirror", icon: Camera, title: t("Проверка камеры") },
+            { href: "/app/balance", icon: Wallet, title: t("Баланс") },
+            { href: "/app/circles", icon: Users, title: t("Круги") },
           ].map((row) => (
             <li key={row.href}>
               <Link href={row.href} className={s.row}>
@@ -144,7 +145,7 @@ export default function ClientProfile() {
 
       <section className={s.section} aria-labelledby="privacy-title">
         <h2 id="privacy-title" className={s.sectionTitle}>
-          Приватность и&nbsp;безопасность
+          {t("Приватность и\u00a0безопасность")}
         </h2>
         <PrivacyAndSecurity />
       </section>

@@ -1,5 +1,6 @@
 "use client";
 
+import { t, tj } from "@/lib/i18n";
 import { CreditCard } from "lucide-react";
 import { Button } from "@/ui";
 import { rub } from "@/lib/format";
@@ -35,9 +36,9 @@ export function PayCall({
             window.location.href = paymentUrl;
           }}
         >
-          Оплатить {rub(amountRub)}
+          {tj("Оплатить {rub}", { rub: rub(amountRub) })}
         </Button>
-        <span className={s.payHint}>Откроется защищённая страница оплаты. Мы&nbsp;не&nbsp;видим данные карты.</span>
+        <span className={s.payHint}>{t("Откроется защищённая страница оплаты. Мы\u00a0не\u00a0видим данные карты.")}</span>
       </div>
     );
   }

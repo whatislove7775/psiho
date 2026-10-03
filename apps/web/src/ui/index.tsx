@@ -4,6 +4,7 @@
  * aprosop UI kit. Import from "@/ui". Tokens-only styling (ui.module.css).
  * Icons come from lucide-react at 20px / stroke 1.8.
  */
+import { t as tt } from "@/lib/i18n";
 import Link from "next/link";
 import {
   createContext,
@@ -325,7 +326,7 @@ export function EmptyState({
 
 // ── Spinner / Skeleton ────────────────────────────────────────────────────────
 
-export function Spinner({ label = "Загрузка" }: { label?: string }) {
+export function Spinner({ label = tt("Загрузка") }: { label?: string }) {
   return <span className={s.spinner} role="status" aria-label={label} />;
 }
 
@@ -387,7 +388,7 @@ export function Modal({
         <div ref={ref} className={s.modal} role="dialog" aria-modal="true" style={width ? { width: `min(${width}px, 100%)` } : undefined}>
           <div className={s.modalHead} data-modal-head>
             <h3>{title}</h3>
-            <Button variant="ghost" size="sm" iconOnly aria-label="Закрыть" onClick={onClose} icon={<X size={18} />} />
+            <Button variant="ghost" size="sm" iconOnly aria-label={tt("Закрыть")} onClick={onClose} icon={<X size={18} />} />
           </div>
           {children}
         </div>

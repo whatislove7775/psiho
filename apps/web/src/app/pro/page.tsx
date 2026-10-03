@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt, tj, intlLocale } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, CircleAlert, Hourglass, PauseCircle, Video } from "lucide-react";
@@ -29,7 +30,7 @@ interface Data {
 }
 
 const ACTIVE = new Set(["awaiting_payment", "paid", "in_progress"]);
-const monthName = () => new Date().toLocaleDateString("ru-RU", { month: "long" });
+const monthName = () => new Date().toLocaleDateString(intlLocale(), { month: "long" });
 const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
 
 export default function ProOverview() {
@@ -52,7 +53,7 @@ export default function ProOverview() {
       slots = await psychologistsApi.slots(prof.id, isoDate(new Date()), 7).catch(() => null);
     }
     if ([stats, sessions, schedule, profile].every((r) => r.status === "rejected")) {
-      setError("Не\u00a0получилось загрузить сводку. Проверьте соединение и\u00a0попробуйте ещё раз.");
+      setError(tt("Не\u00a0получилось загрузить сводку. Проверьте соединение и\u00a0попробуйте ещё раз."));
     }
     setData({
       stats: stats.status === "fulfilled" ? stats.value : null,
@@ -87,16 +88,16 @@ export default function ProOverview() {
     const pr = data?.profile;
     return [
       {
-        label: "Заполнить профиль",
-        hint: "Описание, подход и\u00a0хотя\u00a0бы одна специализация",
+        label: tt("Заполнить профиль"),
+        hint: tt("Описание, подход и\u00a0хотя\u00a0бы одна специализация"),
         done: !!(pr?.bio?.trim() && pr?.approach?.trim() && pr?.specializations?.length),
         href: "/pro/profile",
       },
-      { label: "Настроить расписание", hint: "Клиенты записываются только в\u00a0эти часы", done: (data?.schedule.length ?? 0) > 0, href: "/pro/schedule" },
-      { label: "Загрузить фото", hint: "Настоящее фото в\u00a0карточке специалиста и\u00a0на\u00a0созвоне", done: !!pr?.photo_url, href: "/pro/profile" },
+      { label: tt("Настроить расписание"), hint: tt("Клиенты записываются только в\u00a0эти часы"), done: (data?.schedule.length ?? 0) > 0, href: "/pro/schedule" },
+      { label: tt("Загрузить фото"), hint: tt("Настоящее фото в\u00a0карточке специалиста и\u00a0на\u00a0созвоне"), done: !!pr?.photo_url, href: "/pro/profile" },
       {
-        label: "Пройти проверку",
-        hint: "Администратор проверяет анкету вручную",
+        label: tt("Пройти проверку"),
+        hint: tt("Администратор проверяет анкету вручную"),
         done: pr?.verification_status === "approved",
         href: undefined,
       },
@@ -109,21 +110,21 @@ export default function ProOverview() {
 
   const subtitle = data
     ? today.length
-      ? `Сегодня ${today.length} ${plural(today.length, "созвон", "созвона", "созвонов")}`
-      : "Сегодня созвонов нет"
+      ? tt(`Сегодня {length} {plural}`, { length: today.length, plural: plural(today.length, "созвон", "созвона", "созвонов") })
+      : tt("Сегодня созвонов нет")
     : "";
   const undone = steps.filter((x) => !x.done && x.href);
 
   return (
     <div className={h.home}>
-      <PageHeader title={name ? `Здравствуйте, ${name.split(" ")[0]}` : "Сводка"} sub={subtitle} />
+      <PageHeader title={name ? tt(`Здравствуйте, {v}`, { v: name.split(" ")[0] }) : tt("Сводка")} sub={subtitle} />
       {error && <LoadError text={error} onRetry={load} />}
       {status && status !== "approved" && <StatusCard status={status} />}
 
       {data && undone.length > 0 && (
-        <div className={h.actions} aria-label={`Первые шаги: готово ${doneCount} из\u00a0${steps.length}`}>
+        <div className={h.actions} aria-label={tt(`Первые шаги: готово {doneCount} из\u00a0{length}`, { doneCount, length: steps.length })}>
           <span className={p.stepsLabel}>
-            Первые шаги {doneCount}/{steps.length}
+            {tj("Первые шаги {doneCount}/{length}", { doneCount, length: steps.length })}
           </span>
           {undone.map((st) => (
             <Link key={st.label} href={st.href!} className={h.chip}>
@@ -143,23 +144,23 @@ export default function ProOverview() {
         {data?.stats ? (
           <>
             <div>
-              <dt>Предстоящие</dt>
+              <dt>{tt("Предстоящие")}</dt>
               <dd>{data.stats.upcoming}</dd>
             </div>
             <div>
-              <dt>Созвонов, {monthShort()}</dt>
+              <dt>{tj("Созвонов, {monthShort}", { monthShort: monthShort() })}</dt>
               <dd>{data.stats.sessions_month}</dd>
             </div>
             <div>
-              <dt>Доход, {monthShort()}</dt>
+              <dt>{tj("Доход, {monthShort}", { monthShort: monthShort() })}</dt>
               <dd>{rub(data.stats.earnings_month_rub)}</dd>
             </div>
             <div>
-              <dt>Клиентов</dt>
+              <dt>{tt("Клиентов")}</dt>
               <dd>{data.stats.clients_total}</dd>
             </div>
             <div>
-              <dt>Окон, 7&nbsp;дней</dt>
+              <dt>{tt("Окон, 7\u00a0дней")}</dt>
               <dd>
                 <Link href="/pro/schedule">{weekSlots}</Link>
               </dd>
@@ -173,7 +174,7 @@ export default function ProOverview() {
       {today.length > 0 && (
         <section className={h.section}>
           <div className={h.sectionHead}>
-            <h2 className={h.sectionTitle}>Сегодня</h2>
+            <h2 className={h.sectionTitle}>{tt("Сегодня")}</h2>
           </div>
           <MiniList sessions={today} showDay={false} />
         </section>
@@ -182,9 +183,9 @@ export default function ProOverview() {
       {dialogs.recent.length > 0 && (
         <section className={h.section}>
           <div className={h.sectionHead}>
-            <h2 className={h.sectionTitle}>Диалоги</h2>
+            <h2 className={h.sectionTitle}>{tt("Диалоги")}</h2>
             <Link href="/pro/dialogs" className={h.seeAll}>
-              Все
+              {tt("Все")}
               <ChevronRight size={16} strokeWidth={2} aria-hidden />
             </Link>
           </div>
@@ -195,7 +196,7 @@ export default function ProOverview() {
                 <span className={h.dialogText}>
                   <strong>{d.counterpart.name}</strong>
                   <span>
-                    {d.next_call ? `Созвон ${dayLabel(d.next_call.scheduled_at).toLowerCase()} в\u00a0${time(d.next_call.scheduled_at)}` : d.last_message?.text || "Нет сообщений"}
+                    {d.next_call ? tt(`Созвон {v} в\u00a0{time}`, { v: dayLabel(d.next_call.scheduled_at).toLowerCase(), time: time(d.next_call.scheduled_at) }) : d.last_message?.text || tt("Нет сообщений")}
                   </span>
                 </span>
                 {d.unread > 0 && <span className={h.unread}>{d.unread}</span>}
@@ -210,19 +211,19 @@ export default function ProOverview() {
 
 function NextSessionStrip({ next }: { next: Session }) {
   return (
-    <section className={r.strip} aria-label="Следующий созвон">
+    <section className={r.strip} aria-label={tt("Следующий созвон")}>
       <span className={r.stripFace} aria-hidden>
         <AvatarThumb config={next.client.avatar_config} seed={next.client.alias} size={40} background="rgba(255,255,255,.18)" />
       </span>
       <span className={r.stripText}>
         <strong>{next.client.alias}</strong>
         <span>
-          {dayLabel(next.scheduled_at)}, {time(next.scheduled_at)} · {next.duration_minutes} мин
+          {tj("{dayLabel}, {time} · {duration_minutes} мин", { dayLabel: dayLabel(next.scheduled_at), time: time(next.scheduled_at), duration_minutes: next.duration_minutes })}
         </span>
       </span>
       {next.can_join && (
         <Button variant="white" size="sm" href={`/room/${next.id}`} icon={<Video size={16} strokeWidth={1.8} />}>
-          Войти
+          {tt("Войти")}
         </Button>
       )}
     </section>
@@ -231,7 +232,7 @@ function NextSessionStrip({ next }: { next: Session }) {
 
 /** «сент.» */
 function monthShort() {
-  return new Date().toLocaleDateString("ru-RU", { month: "short" });
+  return new Date().toLocaleDateString(intlLocale(), { month: "short" });
 }
 
 
@@ -244,7 +245,7 @@ function MiniList({ sessions, showDay }: { sessions: Session[]; showDay: boolean
           <div style={{ minWidth: 0 }}>
             <div className={s.rowTitle}>{x.client.alias}</div>
             <div className={s.miniSub}>
-              {x.duration_minutes} минут, {SESSION_STATUS[x.status]?.label.toLowerCase()}
+              {tj("{duration_minutes} минут, {v}", { duration_minutes: x.duration_minutes, v: SESSION_STATUS[x.status]?.label.toLowerCase() })}
             </div>
           </div>
           <div className={s.miniTime}>
@@ -262,20 +263,20 @@ function StatusCard({ status }: { status: "pending" | "rejected" | "suspended" }
     pending: {
       icon: <Hourglass size={22} strokeWidth={1.8} />,
       tone: p.statusPending,
-      title: "Профиль на\u00a0проверке",
-      text: "Обычно до\u00a02\u00a0рабочих дней.",
+      title: tt("Профиль на\u00a0проверке"),
+      text: tt("Обычно до\u00a02\u00a0рабочих дней."),
     },
     rejected: {
       icon: <CircleAlert size={22} strokeWidth={1.8} />,
       tone: p.statusRejected,
-      title: "Проверка не\u00a0пройдена",
-      text: "Дополните профиль и\u00a0ответьте на\u00a0письмо администратора.",
+      title: tt("Проверка не\u00a0пройдена"),
+      text: tt("Дополните профиль и\u00a0ответьте на\u00a0письмо администратора."),
     },
     suspended: {
       icon: <PauseCircle size={22} strokeWidth={1.8} />,
       tone: p.statusRejected,
-      title: "Профиль приостановлен",
-      text: "Новые клиенты не\u00a0могут записаться. Ответьте на\u00a0письмо администратора.",
+      title: tt("Профиль приостановлен"),
+      text: tt("Новые клиенты не\u00a0могут записаться. Ответьте на\u00a0письмо администратора."),
     },
   }[status];
   return (
@@ -288,10 +289,10 @@ function StatusCard({ status }: { status: "pending" | "rejected" | "suspended" }
         <p className={p.statusText}>{cfg.text}</p>
         <div className={p.statusActions}>
           <Button size="sm" variant="secondary" href="/pro/profile">
-            Заполнить профиль
+            {tt("Заполнить профиль")}
           </Button>
           <Button size="sm" variant="ghost" href="/pro/schedule">
-            Настроить расписание
+            {tt("Настроить расписание")}
           </Button>
         </div>
       </div>

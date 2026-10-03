@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from "@/lib/i18n";
+import { lp } from "@/lib/i18n";
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
@@ -38,7 +40,7 @@ export function LoginForm() {
     e.preventDefault();
     setError(null);
     if (!login.trim() || !password) {
-      setError("Введите имя или\u00a0почту и\u00a0пароль.");
+      setError(t("Введите имя или\u00a0почту и\u00a0пароль."));
       return;
     }
     setBusy(true);
@@ -54,7 +56,7 @@ export function LoginForm() {
         setBusy(false);
         return;
       }
-      setError(err instanceof ApiError ? err.message : "Не\u00a0получилось войти. Попробуйте ещё раз.");
+      setError(err instanceof ApiError ? err.message : t("Не\u00a0получилось войти. Попробуйте ещё раз."));
       setBusy(false);
     }
   };
@@ -62,28 +64,28 @@ export function LoginForm() {
   return (
     <AuthShell art={<DoorWelcome />}>
       <AuthCard
-        title="Вход"
+        title={t("Вход")}
         sub={
           <>
-            Клиенты входят по&nbsp;имени вроде <span style={{ whiteSpace: "nowrap" }}>«тихий-кит-4821»</span>, специалисты по&nbsp;почте.
+            {t("Клиенты входят по\u00a0имени вроде")}{" "}<span style={{ whiteSpace: "nowrap" }}>{t("«тихий-кит-4821»")}</span>{t(", специалисты по\u00a0почте.")}
           </>
         }
       >
         <form className={s.form} onSubmit={submit} noValidate>
           <Input
-            label="Имя или&nbsp;почта"
+            label={t("Имя или\u00a0почта")}
             value={login}
             onChange={(e) => setLogin(e.target.value)}
             autoComplete="username"
             autoCapitalize="off"
             autoCorrect="off"
             spellCheck={false}
-            placeholder="тихий-кит-4821"
+            placeholder={t("тихий-кит-4821")}
             autoFocus
             required
           />
           <PasswordInput
-            label="Пароль"
+            label={t("Пароль")}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
@@ -91,8 +93,8 @@ export function LoginForm() {
           />
           {otpStep && (
             <Input
-              label="Код из&nbsp;приложения-аутентификатора"
-              hint="Шесть цифр. Код обновляется каждые 30&nbsp;секунд."
+              label={t("Код из\u00a0приложения-аутентификатора")}
+              hint={t("Шесть цифр. Код обновляется каждые 30\u00a0секунд.")}
               value={otp}
               onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
               inputMode="numeric"
@@ -103,14 +105,14 @@ export function LoginForm() {
           )}
           <FormError>{error}</FormError>
           <Button type="submit" variant="primary" size="lg" block loading={busy}>
-            Войти
+            {t("Войти")}
           </Button>
         </form>
       </AuthCard>
       <AuthLinks
         links={[
-          { href: "/recover", label: "Восстановить доступ", prefix: "Забыли пароль?" },
-          { href: "/start", label: "Начать анонимно", prefix: "Нет аккаунта?" },
+          { href: lp("/recover"), label: t("Восстановить доступ"), prefix: t("Забыли пароль?") },
+          { href: lp("/start"), label: t("Начать анонимно"), prefix: t("Нет аккаунта?") },
         ]}
       />
     </AuthShell>

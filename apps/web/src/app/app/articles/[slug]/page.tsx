@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, BookOpen, Clock } from "lucide-react";
@@ -31,7 +32,7 @@ export default function ArticlePage() {
 
   const back = (
     <Button variant="ghost" size="sm" href="/app/articles" icon={<ArrowLeft size={18} strokeWidth={1.8} />} className={s.back}>
-      Все статьи
+      {tt("Все статьи")}
     </Button>
   );
 
@@ -42,9 +43,9 @@ export default function ArticlePage() {
         {/не найден|not found|No .* matches/i.test(article.error) ? (
           <EmptyState art={<EmptyArt scene="lost" />}
             icon={<BookOpen size={28} strokeWidth={1.8} />}
-            title="Статья не&nbsp;найдена"
-            text="Возможно, её&nbsp;убрали или&nbsp;ссылка неполная."
-            action={<Button href="/app/articles">Все статьи</Button>}
+            title={tt("Статья не\u00a0найдена")}
+            text={tt("Возможно, её\u00a0убрали или\u00a0ссылка неполная.")}
+            action={<Button href="/app/articles">{tt("Все статьи")}</Button>}
           />
         ) : (
           <ErrorBlock message={article.error} onRetry={article.reload} />
@@ -62,11 +63,11 @@ export default function ArticlePage() {
         rail={
           <>
             <SearchTrigger variant="soft" block>
-              Обсудить со&nbsp;специалистом
+              {tt("Обсудить со\u00a0специалистом")}
             </SearchTrigger>
             {related.data && related.data.length > 0 && (
-              <section className={s.related} aria-label="Ещё по&nbsp;теме">
-                <div className={s.railTitle}>Ещё по&nbsp;теме</div>
+              <section className={s.related} aria-label={tt("Ещё по\u00a0теме")}>
+                <div className={s.railTitle}>{tt("Ещё по\u00a0теме")}</div>
                 {related.data.map((r) => (
                   <ArticleCard key={r.id} a={r} compact />
                 ))}
@@ -97,7 +98,7 @@ export default function ArticlePage() {
                   ))}
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                     <Clock size={14} strokeWidth={1.8} aria-hidden />
-                    {a.reading_minutes} мин чтения
+                    {a.reading_minutes}{" "}{tt("мин чтения")}
                   </span>
                   <EvidenceBadge level={a.evidence_level} />
                   <RatingBadge rating={a.rating} />

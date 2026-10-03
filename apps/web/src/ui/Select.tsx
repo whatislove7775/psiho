@@ -8,6 +8,7 @@
  * - Narrow screens (≤ 560px): the list becomes a bottom sheet with large touch targets.
  * The popover is portalled to <body> with fixed positioning, so cards with overflow:hidden never clip it.
  */
+import { t as tt } from "@/lib/i18n";
 import {
   useCallback,
   useEffect,
@@ -66,7 +67,7 @@ export function Select<T extends string | number>({
   error,
   id,
   "aria-label": ariaLabel,
-  placeholder = "Выберите",
+  placeholder = tt("Выберите"),
   disabled,
   size = "md",
   className,

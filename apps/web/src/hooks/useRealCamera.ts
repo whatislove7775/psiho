@@ -5,6 +5,7 @@
  * clients see their real face, so no avatar and no voice filter here.
  * Never use this hook for a client — clients only ever send useAvatarCamera().
  */
+import { t as tt } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MIC_CONSTRAINTS, type CameraState } from "./useAvatarCamera";
 
@@ -30,18 +31,18 @@ export function explainMediaError(e: unknown): { state: CameraState; message: st
   if (name === "NotAllowedError" || name === "SecurityError")
     return {
       state: "denied",
-      message: "Доступ к\u00a0камере запрещён. Разрешите камеру и\u00a0микрофон в\u00a0настройках браузера и\u00a0попробуйте ещё раз.",
+      message: tt("Доступ к\u00a0камере запрещён. Разрешите камеру и\u00a0микрофон в\u00a0настройках браузера и\u00a0попробуйте ещё раз."),
     };
   if (name === "NotFoundError" || name === "OverconstrainedError")
-    return { state: "error", message: "Камера или\u00a0микрофон не\u00a0найдены. Подключите устройство и\u00a0попробуйте ещё раз." };
+    return { state: "error", message: tt("Камера или\u00a0микрофон не\u00a0найдены. Подключите устройство и\u00a0попробуйте ещё раз.") };
   if (name === "NotReadableError" || name === "AbortError")
     return {
       state: "error",
-      message: "Камера занята другой программой. Закройте другие звонки и\u00a0вкладки с\u00a0камерой и\u00a0попробуйте ещё раз.",
+      message: tt("Камера занята другой программой. Закройте другие звонки и\u00a0вкладки с\u00a0камерой и\u00a0попробуйте ещё раз."),
     };
   return {
     state: "error",
-    message: "Не\u00a0получилось включить камеру. Откройте страницу в\u00a0свежей версии Chrome, Safari или\u00a0Firefox и\u00a0попробуйте ещё раз.",
+    message: tt("Не\u00a0получилось включить камеру. Откройте страницу в\u00a0свежей версии Chrome, Safari или\u00a0Firefox и\u00a0попробуйте ещё раз."),
   };
 }
 

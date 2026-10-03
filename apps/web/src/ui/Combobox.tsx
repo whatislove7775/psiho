@@ -8,6 +8,7 @@
  * - The list is portalled to <body> (fixed), so modals/cards never clip or shift it; on phones it stays
  *   under the field (the on-screen keyboard is up) and flips above when there is no room.
  */
+import { t as tt } from "@/lib/i18n";
 import {
   forwardRef,
   useCallback,
@@ -211,7 +212,7 @@ export const Combobox = forwardRef<HTMLInputElement, ComboboxProps>(function Com
           ref={listRef}
           id={listId}
           role="listbox"
-          aria-label="Подсказки"
+          aria-label={tt("Подсказки")}
           className={cx(s.list, pos.up && s.up)}
           style={{
             top: pos.up ? undefined : pos.top,

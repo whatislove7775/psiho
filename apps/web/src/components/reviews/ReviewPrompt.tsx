@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { PenLine } from "lucide-react";
 import { Button } from "@/ui";
@@ -41,10 +42,10 @@ export function ReviewPrompt({ psychologistId, name }: { psychologistId: number;
   if (!show || done) return null;
   return (
     <div className={s.prompt}>
-      <strong>Как&nbsp;вам специалист?</strong>
-      <p>Анонимный отзыв поможет другим людям решиться на&nbsp;первый созвон</p>
+      <strong>{t("Как\u00a0вам специалист?")}</strong>
+      <p>{t("Анонимный отзыв поможет другим людям решиться на\u00a0первый созвон")}</p>
       <Button variant="primary" size="sm" icon={<PenLine size={16} />} onClick={() => setOpen(true)}>
-        Оставить отзыв
+        {t("Оставить отзыв")}
       </Button>
       <ReviewModal
         open={open}

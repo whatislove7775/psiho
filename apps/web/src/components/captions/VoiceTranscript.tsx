@@ -8,6 +8,7 @@
  *    to the server; an on-device result lives only in this page's memory.
  *  - <VoiceTextToggle> in the recorder: «Текст» — attach a transcript.
  */
+import { t as tt } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { Captions } from "lucide-react";
 import { attachmentUrl } from "@/lib/api/chat";
@@ -60,11 +61,11 @@ export function VoiceTranscript({ messageId, text, tone }: { messageId: string; 
   return (
     <div className={`${s.vt} ${tone === "mine" ? s.vtMine : ""}`}>
       <button type="button" className={s.vtBtn} onClick={run} aria-expanded={open} disabled={busy}>
-        {busy ? "Расшифровываем…" : open ? "Скрыть текст" : "Расшифровать"}
+        {busy ? tt("Расшифровываем…") : open ? tt("Скрыть текст") : tt("Расшифровать")}
       </button>
       {open && !busy && (
         <p className={s.vtText}>
-          {failed ? "Не получилось расшифровать." : result ? result : "Слов не разобрать."}
+          {failed ? tt("Не получилось расшифровать.") : result ? result : tt("Слов не разобрать.")}
         </p>
       )}
     </div>
@@ -78,10 +79,10 @@ export function VoiceTextToggle({ on, onChange }: { on: boolean; onChange: (v: b
       className={s.vtToggle}
       aria-pressed={on}
       onClick={() => onChange(!on)}
-      title="Приложить текст: речь распознаётся на вашем устройстве до изменения голоса"
+      title={tt("Приложить текст: речь распознаётся на вашем устройстве до изменения голоса")}
     >
       <Captions size={16} />
-      Текст
+      {tt("Текст")}
     </button>
   );
 }

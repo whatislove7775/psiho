@@ -717,6 +717,15 @@
   color: var(--c-text);
 }
 
+.footerLang {
+  height: auto;
+  padding: 0;
+  font-size: var(--t-13);
+}
+.footerLang:hover {
+  background: none;
+}
+
 .footerBottom {
   margin-top: 24px;
   color: var(--c-faint, var(--c-muted));

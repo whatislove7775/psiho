@@ -236,6 +236,10 @@ class PsychologistProfile(models.Model):
     gender = models.CharField(max_length=10, choices=Gender.choices, blank=True, default="", db_default="")
     # Необязательно: год рождения — на карточках показываем только возраст («32 года»), если указан
     birth_year = models.PositiveSmallIntegerField(null=True, blank=True)
+    # S2: страны, клиентов из которых специалист принимает (ISO-коды, «EU» — ЕС целиком), и где у него
+    # лицензия/право практиковать (свободный текст — показываем как есть, сервис его не проверяет)
+    serves_countries = models.JSONField(default=list, blank=True, db_default=[])
+    licensure = models.CharField(max_length=300, blank=True, default="", db_default="")
 
     @property
     def age(self) -> int | None:

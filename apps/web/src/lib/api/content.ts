@@ -1,4 +1,5 @@
 /** Articles & practices (apps/api/apps/content). Public reads + staff CMS writes. */
+import { t as tt, getLocale } from "@/lib/i18n";
 import { api } from "./client";
 
 export type Cover = "peach" | "butter" | "lime" | "mint" | "lilac" | "sky";
@@ -6,36 +7,36 @@ export const COVERS: Cover[] = ["peach", "butter", "lime", "mint", "lilac", "sky
 
 /** Article topics (apps/content/models.py Topic). An article has 1–3; the first is the primary one. */
 export const TOPICS: { value: string; label: string }[] = [
-  { value: "anxiety", label: "Тревога" },
-  { value: "mood", label: "Депрессия и\u00a0настроение" },
-  { value: "stress", label: "Стресс и\u00a0выгорание" },
-  { value: "sleep", label: "Сон" },
-  { value: "emotions", label: "Эмоции" },
-  { value: "self", label: "Самооценка" },
-  { value: "relationships", label: "Отношения" },
-  { value: "family", label: "Семья и\u00a0дети" },
-  { value: "conflicts", label: "Конфликты" },
-  { value: "boundaries", label: "Границы" },
-  { value: "loneliness", label: "Одиночество" },
-  { value: "loss", label: "Горе и\u00a0утрата" },
-  { value: "trauma", label: "Травма" },
-  { value: "addiction", label: "Зависимости" },
-  { value: "eating", label: "Пищевое поведение" },
-  { value: "work", label: "Работа и\u00a0карьера" },
-  { value: "body", label: "Телесность" },
-  { value: "mindfulness", label: "Осознанность" },
-  { value: "teens", label: "Подростки" },
-  { value: "therapy", label: "О\u00a0терапии" },
+  { value: "anxiety", get label() { return tt("Тревога"); } },
+  { value: "mood", get label() { return tt("Депрессия и\u00a0настроение"); } },
+  { value: "stress", get label() { return tt("Стресс и\u00a0выгорание"); } },
+  { value: "sleep", get label() { return tt("Сон"); } },
+  { value: "emotions", get label() { return tt("Эмоции"); } },
+  { value: "self", get label() { return tt("Самооценка"); } },
+  { value: "relationships", get label() { return tt("Отношения"); } },
+  { value: "family", get label() { return tt("Семья и\u00a0дети"); } },
+  { value: "conflicts", get label() { return tt("Конфликты"); } },
+  { value: "boundaries", get label() { return tt("Границы"); } },
+  { value: "loneliness", get label() { return tt("Одиночество"); } },
+  { value: "loss", get label() { return tt("Горе и\u00a0утрата"); } },
+  { value: "trauma", get label() { return tt("Травма"); } },
+  { value: "addiction", get label() { return tt("Зависимости"); } },
+  { value: "eating", get label() { return tt("Пищевое поведение"); } },
+  { value: "work", get label() { return tt("Работа и\u00a0карьера"); } },
+  { value: "body", get label() { return tt("Телесность"); } },
+  { value: "mindfulness", get label() { return tt("Осознанность"); } },
+  { value: "teens", get label() { return tt("Подростки"); } },
+  { value: "therapy", get label() { return tt("О\u00a0терапии"); } },
 ];
 export const MAX_TOPICS = 3;
 export const topicLabel = (v: string) => TOPICS.find((t) => t.value === v)?.label ?? v;
 
 export const PRACTICE_KINDS: { value: PracticeKind; label: string }[] = [
-  { value: "breathing", label: "Дыхание" },
-  { value: "grounding", label: "Заземление" },
-  { value: "body", label: "Тело" },
-  { value: "journaling", label: "Записи" },
-  { value: "mindfulness", label: "Осознанность" },
+  { value: "breathing", get label() { return tt("Дыхание"); } },
+  { value: "grounding", get label() { return tt("Заземление"); } },
+  { value: "body", get label() { return tt("Тело"); } },
+  { value: "journaling", get label() { return tt("Записи"); } },
+  { value: "mindfulness", get label() { return tt("Осознанность"); } },
 ];
 
 export type EvidenceLevel = "strong" | "moderate" | "limited" | "practice" | "";
@@ -43,27 +44,27 @@ export type EvidenceLevel = "strong" | "moderate" | "limited" | "practice" | "";
 export const EVIDENCE_LEVELS: { value: Exclude<EvidenceLevel, "">; label: string; short: string; hint: string }[] = [
   {
     value: "strong",
-    label: "Сильная доказательная база",
-    short: "Сильные доказательства",
-    hint: "Клинические руководства, метаанализы и\u00a0обзоры многих исследований.",
+    get label() { return tt("Сильная доказательная база"); },
+    get short() { return tt("Сильные доказательства"); },
+    get hint() { return tt("Клинические руководства, метаанализы и\u00a0обзоры многих исследований."); },
   },
   {
     value: "moderate",
-    label: "Умеренная доказательная база",
-    short: "Умеренные доказательства",
-    hint: "Есть обзоры и\u00a0хорошие исследования, но\u00a0данных меньше или\u00a0они неоднородны.",
+    get label() { return tt("Умеренная доказательная база"); },
+    get short() { return tt("Умеренные доказательства"); },
+    get hint() { return tt("Есть обзоры и\u00a0хорошие исследования, но\u00a0данных меньше или\u00a0они неоднородны."); },
   },
   {
     value: "limited",
-    label: "Ограниченные данные",
-    short: "Данных пока мало",
-    hint: "Отдельные исследования или\u00a0небольшие эффекты. Относитесь как\u00a0к\u00a0мягкой поддержке.",
+    get label() { return tt("Ограниченные данные"); },
+    get short() { return tt("Данных пока мало"); },
+    get hint() { return tt("Отдельные исследования или\u00a0небольшие эффекты. Относитесь как\u00a0к\u00a0мягкой поддержке."); },
   },
   {
     value: "practice",
-    label: "Практический опыт",
-    short: "Опыт практики",
-    hint: "Распространённые рекомендации специалистов; отдельных исследований мало.",
+    get label() { return tt("Практический опыт"); },
+    get short() { return tt("Опыт практики"); },
+    get hint() { return tt("Распространённые рекомендации специалистов; отдельных исследований мало."); },
   },
 ];
 
@@ -84,6 +85,8 @@ export interface KeyFact {
 }
 
 export interface ArticleCard {
+  /** S2: language of the material ("ru", "en", …) */
+  language?: string;
   id: number;
   slug: string;
   title: string;
@@ -160,6 +163,8 @@ export interface BreathPattern {
 }
 
 export interface PracticeCard {
+  /** S2: language of the material */
+  language?: string;
   id: number;
   slug: string;
   title: string;
@@ -195,14 +200,20 @@ export interface TopicCount {
   count: number;
 }
 
+/** Materials in the interface language come first (S2); Russian keeps the plain ranking. */
+function feedLang(): string | undefined {
+  const l = getLocale();
+  return l === "ru" ? undefined : l;
+}
+
 export const contentApi = {
   topics: () => api<TopicCount[]>("/content/topics/", { auth: false }),
   /** topic: one value or several comma-separated (any of them matches) */
   articles: (q: { topic?: string; limit?: number; exclude?: string; q?: string; source?: "specialists" | "editorial"; sort?: "top" } = {}) =>
-    api<ArticleCard[]>("/content/articles/", { query: { ...q }, auth: false }),
+    api<ArticleCard[]>("/content/articles/", { query: { ...q, lang: feedLang() }, auth: false }),
   article: (slug: string) => api<Article>(`/content/articles/${encodeURIComponent(slug)}/`, { auth: false }),
   practices: (q: { kind?: string; limit?: number } = {}) =>
-    api<PracticeCard[]>("/content/practices/", { query: { ...q }, auth: false }),
+    api<PracticeCard[]>("/content/practices/", { query: { ...q, lang: feedLang() }, auth: false }),
   practice: (slug: string) => api<Practice>(`/content/practices/${encodeURIComponent(slug)}/`, { auth: false }),
 };
 

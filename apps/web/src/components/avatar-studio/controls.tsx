@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Ban, Pipette } from "lucide-react";
 import { Skeleton } from "@/ui";
@@ -41,7 +42,7 @@ export function ColorControl({
   value,
   onChange,
   allowNone,
-  noneLabel = "Нет",
+  noneLabel = tt("Нет"),
   mode = "default",
   sliderLabel,
 }: {
@@ -93,7 +94,7 @@ export function ColorControl({
               className={s.swatch}
               style={{ ["--sw" as string]: p }}
               aria-pressed={selected}
-              aria-label={`Оттенок ${i + 1} из\u00a0${palette.length}`}
+              aria-label={tt(`Оттенок {v} из\u00a0{length}`, { v: i + 1, length: palette.length })}
               title={p}
               onClick={() => {
                 setBase(p);
@@ -105,14 +106,14 @@ export function ColorControl({
         })}
         <label
           className={cx(s.swatch, s.swatchCustom)}
-          title="Свой цвет"
+          title={tt("Свой цвет")}
           data-selected={isCustom || undefined}
           style={isCustom && value ? { ["--sw" as string]: value } : undefined}
         >
           <input
             type="color"
             className="visually-hidden"
-            aria-label="Свой цвет"
+            aria-label={tt("Свой цвет")}
             value={(value ?? palette[0]).toLowerCase()}
             onChange={(e) => {
               const v = e.target.value.toUpperCase();
@@ -127,7 +128,7 @@ export function ColorControl({
       {value && base && (
         <div className={s.shadeRow}>
           <label htmlFor={sliderId} className="visually-hidden">
-            {sliderLabel ?? `${label}: светлее или\u00a0темнее`}
+            {sliderLabel ?? tt(`{label}: светлее или\u00a0темнее`, { label })}
           </label>
           <input
             id={sliderId}
@@ -138,7 +139,7 @@ export function ColorControl({
             value={Math.round(t * 1000)}
             className={s.shade}
             style={{ ["--track" as string]: gradient, ["--thumb" as string]: value }}
-            aria-valuetext={t < 0.47 ? "Темнее" : t > 0.53 ? "Светлее" : "Исходный оттенок"}
+            aria-valuetext={t < 0.47 ? tt("Темнее") : t > 0.53 ? tt("Светлее") : tt("Исходный оттенок")}
             onChange={(e) => onChange(shadeAt(base, Number(e.target.value) / 1000, mode), "shade")}
           />
         </div>
@@ -153,8 +154,8 @@ export function RangeField({
   label,
   value,
   onChange,
-  min = "Меньше",
-  max = "Больше",
+  min = tt("Меньше"),
+  max = tt("Больше"),
 }: {
   label: string;
   value: number;
@@ -199,8 +200,8 @@ export function SignedSlider({
   label,
   value,
   onChange,
-  min = "Меньше",
-  max = "Больше",
+  min = tt("Меньше"),
+  max = tt("Больше"),
 }: {
   label: string;
   value: number;
@@ -211,7 +212,7 @@ export function SignedSlider({
   const id = useId();
   const pct = (value + 1) * 50;
   const lo = Math.min(50, pct), hi = Math.max(50, pct);
-  const text = value === 0 ? "Как есть" : `${value < 0 ? min : max} ${Math.round(Math.abs(value) * 100)}%`;
+  const text = value === 0 ? tt("Как есть") : `${value < 0 ? min : max} ${Math.round(Math.abs(value) * 100)}%`;
   return (
     <div className={s.signed}>
       <label htmlFor={id} className={s.rangeLabel}>

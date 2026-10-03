@@ -1,4 +1,5 @@
 /** Article HTML (sanitized, see apps/content/richtext.py) → plain Markdown for llms-full.txt. */
+import { t } from "@/lib/i18n";
 import { decodeEntities } from "@/components/content/RichText";
 
 export function htmlToMarkdown(html: string): string {
@@ -6,7 +7,7 @@ export function htmlToMarkdown(html: string): string {
     (html ?? "")
       .replace(/<figure[^>]*>([\s\S]*?)<\/figure>/g, (_m, inner: string) => {
         const cap = /<figcaption>([\s\S]*?)<\/figcaption>/.exec(inner)?.[1]?.replace(/<[^>]+>/g, "").trim();
-        return cap ? `\n\n_Иллюстрация: ${cap}_\n\n` : "\n\n";
+        return cap ? t(`\n\n_Иллюстрация: {cap}_\n\n`, { cap }) : "\n\n";
       })
       .replace(/<h2>/g, "\n\n### ")
       .replace(/<h3>/g, "\n\n#### ")

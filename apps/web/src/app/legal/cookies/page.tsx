@@ -1,7 +1,10 @@
+import { t } from "@/lib/i18n";
 import { DraftDoc } from "@/components/legal/DraftDoc";
 import { legalMetadata } from "@/components/legal/meta";
 
-export const metadata = legalMetadata("cookies");
+export function generateMetadata() {
+  return legalMetadata("cookies");
+}
 
 export default function CookiesPage() {
   return (
@@ -9,25 +12,25 @@ export default function CookiesPage() {
       slug="cookies"
       summary={
         <p>
-          <strong>Коротко.</strong> Сайт хранит в&nbsp;браузере только то, что&nbsp;нужно для&nbsp;работы: ключи входа и&nbsp;выбранную тему
-          оформления.
+          <strong>{t("Коротко.")}</strong>{" "}{t("Сайт хранит в\u00a0браузере только то, что\u00a0нужно для\u00a0работы: ключи входа, язык, страну и\u00a0тему оформления. Рекламы и\u00a0аналитики нет.")}
         </p>
       }
       sections={[
         {
           id: "what",
-          title: "Что\u00a0хранится в\u00a0браузере",
+          title: t("Что\u00a0хранится в\u00a0браузере"),
           body: (
             <ul>
-              <li>Ключи входа, чтобы не&nbsp;вводить пароль каждый раз. Кнопка выхода удаляет их&nbsp;с&nbsp;устройства.</li>
-              <li>Настройки интерфейса, например светлая или&nbsp;тёмная тема.</li>
+              <li>{t("Ключи входа, чтобы не\u00a0вводить пароль каждый раз. Кнопка выхода удаляет их\u00a0с\u00a0устройства.")}</li>
+              <li>{t("Настройки интерфейса: язык (cookie «lang»), страна (cookie «country»), светлая или\u00a0тёмная тема.")}</li>
+              <li>{t("Сторонних cookie, рекламы и\u00a0счётчиков аналитики на\u00a0сайте нет.")}</li>
             </ul>
           ),
-          todo: "Полный перечень cookie и\u00a0записей хранилища с\u00a0назначением и\u00a0сроками.",
+          todo: t("Полный перечень cookie и\u00a0записей хранилища с\u00a0назначением и\u00a0сроками."),
         },
-        { id: "third", title: "Сторонние сервисы", todo: "Какие сторонние сервисы могут устанавливать cookie (например, при\u00a0оплате)." },
-        { id: "manage", title: "Как\u00a0управлять cookie", body: <p>Cookie и&nbsp;данные сайта можно удалить в&nbsp;настройках браузера. После этого придётся войти заново.</p> },
-        { id: "changes", title: "Изменения политики", todo: "" },
+        { id: "third", title: t("Сторонние сервисы"), todo: t("Какие сторонние сервисы могут устанавливать cookie (например, при\u00a0оплате).") },
+        { id: "manage", title: t("Как\u00a0управлять cookie"), body: <p>{t("Cookie и\u00a0данные сайта можно удалить в\u00a0настройках браузера. После этого придётся войти заново.")}</p> },
+        { id: "changes", title: t("Изменения политики"), todo: "" },
       ]}
     />
   );

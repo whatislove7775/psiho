@@ -9,6 +9,7 @@
  * then the content fades in; closing plays it backwards). With prefers-reduced-motion it is a
  * plain short fade. On phones the palette is a full-screen sheet.
  */
+import { t as tt, tj } from "@/lib/i18n";
 import { FactsLine } from "@/components/specialists/SpecialistFacts";
 import { RatingPill } from "@/components/reviews/ReviewBits";
 import {
@@ -445,7 +446,7 @@ function SearchPalette({
   return createPortal(
     <div ref={root} className={s.root} onKeyDown={onKeyDown}>
       <div ref={backdrop} className={s.backdrop} onMouseDown={() => close()} aria-hidden />
-      <div ref={panel} className={s.panel} role="dialog" aria-modal="true" aria-label="Поиск специалиста">
+      <div ref={panel} className={s.panel} role="dialog" aria-modal="true" aria-label={tt("Поиск специалиста")}>
         <div ref={ghost} className={s.ghost} aria-hidden />
         <div ref={content} className={s.content}>
           <div className={s.inputRow}>
@@ -455,8 +456,8 @@ function SearchPalette({
               className={s.input}
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Что&nbsp;вас беспокоит? Тревога, отношения, имя"
-              aria-label="Поиск специалиста"
+              placeholder={tt("Что\u00a0вас беспокоит? Тревога, отношения, имя")}
+              aria-label={tt("Поиск специалиста")}
               role="combobox"
               aria-expanded={results.length > 0}
               aria-controls="sp-results"
@@ -468,10 +469,10 @@ function SearchPalette({
             />
             {text && (
               <button type="button" className={s.clearText} onClick={() => { setText(""); input.current?.focus(); }}>
-                Очистить
+                {tt("Очистить")}
               </button>
             )}
-            <button type="button" className={s.closeBtn} aria-label="Закрыть поиск" onClick={() => close()}>
+            <button type="button" className={s.closeBtn} aria-label={tt("Закрыть поиск")} onClick={() => close()}>
               <X size={20} strokeWidth={2} />
             </button>
           </div>
@@ -480,7 +481,7 @@ function SearchPalette({
             <button type="button" className={s.quizLink} onClick={openQuiz}>
               <ListChecks size={16} strokeWidth={1.8} aria-hidden />
               <span>
-                Не&nbsp;знаете, кого выбрать? <strong>Подобрать по&nbsp;анкете</strong>
+                {tt("Не\u00a0знаете, кого выбрать?")}{" "}<strong>{tt("Подобрать по\u00a0анкете")}</strong>
               </span>
               <ArrowRight size={14} strokeWidth={2} aria-hidden />
             </button>
@@ -498,9 +499,9 @@ function SearchPalette({
                 <h2 className={s.overline}>
                   {hasQuery
                     ? loading && !res
-                      ? "Ищем"
-                      : `Нашли ${count} ${plural(count, "специалиста", "специалиста", "специалистов")}`
-                    : "Можно записаться в\u00a0ближайшее время"}
+                      ? tt("Ищем")
+                      : tt(`Нашли {count} {plural}`, { count, plural: plural(count, "специалиста", "специалиста", "специалистов") })
+                    : tt("Можно записаться в\u00a0ближайшее время")}
                 </h2>
               </div>
               {error ? (
@@ -509,15 +510,15 @@ function SearchPalette({
                 <div className={s.empty}>
                   <SearchX size={22} strokeWidth={1.8} aria-hidden />
                   <div>
-                    <strong>Никого не&nbsp;нашли</strong>
-                    <span>Попробуйте другое слово или&nbsp;уберите один из&nbsp;фильтров.</span>
+                    <strong>{tt("Никого не\u00a0нашли")}</strong>
+                    <span>{tt("Попробуйте другое слово или\u00a0уберите один из\u00a0фильтров.")}</span>
                   </div>
                   <Button size="sm" variant="soft" onClick={reset}>
-                    Сбросить
+                    {tt("Сбросить")}
                   </Button>
                 </div>
               ) : (
-                <ul id="sp-results" role="listbox" aria-label="Специалисты" className={s.results} data-loading={loading ? "" : undefined}>
+                <ul id="sp-results" role="listbox" aria-label={tt("Специалисты")} className={s.results} data-loading={loading ? "" : undefined}>
                   {(results.length ? results : SKELETON).map((p, i) =>
                     p ? (
                       <ResultRow
@@ -548,18 +549,18 @@ function SearchPalette({
             <p className={s.helper}>
               <span className={s.keys} aria-hidden>
                 <kbd>↑</kbd>
-                <kbd>↓</kbd> выбрать
+                <kbd>↓</kbd>{" "}{tt("выбрать")}
               </span>
               <span className={s.keys} aria-hidden>
                 <kbd>
                   <CornerDownLeft size={12} strokeWidth={2.2} />
                 </kbd>{" "}
-                открыть
+                {tt("открыть")}
               </span>
               <span className={s.keys} aria-hidden>
-                <kbd>Esc</kbd> закрыть
+                <kbd>Esc</kbd>{" "}{tt("закрыть")}
               </span>
-              <span className={s.touchHelp}>Выберите запрос или&nbsp;опишите своими словами</span>
+              <span className={s.touchHelp}>{tt("Выберите запрос или\u00a0опишите своими словами")}</span>
             </p>
             <Button
               size="sm"
@@ -567,7 +568,7 @@ function SearchPalette({
               onClick={showAll}
               aria-keyshortcuts={mac ? "Meta+Enter" : "Control+Enter"}
             >
-              {hasQuery ? "Показать всех" : "Все специалисты"}
+              {hasQuery ? tt("Показать всех") : tt("Все специалисты")}
               {hasQuery && count > 0 && <span className={s.count}>{count}</span>}
               <ArrowRight size={15} strokeWidth={2} aria-hidden />
             </Button>
@@ -582,7 +583,7 @@ function SearchPalette({
 const SKELETON: (null)[] = [null, null, null];
 
 function slotLabel(iso: string) {
-  return `${dayLabel(iso)} в\u00a0${time(iso)}`;
+  return tt(`{dayLabel} в\u00a0{time}`, { dayLabel: dayLabel(iso), time: time(iso) });
 }
 
 function ResultRow({
@@ -644,11 +645,11 @@ function ResultRow({
       <div className={s.rowSide}>
         <span className={s.price}>
           {rub(price)}
-          <span> за {durationLabel(minutes)}</span>
+          <span>{" "}{tj("за {durationLabel}", { durationLabel: durationLabel(minutes) })}</span>
         </span>
         <span className={s.slot} data-soon={soon ? "" : undefined}>
           <CalendarClock size={14} strokeWidth={1.9} aria-hidden />
-          {p.next_slot ? slotLabel(p.next_slot) : "Нет свободных окон"}
+          {p.next_slot ? slotLabel(p.next_slot) : tt("Нет свободных окон")}
         </span>
       </div>
       <span className={s.enterHint} aria-hidden>

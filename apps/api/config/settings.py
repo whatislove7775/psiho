@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "apps.circles",  # H2: групповые «Круги»
     "apps.business",  # H3: программы для компаний (B2B)
     "apps.verification",  # L1: живое селфи для проверки специалиста
+    "apps.intl",  # S2: языки интерфейса, страна, согласия (18+, данные о здоровье)
 ]
 
 MIDDLEWARE = [
@@ -59,6 +60,8 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    # S2: язык ответов API по Accept-Language (ru/en) + перевод наших сообщений об ошибках
+    "apps.intl.middleware.ApiLanguageMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -187,6 +190,10 @@ CORS_ALLOWED_ORIGINS = env.list(
     ],
 )
 CORS_ALLOW_CREDENTIALS = True
+from corsheaders.defaults import default_headers  # noqa: E402
+
+# X-Country: страна из настроек клиента (телефоны помощи у Тиши), см. apps/intl
+CORS_ALLOW_HEADERS = (*default_headers, "x-country")
 
 # Django 4.0+: CSRF checks Origin header against this list
 CSRF_TRUSTED_ORIGINS = env.list(
@@ -225,6 +232,8 @@ AUTH_USER_MODEL = "users.User"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LANGUAGE_CODE = "ru-ru"
+# Языки интерфейса (S2). Сообщения DRF/Django — встроенные переводы; наши — apps/intl/messages_en.py
+LANGUAGES = [("ru", "Русский"), ("en", "English")]
 TIME_ZONE = "UTC"
 USE_TZ = True
 

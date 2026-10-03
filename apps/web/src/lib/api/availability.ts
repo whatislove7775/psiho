@@ -1,4 +1,5 @@
 /** Flexible scheduling: specialist availability (cabinet) and free start times (public). See docs/API.md. */
+import { t } from "@/lib/i18n";
 import { api } from "./client";
 
 export interface TimeRange {
@@ -141,10 +142,10 @@ export const availabilityApi = {
 
 /** "50 мин", "1 ч", "1,5 ч", "1 ч 20 мин" */
 export function durationLabel(min: number): string {
-  if (min < 60) return `${min} мин`;
-  if (min % 60 === 0) return `${min / 60} ч`;
-  if (min % 30 === 0) return `${String(min / 60).replace(".", ",")} ч`;
-  return `${Math.floor(min / 60)} ч\u00a0${min % 60} мин`;
+  if (min < 60) return t(`{min} мин`, { min });
+  if (min % 60 === 0) return t(`{v} ч`, { v: min / 60 });
+  if (min % 30 === 0) return t(`{v} ч`, { v: String(min / 60).replace(".", ",") });
+  return t(`{v} ч\u00a0{v2} мин`, { v: Math.floor(min / 60), v2: min % 60 });
 }
 
 /** Price for a duration from the hourly rate, rounded to 10 ₽ (same rule as the backend). */

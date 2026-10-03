@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { BookOpen, CalendarClock, CircleUser, FileText, KeyRound, LayoutGrid, MessagesSquare, Search, SlidersHorizontal, type LucideIcon } from "lucide-react";
@@ -24,13 +25,13 @@ export function islandItems(
 ): IslandItem[] {
   if (role === "client") {
     return [
-      { href: "/app", label: "Главная", icon: LayoutGrid, active: isActive("/app") },
-      { href: "/app/dialogs", label: "Диалоги", icon: MessagesSquare, badge: unread, active: isActive("/app/dialogs") },
-      { href: "/app/specialists", label: "Поиск", icon: Search, active: isActive("/app/specialists") },
-      { href: "/app/articles", label: "Полезное", icon: BookOpen, active: isActive("/app/articles", ["/app/practices"]) },
+      { href: "/app", label: t("Главная"), icon: LayoutGrid, active: isActive("/app") },
+      { href: "/app/dialogs", label: t("Диалоги"), icon: MessagesSquare, badge: unread, active: isActive("/app/dialogs") },
+      { href: "/app/specialists", label: t("Поиск"), icon: Search, active: isActive("/app/specialists") },
+      { href: "/app/articles", label: t("Полезное"), icon: BookOpen, active: isActive("/app/articles", ["/app/practices"]) },
       {
         href: "/app/profile",
-        label: "Профиль",
+        label: t("Профиль"),
         icon: CircleUser,
         active: isActive("/app/profile", ["/app/avatar", "/app/balance"]),
       },
@@ -38,12 +39,12 @@ export function islandItems(
   }
   if (role === "psychologist") {
     return [
-      { href: "/pro", label: "Сводка", icon: LayoutGrid, active: isActive("/pro") },
-      { href: "/pro/dialogs", label: "Диалоги", icon: MessagesSquare, badge: unread, active: isActive("/pro/dialogs") },
-      { href: "/pro/schedule", label: "Расписание", icon: CalendarClock, active: isActive("/pro/schedule") },
+      { href: "/pro", label: t("Сводка"), icon: LayoutGrid, active: isActive("/pro") },
+      { href: "/pro/dialogs", label: t("Диалоги"), icon: MessagesSquare, badge: unread, active: isActive("/pro/dialogs") },
+      { href: "/pro/schedule", label: t("Расписание"), icon: CalendarClock, active: isActive("/pro/schedule") },
       {
         href: "/pro/profile",
-        label: "Профиль",
+        label: t("Профиль"),
         icon: CircleUser,
         active: isActive("/pro/profile", ["/pro/earnings", "/pro/check", "/pro/avatar"]),
       },
@@ -51,10 +52,10 @@ export function islandItems(
   }
   if (role === "business") {
     return [
-      { href: "/business/portal", label: "Сводка", icon: LayoutGrid, active: isActive("/business/portal") },
-      { href: "/business/portal/codes", label: "Коды", icon: KeyRound, active: isActive("/business/portal/codes") },
-      { href: "/business/portal/program", label: "Программа", icon: SlidersHorizontal, active: isActive("/business/portal/program") },
-      { href: "/business/portal/documents", label: "Документы", icon: FileText, active: isActive("/business/portal/documents", ["/business/portal/support"]) },
+      { href: "/business/portal", label: t("Сводка"), icon: LayoutGrid, active: isActive("/business/portal") },
+      { href: "/business/portal/codes", label: t("Коды"), icon: KeyRound, active: isActive("/business/portal/codes") },
+      { href: "/business/portal/program", label: t("Программа"), icon: SlidersHorizontal, active: isActive("/business/portal/program") },
+      { href: "/business/portal/documents", label: t("Документы"), icon: FileText, active: isActive("/business/portal/documents", ["/business/portal/support"]) },
     ];
   }
   return [];
@@ -100,7 +101,7 @@ export function Island({ items }: { items: IslandItem[] }) {
     <>
       <nav
         className={s.island}
-        aria-label="Разделы"
+        aria-label={t("Разделы")}
         data-hidden={hidden ? "" : undefined}
         style={{ ["--n" as string]: items.length, ["--i" as string]: Math.max(active, 0) }}
         onFocus={() => setHidden(false)}
@@ -114,7 +115,7 @@ export function Island({ items }: { items: IslandItem[] }) {
               href={it.href}
               className={s.item}
               aria-current={it.active ? "page" : undefined}
-              aria-label={it.badge ? `${it.label}, ${it.badge} непрочитанных` : it.label}
+              aria-label={it.badge ? t(`{label}, {badge} непрочитанных`, { label: it.label, badge: it.badge }) : it.label}
               title={it.label}
             >
               <span className={s.icon} aria-hidden>

@@ -1,7 +1,9 @@
+import { t } from "@/lib/i18n";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Brand } from "@/components/landing/SiteHeader";
 import { ThemeToggle } from "@/components/shell/ThemeToggle";
+import { LanguageToggle } from "@/components/i18n/LanguageSwitch";
 import a from "./art.module.css";
 import s from "./auth.module.css";
 
@@ -12,7 +14,10 @@ export function AuthShell({ children, wide, art }: { children: ReactNode; wide?:
     <div className={s.shell}>
       <header className={s.top}>
         <Brand />
-        <ThemeToggle />
+        <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <LanguageToggle />
+          <ThemeToggle />
+        </span>
       </header>
       <main className={s.main}>
         {art ? (
@@ -42,7 +47,7 @@ export function AuthCard({ title, sub, children }: { title: ReactNode; sub?: Rea
 
 export function AuthLinks({ links }: { links: { href: string; label: string; prefix?: string }[] }) {
   return (
-    <nav className={s.links} aria-label="Другие действия">
+    <nav className={s.links} aria-label={t("Другие действия")}>
       {links.map((l) => (
         <span key={l.href}>
           {l.prefix && <>{l.prefix} </>}

@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useState } from "react";
 import { Check } from "lucide-react";
 import { Button, Input, Segmented } from "@/ui";
@@ -13,7 +14,7 @@ const SERVICES: Service[] = ["calls", "circles", "ai"];
 export function ProgramForm({
   program,
   onSave,
-  submitLabel = "Сохранить",
+  submitLabel = t("Сохранить"),
   withStart = false,
 }: {
   program: Program | null;
@@ -21,7 +22,7 @@ export function ProgramForm({
   submitLabel?: string;
   withStart?: boolean;
 }) {
-  const [name, setName] = useState(program?.name ?? "Забота о\u00a0сотрудниках");
+  const [name, setName] = useState(program?.name ?? t("Забота о\u00a0сотрудниках"));
   const [amount, setAmount] = useState(program?.amount_kopecks ? String(program.amount_kopecks / 100) : "");
   const [calls, setCalls] = useState(program?.calls_limit ? String(program.calls_limit) : "");
   const [period, setPeriod] = useState<Period>(program?.period ?? "month");
@@ -49,7 +50,7 @@ export function ProgramForm({
       if (withStart) body.starts_on = starts || null;
       await onSave(body);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Не\u00a0получилось сохранить.");
+      setError(err instanceof ApiError ? err.message : t("Не\u00a0получилось сохранить."));
     } finally {
       setBusy(false);
     }
@@ -57,34 +58,34 @@ export function ProgramForm({
 
   return (
     <form className={s.form} onSubmit={submit}>
-      <Input label="Название" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
+      <Input label={t("Название")} value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
       <div>
         <div className={s.muted} style={{ marginBottom: 8, fontWeight: 600 }}>
-          Период лимита
+          {t("Период лимита")}
         </div>
         <Segmented<Period>
-          ariaLabel="Период лимита"
+          ariaLabel={t("Период лимита")}
           value={period}
           onChange={setPeriod}
           options={[
-            { value: "month", label: "Месяц" },
-            { value: "quarter", label: "Квартал" },
-            { value: "year", label: "Год" },
+            { value: "month", label: t("Месяц") },
+            { value: "quarter", label: t("Квартал") },
+            { value: "year", label: t("Год") },
           ]}
         />
       </div>
       <div className={s.form2}>
         <Input
-          label="Сумма на&nbsp;сотрудника, ₽"
-          hint="Пусто&nbsp;— без&nbsp;лимита по&nbsp;сумме"
+          label={t("Сумма на\u00a0сотрудника, ₽")}
+          hint={t("Пусто\u00a0— без\u00a0лимита по\u00a0сумме")}
           inputMode="numeric"
           value={amount}
           onChange={(e) => setAmount(e.target.value.replace(/[^\d\s]/g, ""))}
           placeholder="5 000"
         />
         <Input
-          label="Созвонов на&nbsp;сотрудника"
-          hint="Пусто&nbsp;— без&nbsp;лимита по&nbsp;количеству"
+          label={t("Созвонов на\u00a0сотрудника")}
+          hint={t("Пусто\u00a0— без\u00a0лимита по\u00a0количеству")}
           inputMode="numeric"
           value={calls}
           onChange={(e) => setCalls(e.target.value.replace(/\D/g, ""))}
@@ -93,7 +94,7 @@ export function ProgramForm({
       </div>
       <div>
         <div className={s.muted} style={{ marginBottom: 8, fontWeight: 600 }}>
-          Что&nbsp;оплачивает программа
+          {t("Что\u00a0оплачивает программа")}
         </div>
         <div className={s.chips}>
           {SERVICES.map((x) => (
@@ -105,8 +106,8 @@ export function ProgramForm({
         </div>
       </div>
       <div className={s.form2}>
-        {withStart && <Input label="Начало" type="date" value={starts} onChange={(e) => setStarts(e.target.value)} />}
-        <Input label="Действует до" hint="Пусто&nbsp;— бессрочно" type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
+        {withStart && <Input label={t("Начало")} type="date" value={starts} onChange={(e) => setStarts(e.target.value)} />}
+        <Input label={t("Действует до")} hint={t("Пусто\u00a0— бессрочно")} type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
       </div>
       {error && (
         <div className={s.muted} role="alert" style={{ color: "var(--c-danger)" }}>

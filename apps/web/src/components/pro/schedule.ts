@@ -1,4 +1,5 @@
 /** Weekly schedule helpers shared by /pro and /pro/schedule. */
+import { t as tt } from "@/lib/i18n";
 import type { ScheduleRule } from "@/lib/api/types";
 import type { TimeRange, WeeklyTemplate } from "@/lib/api/availability";
 
@@ -81,15 +82,15 @@ export function weekToDays(week: DayPlan[]): TimeRange[][] {
 /** Per-range error text (or null) for one day. `minDuration` — the shortest session the specialist offers. */
 export function dayErrors(d: DayPlan, minDuration = 50): (string | null)[] {
   return d.ranges.map((r, i) => {
-    if (toMin(r.to) <= toMin(r.from)) return "Конец должен быть позже начала";
+    if (toMin(r.to) <= toMin(r.from)) return tt("Конец должен быть позже начала");
     for (let j = 0; j < d.ranges.length; j++) {
       if (j === i) continue;
       const o = d.ranges[j];
       if (toMin(r.from) < toMin(o.to) && toMin(o.from) < toMin(r.to)) {
-        return `Пересекается с\u00a0интервалом ${o.from}–${o.to}. Сдвиньте время или\u00a0удалите один из\u00a0них`;
+        return tt(`Пересекается с\u00a0интервалом {from}–{to}. Сдвиньте время или\u00a0удалите один из\u00a0них`, { from: o.from, to: o.to });
       }
     }
-    if (toMin(r.to) - toMin(r.from) < minDuration) return `Короче самого короткого созвона (${minDuration} мин), запись сюда не\u00a0попадёт`;
+    if (toMin(r.to) - toMin(r.from) < minDuration) return tt(`Короче самого короткого созвона ({minDuration} мин), запись сюда не\u00a0попадёт`, { minDuration });
     return null;
   });
 }

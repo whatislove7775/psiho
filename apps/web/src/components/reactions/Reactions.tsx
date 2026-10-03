@@ -5,12 +5,13 @@
  * soft logo gradients, a yellow sparkle) — never an OS emoji. A reaction pops
  * over the sender's tile for ~2 s on both sides of the call.
  */
+import { t as tt } from "@/lib/i18n";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import s from "./reactions.module.css";
 
 export type ReactionKind = "up" | "down";
 export const REACTION_MS = 2000;
-export const REACTION_LABEL: Record<ReactionKind, string> = { up: "Нравится", down: "Не нравится" };
+export const REACTION_LABEL: Record<ReactionKind, string> = { get up() { return tt("Нравится"); }, get down() { return tt("Не нравится"); } };
 
 const BG: Record<ReactionKind, [string, string]> = {
   up: ["#7AA5FF", "#6A4FE8"],

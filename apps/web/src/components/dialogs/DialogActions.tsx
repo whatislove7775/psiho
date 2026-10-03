@@ -1,5 +1,6 @@
 "use client";
 
+import { t, tj } from "@/lib/i18n";
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { Button, Modal, useToast } from "@/ui";
 import { ApiError } from "@/lib/api/client";
@@ -65,7 +66,7 @@ export function useDialogController(detail: DialogDetail | null, reload: () => P
         setPaying(call);
         return;
       }
-      toast(call.is_intro ? "Знакомство назначено" : "Созвон назначен");
+      toast(call.is_intro ? t("Знакомство назначено") : t("Созвон назначен"));
     },
     [reload, toast],
   );
@@ -92,7 +93,7 @@ export function useDialogController(detail: DialogDetail | null, reload: () => P
                 const call = await dialogsApi.accept(id, p.id);
                 await afterBooked(call);
               } catch (e) {
-                toast(errText(e, "Не\u00a0получилось принять предложение"), { error: true });
+                toast(errText(e, t("Не\u00a0получилось принять предложение")), { error: true });
               } finally {
                 setBusy(null);
               }
@@ -103,7 +104,7 @@ export function useDialogController(detail: DialogDetail | null, reload: () => P
                 await dialogsApi.closeProposal(id, p.id);
                 await reload();
               } catch (e) {
-                toast(errText(e, "Не\u00a0получилось"), { error: true });
+                toast(errText(e, t("Не\u00a0получилось")), { error: true });
               } finally {
                 setBusy(null);
               }
@@ -123,13 +124,13 @@ export function useDialogController(detail: DialogDetail | null, reload: () => P
       await reload();
       toast(
         res.refund === "full"
-          ? "Созвон отменён, деньги вернутся полностью"
+          ? t("Созвон отменён, деньги вернутся полностью")
           : res.refund === "partial"
-            ? "Созвон отменён"
-            : "Созвон отменён",
+            ? t("Созвон отменён")
+            : t("Созвон отменён"),
       );
     } catch (e) {
-      toast(errText(e, "Не\u00a0получилось отменить"), { error: true });
+      toast(errText(e, t("Не\u00a0получилось отменить")), { error: true });
     } finally {
       setBusy(null);
     }
@@ -147,21 +148,21 @@ export function useDialogController(detail: DialogDetail | null, reload: () => P
         onClose={() => setPicker(null)}
         dialogId={id}
         title={
-          picker?.mode === "propose" ? "Предложить время созвона" : picker?.mode === "reschedule" ? "Перенести созвон" : "Назначить созвон"
+          picker?.mode === "propose" ? t("Предложить время созвона") : picker?.mode === "reschedule" ? t("Перенести созвон") : t("Назначить созвон")
         }
         durations={detail.booking.durations}
         intro={picker?.mode === "book" ? detail.booking.intro : undefined}
         fixedMinutes={picker?.mode === "reschedule" ? picker.call.duration_minutes : undefined}
         submitLabel={(price) =>
-          picker?.mode === "propose" ? "Отправить предложение" : picker?.mode === "reschedule" ? "Перенести" : price
-                ? `Назначить за\u00a0${rub(price)}`
-                : "Назначить бесплатно"
+          picker?.mode === "propose" ? t("Отправить предложение") : picker?.mode === "reschedule" ? t("Перенести") : price
+                ? t(`Назначить за\u00a0{rub}`, { rub: rub(price) })
+                : t("Назначить бесплатно")
         }
         note={
           picker?.mode === "propose"
-            ? "Клиент увидит карточку в\u00a0диалоге и\u00a0сможет принять время и\u00a0оплатить его."
+            ? t("Клиент увидит карточку в\u00a0диалоге и\u00a0сможет принять время и\u00a0оплатить его.")
             : picker?.mode === "book" && rules
-              ? `Отменить или\u00a0перенести бесплатно можно за\u00a0${rules.free_cancel_hours} ч\u00a0до\u00a0начала.`
+              ? t(`Отменить или\u00a0перенести бесплатно можно за\u00a0{free_cancel_hours} ч\u00a0до\u00a0начала.`, { free_cancel_hours: rules.free_cancel_hours })
               : undefined
         }
         onSubmit={async (start, minutes) => {
@@ -170,62 +171,59 @@ export function useDialogController(detail: DialogDetail | null, reload: () => P
               await dialogsApi.propose(id, start, minutes);
               setPicker(null);
               await reload();
-              toast("Предложение отправлено");
+              toast(t("Предложение отправлено"));
             } else if (picker?.mode === "reschedule") {
               await dialogsApi.reschedule(id, picker.call.id, start);
               setPicker(null);
               await reload();
-              toast("Созвон перенесён");
+              toast(t("Созвон перенесён"));
             } else {
               const call = await dialogsApi.book(id, start, minutes);
               setPicker(null);
               await afterBooked(call);
             }
           } catch (e) {
-            if (e instanceof ApiError && e.status === 400) return `${e.message} Свободное время обновлено.`;
-            return errText(e, "Не\u00a0получилось, попробуйте ещё раз");
+            if (e instanceof ApiError && e.status === 400) return t(`{message} Свободное время обновлено.`, { message: e.message });
+            return errText(e, t("Не\u00a0получилось, попробуйте ещё раз"));
           }
         }}
       />
 
-      <Modal open={!!cancelling} onClose={() => !busy && setCancelling(null)} title="Отменить созвон?" width={460}>
+      <Modal open={!!cancelling} onClose={() => !busy && setCancelling(null)} title={t("Отменить созвон?")} width={460}>
         {cancelInfo && (
           <>
             <p className={s.modalText}>
               {weekdayDay(cancelInfo.scheduled_at)}, {hm(cancelInfo.scheduled_at)}.{" "}
               {role === "specialist"
                 ? paid
-                  ? "Клиенту вернутся все деньги за\u00a0созвон. Мы\u00a0сообщим ему в\u00a0диалоге."
-                  : "Клиент увидит отмену в\u00a0диалоге."
+                  ? t("Клиенту вернутся все деньги за\u00a0созвон. Мы\u00a0сообщим ему в\u00a0диалоге.")
+                  : t("Клиент увидит отмену в\u00a0диалоге.")
                 : !paid
-                  ? "Созвон ещё не\u00a0оплачен, списаний не\u00a0будет."
+                  ? t("Созвон ещё не\u00a0оплачен, списаний не\u00a0будет.")
                   : late
-                    ? `До\u00a0начала меньше ${rules?.free_cancel_hours ?? 24} ч, поэтому ${
-                        rules?.late_penalty_percent != null
-                          ? `вернётся ${100 - rules.late_penalty_percent}% стоимости`
-                          : "деньги могут не\u00a0вернуться"
-                      }. Перенести созвон может только специалист\u00a0— напишите ему.`
-                    : `Деньги (${rub(cancelInfo.amount_rub)}) вернутся полностью.`}{" "}
-              Время освободится для&nbsp;других.
+                    ? t(`До\u00a0начала меньше {v} ч, поэтому {v2}. Перенести созвон может только специалист\u00a0— напишите ему.`, { v: rules?.free_cancel_hours ?? 24, v2: rules?.late_penalty_percent != null
+                          ? t(`вернётся {v}% стоимости`, { v: 100 - rules.late_penalty_percent })
+                          : t("деньги могут не\u00a0вернуться") })
+                    : t(`Деньги ({rub}) вернутся полностью.`, { rub: rub(cancelInfo.amount_rub) })}{" "}
+              {t("Время освободится для\u00a0других.")}
             </p>
             <div className={s.modalActions}>
               <Button variant="secondary" onClick={() => setCancelling(null)} disabled={!!busy}>
-                Оставить
+                {t("Оставить")}
               </Button>
               <Button variant="danger" onClick={doCancel} loading={busy === cancelInfo.id}>
-                Отменить созвон
+                {t("Отменить созвон")}
               </Button>
             </div>
           </>
         )}
       </Modal>
 
-      <Modal open={!!paying} onClose={() => setPaying(null)} title="Оплата созвона" width={440}>
+      <Modal open={!!paying} onClose={() => setPaying(null)} title={t("Оплата созвона")} width={440}>
         {paying && (
           <>
             <p className={s.modalText}>
-              {weekdayDay(paying.scheduled_at)}, {hm(paying.scheduled_at)}, {paying.duration_minutes} мин. Время за&nbsp;вами,
-              пока идёт оплата.
+              {tj("{weekdayDay}, {hm}, {duration_minutes} мин. Время за\u00a0вами, пока идёт оплата.", { weekdayDay: weekdayDay(paying.scheduled_at), hm: hm(paying.scheduled_at), duration_minutes: paying.duration_minutes })}
             </p>
             <div style={{ marginTop: 16 }}>
               <PayCall
@@ -235,7 +233,7 @@ export function useDialogController(detail: DialogDetail | null, reload: () => P
                 onPaid={async () => {
                   setPaying(null);
                   await reload();
-                  toast("Созвон оплачен");
+                  toast(t("Созвон оплачен"));
                 }}
               />
             </div>

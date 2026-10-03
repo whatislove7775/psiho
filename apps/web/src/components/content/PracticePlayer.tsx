@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt, tj } from "@/lib/i18n";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronLeft, ChevronRight, Pause, Play, RotateCcw } from "lucide-react";
 import type { BreathPattern, Practice } from "@/lib/api/content";
@@ -15,10 +16,10 @@ interface Phase {
 }
 
 function phasesOf(p: BreathPattern): Phase[] {
-  const out: Phase[] = [{ label: "Вдох", seconds: p.inhale, scale: 0.84 }];
-  if (p.hold) out.push({ label: "Пауза", seconds: p.hold, scale: 0.84 });
-  out.push({ label: "Выдох", seconds: p.exhale, scale: 0.46 });
-  if (p.hold_after) out.push({ label: "Пауза", seconds: p.hold_after, scale: 0.46 });
+  const out: Phase[] = [{ label: tt("Вдох"), seconds: p.inhale, scale: 0.84 }];
+  if (p.hold) out.push({ label: tt("Пауза"), seconds: p.hold, scale: 0.84 });
+  out.push({ label: tt("Выдох"), seconds: p.exhale, scale: 0.46 });
+  if (p.hold_after) out.push({ label: tt("Пауза"), seconds: p.hold_after, scale: 0.46 });
   return out;
 }
 
@@ -70,14 +71,14 @@ export function BreathingCircle({ pattern, tone }: { pattern: BreathPattern; ton
         <span className={s.stageText}>
           {done ? (
             <>
-              <strong>Готово</strong>
-              <span>Как&nbsp;вы&nbsp;сейчас?</span>
+              <strong>{tt("Готово")}</strong>
+              <span>{tt("Как\u00a0вы\u00a0сейчас?")}</span>
             </>
           ) : idle ? (
             <>
               <strong>{pattern.cycles} {plural(pattern.cycles, "цикл", "цикла", "циклов")}</strong>
               <span>
-                {phases.map((p) => p.seconds).join(" · ")} сек
+                {phases.map((p) => p.seconds).join(" · ")}{" "}{tt("сек")}
               </span>
             </>
           ) : (
@@ -89,7 +90,7 @@ export function BreathingCircle({ pattern, tone }: { pattern: BreathPattern; ton
         </span>
       </div>
       <p className={s.srOnly} aria-live="polite">
-        {running ? `${cur.label}, ${cur.seconds} секунд` : done ? "Практика завершена" : ""}
+        {running ? tt(`{label}, {seconds} секунд`, { label: cur.label, seconds: cur.seconds }) : done ? tt("Практика завершена") : ""}
       </p>
       <div className={s.controls}>
         {!done && (
@@ -99,18 +100,18 @@ export function BreathingCircle({ pattern, tone }: { pattern: BreathPattern; ton
             onClick={() => setRunning((r) => !r)}
             icon={running ? <Pause size={18} strokeWidth={2} /> : <Play size={18} strokeWidth={2} />}
           >
-            {running ? "Пауза" : idle ? "Начать" : "Продолжить"}
+            {running ? tt("Пауза") : idle ? tt("Начать") : tt("Продолжить")}
           </Button>
         )}
         {!idle && (
           <Button variant="secondary" size="lg" onClick={reset} icon={<RotateCcw size={18} strokeWidth={1.8} />}>
-            {done ? "Ещё раз" : "Сначала"}
+            {done ? tt("Ещё раз") : tt("Сначала")}
           </Button>
         )}
       </div>
       {!idle && !done && (
         <div className={s.cycles}>
-          Цикл {cycle} из {pattern.cycles}
+          {tj("Цикл {cycle} из {cycles}", { cycle, cycles: pattern.cycles })}
         </div>
       )}
     </div>
@@ -149,7 +150,7 @@ export function StepPlayer({ practice }: { practice: Practice }) {
             <li key={k}>
               <span className={s.outlineNum}>{k + 1}</span>
               <span>
-                <strong>{st.title || `Шаг ${k + 1}`}</strong>
+                <strong>{st.title || tt(`Шаг {v}`, { v: k + 1 })}</strong>
                 <span>{st.text}</span>
               </span>
             </li>
@@ -157,7 +158,7 @@ export function StepPlayer({ practice }: { practice: Practice }) {
         </ol>
         <div className={s.controls} style={{ justifyContent: "flex-start" }}>
           <Button variant="primary" size="lg" onClick={() => setI(0)} icon={<Play size={18} strokeWidth={2} />}>
-            Пройти по&nbsp;шагам
+            {tt("Пройти по\u00a0шагам")}
           </Button>
         </div>
       </div>
@@ -171,15 +172,14 @@ export function StepPlayer({ practice }: { practice: Practice }) {
           <span className={s.doneIcon} data-tone={practice.cover} aria-hidden>
             <Check size={28} strokeWidth={2.4} />
           </span>
-          <h2 className={s.stepTitle}>Вы&nbsp;прошли практику</h2>
+          <h2 className={s.stepTitle}>{tt("Вы\u00a0прошли практику")}</h2>
           <p className={s.stepText}>
-            Отметьте, как&nbsp;вы&nbsp;себя чувствуете сейчас. Даже небольшое изменение&nbsp;— уже результат. Практики работают лучше, если
-            возвращаться к&nbsp;ним регулярно.
+            {tt("Отметьте, как\u00a0вы\u00a0себя чувствуете сейчас. Даже небольшое изменение\u00a0— уже результат. Практики работают лучше, если возвращаться к\u00a0ним регулярно.")}
           </p>
         </div>
         <div className={s.controls} style={{ justifyContent: "flex-start" }}>
           <Button variant="secondary" size="lg" onClick={() => setI(0)} icon={<RotateCcw size={18} strokeWidth={1.8} />}>
-            Пройти ещё раз
+            {tt("Пройти ещё раз")}
           </Button>
         </div>
       </div>
@@ -198,9 +198,9 @@ export function StepPlayer({ practice }: { practice: Practice }) {
       </div>
       <div className={s.stepCard} ref={cardRef} tabIndex={-1} aria-live="polite">
         <span className={s.stepNum}>
-          Шаг {i + 1} из {steps.length}
+          {tj("Шаг {v} из {length}", { v: i + 1, length: steps.length })}
         </span>
-        <h2 className={s.stepTitle}>{step!.title || `Шаг ${i + 1}`}</h2>
+        <h2 className={s.stepTitle}>{step!.title || tt(`Шаг {v}`, { v: i + 1 })}</h2>
         <p className={s.stepText}>{step!.text}</p>
         {total > 0 && (
           <div className={s.timer}>
@@ -208,14 +208,14 @@ export function StepPlayer({ practice }: { practice: Practice }) {
               <span style={{ width: `${pct}%` }} data-tone={practice.cover} />
             </div>
             <span className={s.timerText}>
-              {left > 0 ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}` : "Можно дальше"}
+              {left > 0 ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}` : tt("Можно дальше")}
             </span>
             {left > 0 && (
               <Button
                 variant="ghost"
                 size="sm"
                 iconOnly
-                aria-label={paused ? "Продолжить таймер" : "Пауза таймера"}
+                aria-label={paused ? tt("Продолжить таймер") : tt("Пауза таймера")}
                 onClick={() => setPaused((p) => !p)}
                 icon={paused ? <Play size={16} /> : <Pause size={16} />}
               />
@@ -225,10 +225,10 @@ export function StepPlayer({ practice }: { practice: Practice }) {
       </div>
       <div className={s.controls} style={{ justifyContent: "space-between" }}>
         <Button variant="secondary" size="lg" onClick={() => setI(i - 1)} icon={<ChevronLeft size={18} strokeWidth={1.8} />}>
-          Назад
+          {tt("Назад")}
         </Button>
         <Button variant="primary" size="lg" onClick={() => setI(i + 1)}>
-          {i === steps.length - 1 ? "Завершить" : "Дальше"}
+          {i === steps.length - 1 ? tt("Завершить") : tt("Дальше")}
           <ChevronRight size={18} strokeWidth={2} />
         </Button>
       </div>

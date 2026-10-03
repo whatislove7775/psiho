@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from "@/lib/i18n";
+import { lp } from "@/lib/i18n";
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
@@ -29,9 +31,9 @@ export function RecoverForm() {
     e.preventDefault();
     setError(null);
     const errs: Errors = {};
-    if (!alias.trim()) errs.alias = "Введите имя, которое вам выдали при\u00a0регистрации.";
-    if (key.replace(/[^a-z2-7]/gi, "").length < 20) errs.recovery_key = "В\u00a0ключе 20\u00a0символов: четыре группы по\u00a0пять.";
-    if (password.length < 8) errs.new_password = "Пароль должен быть не\u00a0короче 8\u00a0символов.";
+    if (!alias.trim()) errs.alias = t("Введите имя, которое вам выдали при\u00a0регистрации.");
+    if (key.replace(/[^a-z2-7]/gi, "").length < 20) errs.recovery_key = t("В\u00a0ключе 20\u00a0символов: четыре группы по\u00a0пять.");
+    if (password.length < 8) errs.new_password = t("Пароль должен быть не\u00a0короче 8\u00a0символов.");
     setErrors(errs);
     if (Object.keys(errs).length) return;
     setBusy(true);
@@ -50,7 +52,7 @@ export function RecoverForm() {
         };
         setErrors(fe);
         if (!fe.alias && !fe.recovery_key && !fe.new_password) setError(err.message);
-      } else setError("Не\u00a0получилось восстановить доступ. Попробуйте ещё раз.");
+      } else setError(t("Не\u00a0получилось восстановить доступ. Попробуйте ещё раз."));
     } finally {
       setBusy(false);
     }
@@ -60,8 +62,8 @@ export function RecoverForm() {
     return (
       <AuthShell art={<KeyFriend />}>
         <RecoveryKeyReveal
-          title="Пароль изменён. Сохраните новый ключ"
-          intro="Старый ключ больше не&nbsp;работает. Новый понадобится, если вы&nbsp;снова забудете пароль. Показать его ещё раз мы&nbsp;не&nbsp;сможем."
+          title={t("Пароль изменён. Сохраните новый ключ")}
+          intro={t("Старый ключ больше не\u00a0работает. Новый понадобится, если вы\u00a0снова забудете пароль. Показать его ещё раз мы\u00a0не\u00a0сможем.")}
           alias={result.user.alias}
           recoveryKey={result.recovery_key ?? ""}
           avatar={result.user.avatar_config}
@@ -77,13 +79,13 @@ export function RecoverForm() {
   return (
     <AuthShell art={<KeyFriend />}>
       <AuthCard
-        title="Восстановить доступ"
-        sub="Введите имя и&nbsp;ключ восстановления, который вы&nbsp;сохранили при&nbsp;регистрации, и&nbsp;придумайте новый пароль."
+        title={t("Восстановить доступ")}
+        sub={t("Введите имя и\u00a0ключ восстановления, который вы\u00a0сохранили при\u00a0регистрации, и\u00a0придумайте новый пароль.")}
       >
         <form className={s.form} onSubmit={submit} noValidate>
           <Input
-            label="Имя"
-            placeholder="тихий-кит-4821"
+            label={t("Имя")}
+            placeholder={t("тихий-кит-4821")}
             value={alias}
             onChange={(e) => {
               setAlias(e.target.value);
@@ -97,7 +99,7 @@ export function RecoverForm() {
             autoFocus
           />
           <Input
-            label="Ключ восстановления"
+            label={t("Ключ восстановления")}
             placeholder="ABCDE-FGH23-IJKLM-NOP45"
             value={key}
             onChange={(e) => {
@@ -105,7 +107,7 @@ export function RecoverForm() {
               setErrors((x) => ({ ...x, recovery_key: undefined }));
             }}
             error={errors.recovery_key}
-            hint="Регистр и&nbsp;дефисы не&nbsp;важны."
+            hint={t("Регистр и\u00a0дефисы не\u00a0важны.")}
             autoComplete="off"
             autoCapitalize="characters"
             autoCorrect="off"
@@ -113,8 +115,8 @@ export function RecoverForm() {
             style={{ letterSpacing: "0.06em", fontVariantNumeric: "tabular-nums" }}
           />
           <PasswordInput
-            label="Новый пароль"
-            hint="Не&nbsp;короче 8&nbsp;символов."
+            label={t("Новый пароль")}
+            hint={t("Не\u00a0короче 8\u00a0символов.")}
             value={password}
             onChange={(e) => {
               setPassword(e.target.value);
@@ -125,14 +127,14 @@ export function RecoverForm() {
           />
           <FormError>{error}</FormError>
           <Button type="submit" variant="primary" size="lg" block loading={busy}>
-            Сменить пароль и&nbsp;войти
+            {t("Сменить пароль и\u00a0войти")}
           </Button>
         </form>
       </AuthCard>
       <AuthLinks
         links={[
-          { href: "/login", label: "Войти", prefix: "Вспомнили пароль?" },
-          { href: "/start", label: "Создать новый аккаунт", prefix: "Ключа нет?" },
+          { href: lp("/login"), label: t("Войти"), prefix: t("Вспомнили пароль?") },
+          { href: lp("/start"), label: t("Создать новый аккаунт"), prefix: t("Ключа нет?") },
         ]}
       />
     </AuthShell>

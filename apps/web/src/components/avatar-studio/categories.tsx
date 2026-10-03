@@ -1,5 +1,6 @@
 "use client";
 
+import { t, msg } from "@/lib/i18n";
 import {
   ACC_COLORS,
   BROW_STYLES,
@@ -39,12 +40,12 @@ export interface CategoryProps {
 }
 
 export const GROUP_RU: Record<HeadzGroup, string> = {
-  woman: "Женщина",
-  man: "Мужчина",
-  oldwoman: "Пожилая",
-  oldman: "Пожилой",
-  girl: "Девочка",
-  boy: "Мальчик",
+  get woman() { return t("Женщина"); },
+  get man() { return t("Мужчина"); },
+  get oldwoman() { return t("Пожилая"); },
+  get oldman() { return t("Пожилой"); },
+  get girl() { return t("Девочка"); },
+  get boy() { return t("Мальчик"); },
 };
 const SLOTS: HeadzSlot[] = ["hair", "beard", "eyewear", "headwear", "earrings", "mask"];
 
@@ -94,13 +95,13 @@ export function withBase(cfg: AvatarConfig, baseId: string): AvatarConfig {
 function partLabel(slot: HeadzSlot, id: string, i: number): string {
   const n = id.toLowerCase();
   if (slot === "hair") return `${i + 1}`;
-  if (slot === "beard") return n.includes("mustache") || n.includes("moustache") ? "Усы" : "Борода";
-  if (slot === "eyewear") return "Очки";
-  if (slot === "earrings") return "Серьги";
-  if (slot === "mask") return "Маска";
-  if (n.includes("beanie")) return "Шапка";
-  if (n.includes("cap")) return "Кепка";
-  if (n.includes("hat")) return "Шляпа";
+  if (slot === "beard") return n.includes("mustache") || n.includes("moustache") ? t("Усы") : t("Борода");
+  if (slot === "eyewear") return t("Очки");
+  if (slot === "earrings") return t("Серьги");
+  if (slot === "mask") return t("Маска");
+  if (n.includes("beanie")) return t("Шапка");
+  if (n.includes("cap")) return t("Кепка");
+  if (n.includes("hat")) return t("Шляпа");
   return `${i + 1}`;
 }
 
@@ -109,7 +110,7 @@ function PartGrid({ p, slot, title, render, allGroups = true }: { p: CategoryPro
   const opts = headzOptionsAll(p.cfg.base, slot).filter((o) => allGroups || o.group === own);
   const ids = ["none", ...opts.map((o) => o.qid)];
   const seen = new Map<string, number>();
-  const labels: Record<string, string> = { none: "Нет" };
+  const labels: Record<string, string> = { none: t("Нет") };
   opts.forEach((o, i) => {
     const l = slot === "hair" ? `${i + 1}` : partLabel(slot, o.option.id, i);
     const k = (seen.get(l) ?? 0) + 1;
@@ -148,9 +149,9 @@ function Chips<T extends string>({ label, options, labels, value, onChange }: { 
 // ── Лицо ──────────────────────────────────────────────────────────────────────
 
 const FACE_SLIDERS: { title: string; items: [FaceShape, string][] }[] = [
-  { title: "Голова", items: [["headWidth", "Ширина головы"], ["faceLength", "Длина лица"], ["jaw", "Ширина челюсти"], ["chin", "Подбородок"], ["cheeks", "Щёки"], ["ears", "Уши"]] },
-  { title: "Глаза и брови", items: [["eyeSize", "Размер глаз"], ["eyeSpacing", "Посадка глаз"], ["browHeight", "Высота бровей"]] },
-  { title: "Нос и рот", items: [["noseSize", "Размер носа"], ["noseWidth", "Ширина носа"], ["noseLength", "Длина носа"], ["lips", "Губы"], ["mouthWidth", "Ширина рта"]] },
+  { get title() { return t("Голова"); }, items: [["headWidth", msg("Ширина головы")], ["faceLength", msg("Длина лица")], ["jaw", msg("Ширина челюсти")], ["chin", msg("Подбородок")], ["cheeks", msg("Щёки")], ["ears", msg("Уши")]] },
+  { get title() { return t("Глаза и брови"); }, items: [["eyeSize", msg("Размер глаз")], ["eyeSpacing", msg("Посадка глаз")], ["browHeight", msg("Высота бровей")]] },
+  { get title() { return t("Нос и рот"); }, items: [["noseSize", msg("Размер носа")], ["noseWidth", msg("Ширина носа")], ["noseLength", msg("Длина носа")], ["lips", msg("Губы")], ["mouthWidth", msg("Ширина рта")]] },
 ];
 
 function Face(p: CategoryProps) {
@@ -170,23 +171,23 @@ function Face(p: CategoryProps) {
   };
   return (
     <>
-      <Section title="Персонаж">
+      <Section title={t("Персонаж")}>
         <div className={s.pickRows}>
           <div className={s.inlineRow} style={{ marginTop: 0 }}>
-            <span className={s.rangeLabel}>Пол</span>
-            <Chips label="Пол" options={["m", "f"] as const} labels={{ m: "Мужской", f: "Женский" }} value={sex} onChange={(v) => go(v, age)} />
+            <span className={s.rangeLabel}>{t("Пол")}</span>
+            <Chips label={t("Пол")} options={["m", "f"] as const} labels={{ m: t("Мужской"), f: t("Женский") }} value={sex} onChange={(v) => go(v, age)} />
           </div>
           <div className={s.inlineRow} style={{ marginTop: 0 }}>
-            <span className={s.rangeLabel}>Возраст</span>
-            <Chips label="Возраст" options={["young", "adult", "old"] as const} labels={{ young: "Молодой", adult: "Средний", old: "Пожилой" }} value={age} onChange={(v) => go(sex, v)} />
+            <span className={s.rangeLabel}>{t("Возраст")}</span>
+            <Chips label={t("Возраст")} options={["young", "adult", "old"] as const} labels={{ young: t("Молодой"), adult: t("Средний"), old: t("Пожилой") }} value={age} onChange={(v) => go(sex, v)} />
           </div>
         </div>
       </Section>
-      <Section title="Черты лица">
+      <Section title={t("Черты лица")}>
         <OptionGrid
-          ariaLabel="Черты лица"
+          ariaLabel={t("Черты лица")}
           options={variants.map((b) => b.id)}
-          labels={Object.fromEntries(variants.map((b, i) => [b.id, `Вариант ${i + 1}`]))}
+          labels={Object.fromEntries(variants.map((b, i) => [b.id, t(`Вариант {v}`, { v: i + 1 })]))}
           value={cur.id}
           // each variant as sold — its own hair and colours, none of the current parts
           preview={(id) => baseDefault(id)}
@@ -200,14 +201,14 @@ function Face(p: CategoryProps) {
           aside={
             g.items.some(([k]) => p.cfg.face[k]) ? (
               <button type="button" className={s.linkBtn} onClick={() => p.set("face", Object.fromEntries(Object.entries(p.cfg.face).filter(([k]) => !g.items.some(([x]) => x === k))))}>
-                Сбросить
+                {t("Сбросить")}
               </button>
             ) : undefined
           }
         >
           <div className={s.sliders}>
             {g.items.map(([k, label]) => (
-              <SignedSlider key={k} label={label} value={p.cfg.face[k] ?? 0} onChange={(v) => setFace(k, v)} />
+              <SignedSlider key={k} label={t(label)} value={p.cfg.face[k] ?? 0} onChange={(v) => setFace(k, v)} />
             ))}
           </div>
         </Section>
@@ -224,25 +225,25 @@ function Skin(p: CategoryProps) {
   const setFx = (k: keyof AvatarConfig["skinFx"], v: number) => p.set("skinFx", { ...fx, [k]: v }, `skinFx:${k}`);
   return (
     <>
-      <Section title="Тон кожи">
+      <Section title={t("Тон кожи")}>
         <ColorControl
-          label="Тон кожи"
+          label={t("Тон кожи")}
           palette={SKIN_TONES}
           mode="skin"
-          sliderLabel="Тон кожи: темнее или&nbsp;светлее"
+          sliderLabel={t("Тон кожи: темнее или\u00a0светлее")}
           value={p.cfg.skin ?? nearestTone(cur.skin)}
           onChange={(v, key) => p.set("skin", v, key ? `skin:${key}` : undefined)}
         />
       </Section>
-      <Section title="Детали">
+      <Section title={t("Детали")}>
         <div className={s.sliders}>
-          <RangeField label="Румянец" value={fx.blush} onChange={(v) => setFx("blush", v)} min="Нет" max="Ярко" />
-          <RangeField label="Веснушки" value={fx.freckles} onChange={(v) => setFx("freckles", v)} min="Нет" max="Много" />
-          <RangeField label="Морщинки" value={fx.age} onChange={(v) => setFx("age", v)} min="Нет" max="Заметные" />
+          <RangeField label={t("Румянец")} value={fx.blush} onChange={(v) => setFx("blush", v)} min={t("Нет")} max={t("Ярко")} />
+          <RangeField label={t("Веснушки")} value={fx.freckles} onChange={(v) => setFx("freckles", v)} min={t("Нет")} max={t("Много")} />
+          <RangeField label={t("Морщинки")} value={fx.age} onChange={(v) => setFx("age", v)} min={t("Нет")} max={t("Заметные")} />
         </div>
         <div className={s.inlineRow}>
-          <span className={s.rangeLabel}>Родинки</span>
-          <Chips label="Родинки" options={["0", "1", "2", "3"] as const} labels={{ 0: "Нет", 1: "1", 2: "2", 3: "3" }} value={String(fx.moles) as "0"} onChange={(v) => setFx("moles", Number(v))} />
+          <span className={s.rangeLabel}>{t("Родинки")}</span>
+          <Chips label={t("Родинки")} options={["0", "1", "2", "3"] as const} labels={{ 0: t("Нет"), 1: "1", 2: "2", 3: "3" }} value={String(fx.moles) as "0"} onChange={(v) => setFx("moles", Number(v))} />
         </div>
       </Section>
     </>
@@ -251,24 +252,24 @@ function Skin(p: CategoryProps) {
 
 // ── Глаза ─────────────────────────────────────────────────────────────────────
 
-const IRIS_RU: Record<(typeof IRIS_STYLES)[number], string> = { natural: "Живые", ring: "С ободком", cartoon: "Мульт", bright: "Лучистые" };
+const IRIS_RU: Record<(typeof IRIS_STYLES)[number], string> = { get natural() { return t("Живые"); }, get ring() { return t("С ободком"); }, get cartoon() { return t("Мульт"); }, get bright() { return t("Лучистые"); } };
 
 function Eyes(p: CategoryProps) {
   return (
     <>
-      <Section title="Цвет глаз">
+      <Section title={t("Цвет глаз")}>
         <ColorControl
-          label="Цвет глаз"
+          label={t("Цвет глаз")}
           palette={EYE_COLORS}
           allowNone
-          noneLabel="Как у персонажа"
+          noneLabel={t("Как у персонажа")}
           value={p.cfg.eyeColor}
           onChange={(v, key) => p.set("eyeColor", v, key ? `eyeColor:${key}` : undefined)}
         />
       </Section>
-      <Section title="Радужка">
+      <Section title={t("Радужка")}>
         <OptionGrid
-          ariaLabel="Радужка"
+          ariaLabel={t("Радужка")}
           options={IRIS_STYLES}
           labels={IRIS_RU}
           value={p.cfg.eyes.style}
@@ -277,11 +278,11 @@ function Eyes(p: CategoryProps) {
           render={EYES_ZOOM}
         />
       </Section>
-      <Section title="Форма">
+      <Section title={t("Форма")}>
         <div className={s.sliders}>
-          <SignedSlider label="Ресницы" value={p.cfg.eyes.lashes} onChange={(v) => p.set("eyes", { ...p.cfg.eyes, lashes: v }, "lashes")} min="Короче" max="Длиннее" />
-          <SignedSlider label="Размер глаз" value={p.cfg.face.eyeSize ?? 0} onChange={(v) => p.set("face", { ...p.cfg.face, eyeSize: v }, "face:eyeSize")} />
-          <SignedSlider label="Посадка глаз" value={p.cfg.face.eyeSpacing ?? 0} onChange={(v) => p.set("face", { ...p.cfg.face, eyeSpacing: v }, "face:eyeSpacing")} min="Ближе" max="Шире" />
+          <SignedSlider label={t("Ресницы")} value={p.cfg.eyes.lashes} onChange={(v) => p.set("eyes", { ...p.cfg.eyes, lashes: v }, "lashes")} min={t("Короче")} max={t("Длиннее")} />
+          <SignedSlider label={t("Размер глаз")} value={p.cfg.face.eyeSize ?? 0} onChange={(v) => p.set("face", { ...p.cfg.face, eyeSize: v }, "face:eyeSize")} />
+          <SignedSlider label={t("Посадка глаз")} value={p.cfg.face.eyeSpacing ?? 0} onChange={(v) => p.set("face", { ...p.cfg.face, eyeSpacing: v }, "face:eyeSpacing")} min={t("Ближе")} max={t("Шире")} />
         </div>
       </Section>
     </>
@@ -290,15 +291,15 @@ function Eyes(p: CategoryProps) {
 
 // ── Брови ─────────────────────────────────────────────────────────────────────
 
-const BROW_RU: Record<(typeof BROW_STYLES)[number], string> = { natural: "Как есть", straight: "Прямые", arched: "Дугой", angled: "С изломом", soft: "Мягкие", raised: "Приподнятые" };
+const BROW_RU: Record<(typeof BROW_STYLES)[number], string> = { get natural() { return t("Как есть"); }, get straight() { return t("Прямые"); }, get arched() { return t("Дугой"); }, get angled() { return t("С изломом"); }, get soft() { return t("Мягкие"); }, get raised() { return t("Приподнятые"); } };
 
 function Brows(p: CategoryProps) {
   const b = p.cfg.brows;
   return (
     <>
-      <Section title="Форма бровей">
+      <Section title={t("Форма бровей")}>
         <OptionGrid
-          ariaLabel="Форма бровей"
+          ariaLabel={t("Форма бровей")}
           options={BROW_STYLES}
           labels={BROW_RU}
           value={b.style}
@@ -307,12 +308,12 @@ function Brows(p: CategoryProps) {
           render={EYES_ZOOM}
         />
         <div className={s.sliders} style={{ marginTop: 16 }}>
-          <SignedSlider label="Толщина" value={b.thickness} onChange={(v) => p.set("brows", { ...b, thickness: v }, "brows:thickness")} min="Тоньше" max="Гуще" />
-          <SignedSlider label="Высота" value={p.cfg.face.browHeight ?? 0} onChange={(v) => p.set("face", { ...p.cfg.face, browHeight: v }, "face:browHeight")} min="Ниже" max="Выше" />
+          <SignedSlider label={t("Толщина")} value={b.thickness} onChange={(v) => p.set("brows", { ...b, thickness: v }, "brows:thickness")} min={t("Тоньше")} max={t("Гуще")} />
+          <SignedSlider label={t("Высота")} value={p.cfg.face.browHeight ?? 0} onChange={(v) => p.set("face", { ...p.cfg.face, browHeight: v }, "face:browHeight")} min={t("Ниже")} max={t("Выше")} />
         </div>
       </Section>
-      <Section title="Цвет бровей">
-        <ColorControl label="Цвет бровей" palette={HAIR_COLORS} allowNone noneLabel="Как волосы" value={b.color} onChange={(v, key) => p.set("brows", { ...b, color: v }, key ? `brows:${key}` : undefined)} />
+      <Section title={t("Цвет бровей")}>
+        <ColorControl label={t("Цвет бровей")} palette={HAIR_COLORS} allowNone noneLabel={t("Как волосы")} value={b.color} onChange={(v, key) => p.set("brows", { ...b, color: v }, key ? `brows:${key}` : undefined)} />
       </Section>
     </>
   );
@@ -323,19 +324,19 @@ function Brows(p: CategoryProps) {
 function Hair(p: CategoryProps) {
   return (
     <>
-      <PartGrid p={p} slot="hair" title="Причёска" render={THREE_Q} />
-      <Section title="Цвет волос">
-        <ColorControl label="Цвет волос" palette={HAIR_COLORS} allowNone noneLabel="Как у персонажа" value={p.cfg.hairColor} onChange={(v, key) => p.set("hairColor", v, key ? `hairColor:${key}` : undefined)} />
+      <PartGrid p={p} slot="hair" title={t("Причёска")} render={THREE_Q} />
+      <Section title={t("Цвет волос")}>
+        <ColorControl label={t("Цвет волос")} palette={HAIR_COLORS} allowNone noneLabel={t("Как у персонажа")} value={p.cfg.hairColor} onChange={(v, key) => p.set("hairColor", v, key ? `hairColor:${key}` : undefined)} />
       </Section>
       <Section
-        title="Второй цвет"
+        title={t("Второй цвет")}
         aside={
           p.cfg.hairTip ? (
-            <Chips label="Как окрасить" options={["tips", "streaks"] as const} labels={{ tips: "Кончики", streaks: "Пряди" }} value={p.cfg.hairTipStyle} onChange={(v) => p.set("hairTipStyle", v)} />
+            <Chips label={t("Как окрасить")} options={["tips", "streaks"] as const} labels={{ tips: t("Кончики"), streaks: t("Пряди") }} value={p.cfg.hairTipStyle} onChange={(v) => p.set("hairTipStyle", v)} />
           ) : undefined
         }
       >
-        <ColorControl label="Второй цвет волос" palette={HAIR_COLORS} allowNone noneLabel="Без окрашивания" value={p.cfg.hairTip} onChange={(v, key) => p.set("hairTip", v, key ? `hairTip:${key}` : undefined)} />
+        <ColorControl label={t("Второй цвет волос")} palette={HAIR_COLORS} allowNone noneLabel={t("Без окрашивания")} value={p.cfg.hairTip} onChange={(v, key) => p.set("hairTip", v, key ? `hairTip:${key}` : undefined)} />
       </Section>
     </>
   );
@@ -346,16 +347,16 @@ function Hair(p: CategoryProps) {
 function Beard(p: CategoryProps) {
   if (!BEARD_OK.has(headzBase(p.cfg.base).group))
     return (
-      <Section title="Борода и усы">
-        <p className={s.note}>Для детских персонажей бороды нет.</p>
+      <Section title={t("Борода и усы")}>
+        <p className={s.note}>{t("Для детских персонажей бороды нет.")}</p>
       </Section>
     );
   return (
     <>
-      <PartGrid p={p} slot="beard" title="Борода и усы" render={MOUTH_ZOOM} />
+      <PartGrid p={p} slot="beard" title={t("Борода и усы")} render={MOUTH_ZOOM} />
       {p.cfg.beard !== "none" && (
-        <Section title="Цвет бороды">
-          <ColorControl label="Цвет бороды" palette={HAIR_COLORS} allowNone noneLabel="Как волосы" value={p.cfg.beardColor} onChange={(v, key) => p.set("beardColor", v, key ? `beardColor:${key}` : undefined)} />
+        <Section title={t("Цвет бороды")}>
+          <ColorControl label={t("Цвет бороды")} palette={HAIR_COLORS} allowNone noneLabel={t("Как волосы")} value={p.cfg.beardColor} onChange={(v, key) => p.set("beardColor", v, key ? `beardColor:${key}` : undefined)} />
         </Section>
       )}
     </>
@@ -369,16 +370,16 @@ function Makeup(p: CategoryProps) {
   const set = (patch: Partial<AvatarConfig["makeup"]>, key?: string) => p.set("makeup", { ...m, ...patch }, key);
   return (
     <>
-      <Section title="Помада">
-        <ColorControl label="Помада" palette={LIP_COLORS} allowNone noneLabel="Без помады" value={m.lip} onChange={(v, key) => set({ lip: v }, key ? `lip:${key}` : undefined)} />
-        {m.lip && <RangeField label="Насыщенность" value={m.lipAmount} onChange={(v) => set({ lipAmount: v }, "lipAmount")} min="Легко" max="Ярко" />}
+      <Section title={t("Помада")}>
+        <ColorControl label={t("Помада")} palette={LIP_COLORS} allowNone noneLabel={t("Без помады")} value={m.lip} onChange={(v, key) => set({ lip: v }, key ? `lip:${key}` : undefined)} />
+        {m.lip && <RangeField label={t("Насыщенность")} value={m.lipAmount} onChange={(v) => set({ lipAmount: v }, "lipAmount")} min={t("Легко")} max={t("Ярко")} />}
       </Section>
-      <Section title="Тени">
-        <ColorControl label="Тени" palette={SHADOW_COLORS} allowNone noneLabel="Без теней" value={m.shadow} onChange={(v, key) => set({ shadow: v }, key ? `shadow:${key}` : undefined)} />
-        {m.shadow && <RangeField label="Насыщенность" value={m.shadowAmount} onChange={(v) => set({ shadowAmount: v }, "shadowAmount")} min="Легко" max="Ярко" />}
+      <Section title={t("Тени")}>
+        <ColorControl label={t("Тени")} palette={SHADOW_COLORS} allowNone noneLabel={t("Без теней")} value={m.shadow} onChange={(v, key) => set({ shadow: v }, key ? `shadow:${key}` : undefined)} />
+        {m.shadow && <RangeField label={t("Насыщенность")} value={m.shadowAmount} onChange={(v) => set({ shadowAmount: v }, "shadowAmount")} min={t("Легко")} max={t("Ярко")} />}
       </Section>
-      <Section title="Подводка">
-        <RangeField label="Подводка" value={m.liner} onChange={(v) => set({ liner: v }, "liner")} min="Нет" max="Чётко" />
+      <Section title={t("Подводка")}>
+        <RangeField label={t("Подводка")} value={m.liner} onChange={(v) => set({ liner: v }, "liner")} min={t("Нет")} max={t("Чётко")} />
       </Section>
     </>
   );
@@ -386,30 +387,30 @@ function Makeup(p: CategoryProps) {
 
 // ── Аксессуары ────────────────────────────────────────────────────────────────
 
-const PIERCING_RU: Record<(typeof PIERCINGS)[number], string> = { nose: "Нос", septum: "Септум", lip: "Губа", brow: "Бровь" };
+const PIERCING_RU: Record<(typeof PIERCINGS)[number], string> = { get nose() { return t("Нос"); }, get septum() { return t("Септум"); }, get lip() { return t("Губа"); }, get brow() { return t("Бровь"); } };
 
 function Accessories(p: CategoryProps) {
   const a = p.cfg.acc;
   const setAcc = (patch: Partial<AvatarConfig["acc"]>, key?: string) => p.set("acc", { ...a, ...patch }, key);
   return (
     <>
-      <PartGrid p={p} slot="eyewear" title="Очки" allGroups={false} />
+      <PartGrid p={p} slot="eyewear" title={t("Очки")} allGroups={false} />
       {p.cfg.eyewear !== "none" && (
-        <Section title="Оправа и стёкла">
-          <ColorControl label="Цвет оправы" palette={ACC_COLORS} allowNone noneLabel="Как есть" value={a.frame} onChange={(v, key) => setAcc({ frame: v }, key ? `frame:${key}` : undefined)} />
+        <Section title={t("Оправа и стёкла")}>
+          <ColorControl label={t("Цвет оправы")} palette={ACC_COLORS} allowNone noneLabel={t("Как есть")} value={a.frame} onChange={(v, key) => setAcc({ frame: v }, key ? `frame:${key}` : undefined)} />
           <div style={{ marginTop: 14 }} />
-          <ColorControl label="Тон стёкол" palette={["#3A6DF0", "#2FB57C", "#F2C94C", "#E85BA8", "#6A4FE8", "#1B1B1F"]} allowNone noneLabel="Прозрачные" value={a.lens} onChange={(v, key) => setAcc({ lens: v }, key ? `lens:${key}` : undefined)} />
+          <ColorControl label={t("Тон стёкол")} palette={["#3A6DF0", "#2FB57C", "#F2C94C", "#E85BA8", "#6A4FE8", "#1B1B1F"]} allowNone noneLabel={t("Прозрачные")} value={a.lens} onChange={(v, key) => setAcc({ lens: v }, key ? `lens:${key}` : undefined)} />
         </Section>
       )}
-      <PartGrid p={p} slot="headwear" title="Головной убор" render={THREE_Q} />
+      <PartGrid p={p} slot="headwear" title={t("Головной убор")} render={THREE_Q} />
       {p.cfg.headwear !== "none" && (
-        <Section title="Цвет головного убора">
-          <ColorControl label="Цвет головного убора" palette={ACC_COLORS} allowNone noneLabel="Как есть" value={a.hat} onChange={(v, key) => setAcc({ hat: v }, key ? `hat:${key}` : undefined)} />
+        <Section title={t("Цвет головного убора")}>
+          <ColorControl label={t("Цвет головного убора")} palette={ACC_COLORS} allowNone noneLabel={t("Как есть")} value={a.hat} onChange={(v, key) => setAcc({ hat: v }, key ? `hat:${key}` : undefined)} />
         </Section>
       )}
-      <PartGrid p={p} slot="earrings" title="Серьги" render={THREE_Q} />
-      <Section title="Пирсинг">
-        <div className={s.chips} role="group" aria-label="Пирсинг">
+      <PartGrid p={p} slot="earrings" title={t("Серьги")} render={THREE_Q} />
+      <Section title={t("Пирсинг")}>
+        <div className={s.chips} role="group" aria-label={t("Пирсинг")}>
           {PIERCINGS.map((k) => {
             const on = a.piercings.includes(k);
             return (
@@ -420,18 +421,18 @@ function Accessories(p: CategoryProps) {
           })}
         </div>
       </Section>
-      <PartGrid p={p} slot="mask" title="Маска" render={MOUTH_ZOOM} />
+      <PartGrid p={p} slot="mask" title={t("Маска")} render={MOUTH_ZOOM} />
     </>
   );
 }
 
 export const CATEGORIES: { id: string; label: string; Panel: (p: CategoryProps) => JSX.Element }[] = [
-  { id: "face", label: "Лицо", Panel: Face },
-  { id: "skin", label: "Кожа", Panel: Skin },
-  { id: "eyes", label: "Глаза", Panel: Eyes },
-  { id: "brows", label: "Брови", Panel: Brows },
-  { id: "hair", label: "Волосы", Panel: Hair },
-  { id: "beard", label: "Борода", Panel: Beard },
-  { id: "makeup", label: "Макияж", Panel: Makeup },
-  { id: "accessories", label: "Аксессуары", Panel: Accessories },
+  { id: "face", get label() { return t("Лицо"); }, Panel: Face },
+  { id: "skin", get label() { return t("Кожа"); }, Panel: Skin },
+  { id: "eyes", get label() { return t("Глаза"); }, Panel: Eyes },
+  { id: "brows", get label() { return t("Брови"); }, Panel: Brows },
+  { id: "hair", get label() { return t("Волосы"); }, Panel: Hair },
+  { id: "beard", get label() { return t("Борода"); }, Panel: Beard },
+  { id: "makeup", get label() { return t("Макияж"); }, Panel: Makeup },
+  { id: "accessories", get label() { return t("Аксессуары"); }, Panel: Accessories },
 ];

@@ -1,5 +1,6 @@
 "use client";
 
+import { t, intlLocale } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Star } from "lucide-react";
@@ -10,13 +11,13 @@ import { ratingApi, type RatingState } from "@/lib/api/articles";
 import { plural } from "@/lib/format";
 import s from "./rating.module.css";
 
-const fmt = (avg: number) => avg.toLocaleString("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const fmt = (avg: number) => avg.toLocaleString(intlLocale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 /** Quiet «★ 4,6 · 12» for headers and cards; nothing while there are no ratings. */
 export function RatingBadge({ rating, className }: { rating?: { avg: number | null; count: number }; className?: string }) {
   if (!rating?.count || rating.avg == null) return null;
   return (
-    <span className={`${s.badge} ${className ?? ""}`} title={`Средняя оценка читателей: ${fmt(rating.avg)} из 5`}>
+    <span className={`${s.badge} ${className ?? ""}`} title={t(`Средняя оценка читателей: {fmt} из 5`, { fmt: fmt(rating.avg) })}>
       <Star size={13} strokeWidth={0} fill="currentColor" aria-hidden />
       {fmt(rating.avg)}
       <span className={s.count}>· {rating.count}</span>
@@ -57,7 +58,7 @@ export function ArticleRating({ slug, initial, loginNext }: { slug: string; init
       setState(n === prev.mine ? await ratingApi.clear(slug) : await ratingApi.set(slug, n));
     } catch (e) {
       setState(prev);
-      toast(e instanceof ApiError ? e.message : "Не получилось сохранить оценку", { error: true });
+      toast(e instanceof ApiError ? e.message : t("Не получилось сохранить оценку"), { error: true });
     } finally {
       setBusy(false);
     }
@@ -67,20 +68,20 @@ export function ArticleRating({ slug, initial, loginNext }: { slug: string; init
   const summary =
     state.count && state.avg != null
       ? `${fmt(state.avg)} · ${state.count} ${plural(state.count, "оценка", "оценки", "оценок")}`
-      : "Оценок пока нет";
+      : t("Оценок пока нет");
 
   return (
-    <section className={s.box} aria-label="Оценка статьи">
-      <span className={s.label}>{state.mine ? "Ваша оценка" : "Оцените статью"}</span>
+    <section className={s.box} aria-label={t("Оценка статьи")}>
+      <span className={s.label}>{state.mine ? t("Ваша оценка") : t("Оцените статью")}</span>
       {state.can_rate ? (
-        <div className={s.stars} role="radiogroup" aria-label="Оценка от 1 до 5" onMouseLeave={() => setHover(0)}>
+        <div className={s.stars} role="radiogroup" aria-label={t("Оценка от 1 до 5")} onMouseLeave={() => setHover(0)}>
           {[1, 2, 3, 4, 5].map((n) => (
             <button
               key={n}
               type="button"
               role="radio"
               aria-checked={state.mine === n}
-              aria-label={`${n} из 5`}
+              aria-label={t(`{n} из 5`, { n })}
               className={s.star}
               data-on={n <= shown || undefined}
               disabled={busy}
@@ -107,7 +108,7 @@ export function ArticleRating({ slug, initial, loginNext }: { slug: string; init
         {status === "guest" && (
           <>
             {" · "}
-            <Link href={`/login?next=${encodeURIComponent(loginNext)}`}>Войдите, чтобы оценить</Link>
+            <Link href={`/login?next=${encodeURIComponent(loginNext)}`}>{t("Войдите, чтобы оценить")}</Link>
           </>
         )}
       </span>

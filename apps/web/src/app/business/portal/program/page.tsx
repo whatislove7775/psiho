@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { Info, SlidersHorizontal } from "lucide-react";
 import { Card, CardHead, Skeleton, useToast } from "@/ui";
 import { PageHeader, WithRail } from "@/components/shell/AppShell";
@@ -14,29 +15,29 @@ export default function ProgramPage() {
   const data = useLoad(() => businessApi.program(), []);
   return (
     <>
-      <PageHeader title="Программа" sub="Сколько компания оплачивает каждому сотруднику и&nbsp;за&nbsp;что." />
+      <PageHeader title={t("Программа")} sub={t("Сколько компания оплачивает каждому сотруднику и\u00a0за\u00a0что.")} />
       {data.error ? (
         <ErrorBlock message={data.error} onRetry={data.reload} />
       ) : (
         <WithRail
           rail={
             <Card as="section">
-              <CardHead title="Как&nbsp;списываются деньги" icon={<Info size={18} />} />
+              <CardHead title={t("Как\u00a0списываются деньги")} icon={<Info size={18} />} />
               <ul className={s.muted} style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 6 }}>
-                <li>Созвон оплачивается сначала из&nbsp;программы, остаток&nbsp;— с&nbsp;личного баланса сотрудника.</li>
-                <li>Деньги уходят из&nbsp;бюджета, только когда созвон состоялся. Отмена специалистом&nbsp;— полный возврат в&nbsp;бюджет.</li>
-                <li>Лимит обновляется в&nbsp;начале каждого периода. Неиспользованный остаток не&nbsp;переносится и&nbsp;остаётся в&nbsp;бюджете компании.</li>
-                <li>Если бюджет закончился, сотрудник может платить сам&nbsp;— программа снова заработает после пополнения.</li>
+                <li>{t("Созвон оплачивается сначала из\u00a0программы, остаток\u00a0— с\u00a0личного баланса сотрудника.")}</li>
+                <li>{t("Деньги уходят из\u00a0бюджета, только когда созвон состоялся. Отмена специалистом\u00a0— полный возврат в\u00a0бюджет.")}</li>
+                <li>{t("Лимит обновляется в\u00a0начале каждого периода. Неиспользованный остаток не\u00a0переносится и\u00a0остаётся в\u00a0бюджете компании.")}</li>
+                <li>{t("Если бюджет закончился, сотрудник может платить сам\u00a0— программа снова заработает после пополнения.")}</li>
               </ul>
             </Card>
           }
         >
           <Card as="section">
-            <CardHead title="Настройки" icon={<SlidersHorizontal size={18} />} />
+            <CardHead title={t("Настройки")} icon={<SlidersHorizontal size={18} />} />
             {!data.data ? (
               <Skeleton height={320} radius={14} />
             ) : !data.data.program ? (
-              <p className={s.muted}>Программа ещё не&nbsp;настроена. Напишите менеджеру&nbsp;— он&nbsp;поможет подобрать лимиты.</p>
+              <p className={s.muted}>{t("Программа ещё не\u00a0настроена. Напишите менеджеру\u00a0— он\u00a0поможет подобрать лимиты.")}</p>
             ) : (
               <ProgramForm
                 key={data.data.program.id}
@@ -44,7 +45,7 @@ export default function ProgramPage() {
                 onSave={async (body) => {
                   const r = await businessApi.updateProgram(body);
                   data.setData({ ...data.data!, program: r.program });
-                  toast("Программа сохранена");
+                  toast(t("Программа сохранена"));
                 }}
               />
             )}

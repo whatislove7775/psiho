@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Wallet } from "lucide-react";
@@ -35,11 +36,11 @@ export function BalanceChip({ compact, block }: { compact?: boolean; block?: boo
   const low = kopecks !== null && kopecks < 100_00;
   const cls = [s.chip, compact && s.chipCompact, block && s.chipBlock, low && s.chipLow].filter(Boolean).join(" ");
   return (
-    <Link href="/app/balance" className={cls} aria-label={`Баланс: ${kopecks === null ? "загрузка" : rubK(kopecks)}. Открыть`}>
+    <Link href="/app/balance" className={cls} aria-label={t(`Баланс: {v}. Открыть`, { v: kopecks === null ? t("загрузка") : rubK(kopecks) })}>
       <span className={s.chipIcon} aria-hidden>
         <Wallet size={compact ? 15 : 17} strokeWidth={2} />
       </span>
-      {block && <span className={s.chipLabel}>Баланс</span>}
+      {block && <span className={s.chipLabel}>{t("Баланс")}</span>}
       <span>{kopecks === null ? "…" : rubK(kopecks)}</span>
     </Link>
   );

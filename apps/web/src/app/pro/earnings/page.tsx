@@ -1,5 +1,6 @@
 "use client";
 
+import { t, tj } from "@/lib/i18n";
 import { useState } from "react";
 import { Banknote, CreditCard, Info, Landmark, Receipt, Send, Smartphone, Wallet } from "lucide-react";
 import { Badge, Button, Card, CardHead, CollapsibleCard, Input, Modal, Segmented, Select, Skeleton, useToast } from "@/ui";
@@ -14,18 +15,18 @@ import s from "@/components/billing/billing.module.css";
 import ov from "@/app/pro/overview.module.css";
 
 const CALL_STATUS: Record<string, { label: string; tone: "neutral" | "success" | "warning" | "primary" | "lilac" }> = {
-  active: { label: "Впереди", tone: "primary" },
-  captured: { label: "Состоялся", tone: "success" },
-  partial: { label: "Поздняя отмена", tone: "warning" },
-  refunded: { label: "Возврат клиенту", tone: "neutral" },
+  active: { get label() { return t("Впереди"); }, tone: "primary" },
+  captured: { get label() { return t("Состоялся"); }, tone: "success" },
+  partial: { get label() { return t("Поздняя отмена"); }, tone: "warning" },
+  refunded: { get label() { return t("Возврат клиенту"); }, tone: "neutral" },
 };
 
 const PAYOUT_STATUS: Record<string, { label: string; tone: "neutral" | "success" | "warning" | "danger" | "primary" }> = {
-  requested: { label: "Запрошена", tone: "primary" },
-  processing: { label: "Отправляется", tone: "warning" },
-  paid: { label: "Выплачена", tone: "success" },
-  rejected: { label: "Отклонена", tone: "danger" },
-  failed: { label: "Не\u00a0прошла", tone: "danger" },
+  requested: { get label() { return t("Запрошена"); }, tone: "primary" },
+  processing: { get label() { return t("Отправляется"); }, tone: "warning" },
+  paid: { get label() { return t("Выплачена"); }, tone: "success" },
+  rejected: { get label() { return t("Отклонена"); }, tone: "danger" },
+  failed: { get label() { return t("Не\u00a0прошла"); }, tone: "danger" },
 };
 
 export default function EarningsPage() {
@@ -38,7 +39,7 @@ export default function EarningsPage() {
   return (
     <>
       <PageHeader
-        title="Доходы"
+        title={t("Доходы")}
       />
       {data.error ? (
         <ErrorBlock message={data.error} onRetry={data.reload} />
@@ -49,7 +50,7 @@ export default function EarningsPage() {
           rail={
             <>
               <Card as="section">
-                <CardHead title="Реквизиты для&nbsp;выплат" icon={<Landmark size={18} />} />
+                <CardHead title={t("Реквизиты для\u00a0выплат")} icon={<Landmark size={18} />} />
                 {e.method ? (
                   <div className={s.stack}>
                     <div className={s.item} style={{ padding: 0 }}>
@@ -58,26 +59,26 @@ export default function EarningsPage() {
                       </span>
                       <span className={s.itemMain}>
                         <span className={s.itemTitle} style={{ whiteSpace: "normal" }}>{e.method.masked}</span>
-                        <span className={s.itemSub}>{e.method.tax_status === "ip" ? "ИП" : "Самозанятый (НПД)"}</span>
+                        <span className={s.itemSub}>{e.method.tax_status === "ip" ? t("ИП") : t("Самозанятый (НПД)")}</span>
                       </span>
                     </div>
                     <Button variant="secondary" onClick={() => setMethodOpen(true)}>
-                      Изменить
+                      {t("Изменить")}
                     </Button>
                   </div>
                 ) : (
                   <div className={s.stack}>
-                    <p className={s.hint}>Куда переводить деньги. Хранятся зашифрованными.</p>
+                    <p className={s.hint}>{t("Куда переводить деньги. Хранятся зашифрованными.")}</p>
                     <Button variant="primary" onClick={() => setMethodOpen(true)}>
-                      Добавить реквизиты
+                      {t("Добавить реквизиты")}
                     </Button>
                   </div>
                 )}
               </Card>
-              <CollapsibleCard title="Налоги" icon={<Receipt size={18} />} defaultOpen={false}>
+              <CollapsibleCard title={t("Налоги")} icon={<Receipt size={18} />} defaultOpen={false}>
                 <ul className={s.rules}>
-                  <li>Самозанятым: после выплаты сформируйте чек в&nbsp;«Мой налог».</li>
-                  <li>Комиссия сервиса {e.fee_percent}% уже вычтена.</li>
+                  <li>{t("Самозанятым: после выплаты сформируйте чек в\u00a0«Мой налог».")}</li>
+                  <li>{tj("Комиссия сервиса {fee_percent}% уже вычтена.", { fee_percent: e.fee_percent })}</li>
                 </ul>
               </CollapsibleCard>
             </>
@@ -87,25 +88,25 @@ export default function EarningsPage() {
             <div className={s.stack}>
               <dl className={ov.nums}>
                 <div>
-                  <dt>Доступно</dt>
+                  <dt>{t("Доступно")}</dt>
                   <dd style={{ color: "var(--c-success)" }}>{rubK(e.available_kopecks)}</dd>
                 </div>
                 <div>
-                  <dt>Ожидает, {e.hold_hours} ч</dt>
+                  <dt>{tj("Ожидает, {hold_hours} ч", { hold_hours: e.hold_hours })}</dt>
                   <dd>{rubK(e.pending_kopecks)}</dd>
                 </div>
                 <div>
-                  <dt>В&nbsp;выплате</dt>
+                  <dt>{t("В\u00a0выплате")}</dt>
                   <dd>{rubK(e.in_payout_kopecks)}</dd>
                 </div>
                 <div>
-                  <dt>Выплачено</dt>
+                  <dt>{t("Выплачено")}</dt>
                   <dd>{rubK(e.paid_kopecks)}</dd>
                 </div>
               </dl>
               {e.upcoming_kopecks > 0 && (
                 <div className={s.hint} style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
-                  <Info size={14} aria-hidden style={{ flex: "none", marginTop: 2 }} /> Ещё {rubK(e.upcoming_kopecks)} придут после оплаченных созвонов.
+                  <Info size={14} aria-hidden style={{ flex: "none", marginTop: 2 }} />{" "}{t("Ещё")}{" "}{rubK(e.upcoming_kopecks)}{" "}{t("придут после оплаченных созвонов.")}
                 </div>
               )}
               <div className={s.actions}>
@@ -116,19 +117,19 @@ export default function EarningsPage() {
                   disabled={e.available_kopecks < e.payout_min_kopecks || e.payouts.some((p) => p.status === "requested" || p.status === "processing")}
                   onClick={() => (e.method ? setPayoutOpen(true) : setMethodOpen(true))}
                 >
-                  Запросить выплату
+                  {t("Запросить выплату")}
                 </Button>
               </div>
               <div className={s.hint}>
-                От {rubK(e.payout_min_kopecks)}, {e.payout_rail === "manual" ? "до\u00a03\u00a0рабочих дней" : "обычно в\u00a0течение часа"}.
+                {t("От")}{" "}{rubK(e.payout_min_kopecks)}, {e.payout_rail === "manual" ? t("до\u00a03\u00a0рабочих дней") : t("обычно в\u00a0течение часа")}.
               </div>
             </div>
           </Card>
 
           <Card as="section">
-            <CardHead title="По&nbsp;созвонам" icon={<Wallet size={18} />} />
+            <CardHead title={t("По\u00a0созвонам")} icon={<Wallet size={18} />} />
             {e.calls.length === 0 ? (
-              <p className={s.hint}>Пока нет оплаченных созвонов.</p>
+              <p className={s.hint}>{t("Пока нет оплаченных созвонов.")}</p>
             ) : (
               <div className={s.list}>
                 {e.calls.map((c) => {
@@ -138,11 +139,10 @@ export default function EarningsPage() {
                       <span className={s.itemMain}>
                         <span className={s.itemTitle}>
                           {c.client_alias} <Badge tone={st.tone}>{st.label}</Badge>{" "}
-                          {c.available && c.status !== "refunded" ? <Badge tone="success">доступно</Badge> : null}
+                          {c.available && c.status !== "refunded" ? <Badge tone="success">{t("доступно")}</Badge> : null}
                         </span>
                         <span className={s.itemSub}>
-                          {c.scheduled_at ? `${dayShort(c.scheduled_at)}, ${time(c.scheduled_at)}` : ""}, {c.duration_minutes} мин ·
-                          {" "}{rubK(c.gross_kopecks)} − комиссия {rubK(c.fee_kopecks)}
+                          {tj("{v}, {duration_minutes} мин · {rubK} − комиссия {rubK2}", { v: c.scheduled_at ? `${dayShort(c.scheduled_at)}, ${time(c.scheduled_at)}` : "", duration_minutes: c.duration_minutes, rubK: rubK(c.gross_kopecks), rubK2: rubK(c.fee_kopecks) })}
                         </span>
                       </span>
                       <span className={`${s.itemAmount} ${c.status === "refunded" ? s.minus : s.plus}`}>
@@ -156,9 +156,9 @@ export default function EarningsPage() {
           </Card>
 
           <Card as="section">
-            <CardHead title="Выплаты" icon={<Banknote size={18} />} />
+            <CardHead title={t("Выплаты")} icon={<Banknote size={18} />} />
             {e.payouts.length === 0 ? (
-              <p className={s.hint}>Выплат ещё не&nbsp;было.</p>
+              <p className={s.hint}>{t("Выплат ещё не\u00a0было.")}</p>
             ) : (
               <div className={s.list}>
                 {e.payouts.map((p) => {
@@ -192,7 +192,7 @@ export default function EarningsPage() {
         onClose={() => setMethodOpen(false)}
         onSaved={() => {
           setMethodOpen(false);
-          toast("Реквизиты сохранены");
+          toast(t("Реквизиты сохранены"));
           data.reload();
         }}
       />
@@ -203,7 +203,7 @@ export default function EarningsPage() {
           onClose={() => setPayoutOpen(false)}
           onDone={() => {
             setPayoutOpen(false);
-            toast("Выплата запрошена");
+            toast(t("Выплата запрошена"));
             data.reload();
           }}
         />
@@ -231,59 +231,59 @@ function MethodModal({ open, current, onClose, onSaved }: { open: boolean; curre
       setBank("");
       onSaved();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Не\u00a0получилось сохранить.");
+      setError(e instanceof ApiError ? e.message : t("Не\u00a0получилось сохранить."));
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Реквизиты для&nbsp;выплат" width={520}>
+    <Modal open={open} onClose={onClose} title={t("Реквизиты для\u00a0выплат")} width={520}>
       <div className={s.stack}>
         <Segmented<TaxStatus>
-          ariaLabel="Налоговый статус"
+          ariaLabel={t("Налоговый статус")}
           value={tax}
           onChange={setTax}
           options={[
-            { value: "self_employed", label: "Самозанятый" },
-            { value: "ip", label: "ИП" },
+            { value: "self_employed", label: t("Самозанятый") },
+            { value: "ip", label: t("ИП") },
           ]}
         />
         <Segmented<"sbp" | "bank_account">
-          ariaLabel="Куда платить"
+          ariaLabel={t("Куда платить")}
           value={kind}
           onChange={setKind}
           options={[
-            { value: "sbp", label: "СБП по\u00a0телефону" },
-            { value: "bank_account", label: "Счёт в\u00a0банке" },
+            { value: "sbp", label: t("СБП по\u00a0телефону") },
+            { value: "bank_account", label: t("Счёт в\u00a0банке") },
           ]}
         />
         {kind === "sbp" ? (
           <>
-            <Input label="Телефон, привязанный к&nbsp;СБП" type="tel" value={f.phone ?? ""} onChange={set("phone")} placeholder="+7 900 000-00-00" autoComplete="off" />
+            <Input label={t("Телефон, привязанный к\u00a0СБП")} type="tel" value={f.phone ?? ""} onChange={set("phone")} placeholder="+7 900 000-00-00" autoComplete="off" />
             <Select
-              label="Банк"
+              label={t("Банк")}
               value={bank}
               onChange={setBank}
-              placeholder="Выберите банк"
-              options={[...BANKS.map((b) => ({ value: b, label: b })), { value: OTHER_BANK, label: "Другой банк" }]}
+              placeholder={t("Выберите банк")}
+              options={[...BANKS.map((b) => ({ value: b, label: b })), { value: OTHER_BANK, label: t("Другой банк") }]}
             />
             {bank === OTHER_BANK && (
-              <Input label="Название банка" value={f.bank_name ?? ""} onChange={set("bank_name")} autoComplete="off" autoFocus />
+              <Input label={t("Название банка")} value={f.bank_name ?? ""} onChange={set("bank_name")} autoComplete="off" autoFocus />
             )}
           </>
         ) : (
           <>
-            <Input label="Получатель, как&nbsp;в&nbsp;банке" value={f.recipient ?? ""} onChange={set("recipient")} autoComplete="off" />
-            <Input label="Номер счёта" inputMode="numeric" value={f.account ?? ""} onChange={set("account")} placeholder="20&nbsp;цифр" autoComplete="off" />
-            <Input label="БИК" inputMode="numeric" value={f.bik ?? ""} onChange={set("bik")} placeholder="9&nbsp;цифр" autoComplete="off" />
+            <Input label={t("Получатель, как\u00a0в\u00a0банке")} value={f.recipient ?? ""} onChange={set("recipient")} autoComplete="off" />
+            <Input label={t("Номер счёта")} inputMode="numeric" value={f.account ?? ""} onChange={set("account")} placeholder={t("20\u00a0цифр")} autoComplete="off" />
+            <Input label={t("БИК")} inputMode="numeric" value={f.bik ?? ""} onChange={set("bik")} placeholder={t("9\u00a0цифр")} autoComplete="off" />
           </>
         )}
-        <Input label="ИНН (необязательно)" inputMode="numeric" value={f.inn ?? ""} onChange={set("inn")} placeholder="12&nbsp;цифр" autoComplete="off" hint="Нужен для&nbsp;чеков самозанятого и&nbsp;отчётности." />
+        <Input label={t("ИНН (необязательно)")} inputMode="numeric" value={f.inn ?? ""} onChange={set("inn")} placeholder={t("12\u00a0цифр")} autoComplete="off" hint={t("Нужен для\u00a0чеков самозанятого и\u00a0отчётности.")} />
         {error && <div className={s.error} role="alert">{error}</div>}
-        <div className={s.hint}>Реквизиты шифруются, доступ к&nbsp;ним записывается в&nbsp;журнал.</div>
+        <div className={s.hint}>{t("Реквизиты шифруются, доступ к\u00a0ним записывается в\u00a0журнал.")}</div>
         <Button variant="primary" size="lg" block loading={busy} onClick={save}>
-          Сохранить
+          {t("Сохранить")}
         </Button>
       </div>
     </Modal>
@@ -302,24 +302,24 @@ function PayoutModal({ open, e, onClose, onDone }: { open: boolean; e: Earnings;
       await billingApi.requestPayout(v * 100 >= e.available_kopecks ? undefined : v);
       onDone();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Не\u00a0получилось запросить выплату.");
+      setError(err instanceof ApiError ? err.message : t("Не\u00a0получилось запросить выплату."));
     } finally {
       setBusy(false);
     }
   };
   return (
-    <Modal open={open} onClose={onClose} title="Запросить выплату" width={460}>
+    <Modal open={open} onClose={onClose} title={t("Запросить выплату")} width={460}>
       <div className={s.stack}>
         <label className={s.amountField}>
-          <input inputMode="decimal" value={amount} onChange={(x) => setAmount(x.target.value.replace(/[^\d\s,.]/g, ""))} aria-label="Сумма выплаты, рублей" />
+          <input inputMode="decimal" value={amount} onChange={(x) => setAmount(x.target.value.replace(/[^\d\s,.]/g, ""))} aria-label={t("Сумма выплаты, рублей")} />
           <span aria-hidden>₽</span>
         </label>
         <div className={s.hint}>
-          Доступно {rubK(e.available_kopecks)}. Деньги придут на {e.method?.masked}.
+          {tj("Доступно {rubK}. Деньги придут на {masked}.", { rubK: rubK(e.available_kopecks), masked: e.method?.masked })}
         </div>
         {error && <div className={s.error} role="alert">{error}</div>}
         <Button variant="primary" size="lg" block loading={busy} onClick={submit} icon={<Send size={18} />}>
-          Запросить
+          {t("Запросить")}
         </Button>
       </div>
     </Modal>

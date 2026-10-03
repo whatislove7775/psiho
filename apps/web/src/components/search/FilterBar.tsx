@@ -6,6 +6,7 @@
  * (bottom sheet on phones) with multi-select, a price range, flexible time, etc. Changes apply at
  * once; the popover footer shows the live count. Active values show below as removable chips.
  */
+import { t as tt, intlLocale, translatedList } from "@/lib/i18n";
 import { useMemo, useState, type ReactNode } from "react";
 import { ArrowDownUp, Banknote, Check, Clock3, MessageCircleHeart, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { Select } from "@/ui";
@@ -16,28 +17,28 @@ import { FilterPopover } from "./FilterPopover";
 import s from "./filters.module.css";
 
 const ic = { size: 15, strokeWidth: 1.9, "aria-hidden": true } as const;
-const nf = new Intl.NumberFormat("ru-RU");
+const nf = { format: (n: number) => new Intl.NumberFormat(intlLocale()).format(n) };
 
 export const SORTS: { value: SortOrder; label: string }[] = [
-  { value: "relevance", label: "Подходящие" },
-  { value: "price", label: "Дешевле" },
-  { value: "soon", label: "Ближайшее окно" },
-  { value: "rating", label: "Рейтинг" },
+  { value: "relevance", get label() { return tt("Подходящие"); } },
+  { value: "price", get label() { return tt("Дешевле"); } },
+  { value: "soon", get label() { return tt("Ближайшее окно"); } },
+  { value: "rating", get label() { return tt("Рейтинг"); } },
 ];
 
 const PRESETS: { value: WhenFilter; label: string }[] = [
-  { value: "today", label: "Сегодня" },
-  { value: "3days", label: "В\u00a0ближайшие 3\u00a0дня" },
-  { value: "weekend", label: "В\u00a0выходные" },
+  { value: "today", get label() { return tt("Сегодня"); } },
+  { value: "3days", get label() { return tt("В\u00a0ближайшие 3\u00a0дня"); } },
+  { value: "weekend", get label() { return tt("В\u00a0выходные"); } },
 ];
-const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+const WEEKDAYS = translatedList(["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]);
 const TIMES: { value: TimeOfDay; label: string; hint: string }[] = [
-  { value: "morning", label: "Утро", hint: "6–12" },
-  { value: "day", label: "День", hint: "12–18" },
-  { value: "evening", label: "Вечер", hint: "после 18" },
+  { value: "morning", get label() { return tt("Утро"); }, hint: "6–12" },
+  { value: "day", get label() { return tt("День"); }, hint: "12–18" },
+  { value: "evening", get label() { return tt("Вечер"); }, get hint() { return tt("после 18"); } },
 ];
 const EXPERIENCE = [3, 5, 10];
-const GENDER_LABEL: Record<GenderFilter, string> = { female: "Женщина", male: "Мужчина" };
+const GENDER_LABEL: Record<GenderFilter, string> = { get female() { return tt("Женщина"); }, get male() { return tt("Мужчина"); } };
 
 const toggle = <T,>(list: T[] | undefined, v: T): T[] | undefined => {
   const cur = list ?? [];
@@ -45,7 +46,7 @@ const toggle = <T,>(list: T[] | undefined, v: T): T[] | undefined => {
   return next.length ? next : undefined;
 };
 const rubShort = (n: number) => `${nf.format(n)} ₽`;
-const dateShort = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString("ru-RU", { day: "numeric", month: "short" }).replace(".", "");
+const dateShort = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString(intlLocale(), { day: "numeric", month: "short" }).replace(".", "");
 const todayIso = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -54,26 +55,26 @@ const todayIso = () => {
 /** Short description of the time filters, e.g. «Сб, Вс · вечер · 3–10 окт». */
 export function timeSummary(q: SpecialistQuery): string {
   const parts: string[] = [];
-  if (q.when) parts.push(PRESETS.find((p) => p.value === q.when)?.label ?? "Вечером");
+  if (q.when) parts.push(PRESETS.find((p) => p.value === q.when)?.label ?? tt("Вечером"));
   if (q.days?.length) {
     const d = [...q.days].sort((a, b) => a - b);
     const weekdays = d.length === 5 && d.every((x, i) => x === i);
     const weekend = d.length === 2 && d[0] === 5 && d[1] === 6;
-    parts.push(weekdays ? "Будни" : weekend ? "Сб, Вс" : d.map((x) => WEEKDAYS[x]).join(", "));
+    parts.push(weekdays ? tt("Будни") : weekend ? tt("Сб, Вс") : d.map((x) => WEEKDAYS[x]).join(", "));
   }
   if (q.times?.length) parts.push(TIMES.filter((t) => q.times!.includes(t.value)).map((t) => t.label.toLowerCase()).join(", "));
   if (q.date_from || q.date_to) {
     if (q.date_from && q.date_to) parts.push(q.date_from === q.date_to ? dateShort(q.date_from) : `${dateShort(q.date_from)} – ${dateShort(q.date_to)}`);
-    else if (q.date_from) parts.push(`с\u00a0${dateShort(q.date_from)}`);
-    else parts.push(`до\u00a0${dateShort(q.date_to!)}`);
+    else if (q.date_from) parts.push(tt(`с\u00a0{dateShort}`, { dateShort: dateShort(q.date_from) }));
+    else parts.push(tt(`до\u00a0{dateShort}`, { dateShort: dateShort(q.date_to!) }));
   }
   return parts.join(" · ");
 }
 
 function priceSummary(q: SpecialistQuery): string {
   if (q.min_rate && q.max_rate) return `${nf.format(q.min_rate)}–${rubShort(q.max_rate)}`;
-  if (q.max_rate) return `до\u00a0${rubShort(q.max_rate)}`;
-  if (q.min_rate) return `от\u00a0${rubShort(q.min_rate)}`;
+  if (q.max_rate) return tt(`до\u00a0{rubShort}`, { rubShort: rubShort(q.max_rate) });
+  if (q.min_rate) return tt(`от\u00a0{rubShort}`, { rubShort: rubShort(q.min_rate) });
   return "";
 }
 
@@ -97,7 +98,7 @@ export function CheckList({
       {searchable && (
         <label className={s.find}>
           <Search size={15} strokeWidth={1.9} aria-hidden />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти" aria-label="Найти в&nbsp;списке" data-autofocus />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tt("Найти")} aria-label={tt("Найти в\u00a0списке")} data-autofocus />
         </label>
       )}
       <ul className={s.checks} role="group">
@@ -115,7 +116,7 @@ export function CheckList({
             </li>
           );
         })}
-        {shown.length === 0 && <li className={s.none}>Ничего не&nbsp;нашли</li>}
+        {shown.length === 0 && <li className={s.none}>{tt("Ничего не\u00a0нашли")}</li>}
       </ul>
     </>
   );
@@ -173,7 +174,7 @@ function PriceRange({
   const emit = (a: number, b: number) => onChange(a <= min ? undefined : a, b >= max ? undefined : b);
   const mid = Math.round((min + (max - min) / 2) / 500) * 500;
   const presets = [
-    { label: `до\u00a0${nf.format(mid)}`, lo: undefined, hi: mid },
+    { label: tt(`до\u00a0{v}`, { v: nf.format(mid) }), lo: undefined, hi: mid },
     { label: `${nf.format(mid)}+`, lo: mid, hi: undefined },
   ].filter((p) => (p.hi ?? max) > min && (p.lo ?? min) < max);
   return (
@@ -189,7 +190,7 @@ function PriceRange({
           max={max}
           step={step}
           value={lo}
-          aria-label="Цена от"
+          aria-label={tt("Цена от")}
           aria-valuetext={rubShort(lo)}
           onChange={(e) => emit(Math.min(Number(e.target.value), hi - step), hi)}
         />
@@ -199,12 +200,12 @@ function PriceRange({
           max={max}
           step={step}
           value={hi}
-          aria-label="Цена до"
+          aria-label={tt("Цена до")}
           aria-valuetext={rubShort(hi)}
           onChange={(e) => emit(lo, Math.max(Number(e.target.value), lo + step))}
         />
       </div>
-      <div className={s.chipGroup} role="group" aria-label="Быстрый выбор цены">
+      <div className={s.chipGroup} role="group" aria-label={tt("Быстрый выбор цены")}>
         {presets.map((p) => (
           <button
             key={p.label}
@@ -217,7 +218,7 @@ function PriceRange({
           </button>
         ))}
       </div>
-      <p className={s.note}>За&nbsp;созвон минимальной длительности</p>
+      <p className={s.note}>{tt("За\u00a0созвон минимальной длительности")}</p>
     </div>
   );
 }
@@ -256,7 +257,7 @@ export function FilterBar({
 
   // Topic options: known facets + any chosen topic that isn't among them (from a link)
   const topicOptions = useMemo(() => {
-    const opts: { value: string; label: string; count?: number }[] = topics.map((t) => ({ value: t.label, label: t.label, count: t.count }));
+    const opts: { value: string; label: string; count?: number }[] = topics.map((x) => ({ value: x.label, label: tt(x.label), count: x.count }));
     for (const t of value.topics ?? []) if (!opts.some((o) => o.value === t)) opts.unshift({ value: t, label: t });
     return opts;
   }, [topics, value.topics]);
@@ -272,25 +273,25 @@ export function FilterBar({
       label: timeSummary(value),
       clear: () => set({ when: undefined, days: undefined, times: undefined, date_from: undefined, date_to: undefined }),
     });
-  if (value.duration) chips.push({ key: "dur", label: `Созвон ${durationLabel(value.duration)}`, clear: () => set({ duration: undefined }) });
-  if (value.min_experience) chips.push({ key: "exp", label: `Опыт ${fromYearsLabel(value.min_experience)}`, clear: () => set({ min_experience: undefined }) });
+  if (value.duration) chips.push({ key: "dur", label: tt(`Созвон {durationLabel}`, { durationLabel: durationLabel(value.duration) }), clear: () => set({ duration: undefined }) });
+  if (value.min_experience) chips.push({ key: "exp", label: tt(`Опыт {fromYearsLabel}`, { fromYearsLabel: fromYearsLabel(value.min_experience) }), clear: () => set({ min_experience: undefined }) });
   if (value.gender) chips.push({ key: "g", label: GENDER_LABEL[value.gender], clear: () => set({ gender: undefined }) });
   if (value.language) chips.push({ key: "l", label: value.language, clear: () => set({ language: undefined }) });
-  if (value.intro) chips.push({ key: "i", label: "Знакомство 15\u00a0мин", clear: () => set({ intro: undefined }) });
+  if (value.intro) chips.push({ key: "i", label: tt("Знакомство 15\u00a0мин"), clear: () => set({ intro: undefined }) });
 
   const resetAll = () =>
     onChange({ q: value.q, sort: value.sort });
 
   return (
     <div className={`${s.bar} ${className ?? ""}`}>
-      <div className={s.row} role="group" aria-label="Фильтры">
+      <div className={s.row} role="group" aria-label={tt("Фильтры")}>
         {topicOptions.length > 0 && (
           <FilterPopover
-            label="Запрос"
+            label={tt("Запрос")}
             icon={<MessageCircleHeart {...ic} />}
             badge={nTopics}
             active={nTopics > 0}
-            title="С&nbsp;чем&nbsp;хотите работать"
+            title={tt("С\u00a0чем\u00a0хотите работать")}
             count={count}
             onReset={() => set({ topics: undefined })}
           >
@@ -304,11 +305,11 @@ export function FilterBar({
         )}
         {approaches.length > 0 && (
           <FilterPopover
-            label="Подход"
+            label={tt("Подход")}
             icon={<Sparkles {...ic} />}
             badge={nApproaches}
             active={nApproaches > 0}
-            title="Метод работы"
+            title={tt("Метод работы")}
             count={count}
             onReset={() => set({ approaches: undefined })}
           >
@@ -321,10 +322,10 @@ export function FilterBar({
         )}
         {priceMax > priceMin && (
           <FilterPopover
-            label="Цена"
+            label={tt("Цена")}
             icon={<Banknote {...ic} />}
             active={priceOn}
-            title="Цена"
+            title={tt("Цена")}
             count={count}
             onReset={() => set({ min_rate: undefined, max_rate: undefined })}
           >
@@ -337,45 +338,45 @@ export function FilterBar({
           </FilterPopover>
         )}
         <FilterPopover
-          label="Когда"
+          label={tt("Когда")}
           icon={<Clock3 {...ic} />}
           badge={timeOn ? [value.when, value.days?.length, value.times?.length, value.date_from || value.date_to].filter(Boolean).length : 0}
           active={timeOn}
-          title="Когда удобно"
+          title={tt("Когда удобно")}
           count={count}
           width={380}
           onReset={() => set({ when: undefined, days: undefined, times: undefined, date_from: undefined, date_to: undefined })}
         >
           <Chips
-            label="Быстрый выбор"
+            label={tt("Быстрый выбор")}
             options={PRESETS}
             isOn={(v) => value.when === v}
             onToggle={(v) => set({ when: value.when === v ? undefined : v })}
           />
-          <Section title="Дни недели">
+          <Section title={tt("Дни недели")}>
             <Chips
-              label="Дни недели"
+              label={tt("Дни недели")}
               wide
               options={WEEKDAYS.map((d, i) => ({ value: i, label: d }))}
               isOn={(v) => !!value.days?.includes(v)}
               onToggle={(v) => set({ days: toggle(value.days, v)?.sort((a, b) => a - b) })}
             />
           </Section>
-          <Section title="Время суток">
+          <Section title={tt("Время суток")}>
             <Chips
-              label="Время суток"
+              label={tt("Время суток")}
               wide
               options={TIMES}
               isOn={(v) => !!value.times?.includes(v)}
               onToggle={(v) => set({ times: toggle(value.times, v) })}
             />
           </Section>
-          <Section title="Даты">
+          <Section title={tt("Даты")}>
             <div className={s.dates}>
               <input
                 type="date"
                 className={s.date}
-                aria-label="С&nbsp;даты"
+                aria-label={tt("С\u00a0даты")}
                 min={todayIso()}
                 value={value.date_from ?? ""}
                 onChange={(e) => {
@@ -387,7 +388,7 @@ export function FilterBar({
               <input
                 type="date"
                 className={s.date}
-                aria-label="По&nbsp;дату"
+                aria-label={tt("По\u00a0дату")}
                 min={value.date_from ?? todayIso()}
                 value={value.date_to ?? ""}
                 onChange={(e) => set({ date_to: e.target.value || undefined })}
@@ -396,36 +397,36 @@ export function FilterBar({
           </Section>
         </FilterPopover>
         <FilterPopover
-          label="Ещё"
+          label={tt("Ещё")}
           icon={<SlidersHorizontal {...ic} />}
           badge={more}
           active={more > 0}
-          title="Ещё фильтры"
+          title={tt("Ещё фильтры")}
           count={count}
           onReset={() => set({ duration: undefined, min_experience: undefined, gender: undefined, language: undefined, intro: undefined })}
         >
           {durations.length > 1 && (
-            <Section title="Длительность созвона">
+            <Section title={tt("Длительность созвона")}>
               <Chips
-                label="Длительность"
+                label={tt("Длительность")}
                 options={durations.map((d) => ({ value: d, label: durationLabel(d) }))}
                 isOn={(v) => value.duration === v}
                 onToggle={(v) => set({ duration: value.duration === v ? undefined : v })}
               />
             </Section>
           )}
-          <Section title="Опыт">
+          <Section title={tt("Опыт")}>
             <Chips
-              label="Опыт"
+              label={tt("Опыт")}
               options={EXPERIENCE.map((y) => ({ value: y, label: fromYearsLabel(y) }))}
               isOn={(v) => value.min_experience === v}
               onToggle={(v) => set({ min_experience: value.min_experience === v ? undefined : v })}
             />
           </Section>
           {(facets?.genders.length ?? 0) > 1 && (
-            <Section title="Специалист">
+            <Section title={tt("Специалист")}>
               <Chips
-                label="Пол специалиста"
+                label={tt("Пол специалиста")}
                 options={facets!.genders.map((g) => ({ value: g.value, label: GENDER_LABEL[g.value] }))}
                 isOn={(v) => value.gender === v}
                 onToggle={(v) => set({ gender: value.gender === v ? undefined : v })}
@@ -433,20 +434,20 @@ export function FilterBar({
             </Section>
           )}
           {languages.length > 1 && (
-            <Section title="Язык">
+            <Section title={tt("Язык")}>
               <Chips
-                label="Язык"
-                options={languages.map((l) => ({ value: l.label, label: l.label }))}
+                label={tt("Язык")}
+                options={languages.map((l) => ({ value: l.label, label: tt(l.label) }))}
                 isOn={(v) => value.language === v}
                 onToggle={(v) => set({ language: value.language === v ? undefined : v })}
               />
             </Section>
           )}
           {(facets?.intro ?? 0) > 0 && (
-            <Section title="Знакомство">
+            <Section title={tt("Знакомство")}>
               <Chips
-                label="Знакомство"
-                options={[{ value: "intro", label: "Есть знакомство 15\u00a0мин" }]}
+                label={tt("Знакомство")}
+                options={[{ value: "intro", label: tt("Есть знакомство 15\u00a0мин") }]}
                 isOn={() => !!value.intro}
                 onToggle={() => set({ intro: value.intro ? undefined : true })}
               />
@@ -459,7 +460,7 @@ export function FilterBar({
             <Select<SortOrder>
               size="sm"
               className={s.sortSelect}
-              aria-label="Сортировка"
+              aria-label={tt("Сортировка")}
               icon={<ArrowDownUp {...ic} />}
               value={SORTS.some((x) => x.value === value.sort) ? value.sort! : "relevance"}
               options={SORTS}
@@ -470,16 +471,16 @@ export function FilterBar({
       </div>
 
       {chips.length > 0 && (
-        <div className={s.active} aria-label="Выбранные фильтры">
+        <div className={s.active} aria-label={tt("Выбранные фильтры")}>
           {chips.map((c) => (
-            <button key={c.key} type="button" className={s.activeChip} onClick={c.clear} aria-label={`Убрать: ${c.label}`}>
+            <button key={c.key} type="button" className={s.activeChip} onClick={c.clear} aria-label={tt(`Убрать: {label}`, { label: c.label })}>
               {c.label}
               <X size={13} strokeWidth={2.4} aria-hidden />
             </button>
           ))}
           {chips.length > 1 && (
             <button type="button" className={s.resetAll} onClick={resetAll}>
-              Сбросить всё
+              {tt("Сбросить всё")}
             </button>
           )}
         </div>

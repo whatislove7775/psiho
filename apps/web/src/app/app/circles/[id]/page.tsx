@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt, tj, tc } from "@/lib/i18n";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
@@ -59,7 +60,7 @@ export default function CirclePage() {
   return (
     <div className={topicClass(c.topic)} style={{ display: "contents" }}>
       <Link href="/app/circles" className={s.hostLink} style={{ marginTop: 0 }}>
-        <ArrowLeft size={16} style={{ marginRight: 6 }} /> Все круги
+        <ArrowLeft size={16} style={{ marginRight: 6 }} />{" "}{tt("Все круги")}
       </Link>
       <section className={cx(s.hero, topicClass(c.topic))}>
         <Together className={s.heroArt} />
@@ -67,14 +68,14 @@ export default function CirclePage() {
           <div className={s.heroTags}>
             <Badge tone={TOPIC_TONE[c.topic]}>{c.topic_label}</Badge>
             <Badge tone={STATUS_TONE[c.status]}>{STATUS_LABEL[c.status]}</Badge>
-            {member && <Badge tone="success">Вы&nbsp;в&nbsp;круге</Badge>}
+            {member && <Badge tone="success">{tt("Вы\u00a0в\u00a0круге")}</Badge>}
           </div>
           <h1 className={s.heroTitle}>{c.title}</h1>
           <p className={s.heroLead}>{typo(c.description)}</p>
           <div className={s.heroFacts}>
             {c.first_meeting_at && (
               <span>
-                <CalendarDays size={16} /> {c.format === "single" ? "" : "Начало "}
+                <CalendarDays size={16} /> {c.format === "single" ? "" : tt("Начало ")}
                 {day(c.first_meeting_at)}, {time(c.first_meeting_at)}
               </span>
             )}
@@ -82,7 +83,7 @@ export default function CirclePage() {
               {c.format === "single" ? <Clock size={16} /> : <Repeat size={16} />} {meetingsLine(c)}
             </span>
             <span>
-              <Users size={16} /> До {c.capacity} участников и&nbsp;{c.cohost ? "двое ведущих" : "ведущий"}
+              <Users size={16} />{" "}{tt("До")}{" "}{c.capacity}{" "}{tt("участников и")}{" "}{c.cohost ? tt("двое ведущих") : tt("ведущий")}
             </span>
           </div>
         </div>
@@ -94,25 +95,25 @@ export default function CirclePage() {
           <Card className={s.mobileJoin}>
             <div className={s.joinPrice} style={{ fontSize: "var(--t-20)" }}>
               {rubK0(c.price_kopecks)}
-              <small>{c.billing === "series" && c.format !== "single" ? "за\u00a0весь цикл" : "за\u00a0встречу"}</small>
+              <small>{c.billing === "series" && c.format !== "single" ? tt("за\u00a0весь цикл") : tt("за\u00a0встречу")}</small>
             </div>
             <Button variant="primary" href="#join">
-              {c.seats_left === 0 ? "В\u00a0лист ожидания" : "Записаться"}
+              {c.seats_left === 0 ? tt("В\u00a0лист ожидания") : tt("Записаться")}
             </Button>
           </Card>
         )}
         {(member || c.my_role === "host" || c.my_role === "cohost") && (
           <Card>
-            <CardHead title="Чат круга" icon={<MessagesSquare size={18} />} sub="Здесь можно познакомиться, задать вопрос ведущему и&nbsp;поддержать друг друга" />
+            <CardHead title={tt("Чат круга")} icon={<MessagesSquare size={18} />} sub={tt("Здесь можно познакомиться, задать вопрос ведущему и\u00a0поддержать друг друга")} />
             <GroupChat circleId={c.id} hostPhoto={c.host.photo_url} cohostPhoto={c.cohost?.photo_url} />
           </Card>
         )}
         <Card>
-          <CardHead title="Расписание" icon={<CalendarDays size={18} />} sub="Время указано по&nbsp;вашему часовому поясу" />
+          <CardHead title={tt("Расписание")} icon={<CalendarDays size={18} />} sub={tt("Время указано по\u00a0вашему часовому поясу")} />
           <Schedule meetings={c.meetings} />
         </Card>
         <Card>
-          <CardHead title="Правила круга" icon={<HeartHandshake size={18} />} sub="Их&nbsp;принимает каждый участник&nbsp;— так в&nbsp;круге безопасно" />
+          <CardHead title={tt("Правила круга")} icon={<HeartHandshake size={18} />} sub={tt("Их\u00a0принимает каждый участник\u00a0— так в\u00a0круге безопасно")} />
           <ul className={s.rules}>
             {c.rules.map((r) => (
               <li key={r}>
@@ -122,20 +123,20 @@ export default function CirclePage() {
           </ul>
         </Card>
         <Card tone="minor">
-          <CardHead title="Как&nbsp;проходит встреча" icon={<Video size={16} />} />
+          <CardHead title={tt("Как\u00a0проходит встреча")} icon={<Video size={16} />} />
           <ul className={s.rules}>
             <li>
-              <Check size={16} /> За&nbsp;10&nbsp;минут до&nbsp;начала на&nbsp;этой странице появится кнопка «Войти во&nbsp;встречу».
+              <Check size={16} />{" "}{tt("За\u00a010\u00a0минут до\u00a0начала на\u00a0этой странице появится кнопка «Войти во\u00a0встречу».")}
             </li>
             <li>
-              <Check size={16} /> Все участники видят вас как&nbsp;3D-аватар, который повторяет вашу мимику. Изображение с&nbsp;камеры не&nbsp;покидает устройство
-              {c.allow_real_faces ? ", а\u00a0показать лицо можно только по\u00a0своему желанию." : "."}
+              <Check size={16} />{" "}{tt("Все участники видят вас как\u00a03D-аватар, который повторяет вашу мимику. Изображение с\u00a0камеры не\u00a0покидает устройство")}
+              {c.allow_real_faces ? tt(", а\u00a0показать лицо можно только по\u00a0своему желанию.") : "."}
             </li>
             <li>
-              <Check size={16} /> Голос можно изменить фильтром ещё до&nbsp;входа. Если захотите что-то сказать, поднимите руку.
+              <Check size={16} />{" "}{tt("Голос можно изменить фильтром ещё до\u00a0входа. Если захотите что-то сказать, поднимите руку.")}
             </li>
             <li>
-              <Check size={16} /> Встречу ведёт психолог. Он&nbsp;видит вас так&nbsp;же, как&nbsp;все: по&nbsp;псевдониму и&nbsp;в&nbsp;аватаре.
+              <Check size={16} />{" "}{tt("Встречу ведёт психолог. Он\u00a0видит вас так\u00a0же, как\u00a0все: по\u00a0псевдониму и\u00a0в\u00a0аватаре.")}
             </li>
           </ul>
         </Card>
@@ -156,14 +157,14 @@ function NextMeeting({ meeting }: { meeting: CircleMeeting }) {
     <Card tone="accent">
       <div className={s.nextMeeting}>
         <div>
-          <Badge tone="neutral">{live ? "Встреча идёт" : `Встреча ${meeting.index}`}</Badge>
+          <Badge tone="neutral">{live ? tt("Встреча идёт") : tt(`Встреча {index}`, { index: meeting.index })}</Badge>
           <h2 style={{ marginTop: 10 }}>
-            {dayLabel(meeting.starts_at)} в {time(meeting.starts_at)}
+            {tj("{dayLabel} в {time}", { dayLabel: dayLabel(meeting.starts_at), time: time(meeting.starts_at) })}
           </h2>
-          <p>{live ? "Можно войти прямо сейчас" : `Начнётся ${untilLabel(meeting.starts_at)}. Комната откроется за\u00a010\u00a0минут.`}</p>
+          <p>{live ? tt("Можно войти прямо сейчас") : tt(`Начнётся {untilLabel}. Комната откроется за\u00a010\u00a0минут.`, { untilLabel: untilLabel(meeting.starts_at) })}</p>
         </div>
         <Button variant="white" size="lg" href={open ? `/circle-room/${meeting.id}` : undefined} disabled={!open} icon={<Video size={18} />}>
-          Войти во&nbsp;встречу
+          {tt("Войти во\u00a0встречу")}
         </Button>
       </div>
     </Card>
@@ -181,9 +182,9 @@ function Schedule({ meetings }: { meetings: CircleMeeting[] }) {
             <span className={s.schedNum}>{m.index}</span>
             <span className={s.schedWhen}>
               {dayShort(m.starts_at)}, {time(m.starts_at)}–{time(m.ends_at)}
-              {m.status === "missed" && <small>Не&nbsp;состоялась, деньги вернулись</small>}
+              {m.status === "missed" && <small>{tt("Не\u00a0состоялась, деньги вернулись")}</small>}
             </span>
-            {m.id === nextId ? <Badge tone="primary">Следующая</Badge> : past ? <Badge>Прошла</Badge> : null}
+            {m.id === nextId ? <Badge tone="primary">{tt("Следующая")}</Badge> : past ? <Badge>{tt("Прошла")}</Badge> : null}
           </li>
         );
       })}
@@ -196,20 +197,20 @@ function Rail({ c, reload, setData }: { c: CircleDetail; reload: () => void; set
     <>
       {c.my_role === "host" || c.my_role === "cohost" ? (
         <Card>
-          <CardHead title="Это&nbsp;ваш круг" />
+          <CardHead title={tt("Это\u00a0ваш круг")} />
           <Button variant="primary" block href={`/pro/circles/${c.id}`}>
-            Управлять кругом
+            {tt("Управлять кругом")}
           </Button>
         </Card>
       ) : (
         <Membership c={c} reload={reload} setData={setData} />
       )}
       <Card>
-        <CardHead title={c.cohost ? "Ведущие" : "Ведущий"} />
+        <CardHead title={c.cohost ? tt("Ведущие") : tt("Ведущий")} />
         <HostCard h={c.host} />
         {c.cohost && (
           <div style={{ marginTop: 20 }}>
-            <HostCard h={c.cohost} role="Ко-терапевт" />
+            <HostCard h={c.cohost} role={tt("Ко-терапевт")} />
           </div>
         )}
       </Card>
@@ -225,7 +226,7 @@ function HostCard({ h, role }: { h: CircleDetail["host"]; role?: string }) {
         <h3>{h.name}</h3>
         <div className={s.hostMeta}>
           <Badge tone="success">
-            <BadgeCheck size={12} /> {role ?? "Проверенный психолог"}
+            <BadgeCheck size={12} /> {role ?? tt("Проверенный психолог")}
           </Badge>
           {h.experience_years > 0 && (
             <Badge>
@@ -250,7 +251,7 @@ function HostCard({ h, role }: { h: CircleDetail["host"]; role?: string }) {
         )}
         {h.bio && <p>{typo(h.bio)}</p>}
         <Link className={s.hostLink} href={`/app/specialists/${h.id}`}>
-          Профиль и&nbsp;дипломы
+          {tt("Профиль и\u00a0дипломы")}
         </Link>
       </div>
     </div>
@@ -276,13 +277,13 @@ function Membership({ c, reload, setData }: { c: CircleDetail; reload: () => voi
       setData(r.circle);
       setConfirm(false);
       notifyBalanceChanged();
-      toast(r.waitlisted ? "Вы\u00a0в\u00a0листе ожидания. Как\u00a0только освободится место, запишем автоматически." : `Вы\u00a0в\u00a0круге как\u00a0${r.circle.me?.pseudonym}`);
+      toast(r.waitlisted ? tt("Вы\u00a0в\u00a0листе ожидания. Как\u00a0только освободится место, запишем автоматически.") : tt(`Вы\u00a0в\u00a0круге как\u00a0{pseudonym}`, { pseudonym: r.circle.me?.pseudonym }));
     } catch (e) {
       if (isInsufficient(e)) {
         const summary = await billingApi.summary().catch(() => null);
         if (summary) setTopup({ summary, shortfall: Math.max(10000, c.amount_due_kopecks - summary.balance_kopecks) });
-        else setError(e instanceof ApiError ? e.message : "Не\u00a0хватает денег на\u00a0балансе.");
-      } else setError(e instanceof ApiError ? e.message : "Не\u00a0получилось записаться. Попробуйте ещё раз.");
+        else setError(e instanceof ApiError ? e.message : tt("Не\u00a0хватает денег на\u00a0балансе."));
+      } else setError(e instanceof ApiError ? e.message : tt("Не\u00a0получилось записаться. Попробуйте ещё раз."));
     } finally {
       setBusy(false);
     }
@@ -294,9 +295,9 @@ function Membership({ c, reload, setData }: { c: CircleDetail; reload: () => voi
       setData(await circlesApi.leave(c.id));
       setLeave(false);
       notifyBalanceChanged();
-      toast("Вы\u00a0вышли из\u00a0круга");
+      toast(tt("Вы\u00a0вышли из\u00a0круга"));
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "Не\u00a0получилось выйти.", { error: true });
+      toast(e instanceof ApiError ? e.message : tt("Не\u00a0получилось выйти."), { error: true });
     } finally {
       setBusy(false);
     }
@@ -306,76 +307,75 @@ function Membership({ c, reload, setData }: { c: CircleDetail; reload: () => voi
     const terms = me.leave_terms;
     return (
       <Card>
-        <CardHead title={me.status === "waitlist" ? "Вы\u00a0в\u00a0листе ожидания" : "Вы\u00a0в\u00a0круге"} />
+        <CardHead title={me.status === "waitlist" ? tt("Вы\u00a0в\u00a0листе ожидания") : tt("Вы\u00a0в\u00a0круге")} />
         <div className={s.pseudo}>
           <AvatarThumb config={null} seed={me.handle} size={48} />
           <div>
             <b>{me.pseudonym}</b>
-            <small>Так вас видят в&nbsp;этом круге</small>
+            <small>{tt("Так вас видят в\u00a0этом круге")}</small>
           </div>
         </div>
         <div className={s.joinBox} style={{ marginTop: 12 }}>
           {me.status === "waitlist" ? (
             <p className={s.note}>
-              Вы {me.waitlist_position}-й в&nbsp;очереди. Когда освободится место, мы&nbsp;запишем вас и&nbsp;заморозим оплату с&nbsp;баланса.
-              {me.promote_failed && " В\u00a0прошлый раз на\u00a0балансе не\u00a0хватило денег\u00a0— пополните его, чтобы не\u00a0пропустить место."}
+              {tt("Вы")}{" "}{me.waitlist_position}{tt("-й в\u00a0очереди. Когда освободится место, мы\u00a0запишем вас и\u00a0заморозим оплату с\u00a0баланса.")}
+              {me.promote_failed && tt(" В\u00a0прошлый раз на\u00a0балансе не\u00a0хватило денег\u00a0— пополните его, чтобы не\u00a0пропустить место.")}
             </p>
           ) : (
             me.payments && (
               <dl className={s.kv}>
-                <dt>Заморожено под&nbsp;встречи</dt>
+                <dt>{tt("Заморожено под\u00a0встречи")}</dt>
                 <dd>{rubK0(me.payments.held_kopecks)}</dd>
-                <dt>Оплачено</dt>
+                <dt>{tt("Оплачено")}</dt>
                 <dd>{rubK0(me.payments.paid_kopecks)}</dd>
                 {me.payments.returned_kopecks > 0 && (
                   <>
-                    <dt>Возвращено</dt>
+                    <dt>{tt("Возвращено")}</dt>
                     <dd>{rubK0(me.payments.returned_kopecks)}</dd>
                   </>
                 )}
               </dl>
             )
           )}
-          {me.chat_muted && <p className={s.fine}>Ведущий временно выключил вам сообщения в&nbsp;чате.</p>}
+          {me.chat_muted && <p className={s.fine}>{tt("Ведущий временно выключил вам сообщения в\u00a0чате.")}</p>}
           <Button variant="ghost" icon={<LogOut size={16} />} onClick={() => setLeave(true)}>
-            {me.status === "waitlist" ? "Выйти из\u00a0очереди" : "Выйти из\u00a0круга"}
+            {me.status === "waitlist" ? tt("Выйти из\u00a0очереди") : tt("Выйти из\u00a0круга")}
           </Button>
         </div>
-        <Modal open={leave} onClose={() => setLeave(false)} title="Выйти из&nbsp;круга?">
+        <Modal open={leave} onClose={() => setLeave(false)} title={tt("Выйти из\u00a0круга?")}>
           <div className={s.joinBox}>
             {me.status === "waitlist" || !terms ? (
-              <p className={s.note}>Вы&nbsp;потеряете место в&nbsp;очереди. Денег за&nbsp;ожидание мы&nbsp;не&nbsp;замораживали.</p>
+              <p className={s.note}>{tt("Вы\u00a0потеряете место в\u00a0очереди. Денег за\u00a0ожидание мы\u00a0не\u00a0замораживали.")}</p>
             ) : (
               <>
                 <p className={s.note}>
-                  Правила те&nbsp;же, что&nbsp;у&nbsp;созвонов: встречи, до&nbsp;которых больше {freeHours} {plural(freeHours, "часа", "часов", "часов")}, возвращаются
-                  полностью, за&nbsp;более близкую&nbsp;— удерживается {c.cancel_rules.late_cancel_penalty_percent}%.
+                  {tt("Правила те\u00a0же, что\u00a0у\u00a0созвонов: встречи, до\u00a0которых больше")}{" "}{freeHours} {plural(freeHours, "часа", "часов", "часов")}{tt(", возвращаются полностью, за\u00a0более близкую\u00a0— удерживается")}{" "}{c.cancel_rules.late_cancel_penalty_percent}%.
                 </p>
                 <dl className={s.kv}>
-                  <dt>Вернётся на&nbsp;баланс</dt>
+                  <dt>{tt("Вернётся на\u00a0баланс")}</dt>
                   <dd>{rubK0(terms.refund_kopecks)}</dd>
                   {terms.penalty_kopecks > 0 && (
                     <>
-                      <dt>Удержим за&nbsp;позднюю отмену</dt>
+                      <dt>{tt("Удержим за\u00a0позднюю отмену")}</dt>
                       <dd>{rubK0(terms.penalty_kopecks)}</dd>
                     </>
                   )}
                   {terms.kept_kopecks > 0 && (
                     <>
-                      <dt>Уже идущая или&nbsp;начатая часть</dt>
+                      <dt>{tt("Уже идущая или\u00a0начатая часть")}</dt>
                       <dd>{rubK0(terms.kept_kopecks)}</dd>
                     </>
                   )}
                 </dl>
-                <p className={s.fine}>Ваш псевдоним и&nbsp;сообщения останутся в&nbsp;чате, но&nbsp;писать и&nbsp;заходить на&nbsp;встречи вы&nbsp;больше не&nbsp;сможете.</p>
+                <p className={s.fine}>{tt("Ваш псевдоним и\u00a0сообщения останутся в\u00a0чате, но\u00a0писать и\u00a0заходить на\u00a0встречи вы\u00a0больше не\u00a0сможете.")}</p>
               </>
             )}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
               <Button variant="ghost" onClick={() => setLeave(false)}>
-                Остаться
+                {tt("Остаться")}
               </Button>
               <Button variant="danger" loading={busy} onClick={doLeave}>
-                Выйти
+                {tc("круг", "Выйти")}
               </Button>
             </div>
           </div>
@@ -385,7 +385,7 @@ function Membership({ c, reload, setData }: { c: CircleDetail; reload: () => voi
   }
 
   const removed = c.me?.status === "removed";
-  const closed = c.join_closed_reason || (removed ? "Ведущий исключил вас из\u00a0этого круга." : null);
+  const closed = c.join_closed_reason || (removed ? tt("Ведущий исключил вас из\u00a0этого круга.") : null);
   return (
     <Card>
       <div className={s.joinBox} id="join">
@@ -393,10 +393,10 @@ function Membership({ c, reload, setData }: { c: CircleDetail; reload: () => voi
           {rubK0(c.price_kopecks)}
           <small>
             {c.billing === "series" && c.format !== "single"
-              ? `за\u00a0весь цикл из\u00a0${c.meetings_count} ${plural(c.meetings_count, "встречи", "встреч", "встреч")}`
+              ? tt(`за\u00a0весь цикл из\u00a0{meetings_count} {plural}`, { meetings_count: c.meetings_count, plural: plural(c.meetings_count, "встречи", "встреч", "встреч") })
               : c.format === "single"
-                ? "за\u00a0встречу"
-                : `за\u00a0встречу, всего ${rubK0(c.total_kopecks)} за\u00a0${c.meetings_count} ${plural(c.meetings_count, "встречу", "встречи", "встреч")}`}
+                ? tt("за\u00a0встречу")
+                : tt(`за\u00a0встречу, всего {rubK0} за\u00a0{meetings_count} {plural}`, { rubK0: rubK0(c.total_kopecks), meetings_count: c.meetings_count, plural: plural(c.meetings_count, "встречу", "встречи", "встреч") })}
           </small>
         </div>
         <SeatsMeter capacity={c.capacity} taken={c.seats_taken} />
@@ -404,19 +404,19 @@ function Membership({ c, reload, setData }: { c: CircleDetail; reload: () => voi
           <p className={s.note}>{closed}</p>
         ) : (
           <Button variant="primary" size="lg" block onClick={() => setConfirm(true)} icon={full ? <Hourglass size={18} /> : undefined}>
-            {full ? "Встать в\u00a0лист ожидания" : "Записаться"}
+            {full ? tt("Встать в\u00a0лист ожидания") : tt("Записаться")}
           </Button>
         )}
         <p className={s.fine}>
-          Оплата с&nbsp;анонимного баланса. Отмена бесплатно не&nbsp;позже чем&nbsp;за {freeHours} {plural(freeHours, "час", "часа", "часов")} до&nbsp;встречи.
+          {tt("Оплата с\u00a0анонимного баланса. Отмена бесплатно не\u00a0позже чем\u00a0за")}{" "}{freeHours} {plural(freeHours, "час", "часа", "часов")}{" "}{tt("до\u00a0встречи.")}
         </p>
       </div>
-      <Modal open={confirm} onClose={() => { setConfirm(false); setTopup(null); }} title={full ? "Лист ожидания" : "Записаться в\u00a0круг"} width={520}>
+      <Modal open={confirm} onClose={() => { setConfirm(false); setTopup(null); }} title={full ? tt("Лист ожидания") : tt("Записаться в\u00a0круг")} width={520}>
         {topup ? (
           <div className={s.joinBox}>
             <p className={s.note}>
               <Wallet size={15} style={{ verticalAlign: -2, marginRight: 6 }} />
-              На&nbsp;балансе не&nbsp;хватает {rubK0(topup.shortfall)}. Пополните баланс&nbsp;— после оплаты вернётесь на&nbsp;эту страницу и&nbsp;запишетесь.
+              {tt("На\u00a0балансе не\u00a0хватает")}{" "}{rubK0(topup.shortfall)}{tt(". Пополните баланс\u00a0— после оплаты вернётесь на\u00a0эту страницу и\u00a0запишетесь.")}
             </p>
             <TopUpForm settings={topup.summary.topup} suggestRub={topup.shortfall / 100} returnTo={`/app/circles/${c.id}`} onDone={() => { setTopup(null); reload(); }} />
           </div>
@@ -425,31 +425,31 @@ function Membership({ c, reload, setData }: { c: CircleDetail; reload: () => voi
             <div className={s.pseudo}>
               <AvatarThumb config={null} seed={`preview-${c.id}`} size={48} />
               <div>
-                <b>Вы&nbsp;получите новое имя</b>
-                <small>Например, «Участник-Лиса». Ваш аккаунт никто в&nbsp;круге не&nbsp;увидит.</small>
+                <b>{tt("Вы\u00a0получите новое имя")}</b>
+                <small>{tt("Например, «Участник-Лиса». Ваш аккаунт никто в\u00a0круге не\u00a0увидит.")}</small>
               </div>
             </div>
             <ul className={s.rules}>
               <li>
-                <ShieldCheck size={16} /> На&nbsp;встречах&nbsp;— только аватар, камера не&nbsp;показывает ваше лицо
+                <ShieldCheck size={16} />{" "}{tt("На\u00a0встречах\u00a0— только аватар, камера не\u00a0показывает ваше лицо")}
               </li>
               <li>
-                <Mic size={16} /> Голос можно изменить фильтром
+                <Mic size={16} />{" "}{tt("Голос можно изменить фильтром")}
               </li>
               <li>
-                <Check size={16} /> Вы&nbsp;принимаете правила круга
+                <Check size={16} />{" "}{tt("Вы\u00a0принимаете правила круга")}
               </li>
             </ul>
             {full ? (
               <p className={s.note}>
-                Сейчас все места заняты. Когда кто-то выйдет, мы&nbsp;запишем вас автоматически и&nbsp;заморозим оплату с&nbsp;баланса&nbsp;— если её&nbsp;хватит.
+                {tt("Сейчас все места заняты. Когда кто-то выйдет, мы\u00a0запишем вас автоматически и\u00a0заморозим оплату с\u00a0баланса\u00a0— если её\u00a0хватит.")}
               </p>
             ) : (
               <dl className={s.kv}>
-                <dt>Заморозим на&nbsp;балансе сейчас</dt>
+                <dt>{tt("Заморозим на\u00a0балансе сейчас")}</dt>
                 <dd>{rubK0(c.amount_due_kopecks)}</dd>
-                <dt>Списание</dt>
-                <dd>{c.billing === "series" ? "после первой встречи" : "после каждой встречи"}</dd>
+                <dt>{tt("Списание")}</dt>
+                <dd>{c.billing === "series" ? tt("после первой встречи") : tt("после каждой встречи")}</dd>
               </dl>
             )}
             {error && (
@@ -458,7 +458,7 @@ function Membership({ c, reload, setData }: { c: CircleDetail; reload: () => voi
               </p>
             )}
             <Button variant="primary" size="lg" block loading={busy} onClick={join}>
-              {full ? "Встать в\u00a0очередь" : `Записаться за\u00a0${rubK0(c.amount_due_kopecks)}`}
+              {full ? tt("Встать в\u00a0очередь") : tt(`Записаться за\u00a0{rubK0}`, { rubK0: rubK0(c.amount_due_kopecks) })}
             </Button>
           </div>
         )}

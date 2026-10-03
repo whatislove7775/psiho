@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { EyeOff } from "lucide-react";
@@ -12,13 +13,13 @@ import s from "./AvatarStudioPage.module.css";
 
 const COPY = {
   client: {
-    sub: "Этот аватар заменяет ваше лицо на\u00a0видеосозвонах и\u00a0везде в\u00a0сервисе. Камера передаёт только мимику, а\u00a0специалист видит аватар.",
-    welcomeTitle: "Соберите лицо, которое увидит специалист.",
+    get sub() { return t("Этот аватар заменяет ваше лицо на\u00a0видеосозвонах и\u00a0везде в\u00a0сервисе. Камера передаёт только мимику, а\u00a0специалист видит аватар."); },
+    get welcomeTitle() { return t("Соберите лицо, которое увидит специалист."); },
     home: "/app",
   },
   pro: {
-    sub: "Этот аватар заменяет ваше лицо на\u00a0видеосозвонах и\u00a0в\u00a0каталоге специалистов. Камера передаёт только мимику, клиенты видят аватар.",
-    welcomeTitle: "Соберите лицо, которое увидят клиенты.",
+    get sub() { return t("Этот аватар заменяет ваше лицо на\u00a0видеосозвонах и\u00a0в\u00a0каталоге специалистов. Камера передаёт только мимику, клиенты видят аватар."); },
+    get welcomeTitle() { return t("Соберите лицо, которое увидят клиенты."); },
     home: "/pro",
   },
 };
@@ -38,10 +39,10 @@ function Inner({ variant }: { variant: "client" | "pro" }) {
     setSaving(true);
     try {
       await useAuth.getState().setAvatar(cfg);
-      toast("Аватар сохранён");
+      toast(t("Аватар сохранён"));
       if (welcome) router.push(copy.home);
     } catch (e) {
-      toast("Не\u00a0удалось сохранить аватар. Проверьте соединение и\u00a0попробуйте ещё раз.", { error: true });
+      toast(t("Не\u00a0удалось сохранить аватар. Проверьте соединение и\u00a0попробуйте ещё раз."), { error: true });
       throw e;
     } finally {
       setSaving(false);
@@ -50,7 +51,7 @@ function Inner({ variant }: { variant: "client" | "pro" }) {
 
   return (
     <>
-      <PageHeader title="Мой аватар" sub={copy.sub} />
+      <PageHeader title={t("Мой аватар")} sub={copy.sub} />
       {welcome && (
         <div className={s.welcome}>
           <span className={s.welcomeIcon} aria-hidden>
@@ -59,8 +60,7 @@ function Inner({ variant }: { variant: "client" | "pro" }) {
           <div>
             <p className={s.welcomeTitle}>{copy.welcomeTitle}</p>
             <p className={s.welcomeText}>
-              Настоящее лицо останется только у&nbsp;вас. Выберите причёску, цвет глаз, очки, что&nbsp;угодно. Всё можно поменять
-              позже.
+              {t("Настоящее лицо останется только у\u00a0вас. Выберите причёску, цвет глаз, очки, что\u00a0угодно. Всё можно поменять позже.")}
             </p>
           </div>
         </div>

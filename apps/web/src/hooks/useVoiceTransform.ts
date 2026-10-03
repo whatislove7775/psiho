@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useEffect, useRef, useState } from "react";
 
 /**
@@ -9,12 +10,12 @@ import { useEffect, useRef, useState } from "react";
 export type VoicePreset = "off" | "lower" | "higher" | "soft" | "neutral" | "robot";
 
 export const VOICE_PRESETS: { value: VoicePreset; label: string; hint: string }[] = [
-  { value: "off", label: "Без\u00a0фильтра", hint: "Ваш настоящий голос" },
-  { value: "lower", label: "Ниже", hint: "Голос ниже, тембр естественный" },
-  { value: "higher", label: "Выше", hint: "Голос выше, без\u00a0«мультяшности»" },
-  { value: "soft", label: "Мягкий", hint: "Чуть выше и\u00a0теплее, сглаженные верха" },
-  { value: "neutral", label: "Нейтральный", hint: "Средняя высота: не\u00a0понять, мужской или\u00a0женский" },
-  { value: "robot", label: "Робот", hint: "Ровный механический голос, шутки ради" },
+  { value: "off", get label() { return t("Без\u00a0фильтра"); }, get hint() { return t("Ваш настоящий голос"); } },
+  { value: "lower", get label() { return t("Ниже"); }, get hint() { return t("Голос ниже, тембр естественный"); } },
+  { value: "higher", get label() { return t("Выше"); }, get hint() { return t("Голос выше, без\u00a0«мультяшности»"); } },
+  { value: "soft", get label() { return t("Мягкий"); }, get hint() { return t("Чуть выше и\u00a0теплее, сглаженные верха"); } },
+  { value: "neutral", get label() { return t("Нейтральный"); }, get hint() { return t("Средняя высота: не\u00a0понять, мужской или\u00a0женский"); } },
+  { value: "robot", get label() { return t("Робот"); }, get hint() { return t("Ровный механический голос, шутки ради"); } },
 ];
 
 /** Worklet parameters per preset (see public/audio/voice-shifter.worklet.js). */

@@ -233,6 +233,10 @@ _PROVIDERS = {"yookassa": YooKassaProvider, "mock": MockProvider}
 
 
 def get_provider(name: str):
+    if name == "international":  # S2: заготовка, см. providers/international.py (в available_providers не входит)
+        from .international import InternationalProvider
+
+        return InternationalProvider()
     cls = _PROVIDERS.get(name)
     if cls is None:
         raise ProviderError(f"Неизвестный провайдер: {name}")

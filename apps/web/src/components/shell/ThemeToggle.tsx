@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import s from "./ThemeToggle.module.css";
@@ -42,7 +43,7 @@ export function ThemeToggle({ className }: { className?: string }) {
     }
   };
 
-  const label = theme === "light" ? "Включить тёмную тему" : "Включить светлую тему";
+  const label = theme === "light" ? t("Включить тёмную тему") : t("Включить светлую тему");
   return (
     <button
       type="button"

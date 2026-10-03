@@ -1,5 +1,6 @@
 "use client";
 
+import { t, tj } from "@/lib/i18n";
 import { useState } from "react";
 import { Building2, KeyRound, ShieldCheck } from "lucide-react";
 import { Button, CollapsibleCard, Input, Skeleton, useToast } from "@/ui";
@@ -18,9 +19,9 @@ export function allowanceText(p: MyProgram): string {
   const rubLeft = p.available_kopecks != null ? p.available_kopecks : p.rub_left_kopecks;
   if (rubLeft !== null) parts.push(rubK(rubLeft));
   if (p.calls_left !== null) parts.push(`${p.calls_left} ${plural(p.calls_left, "созвон", "созвона", "созвонов")}`);
-  const left = parts.length ? parts.join(" и ") : "без\u00a0лимита";
-  const until = p.renews_on ? `до\u00a0${dateRu(p.renews_on)}` : p.expires_on ? `до\u00a0${dateRu(p.expires_on)}` : "";
-  return `Осталось ${left}${until ? ` ${until}` : ""}`;
+  const left = parts.length ? parts.join(t(" и ")) : t("без\u00a0лимита");
+  const until = p.renews_on ? t(`до\u00a0{dateRu}`, { dateRu: dateRu(p.renews_on) }) : p.expires_on ? t(`до\u00a0{dateRu}`, { dateRu: dateRu(p.expires_on) }) : "";
+  return t(`Осталось {left}{v}`, { left, v: until ? ` ${until}` : "" });
 }
 
 function ProgramRow({ p }: { p: MyProgram }) {
@@ -43,7 +44,7 @@ function ProgramRow({ p }: { p: MyProgram }) {
         <span className={s.allowanceMain}>
           <span className={s.allowanceTitle}>{p.company}</span>
           <span className={s.allowanceSub}>
-            {limits.join(" и ")} в {PERIOD_LABEL[p.period]}
+            {limits.join(t(" и "))}{" "}{t("в")}{" "}{PERIOD_LABEL[p.period]}
           </span>
         </span>
       </div>
@@ -55,9 +56,9 @@ function ProgramRow({ p }: { p: MyProgram }) {
           </div>
         </>
       ) : (
-        <div className={s.allowanceLeft}>Компания ещё не&nbsp;пополнила бюджет&nbsp;— пока созвоны оплачиваются с&nbsp;вашего баланса</div>
+        <div className={s.allowanceLeft}>{t("Компания ещё не\u00a0пополнила бюджет\u00a0— пока созвоны оплачиваются с\u00a0вашего баланса")}</div>
       )}
-      {p.expires_on && p.renews_on && <div className={b.hint}>Программа действует до {dateRu(p.expires_on, { day: "numeric", month: "long", year: "numeric" })}.</div>}
+      {p.expires_on && p.renews_on && <div className={b.hint}>{tj("Программа действует до {dateRu}.", { dateRu: dateRu(p.expires_on, { day: "numeric", month: "long", year: "numeric" }) })}</div>}
     </div>
   );
 }
@@ -80,11 +81,11 @@ export function CompanyAllowance({ onChanged }: { onChanged?: () => void }) {
       const r = await businessApi.redeem(code);
       mine.setData(r);
       setCode("");
-      toast("Программа компании подключена");
+      toast(t("Программа компании подключена"));
       notifyBalanceChanged();
       onChanged?.();
     } catch (err) {
-      setError(err instanceof ApiError ? (err.status === 429 ? "Слишком много попыток. Подождите минуту." : err.message) : "Не\u00a0получилось проверить код.");
+      setError(err instanceof ApiError ? (err.status === 429 ? t("Слишком много попыток. Подождите минуту.") : err.message) : t("Не\u00a0получилось проверить код."));
     } finally {
       setBusy(false);
     }
@@ -93,7 +94,7 @@ export function CompanyAllowance({ onChanged }: { onChanged?: () => void }) {
   return (
     <CollapsibleCard
       key={programs.length ? "on" : "off"}
-      title={programs.length ? "Программа компании" : "Код от\u00a0работодателя"}
+      title={programs.length ? t("Программа компании") : t("Код от\u00a0работодателя")}
       icon={<Building2 size={18} />}
       defaultOpen={programs.length > 0}
     >
@@ -109,19 +110,19 @@ export function CompanyAllowance({ onChanged }: { onChanged?: () => void }) {
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             placeholder="BIZ-XXXX-XXXX-XXXX"
-            aria-label="Код от&nbsp;работодателя"
+            aria-label={t("Код от\u00a0работодателя")}
             autoComplete="off"
             spellCheck={false}
             maxLength={24}
             error={error ?? undefined}
           />
           <Button type="submit" variant="soft" icon={<KeyRound size={18} />} loading={busy} disabled={!code.trim()}>
-            {programs.length ? "Добавить ещё код" : "Активировать код"}
+            {programs.length ? t("Добавить ещё код") : t("Активировать код")}
           </Button>
         </form>
         <div className={s.anonNote}>
           <ShieldCheck size={16} aria-hidden />
-          <span>Компания не&nbsp;узнает, что&nbsp;это&nbsp;вы.</span>
+          <span>{t("Компания не\u00a0узнает, что\u00a0это\u00a0вы.")}</span>
         </div>
       </div>
     </CollapsibleCard>

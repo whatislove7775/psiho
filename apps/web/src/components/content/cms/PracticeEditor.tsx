@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useState } from "react";
 import { ArrowDown, ArrowUp, Eye, Plus, Trash2, X } from "lucide-react";
 import { Badge, Button, Card, CardHead, Input, NumberInput, Textarea, useToast } from "@/ui";
@@ -125,13 +126,13 @@ export function PracticeEditor({
         ? await contentAdminApi.updatePractice(practice.id, body)
         : await contentAdminApi.createPractice(body);
       setF(toForm(saved));
-      toast(publish === true ? "Практика опубликована" : publish === false ? "Практика сохранена как\u00a0черновик" : "Изменения сохранены");
+      toast(publish === true ? t("Практика опубликована") : publish === false ? t("Практика сохранена как\u00a0черновик") : t("Изменения сохранены"));
       onSaved(saved);
     } catch (e) {
       if (e instanceof ApiError) {
         setErrors(e.fields);
         toast(e.message, { error: true });
-      } else toast("Не\u00a0получилось сохранить. Попробуйте ещё раз.", { error: true });
+      } else toast(t("Не\u00a0получилось сохранить. Попробуйте ещё раз."), { error: true });
     } finally {
       setBusy(false);
     }
@@ -142,10 +143,10 @@ export function PracticeEditor({
     setBusy(true);
     try {
       await contentAdminApi.deletePractice(practice.id);
-      toast("Практика удалена");
+      toast(t("Практика удалена"));
       onDeleted();
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "Не\u00a0получилось удалить", { error: true });
+      toast(e instanceof ApiError ? e.message : t("Не\u00a0получилось удалить"), { error: true });
       setBusy(false);
     }
   };
@@ -158,7 +159,7 @@ export function PracticeEditor({
         <Card as="section">
           <div className={s.grid}>
             <Input
-              label="Название"
+              label={t("Название")}
               value={f.title}
               onChange={(e) => {
                 const title = e.target.value;
@@ -167,7 +168,7 @@ export function PracticeEditor({
               error={err("title")}
             />
             <Input
-              label="Адрес"
+              label={t("Адрес")}
               value={f.slug}
               onChange={(e) => {
                 setSlugTouched(true);
@@ -177,15 +178,15 @@ export function PracticeEditor({
               hint={`/practices/${f.slug || "…"}`}
             />
             <div className={s.full}>
-              <Textarea label="Короткое описание" value={f.summary} rows={2} maxLength={400} onChange={(e) => set("summary", e.target.value)} error={err("summary")} />
+              <Textarea label={t("Короткое описание")} value={f.summary} rows={2} maxLength={400} onChange={(e) => set("summary", e.target.value)} error={err("summary")} />
             </div>
-            <Select label="Вид" value={f.kind} onChange={(v) => set("kind", v as PracticeKind)} options={PRACTICE_KINDS} error={err("kind")} />
+            <Select label={t("Вид")} value={f.kind} onChange={(v) => set("kind", v as PracticeKind)} options={PRACTICE_KINDS} error={err("kind")} />
             <div className={s.pair}>
-              <NumberInput label="Минут" min={1} max={120} value={f.duration_minutes} onChange={(v) => set("duration_minutes", v ?? 0)} error={err("duration_minutes")} />
-              <NumberInput label="Порядок" min={0} value={f.order} onChange={(v) => set("order", v ?? 0)} hint="Меньше&nbsp;— выше" />
+              <NumberInput label={t("Минут")} min={1} max={120} value={f.duration_minutes} onChange={(v) => set("duration_minutes", v ?? 0)} error={err("duration_minutes")} />
+              <NumberInput label={t("Порядок")} min={0} value={f.order} onChange={(v) => set("order", v ?? 0)} hint={t("Меньше\u00a0— выше")} />
             </div>
             <CoverPicker value={f.cover} onChange={(v) => set("cover", v)} error={err("cover")} />
-            <Input label="Эмодзи" value={f.emoji} maxLength={8} onChange={(e) => set("emoji", e.target.value)} error={err("emoji")} />
+            <Input label={t("Эмодзи")} value={f.emoji} maxLength={8} onChange={(e) => set("emoji", e.target.value)} error={err("emoji")} />
           </div>
         </Card>
 
@@ -193,18 +194,18 @@ export function PracticeEditor({
           <Switch
             checked={!!f.pattern}
             onChange={(v) => set("pattern", v ? pattern : null)}
-            label="Дыхательный ритм"
-            hint="Клиент увидит анимированный круг вместо пошагового режима"
+            label={t("Дыхательный ритм")}
+            hint={t("Клиент увидит анимированный круг вместо пошагового режима")}
           />
           {f.pattern && (
             <div className={s.pattern}>
               {(
                 [
-                  ["inhale", "Вдох, сек"],
-                  ["hold", "Пауза, сек"],
-                  ["exhale", "Выдох, сек"],
-                  ["hold_after", "Пауза после, сек"],
-                  ["cycles", "Циклов"],
+                  ["inhale", t("Вдох, сек")],
+                  ["hold", t("Пауза, сек")],
+                  ["exhale", t("Выдох, сек")],
+                  ["hold_after", t("Пауза после, сек")],
+                  ["cycles", t("Циклов")],
                 ] as [keyof BreathPattern, string][]
               ).map(([k, label]) => (
                 <NumberInput key={k} label={label} min={0} max={60} value={pattern[k]} onChange={(v) => setPattern(k, v ?? 0)} />
@@ -215,17 +216,17 @@ export function PracticeEditor({
         </Card>
 
         <Card as="section">
-          <CardHead title="Шаги" sub="Коротко и&nbsp;по-человечески. Время необязательно: с&nbsp;ним у&nbsp;шага появится мягкий таймер." />
+          <CardHead title={t("Шаги")} sub={t("Коротко и\u00a0по-человечески. Время необязательно: с\u00a0ним у\u00a0шага появится мягкий таймер.")} />
           <ol className={s.steps}>
             {f.steps.map((st, i) => (
               <li key={st.key} className={s.stepRow}>
                 <span className={s.stepNum}>{i + 1}</span>
                 <div className={s.stepFields}>
                   <div className={s.stepTop}>
-                    <Input aria-label={`Шаг ${i + 1}: заголовок`} placeholder="Заголовок шага" value={st.title} onChange={(e) => setStep(i, { title: e.target.value })} />
+                    <Input aria-label={t(`Шаг {v}: заголовок`, { v: i + 1 })} placeholder={t("Заголовок шага")} value={st.title} onChange={(e) => setStep(i, { title: e.target.value })} />
                     <NumberInput
-                      aria-label={`Шаг ${i + 1}: секунд`}
-                      placeholder="Сек"
+                      aria-label={t(`Шаг {v}: секунд`, { v: i + 1 })}
+                      placeholder={t("Сек")}
                       min={0}
                       max={3600}
                       className={s.seconds}
@@ -233,19 +234,19 @@ export function PracticeEditor({
                       onChange={(v) => setStep(i, { seconds: v ?? undefined })}
                     />
                   </div>
-                  <Textarea aria-label={`Шаг ${i + 1}: текст`} placeholder="Что&nbsp;делать" rows={2} value={st.text} onChange={(e) => setStep(i, { text: e.target.value })} />
+                  <Textarea aria-label={t(`Шаг {v}: текст`, { v: i + 1 })} placeholder={t("Что\u00a0делать")} rows={2} value={st.text} onChange={(e) => setStep(i, { text: e.target.value })} />
                 </div>
                 <div className={s.stepBtns}>
-                  <IconBtn label="Выше" onClick={() => moveStep(i, -1)} disabled={i === 0} icon={<ArrowUp size={16} />} />
-                  <IconBtn label="Ниже" onClick={() => moveStep(i, 1)} disabled={i === f.steps.length - 1} icon={<ArrowDown size={16} />} />
-                  <IconBtn label="Удалить шаг" onClick={() => removeStep(i)} icon={<X size={16} />} />
+                  <IconBtn label={t("Выше")} onClick={() => moveStep(i, -1)} disabled={i === 0} icon={<ArrowUp size={16} />} />
+                  <IconBtn label={t("Ниже")} onClick={() => moveStep(i, 1)} disabled={i === f.steps.length - 1} icon={<ArrowDown size={16} />} />
+                  <IconBtn label={t("Удалить шаг")} onClick={() => removeStep(i)} icon={<X size={16} />} />
                 </div>
               </li>
             ))}
           </ol>
           {err("steps") && <div className={s.error}>{err("steps")}</div>}
           <Button variant="secondary" size="sm" onClick={addStep} icon={<Plus size={16} strokeWidth={2} />}>
-            Добавить шаг
+            {t("Добавить шаг")}
           </Button>
         </Card>
 
@@ -257,20 +258,20 @@ export function PracticeEditor({
           errors={err}
         >
           <Textarea
-            label="Почему это&nbsp;может помочь"
+            label={t("Почему это\u00a0может помочь")}
             value={f.mechanism}
             onChange={(e) => set("mechanism", e.target.value)}
             error={err("mechanism")}
             rows={4}
-            hint="Механизм простыми словами, со&nbsp;ссылками [1] на&nbsp;источники"
+            hint={t("Механизм простыми словами, со\u00a0ссылками [1] на\u00a0источники")}
           />
           <Textarea
-            label="Когда остановиться или&nbsp;пропустить"
+            label={t("Когда остановиться или\u00a0пропустить")}
             value={f.cautions}
             onChange={(e) => set("cautions", e.target.value)}
             error={err("cautions")}
             rows={4}
-            hint="Markdown-список предостережений"
+            hint={t("Markdown-список предостережений")}
           />
         </EvidenceFields>
       </div>
@@ -278,42 +279,42 @@ export function PracticeEditor({
       <aside className={s.side}>
         <Card as="section">
           <div className={s.status}>
-            <span>Статус</span>
-            {practice?.is_published ? <Badge tone="success">Опубликована</Badge> : <Badge>Черновик</Badge>}
-            {dirty && <Badge tone="warning">Есть изменения</Badge>}
+            <span>{t("Статус")}</span>
+            {practice?.is_published ? <Badge tone="success">{t("Опубликована")}</Badge> : <Badge>{t("Черновик")}</Badge>}
+            {dirty && <Badge tone="warning">{t("Есть изменения")}</Badge>}
           </div>
           <div className={s.actions}>
             {practice?.is_published ? (
               <>
                 <Button variant="primary" block loading={busy} onClick={() => save()} disabled={!dirty}>
-                  Сохранить
+                  {t("Сохранить")}
                 </Button>
                 <Button variant="secondary" block disabled={busy} onClick={() => save(false)}>
-                  Снять с&nbsp;публикации
+                  {t("Снять с\u00a0публикации")}
                 </Button>
                 <Button variant="ghost" block href={`/practices/${practice.slug}`} icon={<Eye size={18} strokeWidth={1.8} />}>
-                  Открыть на&nbsp;сайте
+                  {t("Открыть на\u00a0сайте")}
                 </Button>
               </>
             ) : (
               <>
                 <Button variant="primary" block loading={busy} onClick={() => save(true)}>
-                  Опубликовать
+                  {t("Опубликовать")}
                 </Button>
                 <Button variant="secondary" block disabled={busy} onClick={() => save(false)}>
-                  Сохранить черновик
+                  {t("Сохранить черновик")}
                 </Button>
               </>
             )}
           </div>
         </Card>
         <div className={s.cardPreview}>
-          <span className={s.sideLabel}>Так выглядит карточка</span>
+          <span className={s.sideLabel}>{t("Так выглядит карточка")}</span>
           <PracticeCard
             p={{
               id: 0,
               slug: f.slug || "preview",
-              title: f.title || "Название практики",
+              title: f.title || t("Название практики"),
               summary: f.summary,
               kind: f.kind,
               kind_label: PRACTICE_KINDS.find((k) => k.value === f.kind)?.label ?? "",
@@ -327,19 +328,19 @@ export function PracticeEditor({
           <div className={s.danger}>
             {confirmDelete ? (
               <>
-                <span>Удалить практику навсегда?</span>
+                <span>{t("Удалить практику навсегда?")}</span>
                 <div className={s.dangerBtns}>
                   <Button variant="danger" size="sm" loading={busy} onClick={remove}>
-                    Удалить
+                    {t("Удалить")}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>
-                    Отмена
+                    {t("Отмена")}
                   </Button>
                 </div>
               </>
             ) : (
               <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(true)} icon={<Trash2 size={16} strokeWidth={1.8} />}>
-                Удалить практику
+                {t("Удалить практику")}
               </Button>
             )}
           </div>

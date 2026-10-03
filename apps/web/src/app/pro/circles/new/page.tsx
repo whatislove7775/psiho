@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Card } from "@/ui";
@@ -12,7 +13,7 @@ export default function NewCirclePage() {
   const [saving, setSaving] = useState(false);
   return (
     <>
-      <PageHeader title="Новый круг" sub="Сначала сохраним черновик&nbsp;— отправить на&nbsp;проверку можно на&nbsp;следующем шаге." />
+      <PageHeader title={t("Новый круг")} sub={t("Сначала сохраним черновик\u00a0— отправить на\u00a0проверку можно на\u00a0следующем шаге.")} />
       <Card>
         <ProCircleForm
           saving={saving}

@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt, tj } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { EyeOff, Star } from "lucide-react";
 import { Button, Modal, Spinner, Textarea, useToast } from "@/ui";
@@ -58,11 +59,11 @@ export function ReviewModal({
     setBusy(true);
     try {
       const r = await reviewsApi.save(psychologistId, { rating, text: text.trim(), tags });
-      toast(state.review ? "Отзыв обновлён" : "Спасибо! Отзыв опубликован");
+      toast(state.review ? tt("Отзыв обновлён") : tt("Спасибо! Отзыв опубликован"));
       onSaved?.(r);
       onClose();
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "Не\u00a0получилось сохранить отзыв", { error: true });
+      toast(e instanceof ApiError ? e.message : tt("Не\u00a0получилось сохранить отзыв"), { error: true });
     } finally {
       setBusy(false);
     }
@@ -73,7 +74,7 @@ export function ReviewModal({
     setBusy(true);
     try {
       await reviewsApi.remove(state.review.id);
-      toast("Отзыв удалён");
+      toast(tt("Отзыв удалён"));
       onSaved?.(null);
       onClose();
     } catch (e) {
@@ -84,23 +85,23 @@ export function ReviewModal({
   };
 
   const shown = hover || rating;
-  const title = state.review ? "Ваш отзыв" : name ? `Отзыв о\u00a0специалисте: ${name}` : "Отзыв о\u00a0специалисте";
+  const title = state.review ? tt("Ваш отзыв") : name ? tt(`Отзыв о\u00a0специалисте: {name}`, { name }) : tt("Отзыв о\u00a0специалисте");
 
   return (
     <Modal open={open} onClose={() => !busy && onClose()} title={title} width={560}>
       {state.loading ? (
         <div style={{ display: "grid", placeItems: "center", minHeight: 160 }}>
-          <Spinner label="Проверяем" />
+          <Spinner label={tt("Проверяем")} />
         </div>
       ) : !state.can ? (
         <div className={s.form}>
           <p className={s.headNote}>
             {state.error ??
-              "Отзыв можно оставить после созвона, который состоялся. Если созвон только что\u00a0закончился, специалист отметит его проведённым, и\u00a0здесь появится форма."}
+              tt("Отзыв можно оставить после созвона, который состоялся. Если созвон только что\u00a0закончился, специалист отметит его проведённым, и\u00a0здесь появится форма.")}
           </p>
           <div className={s.actions}>
             <Button variant="primary" onClick={onClose}>
-              Понятно
+              {tt("Понятно")}
             </Button>
           </div>
         </div>
@@ -108,11 +109,11 @@ export function ReviewModal({
         <div className={s.form}>
           {state.review?.status === "hidden" && (
             <p className={s.status}>
-              Модератор скрыл этот отзыв{state.review.hidden_reason ? `: ${state.review.hidden_reason}` : ""}. Исправьте его&nbsp;— или&nbsp;напишите в&nbsp;поддержку.
+              {tj("Модератор скрыл этот отзыв{v}. Исправьте его\u00a0— или\u00a0напишите в\u00a0поддержку.", { v: state.review.hidden_reason ? `: ${state.review.hidden_reason}` : "" })}
             </p>
           )}
           <div className={s.pick}>
-            <div className={s.pickStars} role="radiogroup" aria-label="Оценка" onMouseLeave={() => setHover(0)}>
+            <div className={s.pickStars} role="radiogroup" aria-label={tt("Оценка")} onMouseLeave={() => setHover(0)}>
               {[1, 2, 3, 4, 5].map((n) => (
                 <button
                   key={n}
@@ -129,11 +130,11 @@ export function ReviewModal({
                 </button>
               ))}
             </div>
-            <div className={s.pickWord}>{shown ? RATING_WORD[shown] : "Насколько вам помогли созвоны?"}</div>
+            <div className={s.pickWord}>{shown ? RATING_WORD[shown] : tt("Насколько вам помогли созвоны?")}</div>
           </div>
 
           <div>
-            <div className={s.label}>Что&nbsp;запомнилось</div>
+            <div className={s.label}>{tt("Что\u00a0запомнилось")}</div>
             <div className={s.chips}>
               {REVIEW_TAGS.map((t) => {
                 const on = tags.includes(t.key);
@@ -153,34 +154,34 @@ export function ReviewModal({
           </div>
 
           <Textarea
-            label="Пара слов для&nbsp;других клиентов"
+            label={tt("Пара слов для\u00a0других клиентов")}
             rows={4}
             maxLength={2000}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Что&nbsp;изменилось после созвонов, каково было говорить со&nbsp;специалистом. Не&nbsp;пишите личных подробностей"
-            hint={`Необязательно. ${text.length} из\u00a02000`}
+            placeholder={tt("Что\u00a0изменилось после созвонов, каково было говорить со\u00a0специалистом. Не\u00a0пишите личных подробностей")}
+            hint={tt(`Необязательно. {length} из\u00a02000`, { length: text.length })}
           />
 
           <div className={s.anon}>
             <EyeOff size={18} aria-hidden />
             <span>
-              Отзыв анонимный. Вместо псевдонима будет написано «Клиент, {state.calls}{" "}
-              {plural(state.calls, "созвон", "созвона", "созвонов")}», дата&nbsp;— только месяц.
+              {tt("Отзыв анонимный. Вместо псевдонима будет написано «Клиент,")}{" "}{state.calls}{" "}
+              {plural(state.calls, "созвон", "созвона", "созвонов")}{tt("», дата\u00a0— только месяц.")}
             </span>
           </div>
 
           <div className={s.actions}>
             {state.review && (
               <Button variant="ghost" className={s.left} onClick={remove} disabled={busy}>
-                Удалить отзыв
+                {tt("Удалить отзыв")}
               </Button>
             )}
             <Button variant="ghost" onClick={onClose} disabled={busy}>
-              Отмена
+              {tt("Отмена")}
             </Button>
             <Button variant="primary" loading={busy} disabled={!rating} onClick={save}>
-              {state.review ? "Сохранить" : "Опубликовать"}
+              {state.review ? tt("Сохранить") : tt("Опубликовать")}
             </Button>
           </div>
         </div>

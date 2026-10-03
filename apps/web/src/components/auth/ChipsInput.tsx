@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import { useId, useRef, useState, type KeyboardEvent } from "react";
 import { Plus, X } from "lucide-react";
 import { Field } from "@/ui";
@@ -14,7 +15,7 @@ export function ChipsInput({
   onChange,
   suggestions = [],
   max = 8,
-  placeholder = "Добавьте тему и\u00a0нажмите Enter",
+  placeholder = tt("Добавьте тему и\u00a0нажмите Enter"),
 }: {
   label: string;
   hint?: string;
@@ -51,12 +52,12 @@ export function ChipsInput({
   const rest = suggestions.filter((t) => !has(t));
 
   return (
-    <Field label={label} hint={full ? `Можно выбрать до\u00a0${max} тем` : hint} error={error} htmlFor={id}>
+    <Field label={label} hint={full ? tt(`Можно выбрать до\u00a0{max} тем`, { max }) : hint} error={error} htmlFor={id}>
       <div className={s.chipsBox} onClick={() => inputRef.current?.focus()}>
         {value.map((t) => (
           <span key={t} className={s.chip}>
             {t}
-            <button type="button" onClick={() => remove(t)} aria-label={`Убрать тему «${t}»`}>
+            <button type="button" onClick={() => remove(t)} aria-label={tt(`Убрать тему «{t}»`, { t })}>
               <X size={14} strokeWidth={2} />
             </button>
           </span>
@@ -80,7 +81,7 @@ export function ChipsInput({
         />
       </div>
       {rest.length > 0 && !full && (
-        <div className={s.suggest} role="group" aria-label="Популярные темы">
+        <div className={s.suggest} role="group" aria-label={tt("Популярные темы")}>
           {rest.map((t) => (
             <button key={t} type="button" className={s.suggestBtn} onClick={() => add(t)}>
               <Plus size={14} strokeWidth={2} aria-hidden />

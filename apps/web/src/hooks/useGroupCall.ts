@@ -28,6 +28,7 @@
  * Peers are identified only by their per-circle handle (or "host" / "cohost") and pseudonym —
  * never by account ids. See docs/CIRCLES.md for limits and the SFU path.
  */
+import { t as tt } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getIceServers, tuneSdp } from "./useP2PCall";
 import { CAPTION_CHANNEL } from "@/lib/captions/protocol";
@@ -302,7 +303,7 @@ export function useGroupCall({ roomId, wsToken, isHost, audioTrack, videoTrack, 
       if (!p) {
         p = {
           id: info.id,
-          name: info.name ?? "Участник",
+          name: info.name ?? tt("Участник"),
           role: info.role ?? "member",
           tone: info.tone ?? "lilac",
           state: info.state ?? {},

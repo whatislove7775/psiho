@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 import { OG_SIZE, OG_TYPE, ogCard } from "@/lib/og/card";
 import { OG, OG_MAX_TITLE } from "@/lib/og/sections";
 import { isSlug, serverContent } from "@/lib/content/server";
@@ -11,11 +12,11 @@ export const revalidate = 300;
 export default async function Image({ params }: { params: { slug: string } }) {
   const a = isSlug(params.slug) ? await serverContent.article(params.slug).catch(() => null) : null;
   if (!a || a.title.length > OG_MAX_TITLE) return ogCard(OG.article);
-  const minutes = a.reading_minutes ? `${a.reading_minutes} мин чтения` : "";
+  const minutes = a.reading_minutes ? t(`{reading_minutes} мин чтения`, { reading_minutes: a.reading_minutes }) : "";
   return ogCard({
     ...OG.article,
-    kicker: a.topic_label ? `Статья · ${a.topic_label}` : OG.article.kicker,
+    kicker: a.topic_label ? t(`Статья · {topic_label}`, { topic_label: a.topic_label }) : OG.article.kicker,
     title: a.title,
-    subtitle: [minutes, "со\u00a0ссылками на\u00a0исследования"].filter(Boolean).join(", "),
+    subtitle: [minutes, t("со\u00a0ссылками на\u00a0исследования")].filter(Boolean).join(", "),
   });
 }

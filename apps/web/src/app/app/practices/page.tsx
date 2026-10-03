@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { Card } from "@/ui";
 import { PageHeader } from "@/components/shell/AppShell";
 import { contentApi, PRACTICE_KINDS } from "@/lib/api/content";
@@ -20,7 +21,7 @@ export default function PracticesPage() {
   return (
     <>
       <PageHeader
-        title="Полезное"
+        title={t("Полезное")}
       />
       <UsefulTabs />
       {practices.error ? (

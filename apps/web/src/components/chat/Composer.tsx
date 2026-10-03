@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { Check, Mic, Paperclip, Pencil, Send, ShieldAlert, Square, Trash2, X } from "lucide-react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { describeContacts, findContacts, type ContactHit } from "@/lib/chat/contacts";
@@ -13,9 +14,9 @@ import { VoiceTextToggle } from "@/components/captions/VoiceTranscript";
 import s from "./chat.module.css";
 
 const MASKS: { value: VoicePreset; label: string }[] = [
-  { value: "off", label: "Без\u00a0маски" },
-  { value: "lower", label: "Ниже" },
-  { value: "higher", label: "Выше" },
+  { value: "off", get label() { return t("Без\u00a0маски"); } },
+  { value: "lower", get label() { return t("Ниже"); } },
+  { value: "higher", get label() { return t("Выше"); } },
 ];
 
 export const FILE_ACCEPT = ".pdf,.doc,.docx,.xls,.xlsx,.pptx,.odt,.rtf,.txt,.png,.jpg,.jpeg,.webp,.gif,.mp3";
@@ -32,7 +33,7 @@ export function Composer({
   blockedMessage,
   onBlockedClear,
   disabled,
-  placeholder = "Сообщение",
+  placeholder = t("Сообщение"),
   editing,
   onCancelEdit,
   busy,
@@ -116,13 +117,13 @@ export function Composer({
           {rec.phase === "error" ? (
             <div className={s.recRow}>
               <span className={s.recError}>{rec.error}</span>
-              <button type="button" className={s.iconBtn} onClick={rec.reset} aria-label="Закрыть">
+              <button type="button" className={s.iconBtn} onClick={rec.reset} aria-label={t("Закрыть")}>
                 <X size={20} />
               </button>
             </div>
           ) : rec.phase === "review" && rec.clip ? (
             <div className={s.recRow}>
-              <button type="button" className={s.iconBtn} onClick={rec.reset} aria-label="Удалить запись">
+              <button type="button" className={s.iconBtn} onClick={rec.reset} aria-label={t("Удалить запись")}>
                 <Trash2 size={20} />
               </button>
               <div className={s.recPreview}>
@@ -133,7 +134,7 @@ export function Composer({
                 className={s.sendBtn}
                 onClick={sendClip}
                 disabled={sendingVoice}
-                aria-label="Отправить голосовое"
+                aria-label={t("Отправить голосовое")}
               >
                 {sendingVoice ? <span className={s.miniSpin} /> : <Send size={20} />}
               </button>
@@ -141,16 +142,16 @@ export function Composer({
           ) : (
             <>
               <div className={s.recMask}>
-                <span className={s.recMaskLabel}>Маска голоса</span>
+                <span className={s.recMaskLabel}>{t("Маска голоса")}</span>
                 {rec.phase === "recording" ? (
                   <span className={s.recMaskValue}>{MASKS.find((m) => m.value === rec.preset)?.label}</span>
                 ) : (
-                  <Segmented value={rec.preset} onChange={rec.setPreset} options={MASKS} ariaLabel="Маска голоса" />
+                  <Segmented value={rec.preset} onChange={rec.setPreset} options={MASKS} ariaLabel={t("Маска голоса")} />
                 )}
                 {rec.withText !== null && rec.phase !== "recording" && <VoiceTextToggle on={rec.withText} onChange={rec.setWithText} />}
               </div>
               <div className={s.recRow}>
-                <button type="button" className={s.iconBtn} onClick={rec.reset} aria-label="Отменить запись">
+                <button type="button" className={s.iconBtn} onClick={rec.reset} aria-label={t("Отменить запись")}>
                   <Trash2 size={20} />
                 </button>
                 <div className={s.recLive}>
@@ -168,15 +169,15 @@ export function Composer({
                   ) : (
                     <span className={s.recHint}>
                       {rec.phase === "opening"
-                        ? "Включаем микрофон…"
+                        ? t("Включаем микрофон…")
                         : rec.preset === "off"
-                          ? "Голос будет записан как\u00a0есть"
-                          : "Голос изменится ещё на\u00a0вашем устройстве\u00a0— оригинал никуда не\u00a0уходит"}
+                          ? t("Голос будет записан как\u00a0есть")
+                          : t("Голос изменится ещё на\u00a0вашем устройстве\u00a0— оригинал никуда не\u00a0уходит")}
                     </span>
                   )}
                 </div>
                 {rec.phase === "recording" ? (
-                  <button type="button" className={s.stopBtn} onClick={rec.stop} aria-label="Остановить запись">
+                  <button type="button" className={s.stopBtn} onClick={rec.stop} aria-label={t("Остановить запись")}>
                     <Square size={16} fill="currentColor" />
                   </button>
                 ) : (
@@ -185,7 +186,7 @@ export function Composer({
                     className={s.recBtn}
                     onClick={rec.start}
                     disabled={rec.phase !== "ready" || !rec.ready}
-                    aria-label="Начать запись"
+                    aria-label={t("Начать запись")}
                   >
                     <Mic size={20} />
                   </button>
@@ -200,7 +201,7 @@ export function Composer({
 
   const hasText = text.trim().length > 0;
   const blockText = blocked
-    ? `До\u00a0первого созвона нельзя делиться контактами\u00a0— уберите ${describeContacts(hits)}.`
+    ? t(`До\u00a0первого созвона нельзя делиться контактами\u00a0— уберите {describeContacts}.`, { describeContacts: describeContacts(hits) })
     : blockedMessage;
   return (
     <div className={s.composer}>
@@ -216,7 +217,7 @@ export function Composer({
       {editing && (
         <div className={s.editBar}>
           <Pencil size={16} />
-          <span>Редактирование сообщения</span>
+          <span>{t("Редактирование сообщения")}</span>
           <button
             type="button"
             className={s.iconBtnSm}
@@ -224,7 +225,7 @@ export function Composer({
               onCancelEdit?.();
               setText("");
             }}
-            aria-label="Отменить редактирование"
+            aria-label={t("Отменить редактирование")}
           >
             <X size={16} />
           </button>
@@ -237,7 +238,7 @@ export function Composer({
               type="button"
               className={`${s.iconBtn} ${s.attachOff}`}
               aria-disabled="true"
-              aria-label={`Прикрепить файл: ${filesHint}`}
+              aria-label={t(`Прикрепить файл: {filesHint}`, { filesHint })}
               onClick={() => {
                 setTipOpen(true);
                 window.setTimeout(() => setTipOpen(false), 2600);
@@ -257,7 +258,7 @@ export function Composer({
               type="button"
               className={s.iconBtn}
               onClick={() => fileInput.current?.click()}
-              aria-label="Прикрепить файл"
+              aria-label={t("Прикрепить файл")}
               disabled={disabled}
             >
               <Paperclip size={20} />
@@ -291,7 +292,7 @@ export function Composer({
             onTyping?.();
           }}
           onKeyDown={onKey}
-          aria-label="Текст сообщения"
+          aria-label={t("Текст сообщения")}
         />
         {editing || !allowVoice ? (
           <button
@@ -299,7 +300,7 @@ export function Composer({
             className={s.sendBtn}
             onClick={submit}
             disabled={!hasText || disabled || busy || blocked}
-            aria-label={editing ? "Сохранить" : "Отправить"}
+            aria-label={editing ? t("Сохранить") : t("Отправить")}
           >
             {busy ? <span className={s.miniSpin} /> : editing ? <Check size={20} /> : <Send size={20} />}
           </button>
@@ -311,7 +312,7 @@ export function Composer({
             data-mode={hasText ? "send" : "mic"}
             onClick={hasText ? submit : rec.open}
             disabled={hasText ? disabled || busy || blocked : disabled}
-            aria-label={hasText ? "Отправить" : "Записать голосовое"}
+            aria-label={hasText ? t("Отправить") : t("Записать голосовое")}
           >
             {busy ? <span className={s.miniSpin} /> : <Morph icon={hasText ? MI.Send : MI.Mic} size={20} />}
           </button>

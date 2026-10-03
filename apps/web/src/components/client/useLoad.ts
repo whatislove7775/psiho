@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/api/client";
 
@@ -45,5 +46,5 @@ export function useLoad<T>(
 
 export function errorText(e: unknown): string {
   if (e instanceof ApiError) return e.message;
-  return "Не\u00a0получилось загрузить данные. Проверьте интернет и\u00a0попробуйте ещё раз.";
+  return tt("Не\u00a0получилось загрузить данные. Проверьте интернет и\u00a0попробуйте ещё раз.");
 }

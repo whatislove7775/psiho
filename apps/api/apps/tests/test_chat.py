@@ -331,7 +331,7 @@ def test_ws_receives_new_message(client_user, psychologist):
 # ── ИИ-помощник ───────────────────────────────────────────────────────────────
 
 def _fake_stream(*chunks):
-    async def gen(history):
+    async def gen(history, prompt=None):
         gen.history = history
         for ch in chunks:
             yield ch
@@ -400,7 +400,7 @@ def test_ai_provider_error_refunds(client_user, settings):
     c = auth_client(client_user)
     c.post("/api/v1/chat/ai/consent/")
 
-    async def boom(history):
+    async def boom(history, prompt=None):
         raise RuntimeError("down")
         yield  # pragma: no cover
 
@@ -409,7 +409,7 @@ def test_ai_provider_error_refunds(client_user, settings):
     assert events[-1]["type"] == "error"
     assert AIDailyUsage.objects.get(user=client_user).count == 0
 
-    async def refuse(history):
+    async def refuse(history, prompt=None):
         yield "частично"
         raise ai.AIRefusal()
 

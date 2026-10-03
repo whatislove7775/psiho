@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useEffect } from "react";
 import { SleepingMoon } from "@/components/illustrations";
 import { Button } from "@/ui";
@@ -16,14 +17,14 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
       <main className={s.main}>
         <div className={s.card}>
           <SleepingMoon className={s.art} />
-          <h1 className={s.title}>Что-то пошло не&nbsp;так</h1>
-          <p className={s.text}>Страница не&nbsp;загрузилась. Попробуйте ещё раз: чаще всего помогает. Ваши данные в&nbsp;безопасности.</p>
+          <h1 className={s.title}>{t("Что-то пошло не\u00a0так")}</h1>
+          <p className={s.text}>{t("Страница не\u00a0загрузилась. Попробуйте ещё раз: чаще всего помогает. Ваши данные в\u00a0безопасности.")}</p>
           <div className={s.actions}>
             <Button variant="primary" onClick={reset}>
-              Попробовать снова
+              {t("Попробовать снова")}
             </Button>
             <Button href="/" variant="secondary">
-              На&nbsp;главную
+              {t("На\u00a0главную")}
             </Button>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Clock } from "lucide-react";
@@ -11,7 +12,7 @@ import { PublicShell } from "@/components/public/PublicShell";
 import { StartCta } from "@/components/public/StartCta";
 import type { Practice } from "@/lib/api/content";
 import { isSlug, serverContent } from "@/lib/content/server";
-import { abs, alternates, ORG_ID, WEBSITE_ID } from "@/lib/seo";
+import { abs, alternates, ORG_ID, WEBSITE_ID, contentAlternates, contentLanguageTag } from "@/lib/seo";
 import art from "@/components/content/art.module.css";
 import c from "@/components/content/content.module.css";
 import s from "@/components/public/public.module.css";
@@ -28,12 +29,12 @@ async function load(slug: string): Promise<Practice | null> {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const p = await load(params.slug);
-  if (!p) return { title: "Практика не\u00a0найдена", robots: { index: false } };
+  if (!p) return { title: t("Практика не\u00a0найдена"), robots: { index: false } };
   const path = `/practices/${p.slug}`;
   return {
-    title: `${p.title}: практика на\u00a0${p.duration_minutes} мин`,
+    title: t(`{title}: практика на\u00a0{duration_minutes} мин`, { title: p.title, duration_minutes: p.duration_minutes }),
     description: p.summary,
-    alternates: alternates(path),
+    alternates: contentAlternates(path, p.language),
     openGraph: { type: "article", url: path, title: p.title, description: p.summary },
   };
 }
@@ -41,11 +42,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 function patternText(p: Practice): string | null {
   const b = p.pattern;
   if (!b) return null;
-  const parts = [`вдох ${b.inhale} с`];
-  if (b.hold) parts.push(`пауза ${b.hold} с`);
-  parts.push(`выдох ${b.exhale} с`);
-  if (b.hold_after) parts.push(`пауза ${b.hold_after} с`);
-  return `Ритм: ${parts.join(", ")}; ${b.cycles} циклов.`;
+  const parts = [t(`вдох {inhale} с`, { inhale: b.inhale })];
+  if (b.hold) parts.push(t(`пауза {hold} с`, { hold: b.hold }));
+  parts.push(t(`выдох {exhale} с`, { exhale: b.exhale }));
+  if (b.hold_after) parts.push(t(`пауза {hold_after} с`, { hold_after: b.hold_after }));
+  return t(`Ритм: {v}; {cycles} циклов.`, { v: parts.join(", "), cycles: b.cycles });
 }
 
 export default async function PracticePage({ params }: Props) {
@@ -63,7 +64,7 @@ export default async function PracticePage({ params }: Props) {
     "@id": `${abs(path)}#howto`,
     name: p.title,
     description: p.summary,
-    inLanguage: "ru-RU",
+    inLanguage: contentLanguageTag(p.language),
     url: abs(path),
     totalTime: `PT${p.duration_minutes}M`,
     publisher: { "@id": ORG_ID },
@@ -71,7 +72,7 @@ export default async function PracticePage({ params }: Props) {
     step: p.steps.map((st, i) => ({
       "@type": "HowToStep",
       position: i + 1,
-      name: st.title || `Шаг ${i + 1}`,
+      name: st.title || t(`Шаг {v}`, { v: i + 1 }),
       text: st.text,
       url: `${abs(path)}#step-${i + 1}`,
       ...(st.seconds ? { timeRequired: `PT${st.seconds}S` } : {}),
@@ -85,15 +86,15 @@ export default async function PracticePage({ params }: Props) {
     <PublicShell>
       <Breadcrumbs
         items={[
-          { name: "Главная", href: "/" },
-          { name: "Практики", href: "/practices" },
+          { name: t("Главная"), href: "/" },
+          { name: t("Практики"), href: "/practices" },
           { name: p.title, href: path },
         ]}
       />
       <JsonLd data={howTo} />
 
       <div className={s.detail}>
-        <article className={s.doc}>
+        <article className={s.doc} lang={p.language || "ru"}>
           <header className={s.head}>
             <div className={s.meta}>
               <span
@@ -107,7 +108,7 @@ export default async function PracticePage({ params }: Props) {
               <span>{p.kind_label}</span>
               <span>
                 <Clock size={14} strokeWidth={1.8} aria-hidden />
-                {p.duration_minutes} мин
+                {p.duration_minutes}{" "}{t("мин")}
               </span>
               <EvidenceBadge level={p.evidence_level} />
             </div>
@@ -121,7 +122,7 @@ export default async function PracticePage({ params }: Props) {
 
           {p.steps.length > 0 && (
             <section className={s.steps} aria-labelledby="steps-title">
-              <h2 id="steps-title">Как&nbsp;выполнять</h2>
+              <h2 id="steps-title">{t("Как\u00a0выполнять")}</h2>
               {rhythm && <p className={s.disclaimer} style={{ marginTop: 0, marginBottom: 12 }}>{rhythm}</p>}
               <ol>
                 {p.steps.map((st, i) => (
@@ -139,11 +140,11 @@ export default async function PracticePage({ params }: Props) {
           <Sources sources={p.sources} level={p.evidence_level} reviewedAt={p.reviewed_at} />
         </article>
 
-        <aside className={s.aside} aria-label="Другие практики">
+        <aside className={s.aside} aria-label={t("Другие практики")}>
           <StartCta compact />
           {others.length > 0 && (
             <section>
-              <h2 className={s.asideTitle}>Другие практики</h2>
+              <h2 className={s.asideTitle}>{t("Другие практики")}</h2>
               <ul className={s.asideList}>
                 {others.map((o) => (
                   <li key={o.id}>

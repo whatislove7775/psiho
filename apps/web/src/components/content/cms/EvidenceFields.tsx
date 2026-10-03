@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { Plus, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button, Card, CardHead, Input } from "@/ui";
@@ -9,7 +10,7 @@ import s from "./cms.module.css";
 import e from "./evidenceFields.module.css";
 
 const LEVEL_OPTIONS = [
-  { value: "", label: "Не\u00a0указан" },
+  { value: "", get label() { return t("Не\u00a0указан"); } },
   ...EVIDENCE_LEVELS.map((l) => ({ value: l.value, label: l.label })),
 ];
 
@@ -28,8 +29,8 @@ export function EvidenceFields({
   onFacts,
   errors,
   children,
-  title = "Доказательность",
-  sub = "Ссылайтесь в\u00a0тексте на\u00a0источники как\u00a0[1] или\u00a0[1, 2]. Добавляйте только то, что\u00a0вы\u00a0открыли и\u00a0проверили: название, авторы и\u00a0год должны совпадать с\u00a0записью по\u00a0ссылке.",
+  title = t("Доказательность"),
+  sub = t("Ссылайтесь в\u00a0тексте на\u00a0источники как\u00a0[1] или\u00a0[1, 2]. Добавляйте только то, что\u00a0вы\u00a0открыли и\u00a0проверили: название, авторы и\u00a0год должны совпадать с\u00a0записью по\u00a0ссылке."),
 }: {
   /** Without onLevel the evidence level select is hidden (specialist editor: sources only). */
   level?: EvidenceLevel;
@@ -55,7 +56,7 @@ export function EvidenceFields({
       <div className={e.stack}>
         {onLevel && (
           <Select
-            label="Сила доказательств"
+            label={t("Сила доказательств")}
             value={level ?? ""}
             onChange={(v) => onLevel(v as EvidenceLevel)}
             options={LEVEL_OPTIONS}
@@ -66,17 +67,17 @@ export function EvidenceFields({
 
         {facts && onFacts && (
           <fieldset className={e.group}>
-            <legend>Главное из&nbsp;исследований</legend>
+            <legend>{t("Главное из\u00a0исследований")}</legend>
             {facts.map((f, i) => (
               <div key={i} className={e.factRow}>
                 <Input
-                  label={`Факт ${i + 1}`}
+                  label={t(`Факт {v}`, { v: i + 1 })}
                   value={f.text}
                   onChange={(ev) => setFact(i, { text: ev.target.value })}
                   maxLength={600}
                 />
                 <Input
-                  label="Источники"
+                  label={t("Источники")}
                   value={f.refs.join(", ")}
                   inputMode="numeric"
                   placeholder="1, 2"
@@ -92,7 +93,7 @@ export function EvidenceFields({
                 <button
                   type="button"
                   className={s.tool}
-                  aria-label={`Удалить факт ${i + 1}`}
+                  aria-label={t(`Удалить факт {v}`, { v: i + 1 })}
                   onClick={() => onFacts(facts.filter((_, j) => j !== i))}
                 >
                   <Trash2 size={16} strokeWidth={1.8} />
@@ -107,13 +108,13 @@ export function EvidenceFields({
               onClick={() => onFacts([...facts, { text: "", refs: [] }])}
               disabled={facts.length >= 12}
             >
-              Добавить факт
+              {t("Добавить факт")}
             </Button>
           </fieldset>
         )}
 
         <fieldset className={e.group}>
-          <legend>Источники</legend>
+          <legend>{t("Источники")}</legend>
           {sources.map((src, i) => (
             <div key={i} className={e.source}>
               <div className={e.sourceTop}>
@@ -121,30 +122,30 @@ export function EvidenceFields({
                 <button
                   type="button"
                   className={s.tool}
-                  aria-label={`Удалить источник ${i + 1}`}
+                  aria-label={t(`Удалить источник {v}`, { v: i + 1 })}
                   onClick={() => onSources(sources.filter((_, j) => j !== i))}
                 >
                   <Trash2 size={16} strokeWidth={1.8} />
                 </button>
               </div>
-              <Input label="Название" value={src.title} onChange={(ev) => setSource(i, { title: ev.target.value })} />
+              <Input label={t("Название")} value={src.title} onChange={(ev) => setSource(i, { title: ev.target.value })} />
               <Input
-                label="Ссылка"
+                label={t("Ссылка")}
                 type="url"
                 value={src.url}
                 placeholder="https://pubmed.ncbi.nlm.nih.gov/…"
                 onChange={(ev) => setSource(i, { url: ev.target.value })}
               />
               <div className={e.sourceGrid}>
-                <Input label="Авторы" value={src.authors ?? ""} onChange={(ev) => setSource(i, { authors: ev.target.value })} />
+                <Input label={t("Авторы")} value={src.authors ?? ""} onChange={(ev) => setSource(i, { authors: ev.target.value })} />
                 <Input
-                  label="Год"
+                  label={t("Год")}
                   inputMode="numeric"
                   value={src.year ? String(src.year) : ""}
                   onChange={(ev) => setSource(i, { year: parseInt(ev.target.value, 10) || undefined })}
                 />
                 <Input
-                  label="Журнал или&nbsp;организация"
+                  label={t("Журнал или\u00a0организация")}
                   value={src.publisher ?? ""}
                   onChange={(ev) => setSource(i, { publisher: ev.target.value })}
                 />
@@ -160,7 +161,7 @@ export function EvidenceFields({
             onClick={() => onSources([...sources, { ...EMPTY_SOURCE }])}
             disabled={sources.length >= 30}
           >
-            Добавить источник
+            {t("Добавить источник")}
           </Button>
         </fieldset>
       </div>

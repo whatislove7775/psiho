@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt, intlLocale } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarRange, Plus, Trash2 } from "lucide-react";
 import { Button, Card, CardHead, Input, Segmented, Skeleton, useToast } from "@/ui";
@@ -76,11 +77,11 @@ const keyOf = (d: Draft) =>
 
 const QUICK: { label: string; make: () => DayPlan[] }[] = [
   {
-    label: "Будни 10–19",
+    get label() { return tt("Будни 10–19"); },
     make: () => Array.from({ length: 7 }, (_, i) => ({ on: i < 5, ranges: i < 5 ? [{ from: "10:00", to: "19:00" }] : [] })),
   },
   {
-    label: "Будни 10–14\u00a0и\u00a016–20",
+    get label() { return tt("Будни 10–14\u00a0и\u00a016–20"); },
     make: () =>
       Array.from({ length: 7 }, (_, i) => ({
         on: i < 5,
@@ -88,20 +89,20 @@ const QUICK: { label: string; make: () => DayPlan[] }[] = [
       })),
   },
   {
-    label: "Вечера 18–22",
+    get label() { return tt("Вечера 18–22"); },
     make: () => Array.from({ length: 7 }, (_, i) => ({ on: i < 5, ranges: i < 5 ? [{ from: "18:00", to: "22:00" }] : [] })),
   },
 ];
 
 const fmtDate = (iso: string) => {
   const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
+  return new Date(y, m - 1, d).toLocaleDateString(intlLocale(), { day: "numeric", month: "long" });
 };
 function templateLabel(t: TemplateDraft): string {
-  if (!t.valid_from && !t.valid_until) return "Постоянное";
+  if (!t.valid_from && !t.valid_until) return tt("Постоянное");
   if (t.valid_from && t.valid_until) return `${fmtDate(t.valid_from)} – ${fmtDate(t.valid_until)}`;
-  if (t.valid_from) return `С\u00a0${fmtDate(t.valid_from)}`;
-  return `До\u00a0${fmtDate(t.valid_until!)}`;
+  if (t.valid_from) return tt(`С\u00a0{fmtDate}`, { fmtDate: fmtDate(t.valid_from) });
+  return tt(`До\u00a0{fmtDate}`, { fmtDate: fmtDate(t.valid_until!) });
 }
 function nextMonday(): string {
   const d = new Date();
@@ -134,7 +135,7 @@ export default function SchedulePage() {
     availabilityApi
       .get()
       .then(apply)
-      .catch((e) => setError(`${(e as Error).message} Обновите страницу, чтобы загрузить расписание.`));
+      .catch((e) => setError(tt(`{message} Обновите страницу, чтобы загрузить расписание.`, { message: (e as Error).message })));
   }, []);
   useEffect(load, [load]);
 
@@ -162,13 +163,13 @@ export default function SchedulePage() {
   );
   const periodError =
     template && template.valid_from && template.valid_until && template.valid_until < template.valid_from
-      ? "Дата окончания раньше даты начала"
+      ? tt("Дата окончания раньше даты начала")
       : null;
   const priceError =
-    draft && (draft.rules.hourly_rate_rub < 500 || draft.rules.hourly_rate_rub > 200000) ? "От\u00a0500\u00a0до\u00a0200\u00a0000\u00a0₽ за\u00a0час" : null;
+    draft && (draft.rules.hourly_rate_rub < 500 || draft.rules.hourly_rate_rub > 200000) ? tt("От\u00a0500\u00a0до\u00a0200\u00a0000\u00a0₽ за\u00a0час") : null;
   const introMax = server?.intro_max_price_rub ?? 3000;
   const introError =
-    draft && draft.rules.intro_enabled && draft.rules.intro_price_rub > introMax ? `Не\u00a0больше ${introMax} ₽` : null;
+    draft && draft.rules.intro_enabled && draft.rules.intro_price_rub > introMax ? tt(`Не\u00a0больше {introMax} ₽`, { introMax }) : null;
   const hasErrors =
     allErrors ||
     !!priceError ||
@@ -210,9 +211,9 @@ export default function SchedulePage() {
       });
       apply(res);
       setReloadKey((k) => k + 1);
-      toast("Расписание сохранено");
+      toast(tt("Расписание сохранено"));
     } catch (e) {
-      toast(`${(e as Error).message} Изменения не\u00a0потеряны, попробуйте сохранить ещё раз.`, { error: true });
+      toast(tt(`{message} Изменения не\u00a0потеряны, попробуйте сохранить ещё раз.`, { message: (e as Error).message }), { error: true });
     } finally {
       setSaving(false);
     }
@@ -228,14 +229,14 @@ export default function SchedulePage() {
       disabled={!dirty || hasErrors}
       onClick={save}
     >
-      Сохранить расписание
+      {tt("Сохранить расписание")}
     </Button>
   );
 
   return (
     <>
       <PageHeader
-        title="Расписание"
+        title={tt("Расписание")}
         action={dirty || saving ? saveButton("primary", false, c.headSave) : undefined}
       />
       <WithRail
@@ -253,13 +254,13 @@ export default function SchedulePage() {
         {error && <LoadError text={error} onRetry={load} />}
         <div className={c.tabs}>
           <Segmented<Tab>
-            ariaLabel="Раздел расписания"
+            ariaLabel={tt("Раздел расписания")}
             value={tab}
             onChange={setTab}
             options={[
-              { value: "week", label: "Неделя" },
-              { value: "days", label: "Календарь" },
-              { value: "rules", label: "Тарифы" },
+              { value: "week", label: tt("Неделя") },
+              { value: "days", label: tt("Календарь") },
+              { value: "rules", label: tt("Тарифы") },
             ]}
           />
         </div>
@@ -267,8 +268,8 @@ export default function SchedulePage() {
         {tab === "week" && (
           <Card as="section">
             <CardHead
-              title="Недельное расписание"
-              sub="Повторяется каждую неделю. Уже оплаченные созвоны остаются в&nbsp;силе"
+              title={tt("Недельное расписание")}
+              sub={tt("Повторяется каждую неделю. Уже оплаченные созвоны остаются в\u00a0силе")}
             />
             {!draft || !week || !template ? (
               <div className={c.days}>
@@ -278,7 +279,7 @@ export default function SchedulePage() {
               </div>
             ) : (
               <>
-                <div className={c.periods} role="group" aria-label="Расписания по&nbsp;периодам">
+                <div className={c.periods} role="group" aria-label={tt("Расписания по\u00a0периодам")}>
                   {draft.templates.map((t, i) => (
                     <button
                       key={i}
@@ -303,7 +304,7 @@ export default function SchedulePage() {
                       }}
                     >
                       <Plus size={15} aria-hidden />
-                      Расписание на&nbsp;период
+                      {tt("Расписание на\u00a0период")}
                     </button>
                   )}
                 </div>
@@ -312,19 +313,19 @@ export default function SchedulePage() {
                   <div className={c.periodEdit}>
                     <Input
                       type="date"
-                      label="Действует с"
+                      label={tt("Действует с")}
                       value={template.valid_from ?? ""}
                       onChange={(e) => edit((d) => (d.templates[active].valid_from = e.target.value || null))}
-                      hint="Пусто&nbsp;— без&nbsp;начала"
+                      hint={tt("Пусто\u00a0— без\u00a0начала")}
                     />
                     <Input
                       type="date"
-                      label="По"
+                      label={tt("По")}
                       value={template.valid_until ?? ""}
                       min={template.valid_from ?? undefined}
                       onChange={(e) => edit((d) => (d.templates[active].valid_until = e.target.value || null))}
                       error={periodError ?? undefined}
-                      hint="Пусто&nbsp;— бессрочно"
+                      hint={tt("Пусто\u00a0— бессрочно")}
                     />
                     {draft.templates.length > 1 && (
                       <Button
@@ -335,25 +336,24 @@ export default function SchedulePage() {
                           setActive(0);
                         }}
                       >
-                        Удалить
+                        {tt("Удалить")}
                       </Button>
                     )}
                     <p className={c.periodNote}>
-                      Если периоды пересекаются, действует расписание, которое начинается позже. Так летнее расписание с&nbsp;1&nbsp;июня
-                      временно заменит постоянное
+                      {tt("Если периоды пересекаются, действует расписание, которое начинается позже. Так летнее расписание с\u00a01\u00a0июня временно заменит постоянное")}
                     </p>
                   </div>
                 )}
 
                 <div className={c.templates}>
-                  <span className={c.templatesLabel}>Заполнить по&nbsp;шаблону</span>
+                  <span className={c.templatesLabel}>{tt("Заполнить по\u00a0шаблону")}</span>
                   {QUICK.map((t) => (
                     <Button key={t.label} size="sm" variant="secondary" onClick={() => setWeek(t.make())}>
                       {t.label}
                     </Button>
                   ))}
                   <Button size="sm" variant="ghost" onClick={() => setWeek(emptyWeek())}>
-                    Очистить
+                    {tt("Очистить")}
                   </Button>
                 </div>
 
@@ -370,7 +370,7 @@ export default function SchedulePage() {
                         <div className={c.dayHead}>
                           <Switch
                             checked={d.on}
-                            label={`${WEEKDAYS[i]}: ${d.on ? "рабочий день" : "выходной"}`}
+                            label={`${WEEKDAYS[i]}: ${d.on ? tt("рабочий день") : tt("выходной")}`}
                             onChange={(on) =>
                               updateDay(i, (x) => {
                                 x.on = on;
@@ -383,8 +383,8 @@ export default function SchedulePage() {
                             <span className={c.short}>{WEEKDAYS_SHORT[i]}</span>
                             <span className={c.daySlots}>
                               {d.on
-                                ? `${hoursLabel(mins)}, до\u00a0${n} ${plural(n, "созвона", "созвонов", "созвонов")}`
-                                : "Выходной"}
+                                ? tt(`{hoursLabel}, до\u00a0{n} {plural}`, { hoursLabel: hoursLabel(mins), n, plural: plural(n, "созвона", "созвонов", "созвонов") })
+                                : tt("Выходной")}
                             </span>
                           </div>
                         </div>
@@ -434,8 +434,8 @@ export default function SchedulePage() {
           ))}
       </WithRail>
       {(dirty || saving) && (
-        <div className={c.sticky} role="region" aria-label="Несохранённые изменения">
-          <span>{hasErrors ? "Есть ошибки" : "Не\u00a0сохранено"}</span>
+        <div className={c.sticky} role="region" aria-label={tt("Несохранённые изменения")}>
+          <span>{hasErrors ? tt("Есть ошибки") : tt("Не\u00a0сохранено")}</span>
           {saveButton("primary")}
         </div>
       )}
@@ -475,16 +475,14 @@ function WeekRail({
   const r = draft.rules;
   const offered = r.durations.filter((d) => d >= r.min_duration && d <= r.max_duration);
   return (
-    <section className={s.accent} aria-label="Итог недели">
-      <div className={s.accentKicker}>Часов приёма в&nbsp;неделю</div>
+    <section className={s.accent} aria-label={tt("Итог недели")}>
+      <div className={s.accentKicker}>{tt("Часов приёма в\u00a0неделю")}</div>
       <div>
         <div className={s.accentBig}>{hoursLabel(minutes).split(" ")[0]}</div>
         <div className={s.accentText} style={{ marginTop: 6 }}>
           {minutes
-            ? `До\u00a0${sessions} ${plural(sessions, "созвона", "созвонов", "созвонов")} по\u00a0${durationLabel(minDuration)}${
-                r.buffer_minutes ? ` с\u00a0перерывом ${r.buffer_minutes} мин` : ""
-              }, если всё займут`
-            : "Клиенты не\u00a0смогут записаться, пока в\u00a0неделе нет ни\u00a0одного рабочего часа"}
+            ? tt(`До\u00a0{sessions} {plural} по\u00a0{durationLabel}{v}, если всё займут`, { sessions, plural: plural(sessions, "созвона", "созвонов", "созвонов"), durationLabel: durationLabel(minDuration), v: r.buffer_minutes ? tt(` с\u00a0перерывом {buffer_minutes} мин`, { buffer_minutes: r.buffer_minutes }) : "" })
+            : tt("Клиенты не\u00a0смогут записаться, пока в\u00a0неделе нет ни\u00a0одного рабочего часа")}
         </div>
       </div>
       {!minutes && <CalendarSparkle className={illSize.sm} />}
@@ -514,7 +512,7 @@ function WeekRail({
       </div>
       <ul className={s.accentList}>
         <li className={s.accentRow}>
-          <span>Длительность</span>
+          <span>{tt("Длительность")}</span>
           <span>
             {offered.length > 1
               ? `${durationLabel(offered[0])} – ${durationLabel(offered[offered.length - 1])}`
@@ -522,18 +520,18 @@ function WeekRail({
           </span>
         </li>
         <li className={s.accentRow}>
-          <span>Час работы</span>
-          <span>{new Intl.NumberFormat("ru-RU").format(r.hourly_rate_rub || 0)} ₽</span>
+          <span>{tt("Час работы")}</span>
+          <span>{new Intl.NumberFormat(intlLocale()).format(r.hourly_rate_rub || 0)} ₽</span>
         </li>
         <li className={s.accentRow}>
-          <span>Время</span>
+          <span>{tt("Время")}</span>
           <span>
             {zoneName(r.time_zone)}, {utcOffset(r.time_zone)}
           </span>
         </li>
       </ul>
       <div className={c.saveState} data-dirty={dirty || undefined}>
-        {hasErrors ? "Исправьте ошибки, чтобы сохранить" : dirty ? "Есть несохранённые изменения" : "Все изменения сохранены"}
+        {hasErrors ? tt("Исправьте ошибки, чтобы сохранить") : dirty ? tt("Есть несохранённые изменения") : tt("Все изменения сохранены")}
       </div>
       {(dirty || hasErrors) && save}
     </section>

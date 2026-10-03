@@ -61,7 +61,7 @@ class PsychologistPublicSerializer(serializers.ModelSerializer):
             "id", "display_name", "bio", "approach", "specializations", "languages",
             "experience_years", "session_rate_rub", "avatar_config", "photo_url", "sessions_count",
             "next_slot", "booking", "gender", "rating", "reviews_count", "verified_credentials",
-            "age", "on_service_since",
+            "age", "on_service_since", "serves_countries", "licensure",
         ]
         read_only_fields = ["id"]
 
@@ -98,6 +98,24 @@ class PsychologistPublicSerializer(serializers.ModelSerializer):
 
     def validate_languages(self, value):
         return _clean_tags(value)
+
+    serves_countries = serializers.ListField(child=serializers.CharField(max_length=2), required=False)
+
+    def validate_serves_countries(self, value):
+        from apps.intl.crisis import CRISIS
+
+        allowed = set(CRISIS) | {"EU", "XX"}
+        out = []
+        for code in value:
+            code = str(code).strip().upper()
+            if code not in allowed:
+                raise serializers.ValidationError("Неизвестная страна.")
+            if code not in out:
+                out.append(code)
+        return out
+
+    def validate_licensure(self, value):
+        return _no_contacts(" ".join((value or "").split()))
 
     def validate_bio(self, value):
         return _no_contacts(value)

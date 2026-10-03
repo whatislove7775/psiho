@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Check, Headphones, Lamp, Lock, Mic, MicOff, Play, RefreshCw, ScanFace, Square, VideoOff, Camera } from "lucide-react";
@@ -19,9 +20,9 @@ import s from "./check.module.css";
 import { illSize, MirrorAvatar } from "@/components/illustrations";
 
 const VOICES: { value: VoicePreset; label: string }[] = [
-  { value: "off", label: "Мой голос" },
-  { value: "lower", label: "Ниже" },
-  { value: "higher", label: "Выше" },
+  { value: "off", get label() { return tt("Мой голос"); } },
+  { value: "lower", get label() { return tt("Ниже"); } },
+  { value: "higher", get label() { return tt("Выше"); } },
 ];
 
 /** Mounts the live avatar canvas. The camera picture itself is never put on the page. */
@@ -136,7 +137,7 @@ function VoicePreview({ stream }: { stream: MediaStream | null }) {
       onClick={state === "idle" ? record : stop}
       icon={state === "idle" ? <Play size={16} /> : <Square size={14} />}
     >
-      {state === "rec" ? `Говорите… ${left}` : state === "play" ? "Слушаем запись" : "Записать и\u00a0послушать"}
+      {state === "rec" ? tt(`Говорите… {left}`, { left }) : state === "play" ? tt("Слушаем запись") : tt("Записать и\u00a0послушать")}
     </Button>
   );
 }
@@ -171,38 +172,38 @@ export default function CheckPage() {
   const light = cam.light;
   const lightOk = light !== null && light >= 70 && light <= 215;
   const lightNote =
-    light === null ? null : light < 70 ? "Темновато. Включите свет перед собой" : light > 215 ? "Очень ярко. Отодвиньтесь от\u00a0лампы" : "Света достаточно";
+    light === null ? null : light < 70 ? tt("Темновато. Включите свет перед собой") : light > 215 ? tt("Очень ярко. Отодвиньтесь от\u00a0лампы") : tt("Света достаточно");
   const faceOk = live && cam.tracking && cam.faceVisible;
 
   const TIPS = [
-    { key: "light", icon: Lamp, title: "Свет спереди", text: lightNote ?? "Лампа или\u00a0окно перед вами, а\u00a0не\u00a0за\u00a0спиной", auto: lightOk },
-    { key: "face", icon: ScanFace, title: "Лицо в\u00a0кадре", text: "Голова по\u00a0центру, камера примерно на\u00a0уровне глаз", auto: faceOk },
-    { key: "phones", icon: Headphones, title: "Наушники", text: "Так вас не\u00a0услышат соседи, а\u00a0звук не\u00a0даст эха", auto: false },
+    { key: "light", icon: Lamp, title: tt("Свет спереди"), text: lightNote ?? tt("Лампа или\u00a0окно перед вами, а\u00a0не\u00a0за\u00a0спиной"), auto: lightOk },
+    { key: "face", icon: ScanFace, title: tt("Лицо в\u00a0кадре"), text: tt("Голова по\u00a0центру, камера примерно на\u00a0уровне глаз"), auto: faceOk },
+    { key: "phones", icon: Headphones, title: tt("Наушники"), text: tt("Так вас не\u00a0услышат соседи, а\u00a0звук не\u00a0даст эха"), auto: false },
   ];
   const done = TIPS.filter((t) => ticks[t.key] || t.auto).length;
 
   const status = !live
     ? null
     : !cam.tracking
-      ? { tone: "wait", text: "Подключаем распознавание мимики" }
+      ? { tone: "wait", text: tt("Подключаем распознавание мимики") }
       : cam.calibrating
-        ? { tone: "wait", text: "Запоминаем спокойное лицо. Смотрите в\u00a0камеру" }
+        ? { tone: "wait", text: tt("Запоминаем спокойное лицо. Смотрите в\u00a0камеру") }
         : cam.faceVisible
-          ? { tone: "ok", text: "Лицо найдено, аватар повторяет мимику" }
-          : { tone: "warn", text: "Лицо не\u00a0видно. Сядьте ближе и\u00a0включите свет" };
+          ? { tone: "ok", text: tt("Лицо найдено, аватар повторяет мимику") }
+          : { tone: "warn", text: tt("Лицо не\u00a0видно. Сядьте ближе и\u00a0включите свет") };
 
   const failed = cam.state === "denied" || cam.state === "error";
 
   return (
     <>
       <PageHeader
-        title="Зеркало"
-        sub="Так вас увидит специалист. Камера никуда не&nbsp;отправляется"
+        title={tt("Зеркало")}
+        sub={tt("Так вас увидит специалист. Камера никуда не\u00a0отправляется")}
       />
       <WithRail
         rail={
           <Card as="section">
-            <CardHead title="Перед созвоном" sub={`Готово ${done} из\u00a0${TIPS.length}`} />
+            <CardHead title={tt("Перед созвоном")} sub={tt(`Готово {done} из\u00a0{length}`, { done, length: TIPS.length })} />
             <ul className={s.tips}>
               {TIPS.map((t) => {
                 const on = !!ticks[t.key] || t.auto;
@@ -227,7 +228,7 @@ export default function CheckPage() {
                 );
               })}
             </ul>
-            <p className={s.tipHint}>Свет и&nbsp;лицо мы&nbsp;проверим сами, остальное отметьте, когда будет готово.</p>
+            <p className={s.tipHint}>{tt("Свет и\u00a0лицо мы\u00a0проверим сами, остальное отметьте, когда будет готово.")}</p>
             <MirrorAvatar className={illSize.md} />
           </Card>
         }
@@ -246,7 +247,7 @@ export default function CheckPage() {
               {live && (
                 <span className={s.private}>
                   <Lock size={13} strokeWidth={2.2} aria-hidden />
-                  Только аватар
+                  {tt("Только аватар")}
                 </span>
               )}
               {!live && (
@@ -254,26 +255,26 @@ export default function CheckPage() {
                   {cam.state === "starting" ? (
                     <>
                       <AvatarThumb config={avatar} size={140} framing="portrait" background="transparent" />
-                      <Spinner label="Включаем камеру" />
+                      <Spinner label={tt("Включаем камеру")} />
                     </>
                   ) : failed ? (
                     <>
                       <span className={s.placeholderIcon}>
                         <VideoOff size={26} strokeWidth={1.8} />
                       </span>
-                      <strong>Камера не&nbsp;включилась</strong>
+                      <strong>{tt("Камера не\u00a0включилась")}</strong>
                       <span>{cam.error}</span>
                       <Button variant="primary" onClick={cam.start}>
-                        Попробовать снова
+                        {tt("Попробовать снова")}
                       </Button>
                     </>
                   ) : (
                     <>
                       <AvatarThumb config={avatar} size={140} framing="portrait" background="transparent" />
-                      <strong>Посмотрите на&nbsp;себя глазами специалиста</strong>
-                      <span>Камера нужна, чтобы аватар повторял вашу мимику. Её&nbsp;изображение обрабатывается только на&nbsp;этом устройстве.</span>
+                      <strong>{tt("Посмотрите на\u00a0себя глазами специалиста")}</strong>
+                      <span>{tt("Камера нужна, чтобы аватар повторял вашу мимику. Её\u00a0изображение обрабатывается только на\u00a0этом устройстве.")}</span>
                       <Button variant="primary" size="lg" onClick={cam.start} icon={<Camera size={18} />}>
-                        Включить камеру
+                        {tt("Включить камеру")}
                       </Button>
                     </>
                   )}
@@ -283,15 +284,15 @@ export default function CheckPage() {
 
             <div className={s.controls}>
               <div className={s.group}>
-                <div className={s.groupHead}>Фон</div>
+                <div className={s.groupHead}>{tt("Фон")}</div>
                 <BackdropPicker value={backdrop} onChange={setBackdrop} />
-                <p className={s.hint}>Этот фон увидит специалист во&nbsp;время созвона.</p>
+                <p className={s.hint}>{tt("Этот фон увидит специалист во\u00a0время созвона.")}</p>
               </div>
 
               <div className={s.group}>
-                <div className={s.groupHead}>Мимика</div>
+                <div className={s.groupHead}>{tt("Мимика")}</div>
                 <p className={s.hint}>
-                  Если аватар хмурится или&nbsp;улыбается, когда вы&nbsp;спокойны, расслабьте лицо, смотрите в&nbsp;камеру и&nbsp;откалибруйте заново.
+                  {tt("Если аватар хмурится или\u00a0улыбается, когда вы\u00a0спокойны, расслабьте лицо, смотрите в\u00a0камеру и\u00a0откалибруйте заново.")}
                 </p>
                 <Button
                   variant="secondary"
@@ -300,15 +301,15 @@ export default function CheckPage() {
                   disabled={!live || !cam.tracking || cam.calibrating}
                   icon={<RefreshCw size={16} />}
                 >
-                  {cam.calibrating ? "Калибруем…" : "Откалибровать"}
+                  {cam.calibrating ? tt("Калибруем…") : tt("Откалибровать")}
                 </Button>
                 <Link href="/app/avatar" className={s.link}>
-                  Изменить аватар
+                  {tt("Изменить аватар")}
                 </Link>
               </div>
 
               <div className={s.group}>
-                <HandsToggle sub="Жесты увидит специалист. Руки распознаются только на&nbsp;этом устройстве." />
+                <HandsToggle sub={tt("Жесты увидит специалист. Руки распознаются только на\u00a0этом устройстве.")} />
               </div>
 
               <div className={s.group}>
@@ -318,9 +319,9 @@ export default function CheckPage() {
                   </span>
                   <div className={s.micBody}>
                     <div className={s.micHead}>
-                      <strong>Микрофон</strong>
+                      <strong>{tt("Микрофон")}</strong>
                       <span>
-                        {!live ? "Проверим вместе с\u00a0камерой" : !cam.audioStream ? "Микрофон не\u00a0найден" : heard ? "Слышим вас хорошо" : "Скажите пару слов"}
+                        {!live ? tt("Проверим вместе с\u00a0камерой") : !cam.audioStream ? tt("Микрофон не\u00a0найден") : heard ? tt("Слышим вас хорошо") : tt("Скажите пару слов")}
                       </span>
                     </div>
                     <div className={s.meter} role="presentation">
@@ -331,14 +332,14 @@ export default function CheckPage() {
               </div>
 
               <div className={s.group}>
-                <div className={s.groupHead}>Голос</div>
-                <Segmented value={voice} onChange={setVoice} options={VOICES} ariaLabel="Фильтр голоса" />
+                <div className={s.groupHead}>{tt("Голос")}</div>
+                <Segmented value={voice} onChange={setVoice} options={VOICES} ariaLabel={tt("Фильтр голоса")} />
                 <VoicePreview stream={live ? transformedStream : null} />
               </div>
 
               {live && (
                 <Button variant="ghost" size="sm" onClick={cam.stop}>
-                  Выключить камеру
+                  {tt("Выключить камеру")}
                 </Button>
               )}
             </div>

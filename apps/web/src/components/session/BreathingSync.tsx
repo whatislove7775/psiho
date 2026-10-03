@@ -1,12 +1,13 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/ui";
 
 const CYCLE = [
-  { label: "Вдох", dur: 4000, from: 1, to: 1.55 },
-  { label: "Задержка", dur: 4000, from: 1.55, to: 1.55 },
-  { label: "Выдох", dur: 6000, from: 1.55, to: 1 },
+  { get label() { return tt("Вдох"); }, dur: 4000, from: 1, to: 1.55 },
+  { get label() { return tt("Задержка"); }, dur: 4000, from: 1.55, to: 1.55 },
+  { get label() { return tt("Выдох"); }, dur: 6000, from: 1.55, to: 1 },
 ] as const;
 
 const ease = (t: number) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t);
@@ -58,13 +59,13 @@ export function BreathingSync() {
         />
       </div>
       <div style={{ textAlign: "center" }} aria-live="polite">
-        <div style={{ fontSize: "var(--t-24)", fontWeight: 650 }}>{active ? CYCLE[phase].label : "Дыхательная пауза"}</div>
+        <div style={{ fontSize: "var(--t-24)", fontWeight: 650 }}>{active ? CYCLE[phase].label : tt("Дыхательная пауза")}</div>
         <div style={{ fontSize: "var(--t-13)", color: "var(--c-muted)", marginTop: 4 }}>
-          Вдох на&nbsp;4&nbsp;счёта, задержка на&nbsp;4, выдох на&nbsp;6. Помогает снизить тревогу.
+          {tt("Вдох на\u00a04\u00a0счёта, задержка на\u00a04, выдох на\u00a06. Помогает снизить тревогу.")}
         </div>
       </div>
       <Button variant={active ? "secondary" : "primary"} onClick={() => setActive((a) => !a)}>
-        {active ? "Остановить" : "Начать"}
+        {active ? tt("Остановить") : tt("Начать")}
       </Button>
     </div>
   );

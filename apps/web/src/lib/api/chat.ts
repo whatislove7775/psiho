@@ -1,4 +1,5 @@
 /** Chats API (/api/v1/chat/) — see docs/API.md «Чаты». */
+import { t, getLocale } from "@/lib/i18n";
 import type { AvatarConfig } from "@/lib/avatar/schema";
 import { API_BASE, ApiError, api, tokens } from "./client";
 
@@ -163,6 +164,10 @@ async function authedFetch(path: string, init: RequestInit = {}): Promise<Respon
     const headers = new Headers(init.headers);
     const access = tokens.access;
     if (access) headers.set("Authorization", `Bearer ${access}`);
+    // Тиша answers in the interface language and names the crisis lines of the chosen country
+    headers.set("Accept-Language", getLocale());
+    const country = typeof document !== "undefined" ? document.cookie.match(/(?:^|; )country=([A-Z]{2})/)?.[1] : null;
+    if (country) headers.set("X-Country", country);
     return fetch(`${API_BASE}${path}`, { ...init, headers });
   };
   let res: Response;
@@ -175,13 +180,13 @@ async function authedFetch(path: string, init: RequestInit = {}): Promise<Respon
     }
   } catch (e) {
     if ((e as Error).name === "AbortError") throw e;
-    throw new ApiError(0, "Нет соединения с\u00a0сервером. Проверьте интернет.");
+    throw new ApiError(0, t("Нет соединения с\u00a0сервером. Проверьте интернет."));
   }
   return res;
 }
 
 async function errorFrom(res: Response): Promise<ApiError> {
-  let message = res.status === 413 ? "Файл слишком большой." : "Не\u00a0получилось отправить.";
+  let message = res.status === 413 ? t("Файл слишком большой.") : t("Не\u00a0получилось отправить.");
   let code: string | undefined;
   try {
     const data = await res.json();

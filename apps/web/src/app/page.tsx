@@ -1,3 +1,5 @@
+import { t } from "@/lib/i18n";
+import { lp } from "@/lib/i18n";
 import type { Metadata } from "next";
 import { Faq } from "@/components/landing/Faq";
 import { faqLd } from "@/components/landing/faqLd";
@@ -15,13 +17,15 @@ import { MaskFriend } from "@/components/illustrations";
 import s from "@/components/landing/landing.module.css";
 import { ogMeta } from "@/lib/og/sections";
 
-export const metadata: Metadata = {
-  title: { absolute: "Aprosop\u00a0— анонимный психолог онлайн, вместо лица 3D-аватар" },
-  description:
-    "Диалоги и\u00a0видеосозвоны с\u00a0проверенными психологами без\u00a0почты и\u00a0телефона. Вместо лица 3D-аватар, который повторяет мимику; видео идёт напрямую и\u00a0не\u00a0записывается.",
-  alternates: alternates("/"),
-  ...ogMeta("/", "Психолог онлайн, и\u00a0никто не\u00a0узнает, кто вы", "Без\u00a0почты, телефона и\u00a0лица."),
-};
+export function generateMetadata(): Metadata {
+  return {
+    title: { absolute: t("Aprosop\u00a0— анонимный психолог онлайн, вместо лица 3D-аватар") },
+    description:
+      t("Диалоги и\u00a0видеосозвоны с\u00a0проверенными психологами без\u00a0почты и\u00a0телефона. Вместо лица 3D-аватар, который повторяет мимику; видео идёт напрямую и\u00a0не\u00a0записывается."),
+    alternates: alternates("/"),
+    ...ogMeta("/", t("Психолог онлайн, и\u00a0никто не\u00a0узнает, кто вы"), t("Без\u00a0почты, телефона и\u00a0лица.")),
+  };
+}
 
 // Featured articles come from the 5-minute content cache; render per request so a deploy never
 // freezes an empty section into the static page.
@@ -41,12 +45,12 @@ export default function LandingPage() {
         <section className={`${s.wrap} ${s.closing}`} aria-labelledby="closing-title">
           <div className={s.plaque}>
             <div className={s.closingText}>
-              <h2 id="closing-title">Начать можно за&nbsp;минуту</h2>
-              <p>Нужен только пароль.</p>
+              <h2 id="closing-title">{t("Начать можно за\u00a0минуту")}</h2>
+              <p>{t("Нужен только пароль.")}</p>
             </div>
             <div className={s.closingActions}>
-              <Button href="/start" variant="primary" size="md">
-                Начать анонимно
+              <Button href={lp("/start")} variant="primary" size="md">
+                {t("Начать анонимно")}
               </Button>
             </div>
             <MaskFriend className={s.closingArt} />
@@ -54,7 +58,7 @@ export default function LandingPage() {
         </section>
       </main>
       <SiteFooter />
-      <JsonLd data={faqLd} />
+      <JsonLd data={faqLd()} />
     </div>
   );
 }

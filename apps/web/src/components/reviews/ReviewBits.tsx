@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { Star } from "lucide-react";
 import { plural } from "@/lib/format";
 import { ratingText } from "@/lib/api/reviews";
@@ -20,9 +21,9 @@ export function RatingPill({
   showEmpty?: boolean;
 }) {
   if (!count || rating == null) {
-    return showEmpty ? <span className={`${s.pill} ${s.pillNew}`}>Пока без&nbsp;отзывов</span> : null;
+    return showEmpty ? <span className={`${s.pill} ${s.pillNew}`}>{t("Пока без\u00a0отзывов")}</span> : null;
   }
-  const label = `Рейтинг ${ratingText(rating)} из\u00a05, ${count} ${plural(count, "отзыв", "отзыва", "отзывов")}`;
+  const label = t(`Рейтинг {ratingText} из\u00a05, {count} {plural}`, { ratingText: ratingText(rating), count, plural: plural(count, "отзыв", "отзыва", "отзывов") });
   const body = (
     <>
       <Star size={14} aria-hidden />
@@ -43,7 +44,7 @@ export function RatingPill({
 
 export function Stars({ value, size = 16 }: { value: number; size?: number }) {
   return (
-    <span className={s.stars} role="img" aria-label={`${value} из\u00a05`}>
+    <span className={s.stars} role="img" aria-label={t(`{value} из\u00a05`, { value })}>
       {[1, 2, 3, 4, 5].map((n) => (
         <Star key={n} size={size} data-on={n <= Math.round(value) || undefined} aria-hidden />
       ))}
@@ -52,9 +53,9 @@ export function Stars({ value, size = 16 }: { value: number; size?: number }) {
 }
 
 export const RATING_WORD: Record<number, string> = {
-  1: "Не\u00a0помогло",
-  2: "Скорее не\u00a0помогло",
-  3: "Нормально",
-  4: "Хорошо",
-  5: "Очень помогло",
+  get 1() { return t("Не\u00a0помогло"); },
+  get 2() { return t("Скорее не\u00a0помогло"); },
+  get 3() { return t("Нормально"); },
+  get 4() { return t("Хорошо"); },
+  get 5() { return t("Очень помогло"); },
 };

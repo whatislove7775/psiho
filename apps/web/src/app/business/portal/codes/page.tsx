@@ -1,5 +1,6 @@
 "use client";
 
+import { t, tj } from "@/lib/i18n";
 import { useState } from "react";
 import { Ban, Download, KeyRound, ListChecks, PlusCircle, ShieldCheck } from "lucide-react";
 import { Badge, Button, Card, CardHead, EmptyState, Input, Modal, NumberInput, Skeleton, useToast } from "@/ui";
@@ -34,7 +35,7 @@ export default function CodesPage() {
       setLabel("");
       data.reload();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Не\u00a0получилось выпустить коды.");
+      setError(err instanceof ApiError ? err.message : t("Не\u00a0получилось выпустить коды."));
     } finally {
       setBusy(false);
     }
@@ -44,10 +45,10 @@ export default function CodesPage() {
     if (!confirmBatch) return;
     try {
       await businessApi.revokeBatch(confirmBatch.id);
-      toast("Неиспользованные коды партии больше не\u00a0действуют");
+      toast(t("Неиспользованные коды партии больше не\u00a0действуют"));
       data.reload();
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : "Не\u00a0получилось отозвать.", { error: true });
+      toast(err instanceof ApiError ? err.message : t("Не\u00a0получилось отозвать."), { error: true });
     }
     setConfirmBatch(null);
   };
@@ -56,8 +57,8 @@ export default function CodesPage() {
   return (
     <>
       <PageHeader
-        title="Коды сотрудников"
-        sub="Одноразовые коды: раздайте их&nbsp;сотрудникам любым удобным способом. Сотрудник активирует код в&nbsp;своём анонимном аккаунте."
+        title={t("Коды сотрудников")}
+        sub={t("Одноразовые коды: раздайте их\u00a0сотрудникам любым удобным способом. Сотрудник активирует код в\u00a0своём анонимном аккаунте.")}
       />
       {data.error ? (
         <ErrorBlock message={data.error} onRetry={data.reload} />
@@ -66,20 +67,20 @@ export default function CodesPage() {
           rail={
             <>
               <Card as="section">
-                <CardHead title="Сводка" icon={<ListChecks size={18} />} />
+                <CardHead title={t("Сводка")} icon={<ListChecks size={18} />} />
                 {!d ? (
                   <Skeleton height={80} radius={14} />
                 ) : (
                   <div className={s.list}>
                     <div className={s.item}>
                       <span className={s.itemMain}>
-                        <span className={s.itemSub}>Выпущено</span>
+                        <span className={s.itemSub}>{t("Выпущено")}</span>
                       </span>
                       <strong>{d.codes.issued}</strong>
                     </div>
                     <div className={s.item}>
                       <span className={s.itemMain}>
-                        <span className={s.itemSub}>Активировано на {dateRu(d.codes.as_of)}</span>
+                        <span className={s.itemSub}>{tj("Активировано на {dateRu}", { dateRu: dateRu(d.codes.as_of) })}</span>
                       </span>
                       <strong>
                         <Hidden value={d.codes.activated} k={d.k_min} />
@@ -89,18 +90,17 @@ export default function CodesPage() {
                 )}
               </Card>
               <Card as="section">
-                <CardHead title="Почему без&nbsp;статусов" icon={<ShieldCheck size={18} />} />
+                <CardHead title={t("Почему без\u00a0статусов")} icon={<ShieldCheck size={18} />} />
                 <p className={s.muted}>
-                  Мы&nbsp;не&nbsp;показываем, какой именно код активирован, и&nbsp;обновляем счётчик раз в&nbsp;месяц. Иначе по&nbsp;коду, выданному
-                  конкретному человеку, можно было&nbsp;бы понять, что&nbsp;он&nbsp;обратился за&nbsp;помощью.
+                  {t("Мы\u00a0не\u00a0показываем, какой именно код активирован, и\u00a0обновляем счётчик раз в\u00a0месяц. Иначе по\u00a0коду, выданному конкретному человеку, можно было\u00a0бы понять, что\u00a0он\u00a0обратился за\u00a0помощью.")}
                 </p>
               </Card>
               <Card as="section">
-                <CardHead title="Сотрудник ушёл" icon={<Ban size={18} />} />
-                <p className={s.muted}>Отзовите его код: если он&nbsp;был активирован, программа для&nbsp;этого аккаунта закончится.</p>
+                <CardHead title={t("Сотрудник ушёл")} icon={<Ban size={18} />} />
+                <p className={s.muted}>{t("Отзовите его код: если он\u00a0был активирован, программа для\u00a0этого аккаунта закончится.")}</p>
                 <div style={{ marginTop: 12 }}>
                   <Button variant="soft" onClick={() => setRevokeOpen(true)}>
-                    Отозвать код
+                    {t("Отозвать код")}
                   </Button>
                 </div>
               </Card>
@@ -108,33 +108,33 @@ export default function CodesPage() {
           }
         >
           <Card as="section">
-            <CardHead title="Выпустить коды" icon={<PlusCircle size={18} />} sub="Коды покажем сразу и&nbsp;сохраним для&nbsp;повторной выгрузки" />
+            <CardHead title={t("Выпустить коды")} icon={<PlusCircle size={18} />} sub={t("Коды покажем сразу и\u00a0сохраним для\u00a0повторной выгрузки")} />
             <form className={s.form} onSubmit={generate}>
               <div className={s.form2}>
                 <NumberInput
-                  label="Сколько кодов"
+                  label={t("Сколько кодов")}
                   min={1}
                   max={2000}
                   value={count === "" ? null : Number(count)}
                   onChange={(v) => setCount(v == null ? "" : String(v))}
                   error={error ?? undefined}
                 />
-                <Input label="Подпись для&nbsp;себя" placeholder="Например, «Отдел продаж, октябрь»" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={80} />
+                <Input label={t("Подпись для\u00a0себя")} placeholder={t("Например, «Отдел продаж, октябрь»")} value={label} onChange={(e) => setLabel(e.target.value)} maxLength={80} />
               </div>
               <div>
                 <Button type="submit" variant="primary" icon={<KeyRound size={18} />} loading={busy} disabled={!Number(count)}>
-                  Выпустить {Number(count) || ""} {plural(Number(count) || 0, "код", "кода", "кодов")}
+                  {t("Выпустить")}{" "}{Number(count) || ""} {plural(Number(count) || 0, "код", "кода", "кодов")}
                 </Button>
               </div>
             </form>
           </Card>
 
           <Card as="section">
-            <CardHead title="Партии" icon={<ListChecks size={18} />} />
+            <CardHead title={t("Партии")} icon={<ListChecks size={18} />} />
             {!d ? (
               <Skeleton height={120} radius={14} />
             ) : d.batches.length === 0 ? (
-              <EmptyState art={<EmptyArt scene="sparkles" />} title="Кодов пока нет" text="Выпустите первую партию&nbsp;— например, по&nbsp;одному коду на&nbsp;каждого сотрудника." />
+              <EmptyState art={<EmptyArt scene="sparkles" />} title={t("Кодов пока нет")} text={t("Выпустите первую партию\u00a0— например, по\u00a0одному коду на\u00a0каждого сотрудника.")} />
             ) : (
               <div className={s.list}>
                 {d.batches.map((b) => (
@@ -144,19 +144,19 @@ export default function CodesPage() {
                     </span>
                     <span className={s.itemMain}>
                       <span className={s.itemTitle}>
-                        {b.label || "Без\u00a0подписи"} {b.revoked && <Badge tone="neutral">отозвана</Badge>}
+                        {b.label || t("Без\u00a0подписи")} {b.revoked && <Badge tone="neutral">{t("отозвана")}</Badge>}
                       </span>
                       <span className={s.itemSub}>
                         {b.count} {plural(b.count, "код", "кода", "кодов")}, {monthRu(b.created_month).toLowerCase()}
                       </span>
                     </span>
                     <span className={s.row}>
-                      <Button variant="ghost" size="sm" icon={<Download size={16} />} onClick={() => businessApi.exportBatch(b.id).catch(() => toast("Не\u00a0получилось скачать.", { error: true }))}>
+                      <Button variant="ghost" size="sm" icon={<Download size={16} />} onClick={() => businessApi.exportBatch(b.id).catch(() => toast(t("Не\u00a0получилось скачать."), { error: true }))}>
                         CSV
                       </Button>
                       {!b.revoked && (
                         <Button variant="ghost" size="sm" onClick={() => setConfirmBatch(b)}>
-                          Отозвать
+                          {t("Отозвать")}
                         </Button>
                       )}
                     </span>
@@ -168,11 +168,11 @@ export default function CodesPage() {
         </WithRail>
       )}
 
-      <Modal open={!!fresh} onClose={() => setFresh(null)} title="Коды готовы" width={560}>
+      <Modal open={!!fresh} onClose={() => setFresh(null)} title={t("Коды готовы")} width={560}>
         {fresh && (
           <div className={s.form}>
             <p className={s.muted}>
-              Раздайте по&nbsp;одному коду каждому сотруднику. Код одноразовый: после активации он&nbsp;привязывается к&nbsp;анонимному аккаунту, а&nbsp;вы&nbsp;этого не&nbsp;увидите.
+              {t("Раздайте по\u00a0одному коду каждому сотруднику. Код одноразовый: после активации он\u00a0привязывается к\u00a0анонимному аккаунту, а\u00a0вы\u00a0этого не\u00a0увидите.")}
             </p>
             <div className={s.codes}>
               {fresh.codes.map((c) => (
@@ -181,15 +181,15 @@ export default function CodesPage() {
             </div>
             <div className={s.row}>
               <Button variant="primary" icon={<Download size={18} />} onClick={() => saveCodesCsv(fresh.codes)}>
-                Скачать CSV
+                {t("Скачать CSV")}
               </Button>
               <Button
                 variant="secondary"
                 onClick={() => {
-                  navigator.clipboard?.writeText(fresh.codes.join("\n")).then(() => toast("Скопировано"));
+                  navigator.clipboard?.writeText(fresh.codes.join("\n")).then(() => toast(t("Скопировано")));
                 }}
               >
-                Скопировать
+                {t("Скопировать")}
               </Button>
             </div>
           </div>
@@ -198,18 +198,17 @@ export default function CodesPage() {
 
       <RevokeCode open={revokeOpen} onClose={() => setRevokeOpen(false)} />
 
-      <Modal open={!!confirmBatch} onClose={() => setConfirmBatch(null)} title="Отозвать партию?" width={460}>
+      <Modal open={!!confirmBatch} onClose={() => setConfirmBatch(null)} title={t("Отозвать партию?")} width={460}>
         <div className={s.form}>
           <p className={s.muted}>
-            Неиспользованные коды из&nbsp;партии «{confirmBatch?.label || "Без\u00a0подписи"}» перестанут действовать. У&nbsp;тех, кто уже
-            активировал код, программа продолжит работать.
+            {t("Неиспользованные коды из\u00a0партии «")}{confirmBatch?.label || t("Без\u00a0подписи")}{t("» перестанут действовать. У\u00a0тех, кто уже активировал код, программа продолжит работать.")}
           </p>
           <div className={s.row}>
             <Button variant="danger" onClick={revokeBatch}>
-              Отозвать
+              {t("Отозвать")}
             </Button>
             <Button variant="ghost" onClick={() => setConfirmBatch(null)}>
-              Отмена
+              {t("Отмена")}
             </Button>
           </div>
         </div>
@@ -233,16 +232,16 @@ function RevokeCode({ open, onClose }: { open: boolean; onClose: () => void }) {
       setCode("");
       onClose();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Не\u00a0получилось отозвать код.");
+      setError(err instanceof ApiError ? err.message : t("Не\u00a0получилось отозвать код."));
     } finally {
       setBusy(false);
     }
   };
   return (
-    <Modal open={open} onClose={onClose} title="Отозвать код" width={460}>
+    <Modal open={open} onClose={onClose} title={t("Отозвать код")} width={460}>
       <form className={s.form} onSubmit={submit}>
         <Input
-          label="Код сотрудника"
+          label={t("Код сотрудника")}
           placeholder="BIZ-XXXX-XXXX-XXXX"
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}
@@ -250,9 +249,9 @@ function RevokeCode({ open, onClose }: { open: boolean; onClose: () => void }) {
           autoComplete="off"
           spellCheck={false}
         />
-        <p className={s.muted}>Ответ будет одинаковым, был код активирован или&nbsp;нет: так сохраняется анонимность сотрудника.</p>
+        <p className={s.muted}>{t("Ответ будет одинаковым, был код активирован или\u00a0нет: так сохраняется анонимность сотрудника.")}</p>
         <Button type="submit" variant="danger" loading={busy} disabled={!code.trim()}>
-          Отозвать
+          {t("Отозвать")}
         </Button>
       </form>
     </Modal>

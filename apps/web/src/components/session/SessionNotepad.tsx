@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useEffect, useRef, useState } from "react";
 
 const TTL_MS = 24 * 60 * 60 * 1000;
@@ -52,8 +53,8 @@ export function SessionNotepad({ roomId }: { roomId: string }) {
       <textarea
         value={text}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Мысли, вопросы, то, что&nbsp;хочется запомнить"
-        aria-label="Заметки к&nbsp;созвону"
+        placeholder={t("Мысли, вопросы, то, что\u00a0хочется запомнить")}
+        aria-label={t("Заметки к\u00a0созвону")}
         style={{
           flex: 1,
           minHeight: 200,
@@ -70,10 +71,10 @@ export function SessionNotepad({ roomId }: { roomId: string }) {
         }}
       />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "var(--t-12)", color: "var(--c-muted)" }}>
-        <span>{saved ? "Сохранено в\u00a0этом браузере" : "Хранятся только у\u00a0вас, удалятся через 24\u00a0часа"}</span>
+        <span>{saved ? t("Сохранено в\u00a0этом браузере") : t("Хранятся только у\u00a0вас, удалятся через 24\u00a0часа")}</span>
         {text && (
           <button type="button" onClick={clear} style={{ background: "none", border: 0, color: "var(--c-muted)", fontSize: "var(--t-12)", textDecoration: "underline" }}>
-            Очистить
+            {t("Очистить")}
           </button>
         )}
       </div>

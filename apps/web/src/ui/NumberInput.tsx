@@ -7,6 +7,7 @@
  * - Phones: numeric keypad via inputMode (decimal when step is fractional); comma is accepted as a separator.
  * Controlled by a number (null = empty); the typed text is kept while editing.
  */
+import { t as tt } from "@/lib/i18n";
 import { forwardRef, useEffect, useId, useRef, useState, type InputHTMLAttributes, type ReactNode } from "react";
 import { Minus, Plus } from "lucide-react";
 import { Field } from "./index";
@@ -151,7 +152,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(functi
               type="button"
               tabIndex={-1}
               className={s.step}
-              aria-label={dir > 0 ? "Увеличить" : "Уменьшить"}
+              aria-label={dir > 0 ? tt("Увеличить") : tt("Уменьшить")}
               aria-controls={inputId}
               disabled={off}
               onPointerDown={(e) => {

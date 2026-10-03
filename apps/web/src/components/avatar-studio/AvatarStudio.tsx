@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { ChevronLeft, ChevronRight, Redo2, RotateCcw, Shuffle, Smile, Undo2 } from "lucide-react";
 import { Button } from "@/ui";
@@ -32,8 +33,8 @@ const EXPRESSIONS: Record<string, number>[] = [
 ];
 
 const CAPTION = {
-  client: "Таким вас увидит специалист на\u00a0созвоне",
-  pro: "Таким вас увидят клиенты в\u00a0каталоге и\u00a0на\u00a0созвонах",
+  get client() { return tt("Таким вас увидит специалист на\u00a0созвоне"); },
+  get pro() { return tt("Таким вас увидят клиенты в\u00a0каталоге и\u00a0на\u00a0созвонах"); },
 };
 
 function useDebounced<T>(value: T, ms: number): T {
@@ -108,7 +109,7 @@ export function AvatarStudio({ initial, seed, onSave, saving = false, variant = 
       if (!a || a.target === "_blank") return;
       const url = new URL(a.href, location.href);
       if (url.origin !== location.origin || url.pathname === location.pathname) return;
-      if (!window.confirm("Аватар не\u00a0сохранён. Уйти и\u00a0потерять изменения?")) {
+      if (!window.confirm(tt("Аватар не\u00a0сохранён. Уйти и\u00a0потерять изменения?"))) {
         e.preventDefault();
         e.stopPropagation();
       }
@@ -227,9 +228,9 @@ export function AvatarStudio({ initial, seed, onSave, saving = false, variant = 
           <AvatarView ref={viewRef} config={cfg} framing="portrait" interactive className={s.view} />
           <p className={s.caption}>{CAPTION[variant]}</p>
         </div>
-        <div className={s.tools} role="toolbar" aria-label="Действия с&nbsp;аватаром">
+        <div className={s.tools} role="toolbar" aria-label={tt("Действия с\u00a0аватаром")}>
           <Button size="sm" variant="secondary" icon={<Shuffle size={16} />} onClick={shuffle}>
-            Случайный
+            {tt("Случайный")}
           </Button>
           <Button
             size="sm"
@@ -238,18 +239,18 @@ export function AvatarStudio({ initial, seed, onSave, saving = false, variant = 
             aria-pressed={alive}
             onClick={() => setAlive((v) => !v)}
           >
-            Мимика
+            {tt("Мимика")}
           </Button>
           <span className={s.toolsGap} />
-          <Button size="sm" variant="ghost" iconOnly icon={<RotateCcw size={18} />} aria-label="Сбросить" title="Сбросить к исходному" onClick={reset} />
-          <Button size="sm" variant="ghost" iconOnly icon={<Undo2 size={18} />} aria-label="Отменить" title={`Отменить (${mod}+Z)`} disabled={!hist.canUndo} onClick={hist.undo} />
+          <Button size="sm" variant="ghost" iconOnly icon={<RotateCcw size={18} />} aria-label={tt("Сбросить")} title={tt("Сбросить к исходному")} onClick={reset} />
+          <Button size="sm" variant="ghost" iconOnly icon={<Undo2 size={18} />} aria-label={tt("Отменить")} title={tt(`Отменить ({mod}+Z)`, { mod })} disabled={!hist.canUndo} onClick={hist.undo} />
           <Button
             size="sm"
             variant="ghost"
             iconOnly
             icon={<Redo2 size={18} />}
-            aria-label="Повторить"
-            title={`Повторить (${mod}+Shift+Z)`}
+            aria-label={tt("Повторить")}
+            title={tt(`Повторить ({mod}+Shift+Z)`, { mod })}
             disabled={!hist.canRedo}
             onClick={hist.redo}
           />
@@ -263,7 +264,7 @@ export function AvatarStudio({ initial, seed, onSave, saving = false, variant = 
               <ChevronLeft size={18} />
             </button>
           )}
-          <div ref={stripRef} className={s.tabs} role="tablist" aria-label="Что&nbsp;настроить" onKeyDown={onTabKey}>
+          <div ref={stripRef} className={s.tabs} role="tablist" aria-label={tt("Что\u00a0настроить")} onKeyDown={onTabKey}>
             {CATEGORIES.map((c) => (
               <button
                 key={c.id}
@@ -297,14 +298,14 @@ export function AvatarStudio({ initial, seed, onSave, saving = false, variant = 
         <div className={s.saveBar} data-idle={!canSave || undefined}>
           <span className={s.status} data-state={hasChanges ? "dirty" : savedKey ? "saved" : "new"} aria-live="polite">
             <span className={s.statusLong}>
-              {hasChanges ? "Есть несохранённые изменения" : savedKey ? "Все изменения сохранены" : "Аватар ещё не\u00a0сохранён"}
+              {hasChanges ? tt("Есть несохранённые изменения") : savedKey ? tt("Все изменения сохранены") : tt("Аватар ещё не\u00a0сохранён")}
             </span>
             <span className={s.statusShort} aria-hidden>
-              {hasChanges ? "Не\u00a0сохранено" : savedKey ? "Сохранено" : "Не\u00a0сохранён"}
+              {hasChanges ? tt("Не\u00a0сохранено") : savedKey ? tt("Сохранено") : tt("Не\u00a0сохранён")}
             </span>
           </span>
           <Button variant="primary" size="md" onClick={save} loading={saving} disabled={!canSave}>
-            Сохранить аватар
+            {tt("Сохранить аватар")}
           </Button>
         </div>
       </div>

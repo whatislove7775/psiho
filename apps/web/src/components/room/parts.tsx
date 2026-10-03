@@ -1,6 +1,7 @@
 "use client";
 
 /** Small building blocks of the call screen. */
+import { t as tt } from "@/lib/i18n";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { CallQuality } from "@/hooks/useP2PCall";
 import s from "./Room.module.css";
@@ -28,7 +29,7 @@ export function SelfVideo({ stream, className }: { stream: MediaStream | null; c
     v.srcObject = stream;
     if (stream) v.play().catch(() => undefined);
   }, [stream]);
-  return <video ref={ref} className={`${s.selfVideo} ${className ?? ""}`} muted playsInline autoPlay aria-label="Ваша камера" />;
+  return <video ref={ref} className={`${s.selfVideo} ${className ?? ""}`} muted playsInline autoPlay aria-label={tt("Ваша камера")} />;
 }
 
 /** Live microphone level, 5 bars. Reads only the level, never records. */
@@ -73,10 +74,10 @@ export function MicMeter({ stream, muted }: { stream: MediaStream | null; muted?
 }
 
 const QUALITY_LABEL: Record<CallQuality, string> = {
-  good: "Связь хорошая",
-  fair: "Связь средняя",
-  poor: "Связь слабая",
-  unknown: "Проверяем связь",
+  get good() { return tt("Связь хорошая"); },
+  get fair() { return tt("Связь средняя"); },
+  get poor() { return tt("Связь слабая"); },
+  get unknown() { return tt("Проверяем связь"); },
 };
 
 /** Three signal bars coloured by the measured connection quality. */
@@ -175,7 +176,7 @@ export function DraggablePip({ children, label, wide }: { children: ReactNode; l
       onKeyDown={onKey}
       tabIndex={0}
       role="group"
-      aria-label={`${label}. Стрелками можно передвинуть в\u00a0другой угол`}
+      aria-label={tt(`{label}. Стрелками можно передвинуть в\u00a0другой угол`, { label })}
     >
       {children}
     </div>
@@ -202,11 +203,11 @@ export function useRemaining(start: string | null, minutes: number | null) {
     left,
     text:
       left > 60
-        ? `ещё ${Math.floor(left / 60)} ч\u00a0${left % 60} мин`
+        ? tt(`ещё {v} ч\u00a0{v2} мин`, { v: Math.floor(left / 60), v2: left % 60 })
         : left > 0
-          ? `ещё ${left} мин`
+          ? tt(`ещё {left} мин`, { left })
           : left === 0
-            ? "время вышло"
-            : `сверх времени ${-left} мин`,
+            ? tt("время вышло")
+            : tt(`сверх времени {v} мин`, { v: -left }),
   };
 }

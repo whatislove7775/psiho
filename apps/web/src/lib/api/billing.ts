@@ -1,11 +1,12 @@
 /** Anonymous balance, top-ups, gift codes, earnings & payouts (/api/v1/billing/…). See docs/API.md. */
+import { t, intlLocale } from "@/lib/i18n";
 import { api, API_BASE, ApiError, tokens } from "./client";
 
 /** Money comes as integer kopecks; format with rubK. */
 export function rubK(kopecks: number, opts: { sign?: boolean; cents?: boolean } = {}): string {
   const v = kopecks / 100;
   const cents = opts.cents ?? kopecks % 100 !== 0;
-  const s = new Intl.NumberFormat("ru-RU", {
+  const s = new Intl.NumberFormat(intlLocale(), {
     minimumFractionDigits: cents ? 2 : 0,
     maximumFractionDigits: cents ? 2 : 0,
   }).format(Math.abs(v));
@@ -313,7 +314,7 @@ export const financeApi = {
     const r = await fetch(`${API_BASE}/billing/staff/export/?days=${days}`, {
       headers: tokens.access ? { Authorization: `Bearer ${tokens.access}` } : {},
     });
-    if (!r.ok) throw new ApiError(r.status, "Не\u00a0получилось выгрузить операции.");
+    if (!r.ok) throw new ApiError(r.status, t("Не\u00a0получилось выгрузить операции."));
     return r.blob();
   },
 };

@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { BadgeCheck, Check } from "lucide-react";
 import { Card, CardHead, Skeleton } from "@/ui";
@@ -10,11 +11,11 @@ import { KIND_ICON } from "./kinds";
 import s from "./credentials.module.css";
 
 const GROUPS: { title: string; kinds: CredentialKind[] }[] = [
-  { title: "Образование", kinds: ["diploma", "retraining"] },
-  { title: "Методы, курсы и\u00a0тренинги", kinds: ["method", "course", "other"] },
-  { title: "Супервизия", kinds: ["supervision"] },
-  { title: "Профессиональные сообщества", kinds: ["membership"] },
-  { title: "Публикации", kinds: ["publication"] },
+  { get title() { return t("Образование"); }, kinds: ["diploma", "retraining"] },
+  { get title() { return t("Методы, курсы и\u00a0тренинги"); }, kinds: ["method", "course", "other"] },
+  { get title() { return t("Супервизия"); }, kinds: ["supervision"] },
+  { get title() { return t("Профессиональные сообщества"); }, kinds: ["membership"] },
+  { get title() { return t("Публикации"); }, kinds: ["publication"] },
 ];
 
 /** «Проверено Aprosop» — only when at least one document was verified by staff. */
@@ -25,7 +26,7 @@ export function VerifiedBadge({ count }: { count: number }) {
       <span className={s.verifiedIcon} aria-hidden>
         <BadgeCheck size={14} strokeWidth={2.2} />
       </span>
-      Проверено Aprosop
+      {t("Проверено Aprosop")}
       <small>
         {count} {plural(count, "документ", "документа", "документов")}
       </small>
@@ -55,8 +56,8 @@ export function PublicCredentials({ psychologistId }: { psychologistId: number }
     <Card as="section">
       <span id="credentials" style={{ display: "block", scrollMarginTop: 16 }} />
       <CardHead
-        title="Образование и&nbsp;квалификация"
-        sub="Каждый пункт сотрудник Aprosop сверил с&nbsp;документом. Номера документов скрыты"
+        title={t("Образование и\u00a0квалификация")}
+        sub={t("Каждый пункт сотрудник Aprosop сверил с\u00a0документом. Номера документов скрыты")}
       />
       {!items ? (
         <div style={{ display: "grid", gap: 12 }}>
@@ -98,10 +99,10 @@ export function PublicCredentials({ psychologistId }: { psychologistId: number }
 }
 
 function Entry({ c, onOpen }: { c: PublicCredential; onOpen: (i: number) => void }) {
-  const period = periodLabel(c) || (c.year_end === null && c.year ? `с\u00a0${c.year}` : "");
+  const period = periodLabel(c) || (c.year_end === null && c.year ? t(`с\u00a0{year}`, { year: c.year }) : "");
   const meta = [
     c.issuer,
-    c.supervisor && `супервизор ${c.supervisor}`,
+    c.supervisor && t(`супервизор {supervisor}`, { supervisor: c.supervisor }),
     c.hours && `${c.hours} ${plural(c.hours, "час", "часа", "часов")}`,
     c.number ? `№ ${c.number}` : c.number_masked,
   ].filter(Boolean);
@@ -110,7 +111,7 @@ function Entry({ c, onOpen }: { c: PublicCredential; onOpen: (i: number) => void
       <div className={s.entryTop}>
         {period && <span className={s.entryYear}>{period}</span>}
         <span className={s.ok}>
-          <Check size={13} strokeWidth={2.4} aria-hidden /> Проверено
+          <Check size={13} strokeWidth={2.4} aria-hidden />{" "}{t("Проверено")}
         </span>
       </div>
       <div className={s.entryTitle}>{c.title}</div>
@@ -129,7 +130,7 @@ function Entry({ c, onOpen }: { c: PublicCredential; onOpen: (i: number) => void
             <>
               {meta.length ? ". " : ""}
               <a href={c.url} target="_blank" rel="noopener noreferrer nofollow">
-                {c.kind === "publication" ? "Читать" : "Ссылка"}
+                {c.kind === "publication" ? t("Читать") : t("Ссылка")}
               </a>
             </>
           )}
@@ -138,7 +139,7 @@ function Entry({ c, onOpen }: { c: PublicCredential; onOpen: (i: number) => void
       {c.files.length > 0 && (
         <div className={s.tiles}>
           {c.files.map((f, i) => (
-            <DocTile key={f.id} file={f} onOpen={() => onOpen(i)} label={`Открыть документ: ${c.title}`} />
+            <DocTile key={f.id} file={f} onOpen={() => onOpen(i)} label={t(`Открыть документ: {title}`, { title: c.title })} />
           ))}
         </div>
       )}

@@ -540,6 +540,22 @@ depression, panic, sleep, anger, addiction, crisis, family, loneliness. Трот
 
 WebSocket `/ws/circle/{room_id}/?token=` — групповой сигналинг (до 9 пиров), см. `docs/CIRCLES.md`.
 
+## Языки и страны (S2) — `/intl/`, см. `docs/INTERNATIONAL.md`
+
+- Заголовок **`Accept-Language: ru|en`** (фронтенд шлёт язык интерфейса во всех запросах): встроенные сообщения
+  DRF/Django и наши ошибки (`detail`, ошибки полей; только ответы ≥ 400) приходят на этом языке
+  (`apps/intl/messages_en.py`). Ответ содержит `Content-Language`. Без заголовка — русский, как раньше.
+- Заголовок **`X-Country: RU|US|…`** — страна из настроек; Тиша называет телефоны помощи этой страны. Не сохраняется.
+- `GET /intl/rates/` (без авторизации) → `{ date, source: "cbr.ru", rub_per: { USD: 91.2, KZT: 0.18, … } }` —
+  курсы ЦБ РФ для подсказки «≈ $38»; при недоступности ЦБ `rub_per: {}`.
+- `POST /auth/anonymous/` — новые необязательные поля `adult: true`, `health_data_consent: true`, `country: "GB"`
+  (записываются в `intl.Consent`). При `Accept-Language: en` ник генерируется по-английски (`quiet-whale-4821`).
+- Материалы: у статей и практик поле `language` (`ru`, `en`, `uk`, …). `GET /content/articles/?lang=en` и
+  `/content/practices/?lang=en` — материалы на этом языке первыми; `&lang_only=1` — только они. `topic_label`/`kind_label`
+  на языке `Accept-Language`. `language` можно задать в `/content/my/articles/` и `/content/manage/articles/`.
+- Специалист: в публичной и личной анкете `serves_countries: ["RU","KZ"]` (коды из `apps/intl/crisis.py` + `EU`, `XX`)
+  и `licensure` (до 300 символов, свободный текст); `PATCH /psychologist/profile/`.
+
 ## Здоровье
 
 `GET /health/` → `{ status: "ok" }`

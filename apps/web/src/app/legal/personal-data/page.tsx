@@ -1,9 +1,13 @@
+import { t } from "@/lib/i18n";
+import { lp } from "@/lib/i18n";
 import Link from "next/link";
 import { DraftDoc } from "@/components/legal/DraftDoc";
 import { legalMetadata } from "@/components/legal/meta";
 import { Tbd } from "@/components/legal/Placeholder";
 
-export const metadata = legalMetadata("personal-data");
+export function generateMetadata() {
+  return legalMetadata("personal-data");
+}
 
 export default function PersonalDataConsentPage() {
   return (
@@ -11,42 +15,41 @@ export default function PersonalDataConsentPage() {
       slug="personal-data"
       summary={
         <p>
-          <strong>Коротко.</strong> Регистрируясь, вы&nbsp;соглашаетесь, что&nbsp;сервис обрабатывает минимальный набор данных,
-          нужный для&nbsp;работы: имя на&nbsp;сервисе, хеш пароля, настройки аватара, диалоги и&nbsp;созвоны. Почту и&nbsp;телефон клиента мы&nbsp;не&nbsp;запрашиваем.
+          <strong>{t("Коротко.")}</strong>{" "}{t("Регистрируясь, вы\u00a0соглашаетесь, что\u00a0сервис обрабатывает минимальный набор данных, нужный для\u00a0работы: имя на\u00a0сервисе, хеш пароля, настройки аватара, диалоги и\u00a0созвоны. Почту и\u00a0телефон клиента мы\u00a0не\u00a0запрашиваем.")}
         </p>
       }
       sections={[
         {
           id: "who",
-          title: "Кому даётся согласие",
+          title: t("Кому даётся согласие"),
           body: (
             <p>
-              Оператору: <Tbd what="наименование" />, ИНН <Tbd />, адрес <Tbd />.
+              {t("Оператору:")}{" "}<Tbd what={t("наименование")} />{t(", ИНН")}{" "}<Tbd />{t(", адрес")}{" "}<Tbd />.
             </p>
           ),
         },
         {
           id: "data",
-          title: "Перечень данных",
+          title: t("Перечень данных"),
           body: (
             <p>
-              Перечень описан в <Link href="/legal/privacy">политике конфиденциальности</Link>.
+              {t("Перечень описан в")}{" "}<Link href={lp("/legal/privacy")}>{t("политике конфиденциальности")}</Link>.
             </p>
           ),
-          todo: "Точный перечень для\u00a0клиентов и\u00a0специалистов.",
+          todo: t("Точный перечень для\u00a0клиентов и\u00a0специалистов."),
         },
-        { id: "purposes", title: "Цели обработки", todo: "" },
-        { id: "actions", title: "Действия с\u00a0данными и\u00a0способы обработки", todo: "" },
-        { id: "term", title: "Срок действия согласия", todo: "" },
+        { id: "purposes", title: t("Цели обработки"), todo: "" },
+        { id: "actions", title: t("Действия с\u00a0данными и\u00a0способы обработки"), todo: "" },
+        { id: "term", title: t("Срок действия согласия"), todo: "" },
         {
           id: "withdraw",
-          title: "Как\u00a0отозвать согласие",
+          title: t("Как\u00a0отозвать согласие"),
           body: (
             <p>
-              Удалите аккаунт в&nbsp;настройках кабинета или&nbsp;напишите на <a href="mailto:support@aprosop.ru">support@aprosop.ru</a>.
+              {t("Удалите аккаунт в\u00a0настройках кабинета или\u00a0напишите на")}{" "}<a href="mailto:support@aprosop.ru">support@aprosop.ru</a>.
             </p>
           ),
-          todo: "Порядок и\u00a0сроки отзыва.",
+          todo: t("Порядок и\u00a0сроки отзыва."),
         },
       ]}
     />

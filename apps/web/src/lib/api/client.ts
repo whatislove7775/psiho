@@ -1,3 +1,4 @@
+import { t, getLocale } from "@/lib/i18n";
 /**
  * Minimal typed fetch wrapper with JWT + transparent refresh.
  * Tokens live in localStorage (the only thing we persist about the user).
@@ -89,9 +90,9 @@ function messageFrom(data: unknown, status: number): { message: string; fields: 
     const first = Object.values(fields)[0]?.[0];
     if (first) return { message: first, fields };
   }
-  if (status >= 500) return { message: "Сервер временно недоступен. Попробуйте через минуту.", fields: {} };
-  if (status === 0) return { message: "Нет соединения с\u00a0сервером. Проверьте интернет.", fields: {} };
-  return { message: "Не\u00a0получилось выполнить запрос.", fields: {} };
+  if (status >= 500) return { message: t("Сервер временно недоступен. Попробуйте через минуту."), fields: {} };
+  if (status === 0) return { message: t("Нет соединения с\u00a0сервером. Проверьте интернет."), fields: {} };
+  return { message: t("Не\u00a0получилось выполнить запрос."), fields: {} };
 }
 
 export interface RequestOptions {
@@ -113,7 +114,10 @@ export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T
   }
 
   const doFetch = () => {
-    const headers: Record<string, string> = { Accept: "application/json" };
+    const headers: Record<string, string> = { Accept: "application/json", "Accept-Language": getLocale() };
+    // Country from settings: Тиша names the crisis lines of this country (not stored on the server)
+    const country = countryCookie();
+    if (country) headers["X-Country"] = country;
     // FormData (file uploads) goes as multipart; the browser sets the boundary header.
     const isForm = typeof FormData !== "undefined" && body instanceof FormData;
     if (body !== undefined && !isForm) headers["Content-Type"] = "application/json";
@@ -143,6 +147,12 @@ export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T
     throw new ApiError(res.status, message, fields);
   }
   return data as T;
+}
+
+function countryCookie(): string | null {
+  if (typeof document === "undefined") return null;
+  const m = document.cookie.match(/(?:^|; )country=([A-Z]{2})/);
+  return m ? m[1] : null;
 }
 
 function safeJson(text: string): unknown {

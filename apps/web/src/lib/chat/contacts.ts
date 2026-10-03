@@ -1,3 +1,4 @@
+import { t as tt } from "@/lib/i18n";
 /**
  * Contact detection (phones, @handles, messenger links, emails) — client-side mirror of
  * apps/api/apps/chat/contacts.py for instant feedback. The server is the source of truth;
@@ -12,10 +13,10 @@ export interface ContactHit {
 }
 
 export const CONTACT_LABELS: Record<ContactKind, string> = {
-  phone: "номер телефона",
-  handle: "ник",
-  link: "ссылку на\u00a0мессенджер",
-  email: "почту",
+  get phone() { return tt("номер телефона"); },
+  get handle() { return tt("ник"); },
+  get link() { return tt("ссылку на\u00a0мессенджер"); },
+  get email() { return tt("почту"); },
 };
 
 const ALLOWED_NUMBERS = new Set(["88002000122", "88003334434", "84950510000"]);

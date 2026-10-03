@@ -1,5 +1,6 @@
 "use client";
 
+import { t, tj } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AlertCircle, CheckCircle2, Wallet } from "lucide-react";
@@ -45,7 +46,7 @@ export function PayForCall({
         setCall(c);
         setSummary(sm);
       })
-      .catch((e) => setError(e instanceof ApiError ? e.message : "Не\u00a0получилось загрузить баланс."));
+      .catch((e) => setError(e instanceof ApiError ? e.message : t("Не\u00a0получилось загрузить баланс.")));
   }, [sessionId]);
   useEffect(load, [load]);
 
@@ -62,13 +63,13 @@ export function PayForCall({
       const c = await billingApi.payCall(sessionId);
       setCall(c);
       notifyBalanceChanged();
-      toast("Созвон оплачен");
+      toast(t("Созвон оплачен"));
       onPaid();
     } catch (e) {
       if (isInsufficient(e)) {
         load();
         setTopup(true);
-      } else setError(e instanceof ApiError ? e.message : "Не\u00a0получилось оплатить. Попробуйте ещё раз.");
+      } else setError(e instanceof ApiError ? e.message : t("Не\u00a0получилось оплатить. Попробуйте ещё раз."));
     } finally {
       setBusy(false);
     }
@@ -79,7 +80,7 @@ export function PayForCall({
       <div className={s.error} role="alert">
         <AlertCircle size={16} aria-hidden /> <span>{error}</span>{" "}
         <button type="button" onClick={load} style={{ background: "none", border: 0, color: "inherit", textDecoration: "underline", cursor: "pointer" }}>
-          Повторить
+          {t("Повторить")}
         </button>
       </div>
     ) : (
@@ -94,7 +95,7 @@ export function PayForCall({
     return (
       <div className={s.paidState}>
         <CheckCircle2 size={22} aria-hidden />
-        <span>Оплачено с&nbsp;баланса: {rubK(call.hold?.amount_kopecks ?? amount)}</span>
+        <span>{tj("Оплачено с\u00a0баланса: {rubK}", { rubK: rubK(call.hold?.amount_kopecks ?? amount) })}</span>
       </div>
     );
   }
@@ -103,7 +104,7 @@ export function PayForCall({
     return (
       <div className={s.error} role="status">
         <AlertCircle size={16} aria-hidden />
-        <span>Эту запись уже нельзя оплатить: время освободилось или&nbsp;созвон отменён. Выберите время заново.</span>
+        <span>{t("Эту запись уже нельзя оплатить: время освободилось или\u00a0созвон отменён. Выберите время заново.")}</span>
       </div>
     );
   }
@@ -113,27 +114,27 @@ export function PayForCall({
     <div className={s.pay}>
       <dl className={s.sum}>
         <div>
-          <dt>Стоимость созвона</dt>
+          <dt>{t("Стоимость созвона")}</dt>
           <dd>{rubK(amount)}</dd>
         </div>
         {company > 0 && (
           <div className={s.ok}>
-            <dt>Оплатит программа компании</dt>
+            <dt>{t("Оплатит программа компании")}</dt>
             <dd>{rubK(company)}</dd>
           </div>
         )}
         <div>
-          <dt>На&nbsp;балансе</dt>
+          <dt>{t("На\u00a0балансе")}</dt>
           <dd>{rubK(balance)}</dd>
         </div>
         {shortfall > 0 ? (
           <div className={s.short}>
-            <dt>Не&nbsp;хватает</dt>
+            <dt>{t("Не\u00a0хватает")}</dt>
             <dd>{rubK(shortfall)}</dd>
           </div>
         ) : (
           <div className={s.ok}>
-            <dt>Останется после оплаты</dt>
+            <dt>{t("Останется после оплаты")}</dt>
             <dd>{rubK(balance - personal)}</dd>
           </div>
         )}
@@ -150,22 +151,22 @@ export function PayForCall({
           <TopUpForm settings={summary.topup} suggestRub={shortfall / 100} returnTo={pathname} />
         ) : (
           <Button variant="primary" size="lg" block icon={<Wallet size={18} />} onClick={() => setTopup(true)}>
-            Пополнить на {rubK(Math.max(summary.topup.min_kopecks, Math.ceil(shortfall / 10000) * 10000))}
+            {tj("Пополнить на {rubK}", { rubK: rubK(Math.max(summary.topup.min_kopecks, Math.ceil(shortfall / 10000) * 10000)) })}
           </Button>
         )
       ) : (
         <Button variant="primary" size="lg" block loading={busy} icon={<Wallet size={18} />} onClick={pay}>
-          {personal <= 0 ? "Оплатить по\u00a0программе компании" : "Оплатить с\u00a0баланса"}
+          {personal <= 0 ? t("Оплатить по\u00a0программе компании") : t("Оплатить с\u00a0баланса")}
         </Button>
       )}
 
       <div className={s.hint}>
-        Деньги замораживаются на&nbsp;балансе и&nbsp;уходят специалисту только после созвона. Отмена не&nbsp;позже чем&nbsp;за{" "}
-        {rules.free_cancel_hours} ч&nbsp;— полный возврат на&nbsp;баланс
+        {t("Деньги замораживаются на\u00a0балансе и\u00a0уходят специалисту только после созвона. Отмена не\u00a0позже чем\u00a0за")}{" "}
+        {rules.free_cancel_hours}{" "}{t("ч\u00a0— полный возврат на\u00a0баланс")}
         {rules.late_cancel_penalty_percent
-          ? `, позже\u00a0— возвращается ${100 - rules.late_cancel_penalty_percent}%.`
+          ? t(`, позже\u00a0— возвращается {v}%.`, { v: 100 - rules.late_cancel_penalty_percent })
           : "."}{" "}
-        Если специалист не&nbsp;пришёл&nbsp;— вернём всё.
+        {t("Если специалист не\u00a0пришёл\u00a0— вернём всё.")}
       </div>
     </div>
   );

@@ -70,6 +70,18 @@ class TopicListView(APIView):
 
 # ── Public read API ────────────────────────────────────────────────────────
 
+def _lang(request) -> str:
+    """?lang=en — материалы на этом языке первыми (остальные следом, фронтенд помечает их язык)."""
+    from .models import CONTENT_LANGUAGES
+
+    value = (request.query_params.get("lang") or "").strip().lower()
+    return value if value in dict(CONTENT_LANGUAGES) else ""
+
+
+def _lang_first(items: list, lang: str, limit: int | None) -> list:
+    ordered = sorted(items, key=lambda a: a.language != lang)  # стабильная сортировка сохраняет ранжирование
+    return ordered[:limit] if limit else ordered
+
 class ArticleListView(generics.ListAPIView):
     permission_classes = [AllowAny]
     authentication_classes = []
@@ -101,11 +113,18 @@ class ArticleListView(generics.ListAPIView):
             ]
             qs = qs.filter(id__in=ids)
         limit = _limit(self.request)
+        lang = _lang(self.request)
+        if lang and self.request.query_params.get("lang_only") == "1":
+            qs = qs.filter(language=lang)
         if self.request.query_params.get("sort") == "new":
             qs = qs.order_by("-published_at", "-created_at")
+            if lang:
+                return _lang_first(list(qs), lang, limit)
             return qs[:limit] if limit else qs
         # По умолчанию и ?sort=top — рекомендательный score (ranking.py, docs/API.md)
         items = ranking.ranked(qs, timezone.now())
+        if lang:
+            return _lang_first(list(items), lang, limit)
         return items[:limit] if limit else items
 
 
@@ -130,6 +149,9 @@ class PracticeListView(generics.ListAPIView):
         if kind:
             qs = qs.filter(kind=kind)
         limit = _limit(self.request)
+        lang = _lang(self.request)
+        if lang:
+            return _lang_first(list(qs), lang, limit)
         return qs[:limit] if limit else qs
 
 

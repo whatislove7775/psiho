@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { EyeOff } from "lucide-react";
 import { usePrivacyPrefs } from "@/lib/privacy/usePrivacy";
 import { panicExit } from "@/lib/privacy/stealth";
@@ -24,8 +25,8 @@ export function PanicButton({ docked, inline }: { docked?: boolean; inline?: boo
       onPointerDown={(e) => {
         if (e.pointerType !== "mouse") panicExit();
       }}
-      aria-label="Быстрый выход: открыть нейтральный сайт"
-      title="Быстрый выход (или&nbsp;дважды Esc)"
+      aria-label={t("Быстрый выход: открыть нейтральный сайт")}
+      title={t("Быстрый выход (или\u00a0дважды Esc)")}
     >
       <EyeOff size={docked ? 22 : 20} strokeWidth={inline ? 1.8 : 2} />
     </button>

@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { SLOW_NET_NOTE, useGesturesPref, useHandsPref, useHandsState } from "@/lib/avatar/headz/hands/prefs";
 import s from "./HandsToggle.module.css";
 
@@ -26,8 +27,8 @@ export function HandsToggle({ sub, className }: { sub?: string; className?: stri
   const auto = useHandsState().autoOff;
   return (
     <div className={`${s.stack} ${className ?? ""}`}>
-      <Row on={on} set={setOn} label="Показывать руки" sub={auto ? SLOW_NET_NOTE : sub} />
-      {on && <Row on={gestures} set={setGestures} label="Реакции жестами" sub={"Большой палец вверх или\u00a0вниз\u00a0— реакция в\u00a0звонке"} />}
+      <Row on={on} set={setOn} label={t("Показывать руки")} sub={auto ? SLOW_NET_NOTE : sub} />
+      {on && <Row on={gestures} set={setGestures} label={t("Реакции жестами")} sub={t("Большой палец вверх или\u00a0вниз\u00a0— реакция в\u00a0звонке")} />}
     </div>
   );
 }

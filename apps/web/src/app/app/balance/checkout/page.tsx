@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt, tj } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { FlaskConical, Lock } from "lucide-react";
 import { Button, Card, Skeleton, useToast } from "@/ui";
@@ -26,13 +27,13 @@ export default function MockCheckoutPage() {
     const id = q.get("topup") || "";
     setParams({ id, back: back.startsWith("/app/") && !back.startsWith("//") ? back : "/app/balance" });
     if (!id) {
-      setError("Платёж не\u00a0найден.");
+      setError(tt("Платёж не\u00a0найден."));
       return;
     }
     billingApi
       .topUp(id)
       .then(setT)
-      .catch((e) => setError(e instanceof ApiError ? e.message : "Платёж не\u00a0найден."));
+      .catch((e) => setError(e instanceof ApiError ? e.message : tt("Платёж не\u00a0найден.")));
   }, []);
 
   const finish = async (outcome: "succeeded" | "canceled") => {
@@ -44,18 +45,18 @@ export default function MockCheckoutPage() {
       const sep = params.back.includes("?") ? "&" : "?";
       window.location.href = `${params.back}${sep}topup=${params.id}`;
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "Не\u00a0получилось завершить оплату.", { error: true });
+      toast(e instanceof ApiError ? e.message : tt("Не\u00a0получилось завершить оплату."), { error: true });
       setBusy(null);
     }
   };
 
   return (
     <div className={s.checkoutWrap}>
-      <PageHeader title="Тестовая оплата" sub="Так будет выглядеть переход на&nbsp;страницу ЮKassa. Деньги не&nbsp;списываются." />
+      <PageHeader title={tt("Тестовая оплата")} sub={tt("Так будет выглядеть переход на\u00a0страницу ЮKassa. Деньги не\u00a0списываются.")} />
       {error ? (
         <Card>
           <p>{error}</p>
-          <Button href="/app/balance">К&nbsp;балансу</Button>
+          <Button href="/app/balance">{tt("К\u00a0балансу")}</Button>
         </Card>
       ) : !t ? (
         <Skeleton height={280} radius={22} />
@@ -64,12 +65,12 @@ export default function MockCheckoutPage() {
           <div className={s.fakeCard} aria-hidden>
             <div className={s.fakeRow}>
               <span>Aprosop test</span>
-              <span>МИР</span>
+              <span>{tt("МИР")}</span>
             </div>
             <div className={s.fakeChip} />
             <div className={s.fakeNumber}>2200 •••• •••• 0000</div>
             <div className={s.fakeRow}>
-              <span>ТЕСТОВАЯ КАРТА</span>
+              <span>{tt("ТЕСТОВАЯ КАРТА")}</span>
               <span>12/30</span>
             </div>
           </div>
@@ -77,31 +78,31 @@ export default function MockCheckoutPage() {
             <div className={s.stack}>
               <dl className={s.sum}>
                 <div>
-                  <dt>К&nbsp;оплате</dt>
+                  <dt>{tt("К\u00a0оплате")}</dt>
                   <dd>{rubK(t.amount_kopecks)}</dd>
                 </div>
                 <div>
-                  <dt>Получатель</dt>
+                  <dt>{tt("Получатель")}</dt>
                   <dd>Aprosop</dd>
                 </div>
               </dl>
               {t.status !== "pending" ? (
                 <>
-                  <p className={s.hint}>Этот платёж уже завершён.</p>
-                  <Button href={params?.back ?? "/app/balance"}>Вернуться</Button>
+                  <p className={s.hint}>{tt("Этот платёж уже завершён.")}</p>
+                  <Button href={params?.back ?? "/app/balance"}>{tt("Вернуться")}</Button>
                 </>
               ) : (
                 <>
                   <div className={s.testNote}>
                     <FlaskConical size={16} aria-hidden />
-                    <span>Тестовая касса работает, пока не&nbsp;подключена ЮKassa. Выберите, чем&nbsp;закончится оплата.</span>
+                    <span>{tt("Тестовая касса работает, пока не\u00a0подключена ЮKassa. Выберите, чем\u00a0закончится оплата.")}</span>
                   </div>
                   <div className={s.actions}>
                     <Button variant="secondary" loading={busy === "canceled"} disabled={!!busy} onClick={() => finish("canceled")}>
-                      Отказаться
+                      {tt("Отказаться")}
                     </Button>
                     <Button variant="primary" icon={<Lock size={16} />} loading={busy === "succeeded"} disabled={!!busy} onClick={() => finish("succeeded")}>
-                      Оплатить {rubK(t.amount_kopecks)}
+                      {tj("Оплатить {rubK}", { rubK: rubK(t.amount_kopecks) })}
                     </Button>
                   </div>
                 </>

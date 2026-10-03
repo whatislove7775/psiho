@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { MessageSquareReply } from "lucide-react";
 import { Button, Card, CardHead, Skeleton, Textarea, useToast } from "@/ui";
@@ -24,15 +25,15 @@ export function ProReviews() {
     <Card as="section">
       <span id="reviews" style={{ display: "block", scrollMarginTop: 16 }} />
       <CardHead
-        title="Отзывы клиентов"
-        sub="Отзыв может оставить только клиент после состоявшегося созвона. Вы&nbsp;можете ответить на&nbsp;каждый один раз"
+        title={t("Отзывы клиентов")}
+        sub={t("Отзыв может оставить только клиент после состоявшегося созвона. Вы\u00a0можете ответить на\u00a0каждый один раз")}
       />
       {error ? (
         <p className={s.headNote}>{error}</p>
       ) : !data ? (
         <Skeleton height={120} radius={18} />
       ) : data.summary.count === 0 ? (
-        <p className={s.headNote}>Отзывов пока нет</p>
+        <p className={s.headNote}>{t("Отзывов пока нет")}</p>
       ) : (
         <>
           <ReviewSummaryBlock summary={data.summary} />
@@ -59,7 +60,7 @@ function ReplyBox({ r, onDone }: { r: Review; onDone: (r: Review) => void }) {
     return (
       <div>
         <Button variant="ghost" size="sm" icon={<MessageSquareReply size={16} />} onClick={() => setOpen(true)}>
-          {r.reply ? "Изменить ответ" : "Ответить"}
+          {r.reply ? t("Изменить ответ") : t("Ответить")}
         </Button>
       </div>
     );
@@ -67,16 +68,16 @@ function ReplyBox({ r, onDone }: { r: Review; onDone: (r: Review) => void }) {
   return (
     <div style={{ display: "grid", gap: 8 }}>
       <Textarea
-        aria-label="Ваш ответ"
+        aria-label={t("Ваш ответ")}
         rows={3}
         maxLength={1500}
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Поблагодарите или&nbsp;спокойно поясните. Не&nbsp;упоминайте детали созвонов: ответ видят все"
+        placeholder={t("Поблагодарите или\u00a0спокойно поясните. Не\u00a0упоминайте детали созвонов: ответ видят все")}
       />
       <div className={s.actions}>
         <Button variant="ghost" size="sm" onClick={() => setOpen(false)} disabled={busy}>
-          Отмена
+          {t("Отмена")}
         </Button>
         <Button
           variant="primary"
@@ -88,7 +89,7 @@ function ReplyBox({ r, onDone }: { r: Review; onDone: (r: Review) => void }) {
             try {
               onDone(await reviewsApi.reply(r.id, text.trim()));
               setOpen(false);
-              toast("Ответ опубликован");
+              toast(t("Ответ опубликован"));
             } catch (e) {
               toast((e as Error).message, { error: true });
             } finally {
@@ -96,7 +97,7 @@ function ReplyBox({ r, onDone }: { r: Review; onDone: (r: Review) => void }) {
             }
           }}
         >
-          Опубликовать ответ
+          {t("Опубликовать ответ")}
         </Button>
       </div>
     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle, Eye, EyeOff, MessageCircleQuestion, Pencil, Plus, Send, Trash2, X } from "lucide-react";
 import { Badge, Button, Card, CardHead, EmptyState, Modal, Skeleton, Textarea, useToast } from "@/ui";
@@ -48,12 +49,12 @@ export function CredentialsSection() {
     <Card as="section">
       <span id="documents" style={{ display: "block", scrollMarginTop: 16 }} />
       <CardHead
-        title="Документы и&nbsp;квалификация"
-        sub="Дипломы, переподготовка, супервизия, публикации. Каждый пункт проверяет сотрудник Aprosop, подтверждённые видны клиентам на&nbsp;вашей странице"
+        title={t("Документы и\u00a0квалификация")}
+        sub={t("Дипломы, переподготовка, супервизия, публикации. Каждый пункт проверяет сотрудник Aprosop, подтверждённые видны клиентам на\u00a0вашей странице")}
         action={
           items && items.length > 0 ? (
             <Button variant="soft" size="sm" icon={<Plus size={16} />} onClick={() => setForm({ item: null })}>
-              Добавить
+              {t("Добавить")}
             </Button>
           ) : undefined
         }
@@ -64,7 +65,7 @@ export function CredentialsSection() {
           <span>
             {error}{" "}
             <Button variant="ghost" size="sm" onClick={load}>
-              Повторить
+              {t("Повторить")}
             </Button>
           </span>
         </div>
@@ -76,11 +77,11 @@ export function CredentialsSection() {
       ) : items.length === 0 ? (
         <EmptyState
           art={<EmptyArt scene="shield" />}
-          title="Расскажите о&nbsp;своём образовании"
-          text="Клиенты чаще выбирают специалистов с&nbsp;проверенными документами. Начните с&nbsp;диплома, затем добавьте переподготовку, супервизию и&nbsp;публикации."
+          title={t("Расскажите о\u00a0своём образовании")}
+          text={t("Клиенты чаще выбирают специалистов с\u00a0проверенными документами. Начните с\u00a0диплома, затем добавьте переподготовку, супервизию и\u00a0публикации.")}
           action={
             <Button variant="primary" icon={<Plus size={18} />} onClick={() => setForm({ item: null })}>
-              Добавить документ
+              {t("Добавить документ")}
             </Button>
           }
         />
@@ -110,19 +111,19 @@ export function CredentialsSection() {
         onSaved={(c, warning) => {
           replace(c);
           setForm(null);
-          toast(warning ?? (c.status === "pending" ? "Отправили на\u00a0проверку. Обычно это\u00a0занимает до\u00a0двух рабочих дней" : "Сохранено"), {
+          toast(warning ?? (c.status === "pending" ? t("Отправили на\u00a0проверку. Обычно это\u00a0занимает до\u00a0двух рабочих дней") : t("Сохранено")), {
             error: !!warning,
           });
         }}
       />
-      <Modal open={!!removing} onClose={() => !busy && setRemoving(null)} title="Удалить документ?">
+      <Modal open={!!removing} onClose={() => !busy && setRemoving(null)} title={t("Удалить документ?")}>
         <p className={s.hint} style={{ marginBottom: 20 }}>
-          «{removing?.title}» и&nbsp;все его файлы удалятся без&nbsp;возможности восстановления.
-          {removing?.status === "approved" ? " Пункт пропадёт с\u00a0вашей страницы." : ""}
+          «{removing?.title}{t("» и\u00a0все его файлы удалятся без\u00a0возможности восстановления.")}
+          {removing?.status === "approved" ? t(" Пункт пропадёт с\u00a0вашей страницы.") : ""}
         </p>
         <div className={s.actions}>
           <Button variant="ghost" onClick={() => setRemoving(null)} disabled={busy}>
-            Отмена
+            {t("Отмена")}
           </Button>
           <Button
             variant="danger"
@@ -134,7 +135,7 @@ export function CredentialsSection() {
                 await credentialsApi.remove(removing.id);
                 setItems((xs) => xs?.filter((x) => x.id !== removing.id) ?? null);
                 setRemoving(null);
-                toast("Документ удалён");
+                toast(t("Документ удалён"));
               } catch (e) {
                 toast((e as Error).message, { error: true });
               } finally {
@@ -142,7 +143,7 @@ export function CredentialsSection() {
               }
             }}
           >
-            Удалить
+            {t("Удалить")}
           </Button>
         </div>
       </Modal>
@@ -186,9 +187,9 @@ function Item({
         await credentialsApi.upload(c.id, file, false);
       }
       await refresh();
-      if (c.status === "approved") toast("Файл добавлен, пункт снова на\u00a0проверке");
+      if (c.status === "approved") toast(t("Файл добавлен, пункт снова на\u00a0проверке"));
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "Не\u00a0получилось загрузить файл", { error: true });
+      toast(e instanceof ApiError ? e.message : t("Не\u00a0получилось загрузить файл"), { error: true });
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -199,7 +200,7 @@ function Item({
     try {
       await credentialsApi.setPublic(fid, next);
       await refresh();
-      if (next && c.status === "approved") toast("Сотрудник посмотрит файл перед публикацией");
+      if (next && c.status === "approved") toast(t("Сотрудник посмотрит файл перед публикацией"));
     } catch (e) {
       toast((e as Error).message, { error: true });
     }
@@ -220,7 +221,7 @@ function Item({
     try {
       onChange(await credentialsApi.reply(c.id, reply.trim()));
       setReply("");
-      toast("Ответ отправлен, пункт снова на\u00a0проверке");
+      toast(t("Ответ отправлен, пункт снова на\u00a0проверке"));
     } catch (e) {
       toast((e as Error).message, { error: true });
     } finally {
@@ -228,7 +229,7 @@ function Item({
     }
   };
 
-  const meta = [c.issuer, c.supervisor && `супервизор ${c.supervisor}`, periodLabel(c), c.hours && `${c.hours} ${plural(c.hours, "час", "часа", "часов")}`]
+  const meta = [c.issuer, c.supervisor && t(`супервизор {supervisor}`, { supervisor: c.supervisor }), periodLabel(c), c.hours && `${c.hours} ${plural(c.hours, "час", "часа", "часов")}`]
     .filter(Boolean)
     .join(", ");
   const staffNotes = c.notes.filter((n) => n.author_role !== "system");
@@ -247,7 +248,7 @@ function Item({
               {c.doi && c.url ? ", " : ""}
               {c.url && (
                 <a href={c.url} target="_blank" rel="noopener noreferrer nofollow" style={{ color: "var(--c-primary-ink)" }}>
-                  ссылка
+                  {t("ссылка")}
                 </a>
               )}
             </div>
@@ -255,10 +256,10 @@ function Item({
         </div>
         <div className={s.itemActions}>
           <Badge tone={STATUS_TONE[c.status]} dot>
-            {c.status === "pending" && c.was_approved ? "Повторная проверка" : STATUS_LABEL[c.status]}
+            {c.status === "pending" && c.was_approved ? t("Повторная проверка") : STATUS_LABEL[c.status]}
           </Badge>
-          <Button variant="ghost" size="sm" iconOnly aria-label="Изменить" icon={<Pencil size={16} />} onClick={onEdit} />
-          <Button variant="ghost" size="sm" iconOnly aria-label="Удалить" icon={<Trash2 size={16} />} onClick={onRemove} />
+          <Button variant="ghost" size="sm" iconOnly aria-label={t("Изменить")} icon={<Pencil size={16} />} onClick={onEdit} />
+          <Button variant="ghost" size="sm" iconOnly aria-label={t("Удалить")} icon={<Trash2 size={16} />} onClick={onRemove} />
         </div>
       </div>
 
@@ -266,30 +267,30 @@ function Item({
         <div className={s.alert}>
           <X size={16} />
           <span>
-            <b>Отклонено:</b> {c.reject_reason}. Исправьте данные или&nbsp;приложите другой файл, и&nbsp;пункт снова уйдёт на&nbsp;проверку.
+            <b>{t("Отклонено:")}</b> {c.reject_reason}{t(". Исправьте данные или\u00a0приложите другой файл, и\u00a0пункт снова уйдёт на\u00a0проверку.")}
           </span>
         </div>
       )}
 
       {(c.status === "needs_info" || staffNotes.length > 0) && (
-        <div className={s.thread} aria-label="Переписка с&nbsp;сотрудником">
+        <div className={s.thread} aria-label={t("Переписка с\u00a0сотрудником")}>
           {c.notes.map((n) => (
             <div key={n.id} className={s.note} data-role={n.author_role}>
-              {n.author_role !== "system" && <span className={s.noteWho}>{n.author_role === "staff" ? "Команда Aprosop" : "Вы"}</span>}
+              {n.author_role !== "system" && <span className={s.noteWho}>{n.author_role === "staff" ? t("Команда Aprosop") : t("Вы")}</span>}
               {n.text}
             </div>
           ))}
           {(c.status === "needs_info" || c.status === "rejected") && (
             <div className={s.replyRow}>
               <Textarea
-                aria-label="Ответ сотруднику"
+                aria-label={t("Ответ сотруднику")}
                 rows={2}
                 maxLength={2000}
                 value={reply}
-                placeholder={c.status === "needs_info" ? "Ответьте на\u00a0вопрос или\u00a0приложите файл ниже" : "Комментарий для\u00a0сотрудника"}
+                placeholder={c.status === "needs_info" ? t("Ответьте на\u00a0вопрос или\u00a0приложите файл ниже") : t("Комментарий для\u00a0сотрудника")}
                 onChange={(e) => setReply(e.target.value)}
               />
-              <Button variant="primary" iconOnly aria-label="Отправить" icon={<Send size={18} />} loading={sending} disabled={!reply.trim()} onClick={send} />
+              <Button variant="primary" iconOnly aria-label={t("Отправить")} icon={<Send size={18} />} loading={sending} disabled={!reply.trim()} onClick={send} />
             </div>
           )}
         </div>
@@ -304,22 +305,22 @@ function Item({
                 className={s.vis}
                 data-on={f.is_public || undefined}
                 aria-pressed={!!f.is_public}
-                title={f.is_public ? "Клиенты увидят файл после проверки" : "Файл видит только сотрудник"}
+                title={f.is_public ? t("Клиенты увидят файл после проверки") : t("Файл видит только сотрудник")}
                 onClick={() => toggle(f.id, !f.is_public)}
               >
                 {f.is_public ? <Eye size={12} /> : <EyeOff size={12} />}
-                {f.is_public ? "Публично" : "Проверка"}
+                {f.is_public ? t("Публично") : t("Проверка")}
               </button>
-              <button type="button" className={s.tileDel} aria-label={`Удалить файл ${f.name ?? ""}`} onClick={() => removeFile(f.id)}>
+              <button type="button" className={s.tileDel} aria-label={t(`Удалить файл {v}`, { v: f.name ?? "" })} onClick={() => removeFile(f.id)}>
                 <X size={13} />
               </button>
             </div>
           </DocTile>
         ))}
         {c.files.length < 6 && (
-          <label className={s.addTile} title="PDF, JPG, PNG или&nbsp;WebP, до&nbsp;10&nbsp;МБ">
+          <label className={s.addTile} title={t("PDF, JPG, PNG или\u00a0WebP, до\u00a010\u00a0МБ")}>
             <Plus size={18} aria-hidden />
-            <span>{uploading ? "Загружаем…" : "Файл"}</span>
+            <span>{uploading ? t("Загружаем…") : t("Файл")}</span>
             <input
               ref={inputRef}
               type="file"
@@ -334,7 +335,7 @@ function Item({
       </div>
       {c.files.length === 0 && c.kind !== "publication" && (
         <p className={s.hint}>
-          <MessageCircleQuestion size={14} style={{ verticalAlign: "-2px" }} aria-hidden /> Без&nbsp;скана сотрудник не&nbsp;сможет подтвердить документ. PDF, JPG, PNG или&nbsp;WebP, до&nbsp;10&nbsp;МБ.
+          <MessageCircleQuestion size={14} style={{ verticalAlign: "-2px" }} aria-hidden />{" "}{t("Без\u00a0скана сотрудник не\u00a0сможет подтвердить документ. PDF, JPG, PNG или\u00a0WebP, до\u00a010\u00a0МБ.")}
         </p>
       )}
       <DocViewer files={c.files} index={viewer} onClose={() => setViewer(null)} caption={c.title} />

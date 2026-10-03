@@ -1,5 +1,6 @@
 "use client";
 
+import { t, tj } from "@/lib/i18n";
 import { Card, CardHead, Field, Input, Segmented, Select } from "@/ui";
 import { durationLabel, priceFor, type AvailabilitySettings } from "@/lib/api/availability";
 import { plural, rub } from "@/lib/format";
@@ -52,8 +53,8 @@ export function zoneName(zone: string): string {
 }
 
 const noticeLabel = (m: number) =>
-  m % 1440 === 0 ? (m === 1440 ? "за\u00a0сутки" : `за\u00a0${m / 1440} суток`) : `за\u00a0${m / 60} ${m / 60 === 1 ? "час" : m / 60 < 5 ? "часа" : "часов"}`;
-const horizonLabel = (d: number) => (d % 7 === 0 ? `${d / 7} ${d / 7 === 1 ? "неделю" : d / 7 < 5 ? "недели" : "недель"}` : `${d} дней`);
+  m % 1440 === 0 ? (m === 1440 ? t("за\u00a0сутки") : t(`за\u00a0{v} суток`, { v: m / 1440 })) : t(`за\u00a0{v} {v2}`, { v: m / 60, v2: m / 60 === 1 ? t("час") : m / 60 < 5 ? t("часа") : t("часов") });
+const horizonLabel = (d: number) => (d % 7 === 0 ? `${d / 7} ${d / 7 === 1 ? t("неделю") : d / 7 < 5 ? t("недели") : t("недель")}` : t(`{d} дней`, { d }));
 
 /** Session length options, buffer, notice, horizon, start step, time zone. */
 export function SessionRules({
@@ -88,33 +89,33 @@ export function SessionRules({
 
   return (
     <Card as="section">
-      <CardHead title="Сессии и&nbsp;запись" sub="Клиент выбирает длительность при&nbsp;записи и&nbsp;видит только подходящее свободное время" />
+      <CardHead title={t("Сессии и\u00a0запись")} sub={t("Клиент выбирает длительность при\u00a0записи и\u00a0видит только подходящее свободное время")} />
       <div className={c.rules}>
         <div className={c.rule}>
           <div className={c.ruleText}>
-            <strong>Длительность созвона</strong>
+            <strong>{t("Длительность созвона")}</strong>
             <span>
               {chosen.length === 1
-                ? `Только ${durationLabel(chosen[0])}`
-                : `От\u00a0${durationLabel(chosen[0])} до\u00a0${durationLabel(chosen[chosen.length - 1])}, ${chosen.length} ${plural(
+                ? t(`Только {durationLabel}`, { durationLabel: durationLabel(chosen[0]) })
+                : t(`От\u00a0{durationLabel} до\u00a0{durationLabel2}, {length} {plural} на\u00a0выбор`, { durationLabel: durationLabel(chosen[0]), durationLabel2: durationLabel(chosen[chosen.length - 1]), length: chosen.length, plural: plural(
                     chosen.length,
                     "вариант",
                     "варианта",
                     "вариантов",
-                  )} на\u00a0выбор`}
+                  ) })}
             </span>
           </div>
           <div className={c.durLimits}>
             <div>
-              <span>Самая короткая</span>
-              <Select aria-label="Самая короткая" className={c.selectBox} value={draft.min_duration} onChange={setMin} options={all.map((d) => ({ value: d, label: durationLabel(d) }))} />
+              <span>{t("Самая короткая")}</span>
+              <Select aria-label={t("Самая короткая")} className={c.selectBox} value={draft.min_duration} onChange={setMin} options={all.map((d) => ({ value: d, label: durationLabel(d) }))} />
             </div>
             <div>
-              <span>Самая длинная</span>
-              <Select aria-label="Самая длинная" className={c.selectBox} value={draft.max_duration} onChange={setMax} options={all.map((d) => ({ value: d, label: durationLabel(d) }))} />
+              <span>{t("Самая длинная")}</span>
+              <Select aria-label={t("Самая длинная")} className={c.selectBox} value={draft.max_duration} onChange={setMax} options={all.map((d) => ({ value: d, label: durationLabel(d) }))} />
             </div>
           </div>
-          <div className={c.durChips} role="group" aria-label="Варианты длительности для&nbsp;клиента">
+          <div className={c.durChips} role="group" aria-label={t("Варианты длительности для\u00a0клиента")}>
             {all.map((d) => {
               const available = d >= draft.min_duration && d <= draft.max_duration;
               const on = available && draft.durations.includes(d);
@@ -126,7 +127,7 @@ export function SessionRules({
                   aria-pressed={on}
                   disabled={!available}
                   onClick={() => toggle(d)}
-                  title={available ? undefined : "Вне выбранных пределов"}
+                  title={available ? undefined : t("Вне выбранных пределов")}
                 >
                   {durationLabel(d)}
                 </button>
@@ -137,37 +138,37 @@ export function SessionRules({
 
         <div className={c.rule}>
           <div className={c.ruleText}>
-            <strong>Перерыв между созвонами</strong>
-            <span>Время на&nbsp;отдых и&nbsp;заметки. Следующую запись система поставит не&nbsp;раньше</span>
+            <strong>{t("Перерыв между созвонами")}</strong>
+            <span>{t("Время на\u00a0отдых и\u00a0заметки. Следующую запись система поставит не\u00a0раньше")}</span>
           </div>
           <Segmented<string>
-            ariaLabel="Перерыв между созвонами"
+            ariaLabel={t("Перерыв между созвонами")}
             value={String(draft.buffer_minutes)}
             onChange={(v) => onChange({ buffer_minutes: Number(v) })}
-            options={buffers.map((b) => ({ value: String(b), label: b ? `${b} мин` : "Без\u00a0перерыва" }))}
+            options={buffers.map((b) => ({ value: String(b), label: b ? t(`{b} мин`, { b }) : t("Без\u00a0перерыва") }))}
           />
         </div>
 
         <div className={c.ruleGrid}>
-          <Field label="Запись не&nbsp;позднее чем" htmlFor="rule-notice" hint="Чтобы не&nbsp;было неожиданных созвонов через полчаса">
+          <Field label={t("Запись не\u00a0позднее чем")} htmlFor="rule-notice" hint={t("Чтобы не\u00a0было неожиданных созвонов через полчаса")}>
             <Select
               id="rule-notice"
               className={c.selectBox}
               value={draft.min_notice_minutes}
               onChange={(v) => onChange({ min_notice_minutes: v })}
-              options={uniq([...options.min_notice_minutes, draft.min_notice_minutes]).map((m) => ({ value: m, label: `${noticeLabel(m)} до\u00a0начала` }))}
+              options={uniq([...options.min_notice_minutes, draft.min_notice_minutes]).map((m) => ({ value: m, label: t(`{noticeLabel} до\u00a0начала`, { noticeLabel: noticeLabel(m) }) }))}
             />
           </Field>
-          <Field label="Открывать запись на" htmlFor="rule-horizon" hint="Насколько вперёд клиенты видят свободное время">
+          <Field label={t("Открывать запись на")} htmlFor="rule-horizon" hint={t("Насколько вперёд клиенты видят свободное время")}>
             <Select
               id="rule-horizon"
               className={c.selectBox}
               value={draft.horizon_days}
               onChange={(v) => onChange({ horizon_days: v })}
-              options={uniq([...options.horizon_days, draft.horizon_days]).map((d) => ({ value: d, label: `${horizonLabel(d)} вперёд` }))}
+              options={uniq([...options.horizon_days, draft.horizon_days]).map((d) => ({ value: d, label: t(`{horizonLabel} вперёд`, { horizonLabel: horizonLabel(d) }) }))}
             />
           </Field>
-          <Field label="Созвоны начинаются" htmlFor="rule-step" hint="А&nbsp;ещё сразу после другого созвона и&nbsp;перерыва">
+          <Field label={t("Созвоны начинаются")} htmlFor="rule-step" hint={t("А\u00a0ещё сразу после другого созвона и\u00a0перерыва")}>
             <Select
               id="rule-step"
               className={c.selectBox}
@@ -175,11 +176,11 @@ export function SessionRules({
               onChange={(v) => onChange({ start_step_minutes: v })}
               options={options.start_step_minutes.map((m) => ({
                 value: m,
-                label: m === 60 ? "В\u00a0начале каждого часа" : m === 30 ? "Каждые полчаса" : `Каждые ${m} минут`,
+                label: m === 60 ? t("В\u00a0начале каждого часа") : m === 30 ? t("Каждые полчаса") : t(`Каждые {m} минут`, { m }),
               }))}
             />
           </Field>
-          <Field label="Ваш часовой пояс" htmlFor="rule-tz" hint="Расписание задаётся в&nbsp;нём, клиенты видят своё время">
+          <Field label={t("Ваш часовой пояс")} htmlFor="rule-tz" hint={t("Расписание задаётся в\u00a0нём, клиенты видят своё время")}>
             <Select
               id="rule-tz"
               className={c.selectBox}
@@ -211,28 +212,28 @@ export function PriceCard({
   return (
     <Card as="section">
       <CardHead
-        title="Стоимость"
-        sub="Цена указывается за&nbsp;час. Сессия стоит пропорционально длительности, сумма округляется до&nbsp;10&nbsp;₽"
+        title={t("Стоимость")}
+        sub={t("Цена указывается за\u00a0час. Сессия стоит пропорционально длительности, сумма округляется до\u00a010\u00a0₽")}
       />
       <div className={c.price}>
         <div className={c.priceInput}>
           <Input
-            label="Цена часа, ₽"
+            label={t("Цена часа, ₽")}
             inputMode="numeric"
             value={Number.isFinite(draft.hourly_rate_rub) && draft.hourly_rate_rub ? String(draft.hourly_rate_rub) : ""}
             onChange={(e) => onChange({ hourly_rate_rub: Number(e.target.value.replace(/\D/g, "").slice(0, 6)) || 0 })}
             error={error ?? undefined}
-            hint={`Комиссия платформы ${feePercent}%`}
+            hint={t(`Комиссия платформы {feePercent}%`, { feePercent })}
           />
         </div>
-        <ul className={c.priceList} aria-label="Цены для&nbsp;клиента">
+        <ul className={c.priceList} aria-label={t("Цены для\u00a0клиента")}>
           {offered.map((d) => {
             const p = priceFor(draft.hourly_rate_rub || 0, d);
             return (
               <li key={d}>
                 <span>{durationLabel(d)}</span>
                 <strong>{rub(p)}</strong>
-                <small>вам {rub(p * (1 - fee))}</small>
+                <small>{tj("вам {rub}", { rub: rub(p * (1 - fee)) })}</small>
               </li>
             );
           })}
@@ -258,12 +259,12 @@ export function IntroCard({
   return (
     <Card as="section" tone="minor">
       <CardHead
-        title="Знакомство, 15&nbsp;минут"
-        sub="Короткий первый созвон, чтобы клиент понял, комфортно&nbsp;ли ему с&nbsp;вами. Один раз на&nbsp;клиента"
+        title={t("Знакомство, 15\u00a0минут")}
+        sub={t("Короткий первый созвон, чтобы клиент понял, комфортно\u00a0ли ему с\u00a0вами. Один раз на\u00a0клиента")}
       />
       <div className={c.rules}>
         <Segmented<string>
-          ariaLabel="Знакомство"
+          ariaLabel={t("Знакомство")}
           value={mode}
           onChange={(v) =>
             onChange(
@@ -275,20 +276,20 @@ export function IntroCard({
             )
           }
           options={[
-            { value: "off", label: "Не\u00a0провожу" },
-            { value: "free", label: "Бесплатно" },
-            { value: "paid", label: "Платно" },
+            { value: "off", label: t("Не\u00a0провожу") },
+            { value: "free", label: t("Бесплатно") },
+            { value: "paid", label: t("Платно") },
           ]}
         />
         {mode === "paid" && (
           <div className={c.priceInput}>
             <Input
-              label="Цена знакомства, ₽"
+              label={t("Цена знакомства, ₽")}
               inputMode="numeric"
               value={draft.intro_price_rub ? String(draft.intro_price_rub) : ""}
               onChange={(e) => onChange({ intro_price_rub: Number(e.target.value.replace(/\D/g, "").slice(0, 5)) || 0 })}
               error={error ?? undefined}
-              hint={`До\u00a0${rub(maxPrice)}. Время берётся из\u00a0вашего расписания`}
+              hint={t(`До\u00a0{rub}. Время берётся из\u00a0вашего расписания`, { rub: rub(maxPrice) })}
             />
           </div>
         )}

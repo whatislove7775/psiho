@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt, tj } from "@/lib/i18n";
 import { FactsLine } from "@/components/specialists/SpecialistFacts";
 import { RatingPill } from "@/components/reviews/ReviewBits";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
@@ -110,11 +111,11 @@ function Specialists() {
   return (
     <>
       <PageHeader
-        title="Специалисты"
+        title={tt("Специалисты")}
         action={
           // H1: quiz-based matching
           <Button variant="soft" size="sm" href="/app/match" icon={<ListChecks size={16} strokeWidth={1.8} />}>
-            Подобрать по&nbsp;анкете
+            {tt("Подобрать по\u00a0анкете")}
           </Button>
         }
       />
@@ -130,8 +131,8 @@ function Specialists() {
                 typing.current = true;
                 setQ(e.target.value);
               }}
-              placeholder="Тревога, отношения, имя специалиста"
-              aria-label="Поиск специалиста"
+              placeholder={tt("Тревога, отношения, имя специалиста")}
+              aria-label={tt("Поиск специалиста")}
             />
             {q && (
               <button
@@ -141,7 +142,7 @@ function Specialists() {
                   typing.current = true;
                   setQ("");
                 }}
-                aria-label="Очистить поиск"
+                aria-label={tt("Очистить поиск")}
               >
                 <X size={16} strokeWidth={2} />
               </button>
@@ -153,7 +154,7 @@ function Specialists() {
 
       <div className={s.meta} aria-live="polite">
         {res.loading
-          ? "Ищем специалистов"
+          ? tt("Ищем специалистов")
           : !res.error &&
             `${list.length} ${plural(list.length, "специалист", "специалиста", "специалистов")}`}
       </div>
@@ -177,11 +178,11 @@ function Specialists() {
         <Card>
           <EmptyState art={<EmptyArt scene="search" />}
             icon={<SearchX size={24} strokeWidth={1.8} />}
-            title="Никого не&nbsp;нашли"
-            text="Попробуйте другое слово или&nbsp;уберите один из&nbsp;фильтров: тему, время или&nbsp;цену."
+            title={tt("Никого не\u00a0нашли")}
+            text={tt("Попробуйте другое слово или\u00a0уберите один из\u00a0фильтров: тему, время или\u00a0цену.")}
             action={
               <Button variant="primary" onClick={reset}>
-                Показать всех специалистов
+                {tt("Показать всех специалистов")}
               </Button>
             }
           />
@@ -205,7 +206,7 @@ function Specialists() {
                 <div className={s.badges}>
                   {p.specializations.map((x) => (
                     <Badge key={x} tone={selectedTopics.includes(x) ? "primary" : topicTone(x)}>
-                      {x}
+                      {tt(x)}
                     </Badge>
                   ))}
                 </div>
@@ -216,8 +217,8 @@ function Specialists() {
                     const d = query.duration ? p.booking?.durations.find((x) => x.minutes === query.duration) : undefined;
                     return (
                       <>
-                        <strong>{d ? rub(d.price_rub) : `от\u00a0${rub(p.session_rate_rub)}`}</strong>
-                        <span>за {durationLabel(d?.minutes ?? p.booking?.min_duration ?? 50)}</span>
+                        <strong>{d ? rub(d.price_rub) : tt(`от\u00a0{rub}`, { rub: rub(p.session_rate_rub) })}</strong>
+                        <span>{tj("за {durationLabel}", { durationLabel: durationLabel(d?.minutes ?? p.booking?.min_duration ?? 50) })}</span>
                       </>
                     );
                   })()}
@@ -225,9 +226,9 @@ function Specialists() {
                 <div className={s.slot} data-none={p.next_slot ? undefined : ""}>
                   <CalendarClock size={16} strokeWidth={1.8} aria-hidden />
                   {p.next_slot ? (
-                    <>Свободно {lower(when(p.next_slot))}</>
+                    <>{tj("Свободно {lower}", { lower: lower(when(p.next_slot)) })}</>
                   ) : (
-                    "Нет свободных окон"
+                    tt("Нет свободных окон")
                   )}
                 </div>
                 <Button
@@ -235,7 +236,7 @@ function Specialists() {
                   href={`/app/specialists/${p.id}`}
                   block
                 >
-                  Выбрать время
+                  {tt("Выбрать время")}
                 </Button>
               </div>
             </Card>

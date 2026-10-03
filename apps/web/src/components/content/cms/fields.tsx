@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import type { ReactNode } from "react";
 import { Field, Select as UiSelect } from "@/ui";
 import { COVERS, type Cover } from "@/lib/api/content";
@@ -7,18 +8,18 @@ import c from "../content.module.css";
 import s from "./cms.module.css";
 
 const COVER_LABEL: Record<Cover, string> = {
-  peach: "Персик",
-  butter: "Масло",
-  lime: "Лайм",
-  mint: "Мята",
-  lilac: "Сирень",
-  sky: "Небо",
+  get peach() { return t("Персик"); },
+  get butter() { return t("Масло"); },
+  get lime() { return t("Лайм"); },
+  get mint() { return t("Мята"); },
+  get lilac() { return t("Сирень"); },
+  get sky() { return t("Небо"); },
 };
 
 export function CoverPicker({ value, onChange, error }: { value: Cover; onChange: (c: Cover) => void; error?: ReactNode }) {
   return (
-    <Field label="Цвет обложки" error={error}>
-      <div className={s.swatches} role="radiogroup" aria-label="Цвет обложки">
+    <Field label={t("Цвет обложки")} error={error}>
+      <div className={s.swatches} role="radiogroup" aria-label={t("Цвет обложки")}>
         {COVERS.map((k) => (
           <button
             key={k}

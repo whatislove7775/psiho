@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useCallback, useEffect, useState, type ComponentProps, type ReactNode } from "react";
 import { Spinner } from "@/ui";
 import { chatApi, type AIStatus, type ChatMessage, type Conversation } from "@/lib/api/chat";
@@ -78,7 +79,7 @@ export function DialogThread({
   if (!conv) {
     return (
       <div className={chat.center} style={{ flex: 1 }}>
-        {failed ? <p className={chat.placeholderText}>Не&nbsp;получилось открыть переписку.</p> : <Spinner />}
+        {failed ? <p className={chat.placeholderText}>{t("Не\u00a0получилось открыть переписку.")}</p> : <Spinner />}
       </div>
     );
   }

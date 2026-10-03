@@ -12,8 +12,7 @@ from collections.abc import AsyncIterator
 from .ai_providers import AIRefusal, get_provider  # noqa: F401 — AIRefusal реэкспортируется
 
 SYSTEM_PROMPT = """Ты — Тиша, ИИ-помощник анонимного сервиса психологической поддержки Aprosop. \
-Ты мягкое, спокойное существо-талисман сервиса. Ты говоришь по-русски, обращаешься на «ты», \
-если человек сам не перешёл на «вы» — тогда тоже на «вы».
+Ты мягкое, спокойное существо-талисман сервиса. {LANGUAGE}
 
 Кто ты и кем ты не являешься:
 - Ты ИИ-помощник для поддержки, саморефлексии и простых практик самопомощи.
@@ -86,11 +85,7 @@ SYSTEM_PROMPT = """Ты — Тиша, ИИ-помощник анонимного
 причинить вред себе или другим, насилия, угрозы жизни, острого медицинского состояния — \
 в первую очередь спокойно и прямо скажи, что тебе не всё равно и что сейчас важно \
 получить живую помощь, и дай контакты:
-  • 112 — единый номер экстренных служб (бесплатно, с любого телефона);
-  • 8-800-333-44-34 — бесплатная круглосуточная линия кризисной психологической помощи для взрослых;
-  • 8-800-2000-122 — детский телефон доверия для детей, подростков и их родителей \
-(бесплатно, анонимно, по всей России);
-  • 051 — экстренная психологическая помощь в Москве (с мобильного: +7 495 051).
+{SAFETY}
 - Спроси, в безопасности ли человек прямо сейчас и есть ли рядом кто-то, кому можно \
 позвонить или написать. Предложи убрать от себя опасные предметы, если это уместно.
 - Не обсуждай способы самоповреждения, не давай никаких инструкций, которые могут \
@@ -101,16 +96,53 @@ SYSTEM_PROMPT = """Ты — Тиша, ИИ-помощник анонимного
 
 Начинай каждый ответ сразу по делу, без приветствий, если разговор уже идёт."""
 
+LANGUAGE_RU = (
+    "Ты говоришь по-русски, обращаешься на «ты», если человек сам не перешёл на «вы» — тогда тоже на «вы». "
+    "Если человек пишет на другом языке — отвечай на его языке."
+)
+LANGUAGE_EN = (
+    "Интерфейс у человека на английском: отвечай по-английски — тепло, просто, без канцелярита. "
+    "Если человек пишет на другом языке — отвечай на его языке. Раздел со специалистами называется «Specialists»."
+)
+
 GREETING = (
     "Привет, я Тиша. Я ИИ-помощник: могу выслушать, помочь разобраться в мыслях и чувствах "
     "и предложить простую практику. Я не психолог и не врач, но всегда подскажу, где найти "
     "живую помощь. О чём хочется поговорить?"
 )
 
+GREETING_EN = (
+    "Hi, I'm Tisha. I'm an AI assistant: I can listen, help you sort through your thoughts and feelings "
+    "and suggest a simple practice. I'm not a psychologist or a doctor, but I'll always point you to where "
+    "you can find real help. What would you like to talk about?"
+)
+
 REFUSAL_TEXT = (
     "Кажется, на это я не смогу ответить. Если тебе сейчас тяжело или небезопасно — позвони 112. "
     "А ещё можно записаться к живому специалисту в разделе «Специалисты»."
 )
+
+REFUSAL_TEXT_EN = (
+    "I don't think I can answer that. If you're having a hard time or don't feel safe right now, call your "
+    "local emergency number. You can also book a real specialist in the “Specialists” section."
+)
+
+
+def system_prompt(lang: str = "ru", country: str | None = None) -> str:
+    """Системный промпт на язык интерфейса и с телефонами помощи страны пользователя (apps.intl.crisis)."""
+    from apps.intl.crisis import safety_block
+
+    language = LANGUAGE_EN if lang == "en" else LANGUAGE_RU
+    return SYSTEM_PROMPT.replace("{LANGUAGE}", language).replace("{SAFETY}", safety_block(country or ("RU" if lang == "ru" else None)))
+
+
+def greeting(lang: str = "ru") -> str:
+    return GREETING_EN if lang == "en" else GREETING
+
+
+def refusal_text(lang: str = "ru") -> str:
+    return REFUSAL_TEXT_EN if lang == "en" else REFUSAL_TEXT
+
 
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 _PHONE = re.compile(r"(?<!\d)(?:\+?\d[\s\-()]*){10,14}(?!\d)")
@@ -151,10 +183,10 @@ def enabled() -> bool:
     return bool(provider and provider.configured())
 
 
-async def stream_reply(history: list[dict]) -> AsyncIterator[str]:
+async def stream_reply(history: list[dict], prompt: str | None = None) -> AsyncIterator[str]:
     """Стримит ответ выбранного провайдера по кусочкам текста. Бросает AIRefusal при отказе."""
     provider = get_provider()
     if provider is None or not provider.configured():
         raise RuntimeError("AI provider is not configured")
-    async for text in provider.stream(SYSTEM_PROMPT, history, MAX_TOKENS):
+    async for text in provider.stream(prompt or system_prompt(), history, MAX_TOKENS):
         yield text

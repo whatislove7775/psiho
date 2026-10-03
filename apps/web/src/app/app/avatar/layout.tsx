@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -7,9 +8,9 @@ import { ScanFace, ShieldCheck, Smile } from "lucide-react";
 import s from "./tabs.module.css";
 
 const TABS = [
-  { href: "/app/avatar", label: "Аватар", icon: Smile },
-  { href: "/app/avatar/mirror", label: "Зеркало", icon: ScanFace },
-  { href: "/app/avatar/privacy", label: "Приватность", icon: ShieldCheck },
+  { href: "/app/avatar", get label() { return tt("Аватар"); }, icon: Smile },
+  { href: "/app/avatar/mirror", get label() { return tt("Зеркало"); }, icon: ScanFace },
+  { href: "/app/avatar/privacy", get label() { return tt("Приватность"); }, icon: ShieldCheck },
 ];
 
 /** «Аватар»: one nav item for everything about anonymity — the avatar, the mirror (camera check) and privacy. */
@@ -17,7 +18,7 @@ export default function AvatarLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "";
   return (
     <>
-      <nav className={s.tabs} aria-label="Аватар и&nbsp;приватность">
+      <nav className={s.tabs} aria-label={tt("Аватар и\u00a0приватность")}>
         {TABS.map((t) => {
           const Icon = t.icon;
           const active = pathname === t.href;

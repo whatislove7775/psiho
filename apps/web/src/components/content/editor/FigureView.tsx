@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { NodeViewContent, NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 import { Trash2 } from "lucide-react";
 import e from "./editor.module.css";
@@ -14,14 +15,14 @@ export function FigureView({ node, updateAttributes, deleteNode, selected, edito
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={node.attrs.src} alt={node.attrs.alt ?? ""} draggable={false} />
         {editable && (
-          <div className={e.figTools} role="toolbar" aria-label="Картинка">
+          <div className={e.figTools} role="toolbar" aria-label={t("Картинка")}>
             <button type="button" aria-pressed={width === "column"} onClick={() => updateAttributes({ width: "column" })}>
-              По&nbsp;ширине текста
+              {t("По\u00a0ширине текста")}
             </button>
             <button type="button" aria-pressed={width === "wide"} onClick={() => updateAttributes({ width: "wide" })}>
-              Шире
+              {t("Шире")}
             </button>
-            <button type="button" aria-label="Удалить картинку" title="Удалить картинку" onClick={() => deleteNode()}>
+            <button type="button" aria-label={t("Удалить картинку")} title={t("Удалить картинку")} onClick={() => deleteNode()}>
               <Trash2 size={15} strokeWidth={1.9} />
             </button>
           </div>
@@ -30,7 +31,7 @@ export function FigureView({ node, updateAttributes, deleteNode, selected, edito
       <div className={e.capWrap}>
         {node.content.size === 0 && editable && (
           <span className={e.capHint} contentEditable={false} aria-hidden>
-            Подпись (необязательно)
+            {t("Подпись (необязательно)")}
           </span>
         )}
         <NodeViewContent as="figcaption" className={e.caption} />

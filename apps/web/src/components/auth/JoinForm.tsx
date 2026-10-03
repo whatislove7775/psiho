@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from "@/lib/i18n";
+import { lp } from "@/lib/i18n";
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
@@ -55,15 +57,15 @@ export function JoinForm() {
 
   const validate = (): Errors => {
     const e: Errors = {};
-    if (!name.trim()) e.display_name = "Напишите, как\u00a0вас показывать клиентам.";
-    if (!/^\S+@\S+\.\S+$/.test(email.trim())) e.email = "Проверьте почту: похоже, в\u00a0ней опечатка.";
-    if (password.length < 8) e.password = "Пароль должен быть не\u00a0короче 8\u00a0символов.";
-    if (!topics.length) e.specializations = "Выберите хотя\u00a0бы одну тему.";
+    if (!name.trim()) e.display_name = t("Напишите, как\u00a0вас показывать клиентам.");
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) e.email = t("Проверьте почту: похоже, в\u00a0ней опечатка.");
+    if (password.length < 8) e.password = t("Пароль должен быть не\u00a0короче 8\u00a0символов.");
+    if (!topics.length) e.specializations = t("Выберите хотя\u00a0бы одну тему.");
     const y = Number(years);
-    if (years === "" || !Number.isInteger(y) || y < 0 || y > 80) e.experience_years = "Укажите опыт целым числом лет.";
+    if (years === "" || !Number.isInteger(y) || y < 0 || y > 80) e.experience_years = t("Укажите опыт целым числом лет.");
     const r = Number(rate);
     if (rate === "" || !Number.isFinite(r) || r <= 0 || r > 1_000_000)
-      e.session_rate_rub = "Укажите стоимость созвона в\u00a0рублях.";
+      e.session_rate_rub = t("Укажите стоимость созвона в\u00a0рублях.");
     return e;
   };
 
@@ -73,7 +75,7 @@ export function JoinForm() {
     const e = validate();
     setErrors(e);
     if (Object.keys(e).length) {
-      setError("Проверьте отмеченные поля.");
+      setError(t("Проверьте отмеченные поля."));
       return;
     }
     setBusy(true);
@@ -95,7 +97,7 @@ export function JoinForm() {
         for (const k of Object.keys(err.fields) as Key[]) fe[k] = err.fields[k]?.[0];
         setErrors(fe);
         setError(err.message);
-      } else setError("Не\u00a0получилось отправить анкету. Попробуйте ещё раз.");
+      } else setError(t("Не\u00a0получилось отправить анкету. Попробуйте ещё раз."));
       setBusy(false);
     }
   };
@@ -103,14 +105,14 @@ export function JoinForm() {
   return (
     <AuthShell wide art={<SpecialistFriend />}>
       <AuthCard
-        title="Анкета специалиста"
-        sub="Клиенты приходят анонимно: вы&nbsp;увидите аватар и&nbsp;имя вроде «тихий-кит-4821». Профиль проверяем вручную, статус будет виден в&nbsp;кабинете."
+        title={t("Анкета специалиста")}
+        sub={t("Клиенты приходят анонимно: вы\u00a0увидите аватар и\u00a0имя вроде «тихий-кит-4821». Профиль проверяем вручную, статус будет виден в\u00a0кабинете.")}
       >
         <form className={s.form} onSubmit={submit} noValidate>
-          <h2 className={s.sectionLabel}>Вход</h2>
+          <h2 className={s.sectionLabel}>{t("Вход")}</h2>
           <div className={s.grid2}>
             <Input
-              label="Почта"
+              label={t("Почта")}
               type="email"
               value={email}
               onChange={(e) => {
@@ -118,51 +120,51 @@ export function JoinForm() {
                 touch("email");
               }}
               error={errors.email}
-              hint="Для&nbsp;входа. Храним только в&nbsp;зашифрованном виде."
+              hint={t("Для\u00a0входа. Храним только в\u00a0зашифрованном виде.")}
               autoComplete="email"
               autoFocus
             />
             <PasswordInput
-              label="Пароль"
+              label={t("Пароль")}
               value={password}
               onChange={(e) => {
                 setPassword(e.target.value);
                 touch("password");
               }}
               error={errors.password}
-              hint="Не&nbsp;короче 8&nbsp;символов."
+              hint={t("Не\u00a0короче 8\u00a0символов.")}
               autoComplete="new-password"
             />
           </div>
 
           <hr className={s.divider} />
-          <h2 className={s.sectionLabel}>Профиль в&nbsp;каталоге</h2>
+          <h2 className={s.sectionLabel}>{t("Профиль в\u00a0каталоге")}</h2>
           <Input
-            label="Имя в&nbsp;каталоге"
+            label={t("Имя в\u00a0каталоге")}
             value={name}
             onChange={(e) => {
               setName(e.target.value);
               touch("display_name");
             }}
             error={errors.display_name}
-            hint="Так вас увидят клиенты. Например, «Анна Соколова»."
+            hint={t("Так вас увидят клиенты. Например, «Анна Соколова».")}
             maxLength={80}
             autoComplete="name"
           />
           <Textarea
-            label="О&nbsp;себе"
+            label={t("О\u00a0себе")}
             value={bio}
             onChange={(e) => {
               setBio(e.target.value);
               touch("bio");
             }}
             error={errors.bio}
-            hint="С&nbsp;чем&nbsp;вы&nbsp;работаете и&nbsp;как&nbsp;проходят встречи. Несколько предложений простым языком."
+            hint={t("С\u00a0чем\u00a0вы\u00a0работаете и\u00a0как\u00a0проходят встречи. Несколько предложений простым языком.")}
             maxLength={1200}
             rows={5}
           />
           <ChipsInput
-            label="Темы, с&nbsp;которыми работаете"
+            label={t("Темы, с\u00a0которыми работаете")}
             value={topics}
             onChange={(v) => {
               setTopics(v);
@@ -170,11 +172,11 @@ export function JoinForm() {
             }}
             suggestions={TOPICS}
             error={errors.specializations}
-            hint="Выберите из&nbsp;списка или&nbsp;напишите свою и&nbsp;нажмите Enter."
+            hint={t("Выберите из\u00a0списка или\u00a0напишите свою и\u00a0нажмите Enter.")}
           />
           <div className={s.grid2}>
             <NumberInput
-              label="Опыт, лет"
+              label={t("Опыт, лет")}
               min={0}
               max={80}
               value={years === "" ? null : Number(years)}
@@ -185,7 +187,7 @@ export function JoinForm() {
               error={errors.experience_years}
             />
             <NumberInput
-              label="Стоимость созвона, ₽"
+              label={t("Стоимость созвона, ₽")}
               min={0}
               step={100}
               value={rate === "" ? null : Number(rate)}
@@ -194,20 +196,20 @@ export function JoinForm() {
                 touch("session_rate_rub");
               }}
               error={errors.session_rate_rub}
-              hint="За&nbsp;50&nbsp;минут."
+              hint={t("За\u00a050\u00a0минут.")}
             />
           </div>
           <FormError>{error}</FormError>
           <Button type="submit" variant="primary" size="lg" block loading={busy}>
-            Отправить анкету
+            {t("Отправить анкету")}
           </Button>
-          <ConsentNote kind="specialist" action="Отправить анкету" />
+          <ConsentNote kind="specialist" action={t("Отправить анкету")} />
         </form>
       </AuthCard>
       <AuthLinks
         links={[
-          { href: "/login", label: "Войти", prefix: "Уже зарегистрированы?" },
-          { href: "/start", label: "Начать анонимно", prefix: "Ищете психолога?" },
+          { href: lp("/login"), label: t("Войти"), prefix: t("Уже зарегистрированы?") },
+          { href: lp("/start"), label: t("Начать анонимно"), prefix: t("Ищете психолога?") },
         ]}
       />
     </AuthShell>

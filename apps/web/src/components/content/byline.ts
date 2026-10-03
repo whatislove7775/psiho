@@ -1,7 +1,8 @@
+import { t, intlLocale } from "@/lib/i18n";
 /** Article byline: «25 сент. 2026 · ред. Анна Соколова» (either part may be missing). */
 
 // Fixed zone so the server render and hydration agree on the calendar day.
-const DATE = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Moscow" });
+const DATE = { format: (d: Date) => new Intl.DateTimeFormat(intlLocale(), { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Moscow" }).format(d) };
 
 export function pubDate(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -13,7 +14,7 @@ export function pubDate(iso: string | null | undefined): string {
 export function editorLabel(name: string | null | undefined): string {
   const n = (name ?? "").trim();
   if (!n) return "";
-  return /^редакц/i.test(n) ? n : `ред.\u00a0${n}`;
+  return /^редакц/i.test(n) ? n : t(`ред.\u00a0{n}`, { n });
 }
 
 export function byline(a: {

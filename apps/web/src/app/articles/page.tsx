@@ -1,3 +1,5 @@
+import { t as tt, msg } from "@/lib/i18n";
+import { lp } from "@/lib/i18n";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Search } from "lucide-react";
@@ -7,7 +9,7 @@ import { JsonLd } from "@/components/public/JsonLd";
 import { PublicShell } from "@/components/public/PublicShell";
 import { StartCta } from "@/components/public/StartCta";
 import { serverContent } from "@/lib/content/server";
-import { abs, alternates, ORG_ID, WEBSITE_ID } from "@/lib/seo";
+import { abs, alternates, ORG_ID, WEBSITE_ID, inLanguage } from "@/lib/seo";
 import s from "@/components/public/public.module.css";
 import { ogMeta } from "@/lib/og/sections";
 
@@ -16,17 +18,17 @@ export const dynamic = "force-dynamic";
 
 type Props = { searchParams: { topic?: string; q?: string; from?: string } };
 
-const TITLE = "Статьи о\u00a0психологии: тревога, выгорание, сон, отношения";
+const TITLE = msg("Статьи о\u00a0психологии: тревога, выгорание, сон, отношения");
 const DESCRIPTION =
-  "Понятные статьи о\u00a0психическом здоровье с\u00a0проверенными источниками: тревога и\u00a0паника, выгорание, сон, отношения, горе, самооценка и\u00a0как\u00a0устроена психотерапия.";
+  msg("Понятные статьи о\u00a0психическом здоровье с\u00a0проверенными источниками: тревога и\u00a0паника, выгорание, сон, отношения, горе, самооценка и\u00a0как\u00a0устроена психотерапия.");
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const filtered = Boolean(searchParams.topic || searchParams.q || searchParams.from);
   return {
-    title: TITLE,
-    description: DESCRIPTION,
+    title: tt(TITLE),
+    description: tt(DESCRIPTION),
     alternates: alternates("/articles"),
-    ...ogMeta("/articles", "Статьи о\u00a0психике", DESCRIPTION),
+    ...ogMeta("/articles", tt("Статьи о\u00a0психике"), tt(DESCRIPTION)),
     // Filtered and search views are thin duplicates of the main list
     robots: filtered ? { index: false, follow: true } : undefined,
   };
@@ -52,8 +54,8 @@ export default async function ArticlesPage({ searchParams }: Props) {
     <PublicShell>
       <Breadcrumbs
         items={[
-          { name: "Главная", href: "/" },
-          { name: "Статьи", href: "/articles" },
+          { name: tt("Главная"), href: "/" },
+          { name: tt("Статьи"), href: "/articles" },
         ]}
       />
       <JsonLd
@@ -62,9 +64,9 @@ export default async function ArticlesPage({ searchParams }: Props) {
           "@type": "CollectionPage",
           "@id": abs("/articles"),
           url: abs("/articles"),
-          name: TITLE,
-          description: DESCRIPTION,
-          inLanguage: "ru-RU",
+          name: tt(TITLE),
+          description: tt(DESCRIPTION),
+          inLanguage: inLanguage(),
           isPartOf: { "@id": WEBSITE_ID },
           publisher: { "@id": ORG_ID },
           mainEntity: {
@@ -76,41 +78,41 @@ export default async function ArticlesPage({ searchParams }: Props) {
 
       <header className={s.intro}>
         <div>
-          <h1>Статьи</h1>
+          <h1>{tt("Статьи")}</h1>
           <p>
-            Спокойно и&nbsp;по&nbsp;делу, с&nbsp;источниками. <Link href="/practices">Практики</Link> — отдельно.
+            {tt("Спокойно и\u00a0по\u00a0делу, с\u00a0источниками.")}{" "}<Link href={lp("/practices")}>{tt("Практики")}</Link>{" "}{tt("— отдельно.")}
           </p>
         </div>
         <form action="/articles" method="get" role="search" className={s.search}>
           <Search size={18} strokeWidth={1.9} aria-hidden />
           <label htmlFor="articles-q" className="visually-hidden">
-            Поиск по&nbsp;статьям
+            {tt("Поиск по\u00a0статьям")}
           </label>
-          <input id="articles-q" name="q" type="search" defaultValue={q} placeholder="Поиск по&nbsp;статьям" autoComplete="off" />
+          <input id="articles-q" name="q" type="search" defaultValue={q} placeholder={tt("Поиск по\u00a0статьям")} autoComplete="off" />
           {topic && <input type="hidden" name="topic" value={topic} />}
-          <button type="submit">Найти</button>
+          <button type="submit">{tt("Найти")}</button>
         </form>
       </header>
 
       {topics.length > 0 && (
-        <nav aria-label="Темы статей">
+        <nav aria-label={tt("Темы статей")}>
           <ul className={s.topics}>
             <li>
-              <Link href="/articles" className={s.topic} aria-current={!topic && !fromPros ? "page" : undefined}>
-                Все темы
+              <Link href={lp("/articles")} className={s.topic} aria-current={!topic && !fromPros ? "page" : undefined}>
+                {tt("Все темы")}
               </Link>
             </li>
             {prosCount > 0 && (
               <li>
-                <Link href="/articles?from=specialists" className={s.topic} aria-current={fromPros ? "page" : undefined}>
-                  От&nbsp;специалистов
+                <Link href={lp("/articles?from=specialists")} className={s.topic} aria-current={fromPros ? "page" : undefined}>
+                  {tt("От\u00a0специалистов")}
                   <span>{prosCount}</span>
                 </Link>
               </li>
             )}
             {topics.map((t) => (
               <li key={t.value}>
-                <Link href={`/articles?topic=${t.value}`} className={s.topic} aria-current={topic === t.value && !fromPros ? "page" : undefined}>
+                <Link href={lp(`/articles?topic=${t.value}`)} className={s.topic} aria-current={topic === t.value && !fromPros ? "page" : undefined}>
                   {t.label}
                   <span>{t.count}</span>
                 </Link>
@@ -122,13 +124,13 @@ export default async function ArticlesPage({ searchParams }: Props) {
 
       {(q || topicLabel) && (
         <h2 className="visually-hidden">
-          {q ? `Результаты поиска «${q}»` : `Тема: ${topicLabel}`}
+          {q ? tt(`Результаты поиска «{q}»`, { q }) : tt(`Тема: {topicLabel}`, { topicLabel })}
         </h2>
       )}
       {articles.length === 0 ? (
         <p className={s.empty}>
-          {q ? `По\u00a0запросу «${q}» ничего не\u00a0нашлось. ` : "Статей на\u00a0эту тему пока нет. "}
-          <Link href="/articles">Все статьи</Link>
+          {q ? tt(`По\u00a0запросу «{q}» ничего не\u00a0нашлось. `, { q }) : tt("Статей на\u00a0эту тему пока нет. ")}
+          <Link href={lp("/articles")}>{tt("Все статьи")}</Link>
         </p>
       ) : (
         <ul className={s.grid}>

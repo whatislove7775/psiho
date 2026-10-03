@@ -144,3 +144,11 @@
     font-size: var(--t-15);
   }
 }
+
+/* S2: «≈ $38» for visitors from other countries (lib/i18n/currency.ts) */
+.approx {
+  color: var(--c-muted);
+  font-weight: 400;
+  font-size: 0.85em;
+  white-space: nowrap;
+}

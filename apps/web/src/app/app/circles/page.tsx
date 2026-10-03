@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowRight, CalendarClock, Hourglass, Tag } from "lucide-react";
@@ -29,13 +30,13 @@ export default function CirclesPage() {
   return (
     <div className={s.page}>
       <PageHeader
-        title="Круги"
-        sub="Группы поддержки до&nbsp;12&nbsp;человек с&nbsp;психологом"
+        title={tt("Круги")}
+        sub={tt("Группы поддержки до\u00a012\u00a0человек с\u00a0психологом")}
       />
 
       {mine.data && mine.data.results.length > 0 && (
         <Card>
-          <CardHead title="Мои круги" icon={<CalendarClock size={18} />} />
+          <CardHead title={tt("Мои круги")} icon={<CalendarClock size={18} />} />
           <div className={s.mineStrip}>
             {mine.data.results.map((c) => (
               <Link key={c.id} href={`/app/circles/${c.id}`} className={`${s.mineItem} ${topicClass(c.topic)}`}>
@@ -44,19 +45,19 @@ export default function CirclesPage() {
                   <b>{c.title}</b>
                   <small>
                     {c.me.status === "waitlist"
-                      ? `Лист ожидания, вы\u00a0${c.me.waitlist_position}-й`
+                      ? tt(`Лист ожидания, вы\u00a0{waitlist_position}-й`, { waitlist_position: c.me.waitlist_position })
                       : c.next_meeting
-                        ? `${dayLabel(c.next_meeting.starts_at)} в\u00a0${time(c.next_meeting.starts_at)}, ${untilLabel(c.next_meeting.starts_at)}`
-                        : "Встреч больше нет"}
+                        ? tt(`{dayLabel} в\u00a0{time}, {untilLabel}`, { dayLabel: dayLabel(c.next_meeting.starts_at), time: time(c.next_meeting.starts_at), untilLabel: untilLabel(c.next_meeting.starts_at) })
+                        : tt("Встреч больше нет")}
                   </small>
                 </span>
                 {c.me.status === "waitlist" ? (
                   <Badge tone="warning">
-                    <Hourglass size={12} /> Ожидание
+                    <Hourglass size={12} />{" "}{tt("Ожидание")}
                   </Badge>
                 ) : c.next_meeting?.room_open ? (
                   <Badge tone="success" dot>
-                    Встреча идёт
+                    {tt("Встреча идёт")}
                   </Badge>
                 ) : (
                   <ArrowRight size={18} aria-hidden />
@@ -69,13 +70,13 @@ export default function CirclesPage() {
 
       {topics.length > 0 && (
         <div className={f.bar}>
-          <div className={f.row} role="group" aria-label="Фильтры">
+          <div className={f.row} role="group" aria-label={tt("Фильтры")}>
             <FilterPopover
-              label={topic ? topics.find((t) => t.id === topic)?.label ?? "Тема" : "Тема"}
+              label={topic ? topics.find((t) => t.id === topic)?.label ?? tt("Тема") : tt("Тема")}
               icon={<Tag size={15} strokeWidth={1.9} aria-hidden />}
               active={!!topic}
-              title="Тема круга"
-              noun={["круг", "круга", "кругов"]}
+              title={tt("Тема круга")}
+              noun={[tt("круг"), tt("круга"), tt("кругов")]}
               count={list.data ? list.data.results.length : null}
               onReset={() => setTopic("")}
             >
@@ -101,8 +102,8 @@ export default function CirclesPage() {
         <Card>
           <EmptyState
             art={<EmptyArt scene="search" />}
-            title={topic ? "По\u00a0этой теме пока нет кругов" : "Круги скоро появятся"}
-            text="Загляните через несколько дней."
+            title={topic ? tt("По\u00a0этой теме пока нет кругов") : tt("Круги скоро появятся")}
+            text={tt("Загляните через несколько дней.")}
           />
         </Card>
       )}

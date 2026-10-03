@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { t } from "@/lib/i18n";
 import Link from "next/link";
 import { FileText } from "lucide-react";
 import { LEGAL_DOCS } from "@/components/legal/docs";
@@ -6,16 +8,18 @@ import { PublicShell } from "@/components/public/PublicShell";
 import { alternates } from "@/lib/seo";
 import s from "@/components/public/public.module.css";
 
-export const metadata = {
-  title: "Документы",
-  description: "Правовые документы сервиса Aprosop: политика конфиденциальности, соглашение, оферта, правила возврата и\u00a0другие.",
-  alternates: alternates("/legal"),
-};
+export function generateMetadata(): Metadata {
+  return {
+    title: t("Документы"),
+    description: t("Правовые документы сервиса Aprosop: политика конфиденциальности, соглашение, оферта, правила возврата и\u00a0другие."),
+    alternates: alternates("/legal"),
+  };
+}
 
 const GROUPS = [
-  { title: "Для\u00a0всех", audience: "all" },
-  { title: "Для\u00a0клиентов", audience: "clients" },
-  { title: "Для\u00a0специалистов", audience: "specialists" },
+  { get title() { return t("Для\u00a0всех"); }, audience: "all" },
+  { get title() { return t("Для\u00a0клиентов"); }, audience: "clients" },
+  { get title() { return t("Для\u00a0специалистов"); }, audience: "specialists" },
 ] as const;
 
 export default function LegalIndexPage() {
@@ -23,14 +27,14 @@ export default function LegalIndexPage() {
     <PublicShell>
       <Breadcrumbs
         items={[
-          { name: "Главная", href: "/" },
-          { name: "Документы", href: "/legal" },
+          { name: t("Главная"), href: "/" },
+          { name: t("Документы"), href: "/legal" },
         ]}
       />
       <header className={s.intro}>
         <div>
-          <h1>Документы</h1>
-          <p>Правила сервиса и&nbsp;то, как&nbsp;мы&nbsp;обращаемся с&nbsp;данными. Часть документов ещё готовится вместе с&nbsp;юристом.</p>
+          <h1>{t("Документы")}</h1>
+          <p>{t("Правила сервиса и\u00a0то, как\u00a0мы\u00a0обращаемся с\u00a0данными. Часть документов ещё готовится вместе с\u00a0юристом.")}</p>
         </div>
       </header>
       {GROUPS.map((g) => (

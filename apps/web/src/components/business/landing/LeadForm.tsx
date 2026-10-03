@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useState } from "react";
 import { CheckCircle2, Send } from "lucide-react";
 import { Button, Input, Textarea } from "@/ui";
@@ -34,7 +35,7 @@ export function LeadForm() {
       });
       setSent(true);
     } catch (err) {
-      setError(err instanceof ApiError ? (err.status === 429 ? "Слишком много заявок подряд. Попробуйте позже." : err.message) : "Не\u00a0получилось отправить.");
+      setError(err instanceof ApiError ? (err.status === 429 ? t("Слишком много заявок подряд. Попробуйте позже.") : err.message) : t("Не\u00a0получилось отправить."));
     } finally {
       setBusy(false);
     }
@@ -45,8 +46,8 @@ export function LeadForm() {
       <div className={s.sent} role="status">
         <CheckCircle2 size={28} aria-hidden />
         <div>
-          <strong>Заявка у&nbsp;нас</strong>
-          <p>Менеджер свяжется в&nbsp;течение рабочего дня и&nbsp;пришлёт расчёт под&nbsp;размер вашей команды.</p>
+          <strong>{t("Заявка у\u00a0нас")}</strong>
+          <p>{t("Менеджер свяжется в\u00a0течение рабочего дня и\u00a0пришлёт расчёт под\u00a0размер вашей команды.")}</p>
         </div>
       </div>
     );
@@ -55,20 +56,20 @@ export function LeadForm() {
   return (
     <form className={s.form} onSubmit={submit} noValidate>
       <div className={s.formRow}>
-        <Input label="Компания" value={company} onChange={(e) => setCompany(e.target.value)} autoComplete="organization" maxLength={160} required />
+        <Input label={t("Компания")} value={company} onChange={(e) => setCompany(e.target.value)} autoComplete="organization" maxLength={160} required />
         <Input
-          label="Сотрудников"
+          label={t("Сотрудников")}
           inputMode="numeric"
           value={employees}
           onChange={(e) => setEmployees(e.target.value.replace(/\D/g, "").slice(0, 7))}
-          placeholder="Например, 250"
+          placeholder={t("Например, 250")}
         />
       </div>
       <div className={s.formRow}>
-        <Input label="Как&nbsp;к&nbsp;вам обращаться" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" maxLength={120} />
-        <Input label="Рабочий email или&nbsp;телефон" value={contact} onChange={(e) => setContact(e.target.value)} autoComplete="email" maxLength={160} required />
+        <Input label={t("Как\u00a0к\u00a0вам обращаться")} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" maxLength={120} />
+        <Input label={t("Рабочий email или\u00a0телефон")} value={contact} onChange={(e) => setContact(e.target.value)} autoComplete="email" maxLength={160} required />
       </div>
-      <Textarea label="Комментарий" value={message} onChange={(e) => setMessage(e.target.value)} rows={3} maxLength={2000} placeholder="Что&nbsp;важно: пилот на&nbsp;отдел, лимиты, сроки" />
+      <Textarea label={t("Комментарий")} value={message} onChange={(e) => setMessage(e.target.value)} rows={3} maxLength={2000} placeholder={t("Что\u00a0важно: пилот на\u00a0отдел, лимиты, сроки")} />
       <input className={s.trap} tabIndex={-1} autoComplete="off" aria-hidden value={trap} onChange={(e) => setTrap(e.target.value)} name="website" />
       {error && (
         <div className={s.error} role="alert">
@@ -77,9 +78,9 @@ export function LeadForm() {
       )}
       <div className={s.formFoot}>
         <Button type="submit" variant="primary" size="lg" icon={<Send size={18} />} loading={busy} disabled={!company.trim() || !contact.trim()}>
-          Получить расчёт
+          {t("Получить расчёт")}
         </Button>
-        <span className={s.formNote}>Контакты компании нужны только для&nbsp;договора. Данных сотрудников мы&nbsp;не&nbsp;просим.</span>
+        <span className={s.formNote}>{t("Контакты компании нужны только для\u00a0договора. Данных сотрудников мы\u00a0не\u00a0просим.")}</span>
       </div>
     </form>
   );

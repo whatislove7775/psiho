@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt, tj } from "@/lib/i18n";
 import { ageLabel } from "@/lib/specialistFacts";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Button, Card, CardHead, Field, Input, NumberInput, Select, Skeleton, Textarea, useToast } from "@/ui";
@@ -13,6 +14,7 @@ import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import { PhotoUploader } from "@/components/pro/PhotoUploader";
 import { SelfieStep } from "@/components/verification/SelfieStep";
 import { ChipsField, LoadError } from "@/components/pro/controls";
+import { CountryChips } from "@/components/i18n/CountryChips";
 import { ApiError } from "@/lib/api/client";
 import { cabinetApi } from "@/lib/api/endpoints";
 import type { PsychologistPrivate } from "@/lib/api/types";
@@ -36,7 +38,8 @@ const SPECS = [
   "Семья",
   "Сон",
 ];
-const LANGS = ["Русский", "Английский", "Украинский", "Казахский", "Армянский", "Немецкий"];
+// Stored as these Russian names (search facets group by them); shown translated with tt()
+const LANGS = ["Русский", "Английский", "Украинский", "Казахский", "Узбекский", "Армянский", "Грузинский", "Азербайджанский", "Белорусский", "Румынский", "Немецкий"];
 const FEE = 0.2;
 
 interface Form {
@@ -49,6 +52,8 @@ interface Form {
   session_rate_rub: string;
   gender: "" | "female" | "male";
   birth_year: string;
+  serves_countries: string[];
+  licensure: string;
 }
 type Errors = Partial<Record<keyof Form, string>>;
 
@@ -62,23 +67,25 @@ const fromProfile = (p: PsychologistPrivate): Form => ({
   session_rate_rub: String(p.session_rate_rub ?? ""),
   gender: p.gender ?? "",
   birth_year: p.birth_year ? String(p.birth_year) : "",
+  serves_countries: p.serves_countries ?? [],
+  licensure: p.licensure ?? "",
 });
 
 function validate(f: Form): Errors {
   const e: Errors = {};
-  if (!f.display_name.trim()) e.display_name = "Укажите имя, под\u00a0которым вас увидят клиенты";
-  if (f.bio.trim().length < 40) e.bio = `Напишите хотя\u00a0бы пару предложений: сейчас ${f.bio.trim().length} из\u00a040\u00a0символов`;
+  if (!f.display_name.trim()) e.display_name = tt("Укажите имя, под\u00a0которым вас увидят клиенты");
+  if (f.bio.trim().length < 40) e.bio = tt(`Напишите хотя\u00a0бы пару предложений: сейчас {length} из\u00a040\u00a0символов`, { length: f.bio.trim().length });
   for (const k of ["bio", "approach"] as const) {
     const hits = findContacts(f[k]);
-    if (hits.length) e[k] = `Уберите ${describeContacts(hits)} — клиенты связываются с\u00a0вами через чат Aprosop`;
+    if (hits.length) e[k] = tt(`Уберите {describeContacts} — клиенты связываются с\u00a0вами через чат Aprosop`, { describeContacts: describeContacts(hits) });
   }
-  if (!f.specializations.length) e.specializations = "Выберите хотя\u00a0бы одну тему из\u00a0подсказок или\u00a0добавьте свою";
-  if (!f.languages.length) e.languages = "Добавьте язык, на\u00a0котором проводите созвоны";
+  if (!f.specializations.length) e.specializations = tt("Выберите хотя\u00a0бы одну тему из\u00a0подсказок или\u00a0добавьте свою");
+  if (!f.languages.length) e.languages = tt("Добавьте язык, на\u00a0котором проводите созвоны");
   const exp = Number(f.experience_years);
-  if (f.experience_years === "" || !Number.isInteger(exp) || exp < 0 || exp > 70) e.experience_years = "Целое число лет, от\u00a00\u00a0до\u00a070";
+  if (f.experience_years === "" || !Number.isInteger(exp) || exp < 0 || exp > 70) e.experience_years = tt("Целое число лет, от\u00a00\u00a0до\u00a070");
   const by = Number(f.birth_year);
   const year = new Date().getFullYear();
-  if (f.birth_year !== "" && (!Number.isInteger(by) || by < year - 90 || by > year - 18)) e.birth_year = `Год от\u00a0${year - 90}\u00a0до\u00a0${year - 18}`;
+  if (f.birth_year !== "" && (!Number.isInteger(by) || by < year - 90 || by > year - 18)) e.birth_year = tt(`Год от\u00a0{v}\u00a0до\u00a0{v2}`, { v: year - 90, v2: year - 18 });
   return e;
 }
 
@@ -107,7 +114,7 @@ export default function ProfilePage() {
         setPhoto(p.photo_url ?? null);
         setBooking(p.booking);
       })
-      .catch((e) => setLoadError(`${(e as Error).message} Обновите страницу, чтобы загрузить профиль.`));
+      .catch((e) => setLoadError(tt(`{message} Обновите страницу, чтобы загрузить профиль.`, { message: (e as Error).message })));
   }, []);
   useEffect(load, [load]);
 
@@ -128,7 +135,7 @@ export default function ProfilePage() {
     const errs = validate(form);
     setErrors(errs);
     if (Object.keys(errs).length) {
-      toast("Проверьте поля, отмеченные красным", { error: true });
+      toast(tt("Проверьте поля, отмеченные красным"), { error: true });
       return;
     }
     setSaving(true);
@@ -142,12 +149,14 @@ export default function ProfilePage() {
         experience_years: Number(form.experience_years),
         gender: form.gender,
         birth_year: form.birth_year === "" ? null : Number(form.birth_year),
+        serves_countries: form.serves_countries,
+        licensure: form.licensure.trim(),
       });
       const f = fromProfile(p);
       setInitial(f);
       setForm(f);
       refreshUser().catch(() => {});
-      toast("Профиль сохранён");
+      toast(tt("Профиль сохранён"));
     } catch (err) {
       if (err instanceof ApiError && Object.keys(err.fields).length) {
         const fe: Errors = {};
@@ -164,11 +173,11 @@ export default function ProfilePage() {
   return (
     <>
       <PageHeader
-        title="Профиль"
+        title={tt("Профиль")}
         sub={
           status === "approved"
-            ? "Так клиенты узнают вас в\u00a0каталоге. Изменения видны сразу после сохранения."
-            : "Заполните профиль полностью: администратор смотрит именно его, когда проверяет заявку."
+            ? tt("Так клиенты узнают вас в\u00a0каталоге. Изменения видны сразу после сохранения.")
+            : tt("Заполните профиль полностью: администратор смотрит именно его, когда проверяет заявку.")
         }
       />
       <WithRail rail={<Preview form={form} photo={photo} />}>
@@ -185,7 +194,7 @@ export default function ProfilePage() {
           <form onSubmit={submit} noValidate className={c.form}>
             <span id="photo" style={{ display: "block", scrollMarginTop: 16 }} />
             <Card as="section">
-              <CardHead title="Фото" sub="Специалисты на&nbsp;платформе не&nbsp;анонимны: клиенту важно видеть, с&nbsp;кем он&nbsp;говорит" />
+              <CardHead title={tt("Фото")} sub={tt("Специалисты на\u00a0платформе не\u00a0анонимны: клиенту важно видеть, с\u00a0кем он\u00a0говорит")} />
               <PhotoUploader
                 url={photo}
                 name={form.display_name}
@@ -198,73 +207,83 @@ export default function ProfilePage() {
             {status && <SelfieStep approved={status === "approved"} />}
 
             <Card as="section">
-              <CardHead title="О&nbsp;вас" sub="Клиенты не&nbsp;видят вашу почту. Имя можно указать полностью или&nbsp;только имя и&nbsp;первую букву фамилии" />
+              <CardHead title={tt("О\u00a0вас")} sub={tt("Клиенты не\u00a0видят вашу почту. Имя можно указать полностью или\u00a0только имя и\u00a0первую букву фамилии")} />
               <div className={c.fields}>
                 <Input
-                  label="Имя в&nbsp;каталоге"
+                  label={tt("Имя в\u00a0каталоге")}
                   value={form.display_name}
                   maxLength={80}
                   onChange={(e) => set("display_name", e.target.value)}
                   error={errors.display_name}
-                  placeholder="Анна Соколова"
+                  placeholder={tt("Анна Соколова")}
                 />
                 <Textarea
-                  label="Коротко о&nbsp;себе"
+                  label={tt("Коротко о\u00a0себе")}
                   value={form.bio}
                   maxLength={1200}
                   rows={5}
                   onChange={(e) => set("bio", e.target.value)}
                   error={errors.bio}
-                  hint={`С\u00a0чем\u00a0помогаете и\u00a0как\u00a0проходит работа. ${form.bio.length} из\u00a01200`}
-                  placeholder="Помогаю разобраться с&nbsp;тревогой и&nbsp;вернуть ощущение опоры…"
+                  hint={tt(`С\u00a0чем\u00a0помогаете и\u00a0как\u00a0проходит работа. {length} из\u00a01200`, { length: form.bio.length })}
+                  placeholder={tt("Помогаю разобраться с\u00a0тревогой и\u00a0вернуть ощущение опоры…")}
                 />
                 <Textarea
-                  label="Подход"
+                  label={tt("Подход")}
                   value={form.approach}
                   maxLength={600}
                   rows={3}
                   onChange={(e) => set("approach", e.target.value)}
                   error={errors.approach}
-                  hint="Методы и&nbsp;школы, в&nbsp;которых вы&nbsp;работаете"
-                  placeholder="Когнитивно-поведенческая терапия, элементы ACT"
+                  hint={tt("Методы и\u00a0школы, в\u00a0которых вы\u00a0работаете")}
+                  placeholder={tt("Когнитивно-поведенческая терапия, элементы ACT")}
                 />
               </div>
             </Card>
 
             <Card as="section">
-              <CardHead title="С&nbsp;чем&nbsp;работаете" sub="По&nbsp;этим темам клиенты ищут специалиста" />
+              <CardHead title={tt("С\u00a0чем\u00a0работаете")} sub={tt("По\u00a0этим темам клиенты ищут специалиста")} />
               <div className={c.fields}>
-                <Field label="Специализации" error={errors.specializations}>
+                <Field label={tt("Специализации")} error={errors.specializations}>
                   <ChipsField
                     value={form.specializations}
                     onChange={(v) => set("specializations", v)}
                     suggestions={SPECS}
-                    placeholder="Своя тема, например «Эмиграция»"
-                    addLabel="Добавить"
+                    placeholder={tt("Своя тема, например «Эмиграция»")}
+                    addLabel={tt("Добавить")}
                   />
                 </Field>
-                <Field label="Языки созвонов" error={errors.languages}>
-                  <ChipsField value={form.languages} onChange={(v) => set("languages", v)} suggestions={LANGS} placeholder="Другой язык" addLabel="Добавить" max={6} />
+                <Field label={tt("Языки созвонов")} error={errors.languages}>
+                  <ChipsField value={form.languages} onChange={(v) => set("languages", v)} suggestions={LANGS} placeholder={tt("Другой язык")} addLabel={tt("Добавить")} max={6} />
                 </Field>
+                <Field label={tt("Клиенты из каких стран")} hint={tt("Необязательно. Клиенты увидят это в\u00a0профиле.")}>
+                  <CountryChips value={form.serves_countries} onChange={(v) => set("serves_countries", v)} />
+                </Field>
+                <Input
+                  label={tt("Где у\u00a0вас право практиковать")}
+                  hint={tt("Необязательно. Например, «Россия» или «Лицензия психолога, штат Нью-Йорк». Мы\u00a0это не\u00a0проверяем\u00a0— клиенты увидят текст как есть.")}
+                  value={form.licensure}
+                  onChange={(e) => set("licensure", e.target.value)}
+                  maxLength={300}
+                />
                 <Select<"" | "female" | "male">
-                  label="Пол"
-                  hint="Необязательно. Некоторым клиентам важно выбрать специалиста определённого пола."
+                  label={tt("Пол")}
+                  hint={tt("Необязательно. Некоторым клиентам важно выбрать специалиста определённого пола.")}
                   value={form.gender}
                   onChange={(v) => set("gender", v)}
                   options={[
-                    { value: "", label: "Не\u00a0указывать" },
-                    { value: "female", label: "Женщина" },
-                    { value: "male", label: "Мужчина" },
+                    { value: "", label: tt("Не\u00a0указывать") },
+                    { value: "female", label: tt("Женщина") },
+                    { value: "male", label: tt("Мужчина") },
                   ]}
                 />
                 <NumberInput
-                  label="Год рождения"
+                  label={tt("Год рождения")}
                   hint={
                     form.birth_year
-                      ? `Клиенты увидят возраст: ${ageLabel(new Date().getFullYear() - Number(form.birth_year)) ?? "—"}. Год не\u00a0показываем.`
-                      : "Необязательно. Клиенты увидят только возраст, например «32\u00a0года»."
+                      ? tt(`Клиенты увидят возраст: {v}. Год не\u00a0показываем.`, { v: ageLabel(new Date().getFullYear() - Number(form.birth_year)) ?? "—" })
+                      : tt("Необязательно. Клиенты увидят только возраст, например «32\u00a0года».")
                   }
-                  placeholder="Не указан"
+                  placeholder={tt("Не указан")}
                   min={new Date().getFullYear() - 90}
                   max={new Date().getFullYear() - 18}
                   value={form.birth_year === "" ? null : Number(form.birth_year)}
@@ -275,19 +294,19 @@ export default function ProfilePage() {
             </Card>
 
             <Card as="section">
-              <CardHead title="Опыт и&nbsp;стоимость" />
+              <CardHead title={tt("Опыт и\u00a0стоимость")} />
               <div className={c.pair}>
                 <NumberInput
-                  label="Опыт, лет"
+                  label={tt("Опыт, лет")}
                   min={0}
                   max={70}
                   value={form.experience_years === "" ? null : Number(form.experience_years)}
                   onChange={(v) => set("experience_years", v == null ? "" : String(v))}
                   error={errors.experience_years}
                 />
-                <Field label="Цена часа">
+                <Field label={tt("Цена часа")}>
                   <Button variant="secondary" block href="/pro/schedule?tab=rules">
-                    {booking ? `${rub(booking.hourly_rate_rub)}, изменить` : "Настроить"}
+                    {booking ? tt(`{rub}, изменить`, { rub: rub(booking.hourly_rate_rub) }) : tt("Настроить")}
                   </Button>
                 </Field>
               </div>
@@ -296,20 +315,19 @@ export default function ProfilePage() {
                   <div key={d.minutes} className={c.price}>
                     <span>{durationLabel(d.minutes)}</span>
                     <strong>{rub(d.price_rub)}</strong>
-                    <small>Вам {rub(d.price_rub * (1 - FEE))}</small>
+                    <small>{tj("Вам {rub}", { rub: rub(d.price_rub * (1 - FEE)) })}</small>
                   </div>
                 ))}
               </div>
               <p className={c.note}>
-                Комиссия платформы 20%. Цена часа, длительность созвонов и&nbsp;перерывы настраиваются в&nbsp;расписании. Стоимость созвона
-                пропорциональна длительности и&nbsp;округляется до&nbsp;10&nbsp;₽.
+                {tt("Комиссия платформы 20%. Цена часа, длительность созвонов и\u00a0перерывы настраиваются в\u00a0расписании. Стоимость созвона пропорциональна длительности и\u00a0округляется до\u00a010\u00a0₽.")}
               </p>
             </Card>
 
             <div className={c.bar} data-dirty={dirty || undefined}>
-              <span className={s.muted}>{dirty ? "Есть несохранённые изменения" : "Все изменения сохранены"}</span>
+              <span className={s.muted}>{dirty ? tt("Есть несохранённые изменения") : tt("Все изменения сохранены")}</span>
               <Button type="submit" variant="primary" size="lg" loading={saving} disabled={!dirty}>
-                Сохранить профиль
+                {tt("Сохранить профиль")}
               </Button>
             </div>
           </form>
@@ -330,14 +348,14 @@ function Preview({ form, photo }: { form: Form | null; photo: string | null }) {
   const exp = Number(form.experience_years) || 0;
   return (
     <div className={c.previewWrap}>
-      <div className={c.previewLabel}>Так вас видят клиенты</div>
+      <div className={c.previewLabel}>{tt("Так вас видят клиенты")}</div>
       <Card as="article" className={c.preview}>
         <div className={c.pHead}>
           <SpecialistPhoto url={photo} name={form.display_name.trim() || "?"} size={72} />
           <div style={{ minWidth: 0 }}>
-            <div className={c.pName}>{form.display_name.trim() || "Ваше имя"}</div>
+            <div className={c.pName}>{form.display_name.trim() || tt("Ваше имя")}</div>
             <div className={c.pMeta}>
-              {exp ? experienceLabel(exp) : "Опыт не\u00a0указан"}
+              {exp ? experienceLabel(exp) : tt("Опыт не\u00a0указан")}
               {form.languages.length ? `, ${form.languages.join(", ").toLowerCase()}` : ""}
             </div>
           </div>
@@ -347,22 +365,22 @@ function Preview({ form, photo }: { form: Form | null; photo: string | null }) {
             {form.specializations.slice(0, 5).map((t) => (
               <span key={t}>{t}</span>
             ))}
-            {form.specializations.length > 5 && <span>ещё {form.specializations.length - 5}</span>}
+            {form.specializations.length > 5 && <span>{tj("ещё {v}", { v: form.specializations.length - 5 })}</span>}
           </div>
         )}
-        <p className={c.pBio}>{form.bio.trim() || "Здесь будет текст о\u00a0вас. Клиенты читают его первым, когда выбирают специалиста."}</p>
+        <p className={c.pBio}>{form.bio.trim() || tt("Здесь будет текст о\u00a0вас. Клиенты читают его первым, когда выбирают специалиста.")}</p>
         {form.approach.trim() && <p className={c.pApproach}>{form.approach.trim()}</p>}
         <div className={c.pFoot}>
           <div>
             <div className={c.pPrice}>{rub(Number(form.session_rate_rub) || 0)}</div>
-            <div className={c.pMeta}>самый короткий созвон</div>
+            <div className={c.pMeta}>{tt("самый короткий созвон")}</div>
           </div>
           <Button variant="primary" size="sm" tabIndex={-1} aria-hidden>
-            Записаться
+            {tt("Записаться")}
           </Button>
         </div>
       </Card>
-      <p className={c.note}>Почта и&nbsp;документы клиентам не&nbsp;показываются. На&nbsp;созвоне клиент видит ваше видео с&nbsp;камеры.</p>
+      <p className={c.note}>{tt("Почта и\u00a0документы клиентам не\u00a0показываются. На\u00a0созвоне клиент видит ваше видео с\u00a0камеры.")}</p>
     </div>
   );
 }

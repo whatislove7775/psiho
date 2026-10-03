@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from "react";
 import { Camera, ImageUp, Trash2, ZoomIn, ZoomOut } from "lucide-react";
 import { Button, Modal, useToast } from "@/ui";
@@ -74,7 +75,7 @@ function Cropper({ img, onCrop }: { img: Img; onCrop: (c: PhotoCrop) => void }) 
         onPointerUp={up}
         onPointerCancel={up}
         onWheel={(e) => setZoom((z) => Math.min(MAX_ZOOM, Math.max(1, z - e.deltaY * 0.0015)))}
-        aria-label="Передвиньте фото, чтобы выбрать кадр"
+        aria-label={t("Передвиньте фото, чтобы выбрать кадр")}
         role="img"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -90,7 +91,7 @@ function Cropper({ img, onCrop }: { img: Img; onCrop: (c: PhotoCrop) => void }) 
           step={0.01}
           value={zoom}
           onChange={(e) => setZoom(Number(e.target.value))}
-          aria-label="Масштаб"
+          aria-label={t("Масштаб")}
         />
         <ZoomIn size={18} aria-hidden />
       </div>
@@ -125,21 +126,21 @@ export function PhotoUploader({
   const pick = (file: File | undefined) => {
     setError(null);
     if (!file) return;
-    if (!PHOTO_TYPES.includes(file.type)) return setError("Подойдёт фото в\u00a0формате JPEG, PNG или\u00a0WebP.");
-    if (file.size > PHOTO_MAX_BYTES) return setError("Файл больше 5\u00a0МБ. Выберите фото поменьше.");
+    if (!PHOTO_TYPES.includes(file.type)) return setError(t("Подойдёт фото в\u00a0формате JPEG, PNG или\u00a0WebP."));
+    if (file.size > PHOTO_MAX_BYTES) return setError(t("Файл больше 5\u00a0МБ. Выберите фото поменьше."));
     const url = URL.createObjectURL(file);
     const probe = new Image();
     probe.onload = () => {
       if (Math.min(probe.naturalWidth, probe.naturalHeight) < 200) {
         URL.revokeObjectURL(url);
-        setError("Фото слишком маленькое. Нужно хотя\u00a0бы 200×200\u00a0пикселей.");
+        setError(t("Фото слишком маленькое. Нужно хотя\u00a0бы 200×200\u00a0пикселей."));
         return;
       }
       setImg({ url, file, w: probe.naturalWidth, h: probe.naturalHeight });
     };
     probe.onerror = () => {
       URL.revokeObjectURL(url);
-      setError("Не\u00a0получилось открыть файл. Попробуйте другое фото.");
+      setError(t("Не\u00a0получилось открыть файл. Попробуйте другое фото."));
     };
     probe.src = url;
   };
@@ -151,7 +152,7 @@ export function PhotoUploader({
       const res = await photoApi.upload(img.file, crop.current);
       onChange(res.photo_url);
       setImg(null);
-      toast("Фото сохранено");
+      toast(t("Фото сохранено"));
     } catch (e) {
       toast((e as Error).message, { error: true });
     } finally {
@@ -164,7 +165,7 @@ export function PhotoUploader({
     try {
       await photoApi.remove();
       onChange(null);
-      toast("Фото удалено");
+      toast(t("Фото удалено"));
     } catch (e) {
       toast((e as Error).message, { error: true });
     } finally {
@@ -174,23 +175,23 @@ export function PhotoUploader({
 
   return (
     <div className={s.root}>
-      <SpecialistPhoto url={url} name={name || "?"} size={104} alt="Ваше фото" />
+      <SpecialistPhoto url={url} name={name || "?"} size={104} alt={t("Ваше фото")} />
       <div className={s.body}>
-        <p className={s.text}>Настоящее фото, на&nbsp;котором хорошо видно лицо. Клиенты видят его в&nbsp;каталоге, при&nbsp;записи и&nbsp;на&nbsp;созвоне.</p>
+        <p className={s.text}>{t("Настоящее фото, на\u00a0котором хорошо видно лицо. Клиенты видят его в\u00a0каталоге, при\u00a0записи и\u00a0на\u00a0созвоне.")}</p>
         <div className={s.actions}>
           <Button type="button" variant="primary" size="sm" icon={<ImageUp size={16} />} onClick={() => input.current?.click()} disabled={!!busy}>
-            {url ? "Заменить фото" : "Загрузить фото"}
+            {url ? t("Заменить фото") : t("Загрузить фото")}
           </Button>
           <Button type="button" variant="secondary" size="sm" icon={<Camera size={16} />} onClick={() => setCamera(true)} disabled={!!busy}>
-            Сделать фото
+            {t("Сделать фото")}
           </Button>
           {url && (
             <Button type="button" variant="ghost" size="sm" icon={<Trash2 size={16} />} onClick={remove} loading={busy === "delete"}>
-              Удалить
+              {t("Удалить")}
             </Button>
           )}
         </div>
-        <p className={s.hint}>{PHOTO_HINT}</p>
+        <p className={s.hint}>{t(PHOTO_HINT)}</p>
         {error && (
           <p className={s.error} role="alert">
             {error}
@@ -208,11 +209,11 @@ export function PhotoUploader({
         />
       </div>
 
-      <Modal open={camera} onClose={() => setCamera(false)} title="Сделать фото" width={420}>
+      <Modal open={camera} onClose={() => setCamera(false)} title={t("Сделать фото")} width={420}>
         {camera && (
           <CameraCapture
             mask="circle"
-            steps={[{ hint: "Лицо\u00a0— в\u00a0круге, смотрите в\u00a0камеру" }]}
+            steps={[{ hint: t("Лицо\u00a0— в\u00a0круге, смотрите в\u00a0камеру") }]}
             onCancel={() => setCamera(false)}
             onDone={([b]) => {
               setCamera(false);
@@ -222,17 +223,17 @@ export function PhotoUploader({
         )}
       </Modal>
 
-      <Modal open={!!img} onClose={() => !busy && setImg(null)} title="Выберите кадр" width={400}>
+      <Modal open={!!img} onClose={() => !busy && setImg(null)} title={t("Выберите кадр")} width={400}>
         {img && (
           <div className={s.modal}>
             <Cropper img={img} onCrop={(c) => (crop.current = c)} />
-            <p className={s.text}>Передвиньте фото и&nbsp;настройте масштаб. Лицо лучше разместить по&nbsp;центру круга.</p>
+            <p className={s.text}>{t("Передвиньте фото и\u00a0настройте масштаб. Лицо лучше разместить по\u00a0центру круга.")}</p>
             <div className={s.modalActions}>
               <Button type="button" variant="secondary" onClick={() => setImg(null)} disabled={!!busy}>
-                Отмена
+                {t("Отмена")}
               </Button>
               <Button type="button" variant="primary" onClick={upload} loading={busy === "upload"}>
-                Сохранить фото
+                {t("Сохранить фото")}
               </Button>
             </div>
           </div>

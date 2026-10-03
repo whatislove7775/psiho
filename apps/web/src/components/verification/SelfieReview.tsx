@@ -1,12 +1,13 @@
 "use client";
 
+import { t, intlLocale } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/ui";
 import { staffSelfieApi, type StaffSelfieMeta } from "@/lib/api/authoring";
 import s from "./selfie.module.css";
 
-const fmt = (iso: string) => new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+const fmt = (iso: string) => new Date(iso).toLocaleDateString(intlLocale(), { day: "numeric", month: "short" });
 
 /**
  * Verification selfie in the staff queue (specialists.verify only). Frames are fetched on demand —
@@ -26,7 +27,7 @@ export function SelfieReview({ profileId }: { profileId: number }) {
 
   if (error) return <span className={s.missing}>{error}</span>;
   if (!meta) return <span className={s.staffLine}>…</span>;
-  if (!meta.exists) return <span className={s.missing}>Не&nbsp;сделано&nbsp;— одобрить пока нельзя</span>;
+  if (!meta.exists) return <span className={s.missing}>{t("Не\u00a0сделано\u00a0— одобрить пока нельзя")}</span>;
 
   const show = async () => {
     setBusy(true);
@@ -42,15 +43,15 @@ export function SelfieReview({ profileId }: { profileId: number }) {
   return (
     <div className={s.staff}>
       <span className={s.staffLine}>
-        Снято {meta.taken_at ? fmt(meta.taken_at) : ""}
-        {meta.delete_after ? ` · удалится ${fmt(meta.delete_after)}` : ` · удалится через ${meta.retention_days} дн. после одобрения`}
+        {t("Снято")}{" "}{meta.taken_at ? fmt(meta.taken_at) : ""}
+        {meta.delete_after ? t(` · удалится {fmt}`, { fmt: fmt(meta.delete_after) }) : t(` · удалится через {retention_days} дн. после одобрения`, { retention_days: meta.retention_days })}
         {frames ? (
           <Button type="button" variant="ghost" size="sm" icon={<EyeOff size={14} />} onClick={() => setFrames(null)}>
-            Скрыть
+            {t("Скрыть")}
           </Button>
         ) : (
           <Button type="button" variant="ghost" size="sm" icon={<Eye size={14} />} loading={busy} onClick={show}>
-            Показать
+            {t("Показать")}
           </Button>
         )}
       </span>
@@ -60,12 +61,12 @@ export function SelfieReview({ profileId }: { profileId: number }) {
             {frames.frames.map((src, i) => (
               <figure key={i}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={src} alt={i === 0 ? "Кадр 1: прямо в\u00a0камеру" : `Кадр 2: ${frames.challenge_text}`} />
-                <figcaption>{i === 0 ? "Прямо в\u00a0камеру" : frames.challenge_text}</figcaption>
+                <img src={src} alt={i === 0 ? t("Кадр 1: прямо в\u00a0камеру") : t(`Кадр 2: {challenge_text}`, { challenge_text: frames.challenge_text })} />
+                <figcaption>{i === 0 ? t("Прямо в\u00a0камеру") : frames.challenge_text}</figcaption>
               </figure>
             ))}
           </div>
-          <span className={s.staffLine}>Просмотр записан в&nbsp;журнал действий.</span>
+          <span className={s.staffLine}>{t("Просмотр записан в\u00a0журнал действий.")}</span>
         </>
       )}
     </div>

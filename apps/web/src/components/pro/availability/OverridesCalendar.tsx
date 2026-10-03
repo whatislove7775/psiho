@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt, tj, intlLocale } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarOff, ChevronLeft, ChevronRight, Palmtree, Plus, Trash2 } from "lucide-react";
 import { Badge, Button, Card, CardHead, Input, Modal, Skeleton, useToast } from "@/ui";
@@ -18,17 +19,17 @@ const parse = (s: string) => {
 };
 const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 const monthTitle = (d: Date) => {
-  const s = d.toLocaleDateString("ru-RU", { month: "long", year: "numeric" }).replace(" г.", "");
+  const s = d.toLocaleDateString(intlLocale(), { month: "long", year: "numeric" }).replace(" г.", "");
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
 const dayTitle = (s: string) => {
   const d = parse(s);
-  return `${WEEKDAYS[(d.getDay() + 6) % 7]}, ${d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}`;
+  return `${WEEKDAYS[(d.getDay() + 6) % 7]}, ${d.toLocaleDateString(intlLocale(), { day: "numeric", month: "long" })}`;
 };
 const short = (t: string) => t.replace(/^0/, "").replace(/:00$/, "");
 const periodLabel = (a: string, b: string) => {
-  const fa = parse(a).toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
-  const fb = parse(b).toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
+  const fa = parse(a).toLocaleDateString(intlLocale(), { day: "numeric", month: "long" });
+  const fb = parse(b).toLocaleDateString(intlLocale(), { day: "numeric", month: "long" });
   return a === b ? fa : `${fa} – ${fb}`;
 };
 
@@ -79,12 +80,12 @@ export function OverridesCalendar({
   return (
     <Card as="section">
       <CardHead
-        title="Особые дни и&nbsp;отпуск"
-        sub="Нажмите на&nbsp;день, чтобы изменить часы только в&nbsp;эту дату или&nbsp;сделать его выходным"
+        title={tt("Особые дни и\u00a0отпуск")}
+        sub={tt("Нажмите на\u00a0день, чтобы изменить часы только в\u00a0эту дату или\u00a0сделать его выходным")}
       />
       {stale && (
         <div className={c.staleNote} role="status">
-          Недельное расписание изменено, но&nbsp;не&nbsp;сохранено. Календарь покажет его после сохранения
+          {tt("Недельное расписание изменено, но\u00a0не\u00a0сохранено. Календарь покажет его после сохранения")}
         </div>
       )}
       <div className={c.calHead}>
@@ -92,7 +93,7 @@ export function OverridesCalendar({
           size="sm"
           variant="ghost"
           iconOnly
-          aria-label="Предыдущий месяц"
+          aria-label={tt("Предыдущий месяц")}
           icon={<ChevronLeft size={18} />}
           disabled={month <= minMonth}
           onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
@@ -104,14 +105,14 @@ export function OverridesCalendar({
           size="sm"
           variant="ghost"
           iconOnly
-          aria-label="Следующий месяц"
+          aria-label={tt("Следующий месяц")}
           icon={<ChevronRight size={18} />}
           disabled={month >= maxMonth}
           onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
         />
       </div>
       {error && <LoadError text={error} onRetry={load} />}
-      <div className={c.cal} role="grid" aria-label={`Календарь, ${monthTitle(month)}`}>
+      <div className={c.cal} role="grid" aria-label={tt(`Календарь, {monthTitle}`, { monthTitle: monthTitle(month) })}>
         {WEEKDAYS_SHORT.map((w) => (
           <div key={w} className={c.calWd} role="columnheader">
             {w}
@@ -126,9 +127,9 @@ export function OverridesCalendar({
               const state = d.source === "time_off" ? "vacation" : d.ranges.length ? "work" : "off";
               const summary =
                 state === "vacation"
-                  ? "Отпуск"
+                  ? tt("Отпуск")
                   : state === "off"
-                    ? "Выходной"
+                    ? tt("Выходной")
                     : `${short(d.ranges[0].start)}–${short(d.ranges[0].end)}${d.ranges.length > 1 ? ` +${d.ranges.length - 1}` : ""}`;
               return (
                 <button
@@ -141,7 +142,7 @@ export function OverridesCalendar({
                   data-today={d.date === today || undefined}
                   disabled={past}
                   onClick={() => setOpen(d)}
-                  aria-label={`${dayTitle(d.date)}: ${summary}${d.has_override ? ", изменён вручную" : ""}${
+                  aria-label={`${dayTitle(d.date)}: ${summary}${d.has_override ? tt(", изменён вручную") : ""}${
                     d.sessions.length ? `, ${d.sessions.length} ${plural(d.sessions.length, "созвон", "созвона", "созвонов")}` : ""
                   }`}
                 >
@@ -156,11 +157,11 @@ export function OverridesCalendar({
             })}
       </div>
       <div className={c.legend} aria-hidden>
-        <span data-k="work">Приём</span>
-        <span data-k="off">Выходной</span>
-        <span data-k="vacation">Отпуск</span>
-        <span data-k="edit">Изменён вручную</span>
-        <span data-k="booked">Есть записи</span>
+        <span data-k="work">{tt("Приём")}</span>
+        <span data-k="off">{tt("Выходной")}</span>
+        <span data-k="vacation">{tt("Отпуск")}</span>
+        <span data-k="edit">{tt("Изменён вручную")}</span>
+        <span data-k="booked">{tt("Есть записи")}</span>
       </div>
 
       <TimeOffList
@@ -231,7 +232,7 @@ function DayModal({
   const save = () =>
     run(
       () => availabilityApi.setDay(day.date, on ? ranges.map((r) => ({ start: r.from, end: r.to })) : []),
-      on ? "Часы на\u00a0этот день сохранены" : "День закрыт для\u00a0записи",
+      on ? tt("Часы на\u00a0этот день сохранены") : tt("День закрыт для\u00a0записи"),
     );
 
   return (
@@ -239,11 +240,11 @@ function DayModal({
       <div className={c.dayModal}>
         <div className={c.dayBadges}>
           {day.source === "time_off" ? (
-            <Badge tone="warning">Отпуск</Badge>
+            <Badge tone="warning">{tt("Отпуск")}</Badge>
           ) : day.has_override ? (
-            <Badge tone="primary">Изменён вручную</Badge>
+            <Badge tone="primary">{tt("Изменён вручную")}</Badge>
           ) : (
-            <Badge>Как&nbsp;в&nbsp;недельном расписании</Badge>
+            <Badge>{tt("Как\u00a0в\u00a0недельном расписании")}</Badge>
           )}
           {day.sessions.length > 0 && (
             <Badge tone="success">
@@ -255,35 +256,34 @@ function DayModal({
         {vacation ? (
           <>
             <p className={c.modalText}>
-              День входит в&nbsp;отпуск {periodLabel(vacation.start_date, vacation.end_date)}
-              {vacation.note ? ` («${vacation.note}»)` : ""}. Клиенты не&nbsp;видят свободного времени в&nbsp;эти дни.
+              {tj("День входит в\u00a0отпуск {periodLabel}{v}. Клиенты не\u00a0видят свободного времени в\u00a0эти дни.", { periodLabel: periodLabel(vacation.start_date, vacation.end_date), v: vacation.note ? ` («${vacation.note}»)` : "" })}
             </p>
             <div className={c.modalActions}>
               <Button variant="secondary" onClick={onClose} disabled={busy}>
-                Закрыть
+                {tt("Закрыть")}
               </Button>
               <Button
                 variant="danger"
                 loading={busy}
-                onClick={() => run(() => availabilityApi.removeTimeOff(vacation.id), "Отпуск отменён")}
+                onClick={() => run(() => availabilityApi.removeTimeOff(vacation.id), tt("Отпуск отменён"))}
               >
-                Отменить отпуск
+                {tt("Отменить отпуск")}
               </Button>
             </div>
           </>
         ) : (
           <>
             <div className={c.dayToggle}>
-              <Switch checked={on} label={on ? "Принимаю в\u00a0этот день" : "Выходной"} onChange={setOn} />
+              <Switch checked={on} label={on ? tt("Принимаю в\u00a0этот день") : tt("Выходной")} onChange={setOn} />
               <div>
-                <strong>{on ? "Принимаю в\u00a0этот день" : "Выходной"}</strong>
-                <span>{on ? "Часы действуют только в\u00a0эту дату" : "Запись на\u00a0этот день закрыта"}</span>
+                <strong>{on ? tt("Принимаю в\u00a0этот день") : tt("Выходной")}</strong>
+                <span>{on ? tt("Часы действуют только в\u00a0эту дату") : tt("Запись на\u00a0этот день закрыта")}</span>
               </div>
             </div>
             {on && <RangesEditor ranges={ranges} errors={errors} label={dayTitle(day.date)} onChange={setRanges} />}
             {day.sessions.length > 0 && (
               <div className={c.booked}>
-                <span>Уже записаны</span>
+                <span>{tt("Уже записаны")}</span>
                 <div>
                   {day.sessions.map((x) => (
                     <Badge key={x.start}>
@@ -291,7 +291,7 @@ function DayModal({
                     </Badge>
                   ))}
                 </div>
-                <small>Изменение часов не&nbsp;отменяет эти созвоны.</small>
+                <small>{tt("Изменение часов не\u00a0отменяет эти созвоны.")}</small>
               </div>
             )}
             <div className={c.modalActions}>
@@ -299,13 +299,13 @@ function DayModal({
                 <Button
                   variant="ghost"
                   disabled={busy}
-                  onClick={() => run(() => availabilityApi.resetDay(day.date), "День снова идёт по\u00a0недельному расписанию")}
+                  onClick={() => run(() => availabilityApi.resetDay(day.date), tt("День снова идёт по\u00a0недельному расписанию"))}
                 >
-                  Как&nbsp;в&nbsp;расписании
+                  {tt("Как\u00a0в\u00a0расписании")}
                 </Button>
               )}
               <Button variant="primary" loading={busy} disabled={blocking || (on && !ranges.length)} onClick={save}>
-                Сохранить день
+                {tt("Сохранить день")}
               </Button>
             </div>
           </>
@@ -329,7 +329,7 @@ function TimeOffList({ items, today, onChanged }: { items: TimeOff[] | null; tod
     setBusy("add");
     try {
       await availabilityApi.addTimeOff({ start_date: start, end_date: end, note: note.trim() });
-      toast("Отпуск добавлен, запись на\u00a0эти дни закрыта");
+      toast(tt("Отпуск добавлен, запись на\u00a0эти дни закрыта"));
       setAdding(false);
       setStart("");
       setEnd("");
@@ -346,7 +346,7 @@ function TimeOffList({ items, today, onChanged }: { items: TimeOff[] | null; tod
     setBusy(id);
     try {
       await availabilityApi.removeTimeOff(id);
-      toast("Отпуск отменён");
+      toast(tt("Отпуск отменён"));
       onChanged();
     } catch (e) {
       toast((e as Error).message, { error: true });
@@ -359,29 +359,29 @@ function TimeOffList({ items, today, onChanged }: { items: TimeOff[] | null; tod
     <div className={c.vacations}>
       <div className={c.vacHead}>
         <div>
-          <h3>Отпуск и&nbsp;перерывы</h3>
-          <p>Целые дни без&nbsp;приёма. Уже оплаченные созвоны в&nbsp;эти дни остаются в&nbsp;силе</p>
+          <h3>{tt("Отпуск и\u00a0перерывы")}</h3>
+          <p>{tt("Целые дни без\u00a0приёма. Уже оплаченные созвоны в\u00a0эти дни остаются в\u00a0силе")}</p>
         </div>
         {!adding && (
           <Button size="sm" variant="secondary" icon={<Plus size={16} />} onClick={() => setAdding(true)}>
-            Добавить отпуск
+            {tt("Добавить отпуск")}
           </Button>
         )}
       </div>
       {adding && (
         <div className={c.vacForm}>
-          <Input type="date" label="Первый день" value={start} min={today} onChange={(e) => {
+          <Input type="date" label={tt("Первый день")} value={start} min={today} onChange={(e) => {
             setStart(e.target.value);
             if (!end || end < e.target.value) setEnd(e.target.value);
           }} />
-          <Input type="date" label="Последний день" value={end} min={start || today} onChange={(e) => setEnd(e.target.value)} />
-          <Input label="Заметка для&nbsp;себя" placeholder="Например, отпуск" maxLength={80} value={note} onChange={(e) => setNote(e.target.value)} />
+          <Input type="date" label={tt("Последний день")} value={end} min={start || today} onChange={(e) => setEnd(e.target.value)} />
+          <Input label={tt("Заметка для\u00a0себя")} placeholder={tt("Например, отпуск")} maxLength={80} value={note} onChange={(e) => setNote(e.target.value)} />
           <div className={c.vacFormActions}>
             <Button variant="ghost" onClick={() => setAdding(false)} disabled={busy === "add"}>
-              Отмена
+              {tt("Отмена")}
             </Button>
             <Button variant="primary" onClick={add} loading={busy === "add"} disabled={invalid}>
-              Закрыть запись на&nbsp;эти дни
+              {tt("Закрыть запись на\u00a0эти дни")}
             </Button>
           </div>
         </div>
@@ -392,7 +392,7 @@ function TimeOffList({ items, today, onChanged }: { items: TimeOff[] | null; tod
         !adding && (
           <div className={c.vacEmpty}>
             <Palmtree size={18} strokeWidth={1.8} aria-hidden />
-            Отпусков не&nbsp;запланировано
+            {tt("Отпусков не\u00a0запланировано")}
           </div>
         )
       ) : (
@@ -413,7 +413,7 @@ function TimeOffList({ items, today, onChanged }: { items: TimeOff[] | null; tod
                   size="sm"
                   variant="ghost"
                   iconOnly
-                  aria-label={`Отменить отпуск ${periodLabel(t.start_date, t.end_date)}`}
+                  aria-label={tt(`Отменить отпуск {periodLabel}`, { periodLabel: periodLabel(t.start_date, t.end_date) })}
                   icon={<Trash2 size={16} />}
                   loading={busy === t.id}
                   onClick={() => remove(t.id)}

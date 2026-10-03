@@ -86,6 +86,7 @@ def test_public_list_and_detail(psychologist, api):
         "id", "display_name", "bio", "approach", "specializations", "languages", "experience_years",
         "session_rate_rub", "avatar_config", "photo_url", "sessions_count", "next_slot",
         "booking", "gender", "rating", "reviews_count", "verified_credentials", "age", "on_service_since",
+        "serves_countries", "licensure",
     }
     assert len(api.get("/api/v1/psychologists/?q=тревог").json()) == 1
     assert len(api.get("/api/v1/psychologists/?q=депрессия").json()) == 0

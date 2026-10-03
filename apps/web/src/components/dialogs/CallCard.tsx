@@ -1,5 +1,6 @@
 "use client";
 
+import { t, tj, intlLocale } from "@/lib/i18n";
 import { CalendarCheck2, CalendarClock, CalendarX2, CircleCheckBig, PenLine, PhoneCall, Sparkles, Video } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { ReviewModal } from "@/components/reviews/ReviewModal";
@@ -11,10 +12,10 @@ import { CALL_STATUS, isLive, range, weekdayDay } from "./time";
 import s from "./dialogs.module.css";
 
 const PROPOSAL_STATUS: Record<string, string> = {
-  accepted: "Принято",
-  declined: "Клиент отказался",
-  withdrawn: "Отозвано",
-  expired: "Время прошло",
+  get accepted() { return t("Принято"); },
+  get declined() { return t("Клиент отказался"); },
+  get withdrawn() { return t("Отозвано"); },
+  get expired() { return t("Время прошло"); },
 };
 
 /**
@@ -27,7 +28,7 @@ export function CallCard({ msg }: { msg: ChatMessage }) {
   const role = ctx?.role;
   const [reviewing, setReviewing] = useState(false);
   const reviewFor = ctx?.detail?.counterpart.psychologist_id ?? null;
-  const at = new Date(msg.created_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  const at = new Date(msg.created_at).toLocaleTimeString(intlLocale(), { hour: "2-digit", minute: "2-digit" });
 
   const snapshot = card.call;
   const call = snapshot ? ctx?.call(snapshot) ?? snapshot : null;
@@ -35,7 +36,7 @@ export function CallCard({ msg }: { msg: ChatMessage }) {
   const joinBtn =
     call && live ? (
       <Button variant="white" size="sm" href={`/room/${call.id}`} icon={<Video size={16} strokeWidth={1.8} />}>
-        Присоединиться
+        {t("Присоединиться")}
       </Button>
     ) : null;
 
@@ -48,12 +49,12 @@ export function CallCard({ msg }: { msg: ChatMessage }) {
   let badge: ReactNode = null;
 
   const when = call ? `${weekdayDay(call.scheduled_at)}, ${range(call.scheduled_at, call.duration_minutes)}` : "";
-  const byLabel = (by?: string) => (by === "specialist" ? (role === "specialist" ? "вы" : "специалист") : role === "client" ? "вы" : "клиент");
+  const byLabel = (by?: string) => (by === "specialist" ? (role === "specialist" ? t("вы") : t("специалист")) : role === "client" ? t("вы") : t("клиент"));
 
   switch (card.type) {
     case "booked": {
-      title = call?.is_intro ? "Знакомство назначено" : "Созвон назначен";
-      sub = call ? `${when}, ${call.duration_minutes} мин` : null;
+      title = call?.is_intro ? t("Знакомство назначено") : t("Созвон назначен");
+      sub = call ? t(`{when}, {duration_minutes} мин`, { when, duration_minutes: call.duration_minutes }) : null;
       if (call && call.status !== "paid") {
         const st = CALL_STATUS[call.status];
         badge = st ? <Badge tone={st.tone}>{st.label}</Badge> : null;
@@ -66,7 +67,7 @@ export function CallCard({ msg }: { msg: ChatMessage }) {
       } else if (call?.status === "awaiting_payment" && role === "client" && ctx) {
         actions = (
           <Button variant="primary" size="sm" onClick={() => ctx.openPay(call)}>
-            Оплатить {rub(call.amount_rub)}
+            {tj("Оплатить {rub}", { rub: rub(call.amount_rub) })}
           </Button>
         );
       }
@@ -75,8 +76,8 @@ export function CallCard({ msg }: { msg: ChatMessage }) {
     case "rescheduled":
       icon = <CalendarClock size={20} strokeWidth={1.8} />;
       iconTone = "lilac";
-      title = call?.is_intro ? "Знакомство перенесено" : "Созвон перенесён";
-      sub = call ? `Новое время: ${when}. Перенёс ${byLabel(card.by)}` : null;
+      title = call?.is_intro ? t("Знакомство перенесено") : t("Созвон перенесён");
+      sub = call ? t(`Новое время: {when}. Перенёс {byLabel}`, { when, byLabel: byLabel(card.by) }) : null;
       if (live) {
         tone = "live";
         actions = joinBtn;
@@ -86,17 +87,17 @@ export function CallCard({ msg }: { msg: ChatMessage }) {
       icon = <CalendarX2 size={20} strokeWidth={1.8} />;
       iconTone = "coral";
       tone = "muted";
-      title = call?.is_intro ? "Знакомство отменено" : "Созвон отменён";
+      title = call?.is_intro ? t("Знакомство отменено") : t("Созвон отменён");
       sub = call ? (
         <>
-          <span className={s.cardStrike}>{when}</span>. Отменил {byLabel(card.by)}
+          <span className={s.cardStrike}>{when}</span>{t(". Отменил")}{" "}{byLabel(card.by)}
         </>
       ) : null;
       break;
     case "started":
       icon = <PhoneCall size={20} strokeWidth={1.8} />;
       iconTone = "mint";
-      title = call?.is_intro ? (live ? "Знакомство идёт" : "Знакомство началось") : live ? "Созвон идёт" : "Созвон начался";
+      title = call?.is_intro ? (live ? t("Знакомство идёт") : t("Знакомство началось")) : live ? t("Созвон идёт") : t("Созвон начался");
       sub = call ? when : null;
       if (live) {
         tone = "live";
@@ -106,13 +107,13 @@ export function CallCard({ msg }: { msg: ChatMessage }) {
     case "ended":
       icon = <CircleCheckBig size={20} strokeWidth={1.8} />;
       iconTone = "mint";
-      title = call?.is_intro ? "Знакомство завершено" : "Созвон завершён";
-      sub = card.minutes ? `Длился ${card.minutes} мин` : call ? when : null;
+      title = call?.is_intro ? t("Знакомство завершено") : t("Созвон завершён");
+      sub = card.minutes ? t(`Длился {minutes} мин`, { minutes: card.minutes }) : call ? when : null;
       // G2: клиенту — приглашение оставить отзыв (модалка сама проверит, что созвон засчитан)
       if (role === "client" && reviewFor) {
         actions = (
           <Button variant="soft" size="sm" icon={<PenLine size={16} strokeWidth={1.8} />} onClick={() => setReviewing(true)}>
-            Оставить отзыв
+            {t("Оставить отзыв")}
           </Button>
         );
       }
@@ -121,9 +122,9 @@ export function CallCard({ msg }: { msg: ChatMessage }) {
       const p = card.proposal;
       icon = <Sparkles size={20} strokeWidth={1.8} />;
       iconTone = "sun";
-      title = role === "specialist" ? "Вы\u00a0предложили время" : "Специалист предлагает созвон";
+      title = role === "specialist" ? t("Вы\u00a0предложили время") : t("Специалист предлагает созвон");
       if (!p) {
-        sub = "Предложение удалено";
+        sub = t("Предложение удалено");
         tone = "muted";
         break;
       }
@@ -135,21 +136,21 @@ export function CallCard({ msg }: { msg: ChatMessage }) {
         actions = (
           <>
             <Button variant="primary" size="sm" loading={ctx.busy === p.id} onClick={() => ctx.accept(p)}>
-              Принять и&nbsp;оплатить
+              {t("Принять и\u00a0оплатить")}
             </Button>
             <Button variant="ghost" size="sm" onClick={() => ctx.openBook()}>
-              Другое время
+              {t("Другое время")}
             </Button>
             <Button variant="ghost" size="sm" disabled={ctx.busy === p.id} onClick={() => ctx.closeProposal(p)}>
-              Отказаться
+              {t("Отказаться")}
             </Button>
           </>
         );
       } else if (ctx && role === "specialist") {
-        badge = <Badge tone="warning">Ждёт ответа</Badge>;
+        badge = <Badge tone="warning">{t("Ждёт ответа")}</Badge>;
         actions = (
           <Button variant="ghost" size="sm" disabled={ctx.busy === p.id} onClick={() => ctx.closeProposal(p)}>
-            Отозвать
+            {t("Отозвать")}
           </Button>
         );
       }

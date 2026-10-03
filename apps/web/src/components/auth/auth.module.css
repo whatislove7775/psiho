@@ -448,3 +448,28 @@
     flex: 1 1 auto;
   }
 }
+
+/* S2: 18+ confirmation and (EU/UK) explicit health-data consent at signup */
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: var(--t-14, 14px);
+  line-height: 1.4;
+  color: var(--c-text);
+  cursor: pointer;
+}
+.check input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  accent-color: var(--c-primary);
+  cursor: pointer;
+}
+.check small {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--t-12, 12px);
+  color: var(--c-muted);
+}

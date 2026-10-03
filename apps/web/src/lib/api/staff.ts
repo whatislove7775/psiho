@@ -1,4 +1,5 @@
 /** Staff console API (/api/v1/staff/…) and user reports (/api/v1/reports/…). See docs/API.md. */
+import { t } from "@/lib/i18n";
 import type { AvatarConfig } from "@/lib/avatar/schema";
 import { api, API_BASE, ApiError } from "./client";
 import type { AuthResponse, SessionStatus, VerificationStatus } from "./types";
@@ -341,14 +342,14 @@ export async function loginWithOtp(login: string, password: string, otp?: string
       body: JSON.stringify(otp ? { login, password, otp } : { login, password }),
     });
   } catch {
-    throw new ApiError(0, "Нет соединения с\u00a0сервером. Проверьте интернет.");
+    throw new ApiError(0, t("Нет соединения с\u00a0сервером. Проверьте интернет."));
   }
   const data = await res.json().catch(() => null);
   if (res.ok) return data as AuthResponse;
-  if (data && data.otp_required) throw new OtpRequiredError(String(data.detail || "Введите код"));
-  if (res.status === 429) throw new ApiError(429, "Слишком много попыток. Подождите минуту.");
-  if (res.status >= 500) throw new ApiError(res.status, "Сервер временно недоступен. Попробуйте через минуту.");
+  if (data && data.otp_required) throw new OtpRequiredError(String(data.detail || t("Введите код")));
+  if (res.status === 429) throw new ApiError(429, t("Слишком много попыток. Подождите минуту."));
+  if (res.status >= 500) throw new ApiError(res.status, t("Сервер временно недоступен. Попробуйте через минуту."));
   const detail = data && typeof data.detail === "string" ? data.detail : null;
   const first = data && !detail ? Object.values(data as Record<string, unknown>).flat()[0] : null;
-  throw new ApiError(res.status, detail || (first ? String(first) : "Не\u00a0получилось войти."));
+  throw new ApiError(res.status, detail || (first ? String(first) : t("Не\u00a0получилось войти.")));
 }

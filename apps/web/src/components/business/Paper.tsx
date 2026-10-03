@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import type { ReactNode } from "react";
 import { ArrowLeft, Printer } from "lucide-react";
 import { Button } from "@/ui";
@@ -11,10 +12,10 @@ export function Paper({ children }: { children: ReactNode }) {
     <>
       <div className={s.printBar}>
         <Button variant="ghost" href="/business/portal/documents" icon={<ArrowLeft size={18} />}>
-          К&nbsp;документам
+          {t("К\u00a0документам")}
         </Button>
         <Button variant="secondary" icon={<Printer size={18} />} onClick={() => window.print()}>
-          Печать или&nbsp;PDF
+          {t("Печать или\u00a0PDF")}
         </Button>
       </div>
       <article className={s.paper}>{children}</article>

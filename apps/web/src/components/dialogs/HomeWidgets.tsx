@@ -1,5 +1,6 @@
 "use client";
 
+import { t as tt } from "@/lib/i18n";
 import Link from "next/link";
 import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { CalendarDays, ChevronDown, Headphones, Lamp, MessagesSquare, ShieldCheck, Sparkles, Video } from "lucide-react";
@@ -27,7 +28,7 @@ export function useDialogsSummary() {
         setItems(x);
         setError(null);
       })
-      .catch(() => setError("Не\u00a0получилось загрузить диалоги"));
+      .catch(() => setError(tt("Не\u00a0получилось загрузить диалоги")));
   }, []);
   useEffect(() => {
     load();
@@ -86,33 +87,33 @@ export function NextCallCard({ item, loading, role }: { item: DialogItem | null;
       <section className={r.accent} aria-labelledby={titleId}>
         <div className={r.head}>
           <h2 id={titleId} className={r.title}>
-            {role === "client" ? "Первый созвон" : "Ближайших созвонов нет"}
+            {role === "client" ? tt("Первый созвон") : tt("Ближайших созвонов нет")}
           </h2>
         </div>
         <p className={r.lead}>
           {role === "client"
-            ? "Выберите специалиста и\u00a0напишите ему или\u00a0сразу назначьте созвон. Вместо лица специалист увидит ваш аватар."
-            : "Клиенты назначают созвоны в\u00a0диалогах по\u00a0вашему расписанию. Вы\u00a0тоже можете предложить время в\u00a0диалоге."}
+            ? tt("Выберите специалиста и\u00a0напишите ему или\u00a0сразу назначьте созвон. Вместо лица специалист увидит ваш аватар.")
+            : tt("Клиенты назначают созвоны в\u00a0диалогах по\u00a0вашему расписанию. Вы\u00a0тоже можете предложить время в\u00a0диалоге.")}
         </p>
         <div className={r.rows}>
           <Row
             icon={<MessagesSquare size={18} strokeWidth={1.8} />}
-            title="Один диалог на&nbsp;пару"
-            sub="Переписка, созвоны и&nbsp;файлы в&nbsp;одном месте"
+            title={tt("Один диалог на\u00a0пару")}
+            sub={tt("Переписка, созвоны и\u00a0файлы в\u00a0одном месте")}
           />
           <Row
             icon={<CalendarDays size={18} strokeWidth={1.8} />}
-            title="От&nbsp;50&nbsp;минут до&nbsp;3&nbsp;часов"
-            sub="Длительность выбирается при&nbsp;записи, цена зависит от&nbsp;неё"
+            title={tt("От\u00a050\u00a0минут до\u00a03\u00a0часов")}
+            sub={tt("Длительность выбирается при\u00a0записи, цена зависит от\u00a0неё")}
           />
         </div>
         {role === "client" ? (
           <SearchTrigger variant="white" size="lg" block>
-            Выбрать специалиста
+            {tt("Выбрать специалиста")}
           </SearchTrigger>
         ) : (
           <Button variant="white" size="lg" block href="/pro/schedule">
-            Открыть расписание
+            {tt("Открыть расписание")}
           </Button>
         )}
       </section>
@@ -125,9 +126,9 @@ export function NextCallCard({ item, loading, role }: { item: DialogItem | null;
     <section className={r.accent} aria-labelledby={titleId}>
       <div className={r.head}>
         <h2 id={titleId} className={r.title}>
-          {live ? "Созвон идёт" : "Ближайший созвон"}
+          {live ? tt("Созвон идёт") : tt("Ближайший созвон")}
         </h2>
-        <span className={r.pill}>{call.can_join ? "Можно входить" : countdown(call.scheduled_at, call.duration_minutes, now)}</span>
+        <span className={r.pill}>{call.can_join ? tt("Можно входить") : countdown(call.scheduled_at, call.duration_minutes, now)}</span>
       </div>
       <div className={r.person}>
         {who.type === "specialist" ? (
@@ -139,7 +140,7 @@ export function NextCallCard({ item, loading, role }: { item: DialogItem | null;
           <strong>{who.name}</strong>
           <span>
             {durationLabel(call.duration_minutes)}, {rub(call.amount_rub)}
-            {call.status === "awaiting_payment" ? ", ждёт оплаты" : ""}
+            {call.status === "awaiting_payment" ? tt(", ждёт оплаты") : ""}
           </span>
         </div>
       </div>
@@ -152,24 +153,24 @@ export function NextCallCard({ item, loading, role }: { item: DialogItem | null;
         {call.can_join ? (
           <Row
             icon={<ShieldCheck size={18} strokeWidth={1.8} />}
-            title={role === "client" ? "Вы\u00a0будете аватаром" : "Клиент будет аватаром"}
-            sub="Лицо клиента не&nbsp;передаётся, звонок зашифрован"
+            title={role === "client" ? tt("Вы\u00a0будете аватаром") : tt("Клиент будет аватаром")}
+            sub={tt("Лицо клиента не\u00a0передаётся, звонок зашифрован")}
           />
         ) : role === "client" ? (
           <details className={r.tips}>
             <summary>
-              <strong>Как&nbsp;подготовиться</strong>
+              <strong>{tt("Как\u00a0подготовиться")}</strong>
               <ChevronDown size={16} strokeWidth={2} aria-hidden className={r.tipsChevron} />
             </summary>
             <ul>
               <li>
-                <Lamp size={16} strokeWidth={1.8} aria-hidden /> Свет спереди, чтобы аватар точнее повторял мимику
+                <Lamp size={16} strokeWidth={1.8} aria-hidden />{" "}{tt("Свет спереди, чтобы аватар точнее повторял мимику")}
               </li>
               <li>
-                <Headphones size={16} strokeWidth={1.8} aria-hidden /> Наушники и&nbsp;место, где вас не&nbsp;услышат
+                <Headphones size={16} strokeWidth={1.8} aria-hidden />{" "}{tt("Наушники и\u00a0место, где вас не\u00a0услышат")}
               </li>
               <li>
-                <Sparkles size={16} strokeWidth={1.8} aria-hidden /> Пара мыслей о&nbsp;том, с&nbsp;чем&nbsp;хотите прийти
+                <Sparkles size={16} strokeWidth={1.8} aria-hidden />{" "}{tt("Пара мыслей о\u00a0том, с\u00a0чем\u00a0хотите прийти")}
               </li>
             </ul>
           </details>
@@ -177,15 +178,15 @@ export function NextCallCard({ item, loading, role }: { item: DialogItem | null;
       </div>
       {call.can_join ? (
         <Button variant="white" size="lg" block href={`/room/${call.id}`} icon={<Video size={20} strokeWidth={1.8} />}>
-          Присоединиться
+          {tt("Присоединиться")}
         </Button>
       ) : (
         <Button variant="white" size="lg" block href={dialogHref(role, item.id)}>
-          Открыть диалог
+          {tt("Открыть диалог")}
         </Button>
       )}
       <Link href={role === "client" ? "/app/avatar/mirror" : "/pro/check"} className={r.link}>
-        Проверить камеру
+        {tt("Проверить камеру")}
       </Link>
     </section>
   );
@@ -196,10 +197,10 @@ export function RecentDialogs({ items, role, loading }: { items: DialogItem[]; r
   return (
     <Card as="section" style={{ minWidth: 0 }}>
       <CardHead
-        title="Недавние диалоги"
+        title={tt("Недавние диалоги")}
         action={
           <Button size="sm" variant="ghost" href={role === "client" ? "/app/dialogs" : "/pro/dialogs"}>
-            Все
+            {tt("Все")}
           </Button>
         }
       />
@@ -211,13 +212,13 @@ export function RecentDialogs({ items, role, loading }: { items: DialogItem[]; r
       ) : items.length === 0 ? (
         <p className={s.muted}>
           {role === "client"
-            ? "Здесь появятся ваши диалоги со\u00a0специалистами. Начните с\u00a0профиля специалиста\u00a0— написать можно и\u00a0без\u00a0записи."
-            : "Когда клиент напишет вам или\u00a0назначит созвон, диалог появится здесь."}
+            ? tt("Здесь появятся ваши диалоги со\u00a0специалистами. Начните с\u00a0профиля специалиста\u00a0— написать можно и\u00a0без\u00a0записи.")
+            : tt("Когда клиент напишет вам или\u00a0назначит созвон, диалог появится здесь.")}
         </p>
       ) : (
         <div className={s.recent}>
           {items.map((d) => {
-            const preview = d.last_message?.card ? cardPreview(d.last_message.card) : d.last_message?.text || "Нет сообщений";
+            const preview = d.last_message?.card ? cardPreview(d.last_message.card) : d.last_message?.text || tt("Нет сообщений");
             return (
               <Link key={d.id} href={dialogHref(role, d.id)} className={s.recentItem}>
                 <ConvAvatar who={d.counterpart} size={44} />
@@ -227,7 +228,7 @@ export function RecentDialogs({ items, role, loading }: { items: DialogItem[]; r
                     {d.last_message && <span className={s.noteMeta}>{fmtTime(d.last_message.created_at)}</span>}
                   </span>
                   <span className={s.recentPreview} style={{ display: "block" }}>
-                    {d.next_call ? `Созвон ${weekdayDay(d.next_call.scheduled_at)} в\u00a0${hm(d.next_call.scheduled_at)}. ` : ""}
+                    {d.next_call ? tt(`Созвон {weekdayDay} в\u00a0{hm}. `, { weekdayDay: weekdayDay(d.next_call.scheduled_at), hm: hm(d.next_call.scheduled_at) }) : ""}
                     {preview}
                   </span>
                 </span>
@@ -250,7 +251,7 @@ export function NextCallStrip({ item, role }: { item: DialogItem | null; role: "
   const who = item.counterpart;
   const join = call.can_join;
   return (
-    <section className={r.strip} aria-label={live ? "Созвон идёт" : "Ближайший созвон"}>
+    <section className={r.strip} aria-label={live ? tt("Созвон идёт") : tt("Ближайший созвон")}>
       <span className={r.stripFace} aria-hidden>
         {who.type === "specialist" ? (
           <SpecialistPhoto url={who.photo_url ?? null} name={who.name} size={40} />
@@ -261,18 +262,18 @@ export function NextCallStrip({ item, role }: { item: DialogItem | null; role: "
       <span className={r.stripText}>
         <strong>{who.name}</strong>
         <span>
-          {live ? "Созвон идёт" : `${weekdayDay(call.scheduled_at)}, ${hm(call.scheduled_at)}`}
+          {live ? tt("Созвон идёт") : `${weekdayDay(call.scheduled_at)}, ${hm(call.scheduled_at)}`}
           {!join && !live ? ` · ${countdown(call.scheduled_at, call.duration_minutes, now)}` : ""}
-          {call.status === "awaiting_payment" ? " · ждёт оплаты" : ""}
+          {call.status === "awaiting_payment" ? tt(" · ждёт оплаты") : ""}
         </span>
       </span>
       {join ? (
         <Button variant="white" size="sm" href={`/room/${call.id}`} icon={<Video size={16} strokeWidth={1.8} />}>
-          Войти
+          {tt("Войти")}
         </Button>
       ) : (
         <Button variant="white" size="sm" href={dialogHref(role, item.id)}>
-          Открыть
+          {tt("Открыть")}
         </Button>
       )}
     </section>

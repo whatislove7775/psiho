@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 import { OG_SIZE, OG_TYPE, ogCard } from "@/lib/og/card";
 import { OG, OG_MAX_TITLE } from "@/lib/og/sections";
 import { isSlug, serverContent } from "@/lib/content/server";
@@ -13,8 +14,8 @@ export default async function Image({ params }: { params: { slug: string } }) {
   if (!p || p.title.length > OG_MAX_TITLE) return ogCard(OG.practice);
   return ogCard({
     ...OG.practice,
-    kicker: p.kind_label ? `Практика · ${p.kind_label}` : OG.practice.kicker,
+    kicker: p.kind_label ? t(`Практика · {kind_label}`, { kind_label: p.kind_label }) : OG.practice.kicker,
     title: p.title,
-    subtitle: p.duration_minutes ? `${p.duration_minutes} мин, простые шаги по\u00a0порядку` : OG.practice.subtitle,
+    subtitle: p.duration_minutes ? t(`{duration_minutes} мин, простые шаги по\u00a0порядку`, { duration_minutes: p.duration_minutes }) : OG.practice.subtitle,
   });
 }

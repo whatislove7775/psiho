@@ -1,4 +1,5 @@
 /** «Круги» — group support circles (/api/v1/circles/, /api/v1/staff/circles/). See docs/API.md «Круги». */
+import { t, intlLocale } from "@/lib/i18n";
 import { api } from "./client";
 
 export type CircleTopic =
@@ -17,14 +18,14 @@ export type CircleRetention = "forever" | "24h" | "1h";
 export type Tone = "sun" | "coral" | "cyan" | "lilac" | "mint";
 
 export const TOPIC_LABEL: Record<CircleTopic, string> = {
-  anxiety: "Тревога",
-  burnout: "Выгорание",
-  breakup: "Расставание",
-  grief: "Горе и\u00a0утрата",
-  parenting: "Родительство",
-  self_esteem: "Самооценка",
-  loneliness: "Одиночество",
-  relocation: "Переезд и\u00a0эмиграция",
+  get anxiety() { return t("Тревога"); },
+  get burnout() { return t("Выгорание"); },
+  get breakup() { return t("Расставание"); },
+  get grief() { return t("Горе и\u00a0утрата"); },
+  get parenting() { return t("Родительство"); },
+  get self_esteem() { return t("Самооценка"); },
+  get loneliness() { return t("Одиночество"); },
+  get relocation() { return t("Переезд и\u00a0эмиграция"); },
 };
 
 /** One topic = always one colour (design system accents). */
@@ -40,13 +41,13 @@ export const TOPIC_TONE: Record<CircleTopic, Tone> = {
 };
 
 export const STATUS_LABEL: Record<CircleStatus, string> = {
-  draft: "Черновик",
-  pending: "На\u00a0проверке",
-  rejected: "Нужны правки",
-  recruiting: "Набор",
-  running: "Идёт",
-  finished: "Завершён",
-  cancelled: "Отменён",
+  get draft() { return t("Черновик"); },
+  get pending() { return t("На\u00a0проверке"); },
+  get rejected() { return t("Нужны правки"); },
+  get recruiting() { return t("Набор"); },
+  get running() { return t("Идёт"); },
+  get finished() { return t("Завершён"); },
+  get cancelled() { return t("Отменён"); },
 };
 export const STATUS_TONE: Record<CircleStatus, "neutral" | "success" | "warning" | "danger" | "primary"> = {
   draft: "neutral",
@@ -272,12 +273,12 @@ export const circlesApi = {
 };
 
 export function rubK0(kopecks: number): string {
-  return `${Math.round(kopecks / 100).toLocaleString("ru-RU")} ₽`;
+  return `${Math.round(kopecks / 100).toLocaleString(intlLocale())} ₽`;
 }
 
 /** «900 ₽ за встречу» / «4 800 ₽ за цикл из 6 встреч» */
 export function priceLine(c: Pick<CircleCard, "billing" | "price_kopecks" | "meetings_count" | "format">): string {
-  if (c.format === "single") return `${rubK0(c.price_kopecks)} за\u00a0встречу`;
-  if (c.billing === "series") return `${rubK0(c.price_kopecks)} за\u00a0весь цикл`;
-  return `${rubK0(c.price_kopecks)} за\u00a0встречу`;
+  if (c.format === "single") return t(`{rubK0} за\u00a0встречу`, { rubK0: rubK0(c.price_kopecks) });
+  if (c.billing === "series") return t(`{rubK0} за\u00a0весь цикл`, { rubK0: rubK0(c.price_kopecks) });
+  return t(`{rubK0} за\u00a0встречу`, { rubK0: rubK0(c.price_kopecks) });
 }

@@ -76,8 +76,10 @@ def clean_key_facts(value, n_sources: int):
 
 
 def _topic_label(value):
+    from apps.intl.messages_en import tr
+
     try:
-        return Topic(value).label
+        return tr(Topic(value).label)
     except ValueError:
         return value
 
@@ -136,7 +138,7 @@ class ArticleListSerializer(serializers.ModelSerializer):
         fields = (
             "id", "slug", "title", "summary", "topic", "topic_label", "topics", "topic_labels", "tags", "cover",
             "emoji", "reading_minutes", "author_name", "published_at", "updated_at", "evidence_level",
-            "cover_image", "specialist", "editors_choice", "rating",
+            "cover_image", "specialist", "editors_choice", "rating", "language",
         )
 
     def get_topic_label(self, obj):
@@ -293,14 +295,19 @@ def _editor_name(request) -> str:
 
 
 class PracticeListSerializer(serializers.ModelSerializer):
-    kind_label = serializers.CharField(source="get_kind_display", read_only=True)
+    kind_label = serializers.SerializerMethodField()
 
     class Meta:
         model = Practice
         fields = (
             "id", "slug", "title", "summary", "kind", "kind_label", "duration_minutes", "cover", "emoji",
-            "evidence_level", "updated_at",
+            "evidence_level", "updated_at", "language",
         )
+
+    def get_kind_label(self, obj):
+        from apps.intl.messages_en import tr
+
+        return tr(obj.get_kind_display())
 
 
 class PracticeDetailSerializer(PracticeListSerializer):

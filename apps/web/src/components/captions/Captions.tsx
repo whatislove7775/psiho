@@ -7,6 +7,7 @@
  *  - <TextOnlyBadge>   "Клиент общается текстом" for both sides.
  * The data comes from lib/captions/useCaptions.
  */
+import { t as tt } from "@/lib/i18n";
 import { useEffect, useRef, useState } from "react";
 import { Check, Copy, Keyboard } from "lucide-react";
 import type { CaptionLine, CaptionLog } from "@/lib/captions/protocol";
@@ -129,21 +130,21 @@ export function CaptionsPanel({
   return (
     <div className={s.panel}>
       <div className={s.group}>
-        <Switch on={show} onChange={onShow} label="Показывать субтитры" hint="Речь собеседника текстом. Можно выключить звук и читать." />
+        <Switch on={show} onChange={onShow} label={tt("Показывать субтитры")} hint={tt("Речь собеседника текстом. Можно выключить звук и\u00a0читать.")} />
         {onTextOnly && (
-          <Switch on={!!textOnly} onChange={onTextOnly} label="Только текст" hint={textOnlyHint} />
+          <Switch on={!!textOnly} onChange={onTextOnly} label={tt("Только текст")} hint={textOnlyHint} />
         )}
       </div>
-      {load === "loading" && <p className={s.status}>Загружаем распознавание речи. Один раз, около 45&nbsp;МБ…</p>}
-      {load === "error" && <p className={s.status}>Не&nbsp;получилось загрузить распознавание речи.</p>}
+      {load === "loading" && <p className={s.status}>{tt("Загружаем распознавание речи. Один раз, около 45\u00a0МБ…")}</p>}
+      {load === "error" && <p className={s.status}>{tt("Не\u00a0получилось загрузить распознавание речи.")}</p>}
       {peerNote && <p className={s.status}>{peerNote}</p>}
 
       <div className={s.transcriptHead}>
-        <span className={s.transcriptTitle}>Расшифровка</span>
+        <span className={s.transcriptTitle}>{tt("Расшифровка")}</span>
         {lines.length > 0 && (
           <button type="button" className={s.copy} onClick={copy}>
             {copied ? <Check size={14} /> : <Copy size={14} />}
-            {copied ? "Скопировано" : "Скопировать"}
+            {copied ? tt("Скопировано") : tt("Скопировать")}
           </button>
         )}
       </div>
@@ -157,10 +158,10 @@ export function CaptionsPanel({
           ))}
         </ol>
       ) : (
-        <p className={s.empty}>Здесь появится текст разговора. Он&nbsp;не&nbsp;сохраняется и&nbsp;исчезнет после звонка.</p>
+        <p className={s.empty}>{tt("Здесь появится текст разговора. Он\u00a0не\u00a0сохраняется и\u00a0исчезнет после звонка.")}</p>
       )}
       <p className={s.privacy}>
-        Речь распознаётся на&nbsp;устройстве того, кто говорит. Текст идёт напрямую собеседнику, мимо наших серверов.
+        {tt("Речь распознаётся на\u00a0устройстве того, кто говорит. Текст идёт напрямую собеседнику, мимо наших серверов.")}
       </p>
     </div>
   );

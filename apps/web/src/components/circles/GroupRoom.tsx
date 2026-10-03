@@ -17,6 +17,7 @@
  *    speakers, ≤ MAX_VIDEO); the rest sit in an audio strip with their circle avatar.
  *  - Mesh transport: useGroupCall (docs/CIRCLES.md).
  */
+import { t as tt, tj, tc } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -134,7 +135,7 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
     circlesApi
       .joinMeeting(meetingId)
       .then(setInfo)
-      .catch((e) => setError(e instanceof ApiError ? e.message : "Не\u00a0получилось открыть встречу."));
+      .catch((e) => setError(e instanceof ApiError ? e.message : tt("Не\u00a0получилось открыть встречу.")));
   }, [meetingId]);
   useEffect(() => {
     if (authStatus === "authed") load();
@@ -206,13 +207,13 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
     videoTrack,
     onMuteRequest: () => {
       setMuted(true);
-      toast("Ведущий выключил микрофоны. Включите свой, когда захотите сказать.");
+      toast(tt("Ведущий выключил микрофоны. Включите свой, когда захотите сказать."));
     },
     onHandLowered: () => setHand(false),
     onReaction: pushBurst,
     onMoved: (room, by, rs) => {
       const where = roomName(rs, room);
-      toast(rs.rooms.length ? `${by || "Ведущий"}: вы в «${where}»` : "Все вернулись в общий зал");
+      toast(rs.rooms.length ? tt(`{v}: вы в «{where}»`, { v: by || tt("Ведущий"), where }) : tt("Все вернулись в общий зал"));
     },
     onBroadcast: (text, from) => {
       setNotice(`${from}: ${text}`);
@@ -227,7 +228,7 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
     [call.peers, call.myRoom],
   );
   const cc = useCaptions({ links: ccLinks, micTrack: micStream?.getAudioTracks()[0] ?? null, micOn: phase === "call" && !muted, textOnly: false });
-  const ccLabel = (who: string) => (who === "me" ? "Вы" : call.peers.find((p) => p.id === who)?.name ?? "Участник");
+  const ccLabel = (who: string) => (who === "me" ? tt("Вы") : call.peers.find((p) => p.id === who)?.name ?? tt("Участник"));
 
   // rooms timer ran out → the lead (or the co-therapist when the lead is away) brings everyone back
   const { rooms: roomsState, roomsAction, peers: allPeers } = call;
@@ -286,14 +287,14 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
         <div className={s.center}>
           <div className={s.centerBox}>
             <TeaWait className={s.centerArt} />
-            <h1>Встреча пока недоступна</h1>
+            <h1>{tt("Встреча пока недоступна")}</h1>
             <p>{error}</p>
             <div style={{ display: "flex", gap: 8 }}>
               <Button variant="secondary" onClick={() => router.back()} icon={<ArrowLeft size={16} />}>
-                Назад
+                {tt("Назад")}
               </Button>
               <Button variant="primary" onClick={load}>
-                Проверить ещё раз
+                {tt("Проверить ещё раз")}
               </Button>
             </div>
           </div>
@@ -305,7 +306,7 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
     return (
       <div className={s.root}>
         <div className={s.center}>
-          <Spinner label="Открываем комнату" />
+          <Spinner label={tt("Открываем комнату")} />
         </div>
       </div>
     );
@@ -318,20 +319,20 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
         <div className={s.center}>
           <div className={s.centerBox}>
             <Together className={s.centerArt} />
-            <h1>{removed ? "Ведущий попросил вас покинуть круг" : call.status === "ended" ? "Встреча закончилась" : "Вы\u00a0вышли из\u00a0встречи"}</h1>
+            <h1>{removed ? tt("Ведущий попросил вас покинуть круг") : call.status === "ended" ? tt("Встреча закончилась") : tt("Вы\u00a0вышли из\u00a0встречи")}</h1>
             <p>
               {removed
-                ? "Деньги за\u00a0будущие встречи вернулись на\u00a0баланс. Если что-то пошло не\u00a0так, напишите в\u00a0поддержку."
-                : "Спасибо, что\u00a0были в\u00a0круге. Поделиться мыслями после встречи можно в\u00a0чате круга."}
+                ? tt("Деньги за\u00a0будущие встречи вернулись на\u00a0баланс. Если что-то пошло не\u00a0так, напишите в\u00a0поддержку.")
+                : tt("Спасибо, что\u00a0были в\u00a0круге. Поделиться мыслями после встречи можно в\u00a0чате круга.")}
             </p>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
               {phase === "left" && call.status !== "ended" && !removed && (
                 <Button variant="secondary" onClick={() => setPhase("call")}>
-                  Вернуться
+                  {tt("Вернуться")}
                 </Button>
               )}
               <Button variant="primary" href={backHref}>
-                {isHost ? "К\u00a0управлению кругом" : "К\u00a0странице круга"}
+                {isHost ? tt("К\u00a0управлению кругом") : tt("К\u00a0странице круга")}
               </Button>
             </div>
           </div>
@@ -347,11 +348,11 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
     return (
       <div className={s.root}>
         <header className={s.top}>
-          <Button variant="ghost" iconOnly aria-label="Назад" href={backHref} icon={<ArrowLeft size={20} />} />
+          <Button variant="ghost" iconOnly aria-label={tt("Назад")} href={backHref} icon={<ArrowLeft size={20} />} />
           <div className={s.topTitle}>
             <b>{info.circle.title}</b>
             <small>
-              Встреча {info.meeting.index}, {info.circle.topic_label.toLowerCase()}
+              {tj("Встреча {index}, {v}", { index: info.meeting.index, v: info.circle.topic_label.toLowerCase() })}
             </small>
           </div>
           <PanicButton />
@@ -361,24 +362,24 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
             {isHost ? <SelfVideo stream={realCam.videoStream} /> : <CanvasSlot canvas={avatarCam.canvas} />}
             {camState !== "ready" && (
               <div className={s.placeholder}>
-                {camError ? <p style={{ maxWidth: 360, padding: 16, color: "var(--c-muted)" }}>{camError}</p> : <Spinner label="Включаем камеру" />}
+                {camError ? <p style={{ maxWidth: 360, padding: 16, color: "var(--c-muted)" }}>{camError}</p> : <Spinner label={tt("Включаем камеру")} />}
               </div>
             )}
             <div className={s.previewNote}>
               {!isHost && (
                 <Badge tone="success">
-                  <Shield size={12} /> Все видят только аватар
+                  <Shield size={12} />{" "}{tt("Все видят только аватар")}
                 </Badge>
               )}
               {!isHost && voice !== "off" && (
                 <Badge tone="lilac">
-                  <Waves size={12} /> Маска голоса включена
+                  <Waves size={12} />{" "}{tt("Маска голоса включена")}
                 </Badge>
               )}
             </div>
           </div>
           <div className={s.lobbyPanel}>
-            <h1>{isHost ? "Вы\u00a0ведёте встречу" : "Перед входом"}</h1>
+            <h1>{isHost ? tt("Вы\u00a0ведёте встречу") : tt("Перед входом")}</h1>
             <div className={s.me}>
               {isHost ? (
                 <SpecialistPhoto url={info.host.photo_url} name={info.host.name} size={46} />
@@ -387,28 +388,28 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
               )}
               <div>
                 <b>{info.self.name}</b>
-                <small>{isHost ? "Участники видят ваше лицо и\u00a0имя" : "Так вас увидят и\u00a0услышат в\u00a0круге"}</small>
+                <small>{isHost ? tt("Участники видят ваше лицо и\u00a0имя") : tt("Так вас увидят и\u00a0услышат в\u00a0круге")}</small>
               </div>
             </div>
             {!isHost && (
               <>
                 <div>
-                  <div className={s.label}>Аватар</div>
+                  <div className={s.label}>{tt("Аватар")}</div>
                   <Segmented
-                    ariaLabel="Какой аватар показать"
+                    ariaLabel={tt("Какой аватар показать")}
                     value={ownAvatar ? "own" : "circle"}
                     onChange={(v) => setOwnAvatar(v === "own")}
                     options={[
-                      { value: "circle", label: "Новый для\u00a0круга" },
-                      { value: "own", label: "Мой аватар" },
+                      { value: "circle", label: tt("Новый для\u00a0круга") },
+                      { value: "own", label: tt("Мой аватар") },
                     ]}
                   />
                   <p style={{ marginTop: 6 }}>
-                    {ownAvatar ? "Ваш обычный аватар: его может узнать специалист, с\u00a0которым вы\u00a0общаетесь в\u00a0диалогах." : "Отдельный аватар только для\u00a0этого круга\u00a0— так вас точно не\u00a0узнать."}
+                    {ownAvatar ? tt("Ваш обычный аватар: его может узнать специалист, с\u00a0которым вы\u00a0общаетесь в\u00a0диалогах.") : tt("Отдельный аватар только для\u00a0этого круга\u00a0— так вас точно не\u00a0узнать.")}
                   </p>
                 </div>
                 <div>
-                  <div className={s.label}>Голос</div>
+                  <div className={s.label}>{tt("Голос")}</div>
                   <VoicePicker value={voice} onChange={setVoice} compact />
                 </div>
               </>
@@ -416,15 +417,15 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
             <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: "var(--t-13)", cursor: "pointer" }}>
               <input type="checkbox" checked={audioOnlyStart} onChange={(e) => setAudioOnlyStart(e.target.checked)} style={{ marginTop: 3, accentColor: "var(--c-primary)" }} />
               <span>
-                Только звук
+                {tt("Только звук")}
                 <br />
-                <span style={{ color: "var(--c-muted)" }}>Для&nbsp;слабого интернета: видео не&nbsp;отправляется и&nbsp;не&nbsp;принимается.</span>
+                <span style={{ color: "var(--c-muted)" }}>{tt("Для\u00a0слабого интернета: видео не\u00a0отправляется и\u00a0не\u00a0принимается.")}</span>
               </span>
             </label>
             <Button variant="primary" size="lg" block onClick={enter} disabled={camState !== "ready" || !audioTrack}>
-              Войти во&nbsp;встречу
+              {tt("Войти во\u00a0встречу")}
             </Button>
-            <p>Встречу не&nbsp;записываем. Звук и&nbsp;видео идут напрямую между участниками и&nbsp;не&nbsp;проходят через наш сервер.</p>
+            <p>{tt("Встречу не\u00a0записываем. Звук и\u00a0видео идут напрямую между участниками и\u00a0не\u00a0проходят через наш сервер.")}</p>
           </div>
         </div>
       </div>
@@ -444,7 +445,7 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
       <span className={cx(s.pill, s.pillLive)}>{mmss(elapsed)}</span>
     ) : (
       <span className={cx(s.pill, s.pillWarn)}>
-        <WifiOff size={14} /> {call.status === "failed" ? "Нет связи" : "Подключаемся"}
+        <WifiOff size={14} /> {call.status === "failed" ? tt("Нет связи") : tt("Подключаемся")}
       </span>
     );
 
@@ -454,14 +455,14 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
         <div className={s.topTitle}>
           <b>{info.circle.title}</b>
           <small>
-            {inRoom} {inRoom === 1 ? "участник" : inRoom < 5 ? "участника" : "участников"}
-            {call.rooms.rooms.length ? ` в «${roomName(call.rooms, call.myRoom)}»` : " в комнате"}
-            {hands.length > 0 && isHost ? `, руку подняли: ${hands.length}` : ""}
+            {inRoom} {inRoom === 1 ? tt("участник") : inRoom < 5 ? tt("участника") : tt("участников")}
+            {call.rooms.rooms.length ? tt(` в «{roomName}»`, { roomName: roomName(call.rooms, call.myRoom) }) : tt(" в комнате")}
+            {hands.length > 0 && isHost ? tt(`, руку подняли: {length}`, { length: hands.length }) : ""}
           </small>
         </div>
         {call.tier !== "high" && (
-          <span className={cx(s.pill, s.pillWarn)} title="Качество подстроено под&nbsp;интернет">
-            <Wifi size={14} /> {call.tier === "audio" ? "Только звук" : "Экономим трафик"}
+          <span className={cx(s.pill, s.pillWarn)} title={tt("Качество подстроено под\u00a0интернет")}>
+            <Wifi size={14} /> {call.tier === "audio" ? tt("Только звук") : tt("Экономим трафик")}
           </span>
         )}
         {statusPill}
@@ -492,14 +493,14 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
               )}
               {hand && (
                 <span className={s.hand}>
-                  <Hand size={13} /> Рука поднята
+                  <Hand size={13} />{" "}{tt("Рука поднята")}
                 </span>
               )}
               <ReactionLayer items={bursts[ME] ?? []} />
               <div className={s.tileLabel}>
                 <span className={s.name}>
                   {muted ? <MicOff size={13} className={s.mutedIcon} /> : <Mic size={13} />}
-                  Вы, {info.self.name}
+                  {tt("Вы,")}{" "}{info.self.name}
                 </span>
               </div>
             </div>
@@ -520,7 +521,7 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
             ))}
           </div>
           {smallPeers.length > 0 && (
-            <div className={s.strip} aria-label="Остальные участники (только звук)">
+            <div className={s.strip} aria-label={tt("Остальные участники (только звук)")}>
               {smallPeers.map((p) => (
                 <MiniPeer key={p.id} peer={p} speaking={call.speaker === p.id} speakerOn={speakerOn} />
               ))}
@@ -528,10 +529,10 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
           )}
         </div>
         {side && (
-          <aside className={s.side} aria-label={side === "chat" ? "Чат круга" : side === "people" ? "Участники" : side === "rooms" ? "Комнаты" : side === "captions" ? "Субтитры" : "Голос"}>
+          <aside className={s.side} aria-label={side === "chat" ? tt("Чат круга") : side === "people" ? tt("Участники") : side === "rooms" ? tt("Комнаты") : side === "captions" ? tt("Субтитры") : tt("Голос")}>
             <div className={s.sideHead}>
-              <h2>{side === "chat" ? "Чат круга" : side === "people" ? "В\u00a0комнате" : side === "rooms" ? "Комнаты" : side === "captions" ? "Субтитры" : "Маска голоса"}</h2>
-              <Button variant="ghost" size="sm" iconOnly aria-label="Закрыть" onClick={() => setSide(null)} icon={<X size={18} />} />
+              <h2>{side === "chat" ? tt("Чат круга") : side === "people" ? tt("В\u00a0комнате") : side === "rooms" ? tt("Комнаты") : side === "captions" ? tt("Субтитры") : tt("Маска голоса")}</h2>
+              <Button variant="ghost" size="sm" iconOnly aria-label={tt("Закрыть")} onClick={() => setSide(null)} icon={<X size={18} />} />
             </div>
             <div className={s.sideBody}>
               {side === "chat" && <GroupChat circleId={info.circle.id} hostPhoto={info.host.photo_url} cohostPhoto={info.cohost?.photo_url} compact />}
@@ -556,7 +557,7 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
                     {isHost ? <SpecialistPhoto url={myPhoto} name={info.self.name} size={34} /> : <AvatarThumb config={avatarCfg} size={34} />}
                     <span>
                       {info.self.name}
-                      <small>Это&nbsp;вы</small>
+                      <small>{tt("Это\u00a0вы")}</small>
                     </span>
                   </li>
                   {here.map((p) => (
@@ -565,18 +566,18 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
                       <span>
                         {p.name}
                         <small>
-                          {p.role === "host" ? "Ведущий" : p.role === "cohost" ? "Ко-терапевт" : p.state.hand ? "Рука поднята" : p.state.muted ? "Микрофон выключен" : "Слушает"}
+                          {p.role === "host" ? tt("Ведущий") : p.role === "cohost" ? tt("Ко-терапевт") : p.state.hand ? tt("Рука поднята") : p.state.muted ? tt("Микрофон выключен") : tt("Слушает")}
                         </small>
                       </span>
                       {isHost && p.role === "member" && (
                         <>
                           {p.state.hand && (
                             <Button size="sm" variant="ghost" onClick={() => call.hostAction("lower-hand", p.id)}>
-                              Опустить руку
+                              {tt("Опустить руку")}
                             </Button>
                           )}
-                          <Button size="sm" variant="ghost" iconOnly aria-label={`Выключить микрофон: ${p.name}`} onClick={() => call.hostAction("mute", p.id)} icon={<MicOff size={16} />} />
-                          <Button size="sm" variant="ghost" iconOnly aria-label={`Удалить из\u00a0круга: ${p.name}`} onClick={() => setConfirm({ kind: "remove", peer: p })} icon={<LogOut size={16} />} />
+                          <Button size="sm" variant="ghost" iconOnly aria-label={tt(`Выключить микрофон: {name}`, { name: p.name })} onClick={() => call.hostAction("mute", p.id)} icon={<MicOff size={16} />} />
+                          <Button size="sm" variant="ghost" iconOnly aria-label={tt(`Удалить из\u00a0круга: {name}`, { name: p.name })} onClick={() => setConfirm({ kind: "remove", peer: p })} icon={<LogOut size={16} />} />
                         </>
                       )}
                     </li>
@@ -587,10 +588,10 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
           </aside>
         )}
       </div>
-      <nav className={s.bar} aria-label="Управление встречей">
-        <Ctl label={muted ? "Включить" : "Микрофон"} off={muted} onClick={() => setMuted((m) => !m)} icon={muted ? <MicOff size={22} /> : <Mic size={22} />} />
+      <nav className={s.bar} aria-label={tt("Управление встречей")}>
+        <Ctl label={muted ? tt("Включить") : tt("Микрофон")} off={muted} onClick={() => setMuted((m) => !m)} icon={muted ? <MicOff size={22} /> : <Mic size={22} />} />
         <Ctl
-          label={call.tier === "audio" ? "Видео" : camOff ? "Видео" : "Видео"}
+          label={call.tier === "audio" ? tt("Видео") : camOff ? tt("Видео") : tt("Видео")}
           off={camOff || call.tier === "audio"}
           onClick={() => {
             if (call.tier === "audio") setTier("high");
@@ -598,44 +599,44 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
           }}
           icon={camOff || call.tier === "audio" ? <CameraOff size={22} /> : <Camera size={22} />}
         />
-        {!isHost && <Ctl label="Рука" on={hand} onClick={() => setHand((h) => !h)} icon={<Hand size={22} />} />}
+        {!isHost && <Ctl label={tt("Рука")} on={hand} onClick={() => setHand((h) => !h)} icon={<Hand size={22} />} />}
         {(["up", "down"] as const).map((k) => (
           <Ctl key={k} label={REACTION_LABEL[k]} onClick={() => react(k)} icon={<ReactionArt kind={k} className={reactionStyles.btnArt} />} />
         ))}
-        {!isHost && <Ctl label="Голос" active={side === "voice"} onClick={() => setSide(side === "voice" ? null : "voice")} icon={<Waves size={22} />} />}
+        {!isHost && <Ctl label={tt("Голос")} active={side === "voice"} onClick={() => setSide(side === "voice" ? null : "voice")} icon={<Waves size={22} />} />}
         {cc.available && (
-          <Ctl label="Субтитры" active={side === "captions"} onClick={() => setSide(side === "captions" ? null : "captions")} icon={<Captions size={22} />} />
+          <Ctl label={tt("Субтитры")} active={side === "captions"} onClick={() => setSide(side === "captions" ? null : "captions")} icon={<Captions size={22} />} />
         )}
-        <Ctl label="Чат" active={side === "chat"} onClick={() => setSide(side === "chat" ? null : "chat")} icon={<MessagesSquare size={22} />} />
-        <Ctl label="Люди" active={side === "people"} onClick={() => setSide(side === "people" ? null : "people")} icon={<Users size={22} />} />
+        <Ctl label={tt("Чат")} active={side === "chat"} onClick={() => setSide(side === "chat" ? null : "chat")} icon={<MessagesSquare size={22} />} />
+        <Ctl label={tt("Люди")} active={side === "people"} onClick={() => setSide(side === "people" ? null : "people")} icon={<Users size={22} />} />
         {(isHost || call.rooms.rooms.length > 0) && (
-          <Ctl label="Комнаты" active={side === "rooms"} onClick={() => setSide(side === "rooms" ? null : "rooms")} icon={<LayoutGrid size={22} />} />
+          <Ctl label={tt("Комнаты")} active={side === "rooms"} onClick={() => setSide(side === "rooms" ? null : "rooms")} icon={<LayoutGrid size={22} />} />
         )}
-        <Ctl label={speakerOn ? "Звук" : "Звук выкл"} off={!speakerOn} onClick={() => setSpeakerOn((v) => !v)} icon={speakerOn ? <Volume2 size={22} /> : <VolumeX size={22} />} />
+        <Ctl label={speakerOn ? tt("Звук") : tt("Звук выкл")} off={!speakerOn} onClick={() => setSpeakerOn((v) => !v)} icon={speakerOn ? <Volume2 size={22} /> : <VolumeX size={22} />} />
         {!isHost && allowReal && (
-          <Ctl label={realFace ? "Аватар" : "Лицо"} active={realFace} onClick={() => (realFace ? setRealFace(false) : setAskFace(true))} icon={<Eye size={22} />} />
+          <Ctl label={realFace ? tt("Аватар") : tt("Лицо")} active={realFace} onClick={() => (realFace ? setRealFace(false) : setAskFace(true))} icon={<Eye size={22} />} />
         )}
-        {isHost && <Ctl label="Выкл. всем" onClick={() => call.hostAction("mute-all")} icon={<MicOff size={22} />} />}
+        {isHost && <Ctl label={tt("Выкл. всем")} onClick={() => call.hostAction("mute-all")} icon={<MicOff size={22} />} />}
         <span className={s.sep} aria-hidden />
         {isLead ? (
-          <Ctl label="Завершить" end onClick={() => setConfirm({ kind: "end" })} icon={<PhoneOff size={22} />} />
+          <Ctl label={tt("Завершить")} end onClick={() => setConfirm({ kind: "end" })} icon={<PhoneOff size={22} />} />
         ) : (
-          <Ctl label="Выйти" end onClick={() => setConfirm({ kind: "leave" })} icon={<PhoneOff size={22} />} />
+          <Ctl label={tc("круг", "Выйти")} end onClick={() => setConfirm({ kind: "leave" })} icon={<PhoneOff size={22} />} />
         )}
-        {isLead && <Ctl label="Выйти" onClick={() => setPhase("left")} icon={<LogOut size={22} />} />}
+        {isLead && <Ctl label={tc("круг", "Выйти")} onClick={() => setPhase("left")} icon={<LogOut size={22} />} />}
       </nav>
 
-      <Modal open={!!confirm} onClose={() => setConfirm(null)} title={confirm?.kind === "remove" ? "Удалить участника?" : confirm?.kind === "end" ? "Завершить встречу для\u00a0всех?" : "Выйти из\u00a0встречи?"}>
+      <Modal open={!!confirm} onClose={() => setConfirm(null)} title={confirm?.kind === "remove" ? tt("Удалить участника?") : confirm?.kind === "end" ? tt("Завершить встречу для\u00a0всех?") : tt("Выйти из\u00a0встречи?")}>
         <p style={{ margin: "0 0 16px", color: "var(--c-muted)", lineHeight: 1.55 }}>
           {confirm?.kind === "remove"
-            ? `${confirm.peer?.name} покинет круг и\u00a0больше не\u00a0сможет заходить на\u00a0встречи и\u00a0писать в\u00a0чат. Деньги за\u00a0будущие встречи вернутся ему полностью.`
+            ? tt(`{name} покинет круг и\u00a0больше не\u00a0сможет заходить на\u00a0встречи и\u00a0писать в\u00a0чат. Деньги за\u00a0будущие встречи вернутся ему полностью.`, { name: confirm.peer?.name })
             : confirm?.kind === "end"
-              ? "Комната закроется у\u00a0всех участников, а\u00a0оплата за\u00a0эту встречу спишется. Используйте, когда встреча действительно закончилась."
-              : "Вы\u00a0сможете вернуться, пока встреча идёт."}
+              ? tt("Комната закроется у\u00a0всех участников, а\u00a0оплата за\u00a0эту встречу спишется. Используйте, когда встреча действительно закончилась.")
+              : tt("Вы\u00a0сможете вернуться, пока встреча идёт.")}
         </p>
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
           <Button variant="ghost" onClick={() => setConfirm(null)}>
-            Отмена
+            {tt("Отмена")}
           </Button>
           <Button
             variant="danger"
@@ -646,17 +647,17 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
               setConfirm(null);
             }}
           >
-            {confirm?.kind === "remove" ? "Удалить" : confirm?.kind === "end" ? "Завершить" : "Выйти"}
+            {confirm?.kind === "remove" ? tt("Удалить") : confirm?.kind === "end" ? tt("Завершить") : tc("круг", "Выйти")}
           </Button>
         </div>
       </Modal>
-      <Modal open={askFace} onClose={() => setAskFace(false)} title="Показать настоящее лицо?">
+      <Modal open={askFace} onClose={() => setAskFace(false)} title={tt("Показать настоящее лицо?")}>
         <p style={{ margin: "0 0 16px", color: "var(--c-muted)", lineHeight: 1.55 }}>
-          Все участники круга и&nbsp;ведущий увидят изображение с&nbsp;вашей камеры вместо аватара. Встречи не&nbsp;записываются, но&nbsp;скриншот сделать может любой. Вернуться к&nbsp;аватару можно одной кнопкой.
+          {tt("Все участники круга и\u00a0ведущий увидят изображение с\u00a0вашей камеры вместо аватара. Встречи не\u00a0записываются, но\u00a0скриншот сделать может любой. Вернуться к\u00a0аватару можно одной кнопкой.")}
         </p>
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
           <Button variant="ghost" onClick={() => setAskFace(false)}>
-            Остаться в&nbsp;аватаре
+            {tt("Остаться в\u00a0аватаре")}
           </Button>
           <Button
             variant="primary"
@@ -665,7 +666,7 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
               setAskFace(false);
             }}
           >
-            Показать лицо
+            {tt("Показать лицо")}
           </Button>
         </div>
       </Modal>
@@ -691,7 +692,7 @@ function RoomBanner({ rooms, myRoom, notice, onClose }: { rooms: RoomsState; myR
       {notice && (
         <>
           <span style={{ fontWeight: 500 }}>{notice}</span>
-          <button type="button" onClick={onClose} aria-label="Скрыть" style={{ all: "unset", cursor: "pointer", display: "inline-flex" }}>
+          <button type="button" onClick={onClose} aria-label={tt("Скрыть")} style={{ all: "unset", cursor: "pointer", display: "inline-flex" }}>
             <X size={14} />
           </button>
         </>
@@ -820,32 +821,32 @@ function PeerTile({
         <div className={s.placeholder}>
           <span className={s.placeholderInner}>
             {host ? <SpecialistPhoto url={hostPhoto} name={peer.name} size={72} /> : <AvatarThumb config={null} seed={`circle-${peer.id}`} size={72} />}
-            <span>{peer.connection === "connected" ? "Без\u00a0видео" : "Подключается"}</span>
+            <span>{peer.connection === "connected" ? tt("Без\u00a0видео") : tt("Подключается")}</span>
           </span>
         </div>
       )}
       {peer.state.hand && (
         <span className={s.hand}>
-          <Hand size={13} /> Рука
+          <Hand size={13} />{" "}{tt("Рука")}
         </span>
       )}
       <ReactionLayer items={reactions ?? []} />
-      {host && !hostControls && <span className={s.hostBadge}>{peer.role === "cohost" ? "Ко-терапевт" : "Ведущий"}</span>}
+      {host && !hostControls && <span className={s.hostBadge}>{peer.role === "cohost" ? tt("Ко-терапевт") : tt("Ведущий")}</span>}
       {hostControls && !host && (
         <div className={s.tileMenu}>
-          <Button size="sm" variant="secondary" iconOnly aria-label={`Действия: ${peer.name}`} onClick={() => setMenu((m) => !m)} icon={<MoreHorizontal size={16} />} />
+          <Button size="sm" variant="secondary" iconOnly aria-label={tt(`Действия: {name}`, { name: peer.name })} onClick={() => setMenu((m) => !m)} icon={<MoreHorizontal size={16} />} />
           {menu && (
             <div className={s.menu} role="menu">
               <Button size="sm" variant="ghost" onClick={() => { onMute(); setMenu(false); }} icon={<MicOff size={15} />}>
-                Выключить микрофон
+                {tt("Выключить микрофон")}
               </Button>
               {peer.state.hand && (
                 <Button size="sm" variant="ghost" onClick={() => { onLowerHand(); setMenu(false); }} icon={<Hand size={15} />}>
-                  Опустить руку
+                  {tt("Опустить руку")}
                 </Button>
               )}
               <Button size="sm" variant="ghost" onClick={() => { onRemove(); setMenu(false); }} icon={<LogOut size={15} />}>
-                Удалить из&nbsp;круга
+                {tt("Удалить из\u00a0круга")}
               </Button>
             </div>
           )}
@@ -855,7 +856,7 @@ function PeerTile({
         <span className={s.name}>
           {peer.state.muted ? <MicOff size={13} className={s.mutedIcon} /> : <Mic size={13} />}
           {peer.name}
-          {peer.state.face === "real" && !host && " (лицо)"}
+          {peer.state.face === "real" && !host && tt(" (лицо)")}
         </span>
       </div>
     </div>

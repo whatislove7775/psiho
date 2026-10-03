@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as RPointerEvent } from "react";
 import { ZoomIn, ZoomOut } from "lucide-react";
 import s from "./media.module.css";
@@ -106,7 +107,7 @@ export function Cropper({
         onPointerUp={up}
         onPointerCancel={up}
         onWheel={(e) => setZoom((z) => Math.min(MAX_ZOOM, Math.max(1, z - e.deltaY * 0.0015)))}
-        aria-label="Передвиньте картинку, чтобы выбрать кадр"
+        aria-label={t("Передвиньте картинку, чтобы выбрать кадр")}
         role="img"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -115,7 +116,7 @@ export function Cropper({
       </div>
       <div className={s.zoom} style={{ maxWidth: Math.min(VW, 320) }}>
         <ZoomOut size={16} aria-hidden />
-        <input type="range" min={1} max={MAX_ZOOM} step={0.01} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} aria-label="Масштаб" />
+        <input type="range" min={1} max={MAX_ZOOM} step={0.01} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} aria-label={t("Масштаб")} />
         <ZoomIn size={16} aria-hidden />
       </div>
     </div>
@@ -128,21 +129,21 @@ export function readImage(
   { types, maxBytes, minW, minH }: { types: string[]; maxBytes: number; minW: number; minH: number },
 ): Promise<CropImage> {
   return new Promise((resolve, reject) => {
-    if (!types.includes(file.type)) return reject(new Error("Подойдёт JPG, PNG или\u00a0WebP."));
-    if (file.size > maxBytes) return reject(new Error(`Файл больше ${Math.round(maxBytes / 1024 / 1024)} МБ. Выберите поменьше.`));
+    if (!types.includes(file.type)) return reject(new Error(t("Подойдёт JPG, PNG или\u00a0WebP.")));
+    if (file.size > maxBytes) return reject(new Error(t(`Файл больше {v} МБ. Выберите поменьше.`, { v: Math.round(maxBytes / 1024 / 1024) })));
     const url = URL.createObjectURL(file);
     const probe = new Image();
     probe.onload = () => {
       if (probe.naturalWidth < minW || probe.naturalHeight < minH) {
         URL.revokeObjectURL(url);
-        reject(new Error(`Картинка слишком маленькая: нужно хотя\u00a0бы ${minW}×${minH}.`));
+        reject(new Error(t(`Картинка слишком маленькая: нужно хотя\u00a0бы {minW}×{minH}.`, { minW, minH })));
         return;
       }
       resolve({ url, w: probe.naturalWidth, h: probe.naturalHeight });
     };
     probe.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error("Не\u00a0получилось открыть файл. Попробуйте другой."));
+      reject(new Error(t("Не\u00a0получилось открыть файл. Попробуйте другой.")));
     };
     probe.src = url;
   });

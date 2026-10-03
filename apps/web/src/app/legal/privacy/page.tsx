@@ -1,15 +1,18 @@
+import { t } from "@/lib/i18n";
 import Link from "next/link";
 import { LegalPage, type LegalSection } from "@/components/landing/LegalPage";
 import { DRAFT_UPDATED, legalMetadata } from "@/components/legal/meta";
 import { Tbd, TbdBlock } from "@/components/legal/Placeholder";
 import l from "@/components/landing/legal.module.css";
 
-export const metadata = legalMetadata("privacy");
+export function generateMetadata() {
+  return legalMetadata("privacy");
+}
 
 const SECTIONS: LegalSection[] = [
   {
     id: "general",
-    title: "Общие положения",
+    get title() { return t("Общие положения"); },
     body: (
       <>
         <p>
@@ -24,7 +27,7 @@ const SECTIONS: LegalSection[] = [
   },
   {
     id: "data",
-    title: "Какие данные мы\u00a0обрабатываем",
+    get title() { return t("Какие данные мы\u00a0обрабатываем"); },
     body: (
       <>
         <p>Для&nbsp;клиентов:</p>
@@ -57,7 +60,7 @@ const SECTIONS: LegalSection[] = [
   },
   {
     id: "not-store",
-    title: "Чего мы\u00a0не\u00a0храним",
+    get title() { return t("Чего мы\u00a0не\u00a0храним"); },
     body: (
       <div className={l.twoCol}>
         <div>
@@ -73,7 +76,7 @@ const SECTIONS: LegalSection[] = [
   },
   {
     id: "call",
-    title: "Как\u00a0устроен созвон",
+    get title() { return t("Как\u00a0устроен созвон"); },
     body: (
       <>
         <p>
@@ -96,12 +99,12 @@ const SECTIONS: LegalSection[] = [
       </>
     ),
   },
-  { id: "purposes", title: "Цели обработки", body: <TbdBlock>Перечень целей обработки для&nbsp;каждой категории данных.</TbdBlock> },
-  { id: "grounds", title: "Правовые основания", body: <TbdBlock>Правовые основания обработки.</TbdBlock> },
-  { id: "terms", title: "Сроки хранения", body: <TbdBlock>Сроки хранения по&nbsp;категориям данных.</TbdBlock> },
+  { id: "purposes", get title() { return t("Цели обработки"); }, body: <TbdBlock>Перечень целей обработки для&nbsp;каждой категории данных.</TbdBlock> },
+  { id: "grounds", get title() { return t("Правовые основания"); }, body: <TbdBlock>Правовые основания обработки.</TbdBlock> },
+  { id: "terms", get title() { return t("Сроки хранения"); }, body: <TbdBlock>Сроки хранения по&nbsp;категориям данных.</TbdBlock> },
   {
     id: "share",
-    title: "Кому передаются данные",
+    get title() { return t("Кому передаются данные"); },
     body: (
       <>
         <p>
@@ -114,7 +117,7 @@ const SECTIONS: LegalSection[] = [
   },
   {
     id: "device",
-    title: "Cookie и\u00a0данные на\u00a0устройстве",
+    get title() { return t("Cookie и\u00a0данные на\u00a0устройстве"); },
     body: (
       <p>
         В&nbsp;браузере хранятся ключи входа и&nbsp;настройки оформления. Подробнее&nbsp;— в{" "}
@@ -124,7 +127,7 @@ const SECTIONS: LegalSection[] = [
   },
   {
     id: "rights",
-    title: "Ваши права и\u00a0удаление",
+    get title() { return t("Ваши права и\u00a0удаление"); },
     body: (
       <>
         <p>
@@ -136,10 +139,10 @@ const SECTIONS: LegalSection[] = [
       </>
     ),
   },
-  { id: "security", title: "Защита данных", body: <TbdBlock>Организационные и&nbsp;технические меры защиты.</TbdBlock> },
+  { id: "security", get title() { return t("Защита данных"); }, body: <TbdBlock>Организационные и&nbsp;технические меры защиты.</TbdBlock> },
   {
     id: "contacts",
-    title: "Контакты",
+    get title() { return t("Контакты"); },
     body: (
       <p>
         Вопросы о&nbsp;данных присылайте на <a href="mailto:support@aprosop.ru">support@aprosop.ru</a>. Представляться не&nbsp;нужно,
@@ -154,15 +157,14 @@ export default function PrivacyPage() {
     <LegalPage
       slug="privacy"
       draft
-      title="Политика конфиденциальности"
+      title={t("Политика конфиденциальности")}
       updated={DRAFT_UPDATED}
       summary={
         <>
           <p>
-            <strong>Коротко.</strong> Мы&nbsp;не&nbsp;знаем, как&nbsp;зовут клиента, как&nbsp;он&nbsp;выглядит и&nbsp;как&nbsp;с&nbsp;ним связаться. Храним имя,
-            которое выдали сами, хеш пароля, настройки аватара, диалоги и&nbsp;записи на&nbsp;созвоны.
+            <strong>{t("Коротко.")}</strong>{" "}{t("Мы\u00a0не\u00a0знаем, как\u00a0зовут клиента, как\u00a0он\u00a0выглядит и\u00a0как\u00a0с\u00a0ним связаться. Храним имя, которое выдали сами, хеш пароля, настройки аватара, диалоги и\u00a0записи на\u00a0созвоны.")}
           </p>
-          <p>Созвоны не&nbsp;записываем. Аккаунт удаляется кнопкой в&nbsp;настройках.</p>
+          <p>{t("Созвоны не\u00a0записываем. Аккаунт удаляется кнопкой в\u00a0настройках.")}</p>
         </>
       }
       sections={SECTIONS}
