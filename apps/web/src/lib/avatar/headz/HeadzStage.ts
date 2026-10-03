@@ -12,6 +12,15 @@
  *  - fps cap: 30 on phones / coarse pointers, 60 otherwise; DPR capped; adaptive
  *    quality (fewer pixels, then fewer frames) when a weak GPU can't keep up;
  *  - `still` stages (prefers-reduced-motion) draw once when every head is loaded.
+ *
+ * Stability (no jitter / shimmer):
+ *  - slot rectangles are read once per frame, all together, before any GL work; each head's camera
+ *    is offset by the slot's SUB-PIXEL position inside its integer viewport, so a head never snaps
+ *    by a device pixel and its framing (aspect) never changes while a slot merely moves;
+ *  - slots must not be animated with CSS (float / rotate): the heads float in 3D (`float` option);
+ *  - the pixel ratio only ever steps DOWN (discrete levels, after two consecutive slow windows),
+ *    never back up within a session — no resize ping-pong;
+ *  - all idle motion is smooth seeded noise + time-based critically damped springs (HeadzRenderer).
  */
 import * as THREE from "three";
 import type { AvatarConfig } from "../schema";
@@ -24,6 +33,10 @@ export interface StageHeadOptions {
   bob?: number;
   /** head turn speed toward lookAt (1/s) */
   turnRate?: number;
+  /** slow 3D float of the head (head units); use this instead of CSS animations on the slot */
+  float?: number;
+  /** fixed seed of the head's idle motion */
+  seed?: number;
   /** per-frame hook: drive expression / gaze (t = seconds since the head was added) */
   onFrame?: (r: HeadzRenderer, t: number, dt: number) => void;
 }
@@ -47,6 +60,8 @@ interface Head {
 const BELOW = 0.8;
 /** …and this far (× slot width) left and right: big hair isn't cut at the sides */
 const SIDE = 0.3;
+/** pixel-ratio levels adaptive quality steps down through (never up) */
+const DPR_LEVELS = [2, 1.75, 1.5, 1.25, 1];
 
 export class HeadzStage {
   readonly canvas: HTMLCanvasElement;
@@ -104,6 +119,8 @@ export class HeadzStage {
       mirror: false,
       bob: opts.bob ?? 0.012,
       turnRate: opts.turnRate ?? 5,
+      float: opts.float ?? 0,
+      seed: opts.seed,
     });
     const h: Head = { r, slot, opts, loaded: false, t: 0 };
     r.setConfig(cfg);
@@ -151,6 +168,7 @@ export class HeadzStage {
     this.last = 0;
     this.slow.start = 0;
     this.slow.count = 0;
+    this.slow.strikes = 0;
     this.raf = requestAnimationFrame(this.loop);
   }
 
@@ -177,28 +195,31 @@ export class HeadzStage {
 
   private frame(now: number, dt: number, steps: number) {
     const t0 = performance.now();
+    // layout reads first, all in one go (no interleaved GL work / writes → one layout per frame)
     const box = this.canvas.getBoundingClientRect();
+    const rects: { h: Head; r: DOMRect }[] = [];
+    for (const h of this.heads) if (h.loaded) rects.push({ h, r: h.slot.getBoundingClientRect() });
     const W = Math.max(1, Math.round(box.width * this.dpr)), H = Math.max(1, Math.round(box.height * this.dpr));
     if (this.canvas.width !== W || this.canvas.height !== H) this.gl.setSize(W, H, false);
+    // the real canvas-pixels per CSS px (the rounded size ≠ box × dpr by a fraction of a pixel)
+    const kx = W / Math.max(1, box.width), ky = H / Math.max(1, box.height);
     const gl = this.gl;
     gl.setScissorTest(false);
     gl.clear();
     gl.setScissorTest(true);
-    for (const h of this.heads) {
-      if (!h.loaded) continue;
-      const r = h.slot.getBoundingClientRect();
+    for (const { h, r } of rects) {
       if (r.width < 2 || r.height < 2) continue;
-      const k = this.dpr;
-      const x = Math.round((r.left - r.width * SIDE - box.left) * k);
-      const w0 = r.width * k;
-      const w = Math.round(w0 * (1 + 2 * SIDE));
-      const hh = Math.round(r.height * k);
-      const vh = Math.round(r.height * (1 + BELOW) * k);
+      // the slot's box in canvas pixels (floats, top-left origin) …
+      const sx = (r.left - box.left) * kx, sy = (r.top - box.top) * ky;
+      const sw = r.width * kx, sh = r.height * ky;
+      // … and the integer viewport that covers it plus the margins for hair
+      const x0 = Math.floor(sx - sw * SIDE), x1 = Math.ceil(sx + sw * (1 + SIDE));
+      const y0 = Math.floor(sy), y1 = Math.ceil(sy + sh * (1 + BELOW));
+      if (x1 < 0 || x0 > W || y1 < 0 || y0 > H) continue;
+      const vw = x1 - x0, vh = y1 - y0;
       // three's viewport origin is the bottom-left corner
-      const y = H - Math.round((r.top - box.top) * k) - vh;
-      if (x + w < 0 || x > W || y + vh < 0 || y > H) continue;
-      gl.setViewport(x, y, w, vh);
-      gl.setScissor(x, y, w, vh);
+      gl.setViewport(x0, H - y1, vw, vh);
+      gl.setScissor(x0, H - y1, vw, vh);
       // viewports of neighbours may overlap: each head starts with a fresh depth buffer (colour stays)
       gl.clearDepth();
       for (let i = 0; i < steps; i++) {
@@ -206,7 +227,8 @@ export class HeadzStage {
         h.opts.onFrame?.(h.r, h.t, dt);
         h.r.tick(dt);
       }
-      h.r.setView(w0 / hh, BELOW, SIDE);
+      // the head is framed in the slot box (sw × sh); the viewport is a window onto it at a sub-pixel offset
+      h.r.setViewWindow(sw, sh, x0 - sx, y0 - sy, vw, vh);
       h.r.draw();
     }
     gl.setScissorTest(false);
@@ -220,7 +242,7 @@ export class HeadzStage {
    * Adaptive quality: when the achieved frame rate stays well under the target for ~2 s
    * (weak GPU, many heads), render fewer pixels first, then fewer frames.
    */
-  private slow = { count: 0, start: 0 };
+  private slow = { count: 0, start: 0, strikes: 0 };
   private adapt(now: number) {
     const S = this.slow;
     if (!S.start) S.start = now;
@@ -229,8 +251,16 @@ export class HeadzStage {
     const fps = (S.count * 1000) / (now - S.start);
     S.start = now;
     S.count = 0;
-    if (fps > this.fps * 0.7) return;
-    if (this.dpr > 1) this.dpr = Math.max(1, this.dpr * 0.8);
+    // hysteresis: only two slow windows in a row count; a good window forgives
+    if (fps > this.fps * 0.7) {
+      S.strikes = 0;
+      return;
+    }
+    if (++S.strikes < 2) return;
+    S.strikes = 0;
+    // one step DOWN to the next discrete level (never back up within the session)
+    const next = DPR_LEVELS.find((d) => d < this.dpr - 0.01);
+    if (next !== undefined && this.dpr > 1) this.dpr = Math.max(1, next);
     else if (this.fps > 30) this.fps = 30;
   }
 }

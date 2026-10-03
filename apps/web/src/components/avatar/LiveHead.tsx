@@ -74,6 +74,8 @@ export function LiveHead({
   onFrame,
   bob,
   turnRate,
+  float,
+  seed,
   className,
   style,
 }: {
@@ -82,6 +84,10 @@ export function LiveHead({
   onFrame?: HeadFrame;
   bob?: number;
   turnRate?: number;
+  /** slow 3D float of the head (head units) — never animate the slot itself with CSS (it would jitter) */
+  float?: number;
+  /** fixed seed of the idle motion */
+  seed?: number;
   className?: string;
   style?: React.CSSProperties;
 }) {
@@ -92,7 +98,7 @@ export function LiveHead({
   useEffect(() => {
     const el = ref.current;
     if (!stage || !el) return;
-    const head = stage.add(el, cfg, { bob, turnRate, onFrame: (r, t, dt) => frame.current?.(r, t, dt) });
+    const head = stage.add(el, cfg, { bob, turnRate, float, seed, onFrame: (r, t, dt) => frame.current?.(r, t, dt) });
     return () => head.remove();
     // configs here are fixed per mount
     // eslint-disable-next-line react-hooks/exhaustive-deps

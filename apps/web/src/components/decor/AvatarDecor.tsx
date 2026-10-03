@@ -19,6 +19,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { normalizeAvatar, type AvatarConfig } from "@/lib/avatar/schema";
 import { headzBase } from "@/lib/avatar/headz/catalog";
 import type { HeadzRenderer } from "@/lib/avatar/headz/HeadzRenderer";
+import { rng } from "@/lib/avatar/headz/idleNoise";
 import { HeadStage, LiveHead } from "@/components/avatar/LiveHead";
 import s from "./decor.module.css";
 
@@ -61,6 +62,7 @@ type Event = { kind: "smile" | "wink" | "brows"; at: number; len: number };
 
 /** Per-frame driver of one decor head. */
 function driver(el: () => HTMLElement | null, seed: number) {
+  const rand = rng(seed);
   let next = 2.5 + (seed % 3) * 1.7;
   let ev: Event | null = null;
   let look = { yaw: 0, pitch: 0 };
@@ -81,13 +83,13 @@ function driver(el: () => HTMLElement | null, seed: number) {
     // now and then: a wider smile, a wink, playful brows
     if (!ev && t > next) {
       const kinds: Event["kind"][] = ["smile", "smile", "wink", "brows"];
-      const kind = kinds[Math.floor(Math.random() * kinds.length)];
+      const kind = kinds[Math.floor(rand() * kinds.length)];
       ev = { kind, at: t, len: kind === "wink" ? 0.55 : kind === "brows" ? 1.1 : 2.4 };
     }
     const e = ev ? bump(t - ev.at, ev.len) : 0;
     if (ev && t - ev.at > ev.len) {
       ev = null;
-      next = t + 4 + Math.random() * 6;
+      next = t + 4 + rand() * 6;
     }
     // soft closed-mouth smile, gentle squint
     const smile = 0.55 + (ev?.kind === "smile" ? 0.35 * e : 0) + (ev?.kind === "wink" ? 0.2 * e : 0);
@@ -111,13 +113,14 @@ function driver(el: () => HTMLElement | null, seed: number) {
   };
 }
 
-function Head({ id, px, delay, seed, order }: { id: DecorHead; px: number; delay: number; seed: number; order: number }) {
+function Head({ id, px, seed, order }: { id: DecorHead; px: number; seed: number; order: number }) {
   const box = useRef<HTMLDivElement>(null);
   const cfg = useMemo(() => cfgOf(id), [id]);
   const onFrame = useMemo(() => driver(() => box.current, seed), [seed]);
   return (
-    <div ref={box} className={s.pic} style={{ width: px, height: px, animationDelay: `${delay}s`, order }}>
-      <LiveHead cfg={cfg} onFrame={onFrame} bob={0.015} turnRate={3} />
+    <div ref={box} className={s.pic} style={{ width: px, height: px, order }}>
+      {/* the float is done in 3D by the renderer: a CSS float on the slot made the head jitter */}
+      <LiveHead cfg={cfg} onFrame={onFrame} bob={0.015} float={0.07} seed={seed} turnRate={3} />
     </div>
   );
 }
@@ -153,7 +156,7 @@ export function AvatarDecor({
       {on && (
         <HeadStage still={still} className={s.row} canvasClassName={s.canvas}>
           {list.map((id, i) => (
-            <Head key={id + i} id={id} px={Math.round(size * (i === 0 ? 1 : 0.72))} delay={-i * 2.3} seed={i * 1.9 + id.length} order={-i} />
+            <Head key={id + i} id={id} px={Math.round(size * (i === 0 ? 1 : 0.72))} seed={i * 1.9 + id.length} order={-i} />
           ))}
         </HeadStage>
       )}

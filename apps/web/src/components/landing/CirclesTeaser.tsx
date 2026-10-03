@@ -310,6 +310,7 @@ export function CirclesTeaser() {
                 onFrame={drivers[0]}
                 bob={0.01}
                 turnRate={4}
+                seed={101}
                 className={t.head}
               />
               <span className={t.centerName}>Психолог</span>
@@ -339,6 +340,7 @@ export function CirclesTeaser() {
                   <LiveHead
                     cfg={cfgs[i]}
                     onFrame={drivers[i + 1]}
+                    seed={i * 13.7 + 5}
                     className={t.head}
                   />
                   <span className={t.name}>Участник-{name}</span>
