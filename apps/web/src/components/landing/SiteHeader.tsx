@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { LogoMark } from "@/components/shell/Logo";
 import { ThemeToggle } from "@/components/shell/ThemeToggle";
 import { LanguageToggle } from "@/components/i18n/LanguageSwitch";
+import { LivingBackground } from "./LivingBackground";
 import { lp } from "@/lib/i18n";
 import { MI, Morph } from "@/components/ui/Morph";
 import { homeFor, useAuth } from "@/lib/auth/store";
@@ -33,9 +34,18 @@ export function SiteHeader({ links = true }: { links?: boolean }) {
   const status = useAuth((st) => st.status);
   const user = useAuth((st) => st.user);
   const [open, setOpen] = useState(false);
+  // Fully transparent over the top of the page; frosted once the page has scrolled a little.
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     useAuth.getState().bootstrap();
+  }, []);
+
+  useEffect(() => {
+    const on = () => setScrolled(window.scrollY > 8);
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    return () => window.removeEventListener("scroll", on);
   }, []);
 
   useEffect(() => {
@@ -48,7 +58,9 @@ export function SiteHeader({ links = true }: { links?: boolean }) {
   const authed = status === "authed" && user;
 
   return (
-    <header className={s.header} data-open={open || undefined}>
+    <>
+    <LivingBackground />
+    <header className={s.header} data-open={open || undefined} data-scrolled={scrolled || undefined}>
       <div className={`${s.wrap} ${s.headerInner}`}>
         <Brand />
         {links && (
@@ -110,5 +122,6 @@ export function SiteHeader({ links = true }: { links?: boolean }) {
         </nav>
       )}
     </header>
+    </>
   );
 }

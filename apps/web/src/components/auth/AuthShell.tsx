@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Brand } from "@/components/landing/SiteHeader";
 import { ThemeToggle } from "@/components/shell/ThemeToggle";
 import { LanguageToggle } from "@/components/i18n/LanguageSwitch";
+import { LivingBackground } from "@/components/landing/LivingBackground";
 import a from "./art.module.css";
 import s from "./auth.module.css";
 
@@ -12,9 +13,10 @@ export function AuthShell({ children, wide, art }: { children: ReactNode; wide?:
   const column = <div className={`${s.column} ${wide ? s.columnWide : ""}`}>{children}</div>;
   return (
     <div className={s.shell}>
+      <LivingBackground />
       <header className={s.top}>
         <Brand />
-        <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <LanguageToggle />
           <ThemeToggle />
         </span>

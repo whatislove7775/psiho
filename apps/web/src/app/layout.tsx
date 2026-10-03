@@ -5,7 +5,7 @@ import { THEME_SCRIPT } from "@/components/shell/ThemeToggle";
 import { STEALTH_SCRIPT } from "@/lib/privacy/stealth";
 import { ldJson, ORG_ID, organizationLd, websiteLd } from "@/lib/seo";
 import { headers } from "next/headers";
-import { DEFAULT_LOCALE, LOCALE_HEADER, LOCALE_META, LOCALES, getLocale, isLocale, msg, t } from "@/lib/i18n";
+import { DEFAULT_LOCALE, LOCALE_HEADER, LOCALE_META, LOCALE_SYNC_SCRIPT, LOCALES, getLocale, isLocale, msg, t } from "@/lib/i18n";
 
 const SITE_URL = "https://aprosop.ru";
 const SITE_NAME = "Aprosop";
@@ -102,6 +102,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         {/* «Незаметный режим»: нейтральная вкладка и выход по двойному Esc — до загрузки React */}
         <script dangerouslySetInnerHTML={{ __html: STEALTH_SCRIPT }} />
+        {/* язык: Back из кэша в старом языке → перезагрузка; позиция прокрутки после переключения */}
+        <script dangerouslySetInnerHTML={{ __html: LOCALE_SYNC_SCRIPT }} />
         <link rel="preload" href="/fonts/onest-cyrillic.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
         <link rel="preload" href="/fonts/onest-latin.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
         <StructuredData />

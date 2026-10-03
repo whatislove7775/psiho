@@ -179,13 +179,13 @@ export function Hero() {
           <div className={s.stageCanvas}>
             <AvatarView ref={viewRef} config={config} framing="portrait" interactive={false} deferLoad />
           </div>
-          <figcaption className={s.nameTag} aria-live="polite">
-            {current.alias}
-          </figcaption>
-          <button type="button" className={s.shuffle} aria-label={tt("Показать другой аватар")} title={tt("Другой аватар")} onClick={shuffle}>
-            <RefreshCw size={16} strokeWidth={2} aria-hidden />
-          </button>
         </div>
+        <figcaption className={s.heroTag}>
+          <span aria-live="polite">{current.alias}</span>
+          <button type="button" className={s.shuffle} aria-label={tt("Показать другой аватар")} title={tt("Другой аватар")} onClick={shuffle}>
+            <RefreshCw size={14} strokeWidth={2} aria-hidden />
+          </button>
+        </figcaption>
       </figure>
     </section>
   );

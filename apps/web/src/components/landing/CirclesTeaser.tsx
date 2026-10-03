@@ -23,6 +23,7 @@ import type { HeadzRenderer } from "@/lib/avatar/headz/HeadzRenderer";
 import { HeadStage, LiveHead } from "@/components/avatar/LiveHead";
 import s from "@/components/landing/landing.module.css";
 import t from "./circlesTeaser.module.css";
+import { t as tt } from "@/lib/i18n";
 
 const SEATS = [
   "Лиса",
@@ -279,16 +280,15 @@ export function CirclesTeaser() {
     >
       <div className={t.grid}>
         <div className={t.text}>
-          <p className={s.kicker}>Круги</p>
+          <p className={s.kicker}>{tt("Круги")}</p>
           <h2 id="circles-title" className={s.sectionTitle}>
-            Когда важно услышать «у&nbsp;меня так&nbsp;же»
+            {tt("Когда важно услышать «у\u00a0меня так\u00a0же»")}
           </h2>
           <p className={s.sectionSub}>
-            Группы до&nbsp;12&nbsp;человек с&nbsp;психологом, раз в&nbsp;неделю.
-            Тоже с&nbsp;аватаром. Можно просто слушать.
+            {tt("Группы до\u00a012\u00a0человек с\u00a0психологом, раз в\u00a0неделю. Тоже с\u00a0аватаром. Можно просто слушать.")}
           </p>
           <Link href="/app/circles" className={s.more}>
-            Посмотреть круги
+            {tt("Посмотреть круги")}
             <ArrowRight size={16} strokeWidth={2} aria-hidden />
           </Link>
         </div>
@@ -313,7 +313,7 @@ export function CirclesTeaser() {
                 seed={101}
                 className={t.head}
               />
-              <span className={t.centerName}>Психолог</span>
+              <span className={t.centerName}>{tt("Психолог")}</span>
               <Reactions seat={-1} size={16} />
             </div>
             {SEATS.map((name, i) => {
@@ -343,7 +343,7 @@ export function CirclesTeaser() {
                     seed={i * 13.7 + 5}
                     className={t.head}
                   />
-                  <span className={t.name}>Участник-{name}</span>
+                  <span className={t.name}>{tt("Участник-{name}", { name: tt(name) })}</span>
                   <Reactions seat={i} size={14} />
                 </div>
               );

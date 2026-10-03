@@ -3,7 +3,7 @@
  */
 import { useEffect, useState } from "react";
 import { requestAsyncStorage } from "next/dist/client/components/request-async-storage.external";
-import { LOCALE_COOKIE, localePath, splitLocale, type Locale } from "./config";
+import { LOCALE_COOKIE, SCROLL_KEY, localePath, splitLocale, type Locale } from "./config";
 import { getLocale } from "./locale";
 import { COUNTRY_COOKIE, COUNTRY_KEY, countryBy, guessCountry, type Country, type CountryCode } from "./countries";
 
@@ -24,11 +24,23 @@ function readCookie(name: string): string | null {
   return m ? decodeURIComponent(m[1]) : null;
 }
 
-/** Switch the site language: remember it and reload the same page in the new language. */
+/**
+ * Switch the site language: remember it (cookie first, so the middleware never bounces us back), then load
+ * the same page in the new language. `replace` — the old-language URL must not stay in history: going Back to
+ * it would only redirect forward again (the cookie wins). The scroll position is carried over (LOCALE_SYNC_SCRIPT).
+ */
 export function switchLocale(next: Locale) {
   setCookie(LOCALE_COOKIE, next);
   const { path } = splitLocale(window.location.pathname);
-  window.location.assign(localePath(path, next) + window.location.search + window.location.hash);
+  const target = localePath(path, next);
+  try {
+    sessionStorage.setItem(SCROLL_KEY, JSON.stringify({ path: target, y: Math.round(window.scrollY) }));
+  } catch {
+    /* private mode */
+  }
+  const url = target + window.location.search + window.location.hash;
+  if (target === window.location.pathname) window.location.reload();
+  else window.location.replace(url);
 }
 
 /** Re-exported for older imports; lives in ./index (usable in server components). */
