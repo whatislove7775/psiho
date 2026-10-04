@@ -32,7 +32,7 @@ export function SiteFooter() {
               </Link>
             ))}
             <a href="mailto:support@aprosop.ru">support@aprosop.ru</a>
-            <LanguageToggle />
+            <LanguageToggle className={s.footerLang} />
           </nav>
         </div>
         <div className={s.footerBottom}>

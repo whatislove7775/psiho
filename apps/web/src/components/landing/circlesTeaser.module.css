@@ -39,12 +39,10 @@
 }
 .canvas {
   left: -8%;
-  top: -4%;
+  top: -6%;
   width: 116%;
-  height: 126%;
+  height: 150%;
   z-index: 0;
-  /* long hair of the bottom heads fades out instead of ending at the canvas edge */
-  mask-image: linear-gradient(to bottom, #000 82%, transparent 100%);
 }
 /* slot the stage draws a head into (no disc behind it) */
 .head {

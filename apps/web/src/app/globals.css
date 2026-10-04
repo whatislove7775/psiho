@@ -37,8 +37,9 @@ h1, h2, h3, h4, h5, h6, p, li, dd, blockquote, figcaption {
   overflow-wrap: anywhere;
 }
 
-/* Calm static brand glow behind everything (cabinets). Public pages draw a living, scroll-reactive one on top
-   (components/landing/LivingBackground) and hide this layer once theirs is painted. */
+/* Calm brand glow behind everything. Cabinets: one fixed layer. Public pages (they render <i data-flow-bg>):
+   the same soft glows are part of the document — a layer as tall as the page, the blobs repeated down it
+   every 1500px — so they scroll away with the content like a normal long page. No JS, no texture. */
 body::before {
   content: "";
   position: fixed;
@@ -50,26 +51,16 @@ body::before {
   height: 100lvh;
   pointer-events: none;
   background: var(--g-glow);
-  transform: translateZ(0);
 }
-body:has([data-live-bg][data-ready])::before {
-  display: none;
-}
-
-/* Opt-in crayon grain for any surface: add class "grain" (keeps its own background). */
-.grain {
+body:has([data-flow-bg]) {
   position: relative;
-  isolation: isolate;
 }
-.grain::after {
-  content: "";
+body:has([data-flow-bg])::before {
   position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: var(--tex-grain);
-  mix-blend-mode: overlay;
-  pointer-events: none;
-  z-index: 1;
+  height: 100%;
+  background: var(--g-flow);
+  background-size: 100% 1500px;
+  background-repeat: repeat-y;
 }
 
 h1,

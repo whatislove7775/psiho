@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import { LogoMark } from "@/components/shell/Logo";
 import { ThemeToggle } from "@/components/shell/ThemeToggle";
 import { LanguageToggle } from "@/components/i18n/LanguageSwitch";
-import { LivingBackground } from "./LivingBackground";
 import { lp } from "@/lib/i18n";
 import { MI, Morph } from "@/components/ui/Morph";
 import { homeFor, useAuth } from "@/lib/auth/store";
@@ -59,7 +58,7 @@ export function SiteHeader({ links = true }: { links?: boolean }) {
 
   return (
     <>
-    <LivingBackground />
+    <i data-flow-bg="" hidden />
     <header className={s.header} data-open={open || undefined} data-scrolled={scrolled || undefined}>
       <div className={`${s.wrap} ${s.headerInner}`}>
         <Brand />

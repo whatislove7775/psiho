@@ -74,6 +74,12 @@
     radial-gradient(38% 42% at 12% 8%, rgba(122, 165, 255, 0.16), transparent 70%),
     radial-gradient(34% 40% at 92% 14%, rgba(106, 79, 232, 0.16), transparent 70%),
     radial-gradient(30% 34% at 70% 96%, rgba(111, 216, 242, 0.06), transparent 70%);
+  /* The same glows for long public pages: one 1500px tile repeated down the page, every blob well inside the
+     tile (no seams), scrolling with the content. */
+  --g-flow:
+    radial-gradient(40% 24% at 14% 24%, rgba(122, 165, 255, 0.15), transparent 70%),
+    radial-gradient(36% 24% at 90% 52%, rgba(106, 79, 232, 0.15), transparent 70%),
+    radial-gradient(34% 22% at 30% 80%, rgba(111, 216, 242, 0.06), transparent 70%);
   /* Crayon-like grain, layer it on top of gradients: background: var(--tex-grain), var(--g-accent). */
   --tex-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 
@@ -158,6 +164,10 @@
   --a-mint-soft: rgba(40, 200, 150, 0.13);
   --a-mint-ink: #0b7d60;
 
+  --g-flow:
+    radial-gradient(40% 24% at 14% 24%, rgba(122, 165, 255, 0.2), transparent 70%),
+    radial-gradient(36% 24% at 90% 52%, rgba(106, 79, 232, 0.13), transparent 70%),
+    radial-gradient(34% 22% at 30% 80%, rgba(255, 159, 133, 0.12), transparent 70%);
   --g-glow:
     radial-gradient(38% 42% at 12% 8%, rgba(122, 165, 255, 0.22), transparent 70%),
     radial-gradient(34% 40% at 92% 14%, rgba(106, 79, 232, 0.14), transparent 70%),
