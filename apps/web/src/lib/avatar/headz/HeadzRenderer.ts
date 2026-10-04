@@ -27,6 +27,7 @@ import type { AvatarRendererApi, FaceResult, Framing, RendererOptions } from "..
 import { headzBase, headzRimQ, resolvePart } from "./catalog";
 import type { HeadzBase, HeadzSlot } from "./types";
 import { deformFace, deformedEye, frameOf, placePart, radiusAt, radiusMap, transferMorphs, type RadiusMap } from "./deform";
+import { AZ as FOOT_AZ, EL as FOOT_EL, SkinIndex, footprint, footprintBytes, taperHair, topWeight, type HairSurface } from "./scalp";
 import { GazeTracker, LID_GAIN, applyLids, combineEyes, gazeOf, gazeWeights, type LidGain, type Weights } from "./gaze";
 import { eyeUniforms, hairUniforms, patchEye, patchFade, patchHair, patchSkin, skinUniforms } from "./shaders";
 import { EyeRig, irisUniforms, makeCorneaMaterial, makeIrisMaterial, makeScleraMaterial, springStep, type EyeSpec } from "./eyes";
@@ -185,6 +186,7 @@ export class HeadzRenderer implements AvatarRendererApi {
   /** tracked gaze: filtered, held only through a blink, relaxes to the centre when input is missing (gaze.ts) */
   private trackGaze = new GazeTracker();
   private skinU = skinUniforms();
+  private footTex: THREE.DataTexture | null = null;
   private hairU = hairUniforms();
   private beardU = hairUniforms();
   // restylable materials
@@ -282,6 +284,11 @@ export class HeadzRenderer implements AvatarRendererApi {
     this.root.add(this.headPivot);
     this.scene.add(this.root);
     this.head.add(this.eyeRig.group);
+    // no hair yet: the footprint reads "far from any hair" everywhere
+    this.footTex = this.makeFootTex();
+    (this.footTex.image.data as Uint8Array).fill(255);
+    this.footTex.needsUpdate = true;
+    this.skinU.uFoot.value = this.footTex;
     patchEye(this.mats.eye, this.eyeU);
     patchHair(this.mats.hair, this.hairU);
     patchHair(this.mats.beard, this.beardU);
@@ -683,44 +690,49 @@ export class HeadzRenderer implements AvatarRendererApi {
     geo.setAttribute("aCover", new THREE.BufferAttribute(new Float32Array(n), 1));
   }
 
-  /** Where close-fitting hair covers the scalp (for a very soft contact shadow only — never a colour patch). */
+  /**
+   * Scalp under the hair (see scalp.ts): the hair's footprint on the head, feathered into the skin tone, plus
+   * cropped sides / sideburns / nape for hair that covers the top. Per base + hair pair; no hair → no mask.
+   * Also lays the hair's thick lower rim onto the skin.
+   */
+  private makeFootTex() {
+    const t = new THREE.DataTexture(new Uint8Array(FOOT_EL * FOOT_AZ), FOOT_AZ, FOOT_EL, THREE.RedFormat, THREE.UnsignedByteType);
+    t.magFilter = t.minFilter = THREE.LinearFilter;
+    t.wrapS = THREE.RepeatWrapping;
+    t.wrapT = THREE.ClampToEdgeWrapping;
+    t.generateMipmaps = false;
+    t.unpackAlignment = 1;
+    return t;
+  }
+
   private scalpCover() {
     const hair = this.parts.hair?.owned ?? [];
-    const EL = 32, AZ = 64;
-    const inner = new Float32Array(EL * AZ).fill(Infinity);
-    const bin = (x: number, y: number, z: number) => {
-      const r = Math.hypot(x, y, z) || 1e-6;
-      const e = Math.min(EL - 1, Math.max(0, Math.floor((Math.asin(Math.max(-1, Math.min(1, y / r))) / Math.PI + 0.5) * EL)));
-      const a = Math.min(AZ - 1, Math.max(0, Math.floor((Math.atan2(x, z) / (2 * Math.PI) + 0.5) * AZ)));
-      return [e, a, r] as const;
+    const skinOwned = this.owned.filter(isSkin);
+    if (!skinOwned.length) return;
+    // only hair that is actually on the head: some sources keep stray interior geometry (mirror seams)
+    const map = this.map;
+    const surface = (o: Owned): HairSurface => {
+      const p = o.rest;
+      let ok: Uint8Array | undefined;
+      if (map) {
+        ok = new Uint8Array(p.length / 3);
+        for (let i = 0, k = 0; i < p.length; i += 3, k++) ok[k] = Math.hypot(p[i], p[i + 1], p[i + 2]) >= 0.85 * radiusAt(map, p[i], p[i + 1], p[i + 2]) ? 1 : 0;
+      }
+      return { pos: p, index: o.mesh.geometry.index?.array ?? null, ok };
     };
-    for (const o of hair) {
-      const p = o.rest;
-      for (let i = 0; i < p.length; i += 3) {
-        const [e, a, r] = bin(p[i], p[i + 1], p[i + 2]);
-        const k = e * AZ + a;
-        if (r < inner[k]) inner[k] = r;
-      }
+    const fp = hair.length ? footprint(hair.map(surface)) : null;
+    if (fp) {
+      const sk = this.skinSurface();
+      const idx = new SkinIndex(sk.pos, sk.nrm);
+      for (const o of hair) taperHair(o.rest, fp, idx);
     }
-    for (const o of this.owned) {
-      const cover = o.mesh.geometry.getAttribute("aCover") as THREE.BufferAttribute | undefined;
-      if (!cover) continue;
-      const arr = cover.array as Float32Array;
-      const p = o.rest;
-      for (let i = 0, j = 0; i < p.length; i += 3, j++) {
-        if (!hair.length) {
-          arr[j] = 0;
-          continue;
-        }
-        const [e, a, r] = bin(p[i], p[i + 1], p[i + 2]);
-        // no dilation: the tint must stay under the hair, not creep past the hairline
-        const best = inner[e * AZ + a];
-        // only the scalp: well above the eyes and not the face front
-        const scalp = smooth(0.05, 0.3, p[i + 1] - 0.15) * (1 - smooth(0.35, 0.7, p[i + 2]) * smooth(0.6, 0.2, p[i + 1]));
-        arr[j] = smooth(0.09, 0.03, best - r) * scalp;
-      }
-      cover.needsUpdate = true;
-    }
+    // the mask itself is evaluated per pixel in the skin shader from this footprint texture
+    const tex = this.footTex ?? (this.footTex = this.makeFootTex());
+    (tex.image.data as Uint8Array).set(footprintBytes(fp));
+    tex.needsUpdate = true;
+    this.skinU.uFoot.value = tex;
+    this.skinU.uScalpP.value.set(topWeight(fp), this.base?.eyes?.L?.c[1] ?? 0);
+    this.shapeKey = "";
   }
 
   /** Height of each hair vertex above the scalp (0 at the roots → 1 at the tips), for two-tone hair. */
@@ -988,8 +1000,10 @@ export class HeadzRenderer implements AvatarRendererApi {
     // a subtle lash line for everyone; eyeliner makes it bolder
     const liner = new THREE.Color("#1d1512").lerp(skin, 0.35 - 0.35 * c.makeup.liner);
     S.uLiner.value.set(liner.r, liner.g, liner.b, 0.28 + 0.62 * c.makeup.liner);
-    // no painted scalp: only a very soft contact shadow under close-fitting hair
-    S.uScalp.value.set(0, 0, 0, this.parts.hair?.owned.length ? 0.1 : 0);
+    // scalp: the chosen hair colour, a little darker and desaturated (stubble), only where hair exists
+    const hsl = hair.getHSL({ h: 0, s: 0, l: 0 });
+    const stubble = new THREE.Color().setHSL(hsl.h, hsl.s * 0.82, hsl.l * 0.86);
+    S.uScalp.value.set(stubble.r, stubble.g, stubble.b, this.parts.hair?.owned.length ? 1 : 0);
     // accessory colours
     for (const m of this.partMats) {
       const pm = m as THREE.MeshPhysicalMaterial;

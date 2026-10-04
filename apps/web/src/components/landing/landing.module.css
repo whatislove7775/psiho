@@ -209,7 +209,7 @@
   gap: 56px;
   align-items: center;
   min-height: min(720px, calc(100dvh - 64px));
-  padding-block: 40px 64px;
+  padding-block: 40px 32px;
 }
 
 .heroText {
@@ -312,8 +312,10 @@
 
 .stage {
   position: relative;
-  width: 112%;
-  margin-left: -6%;
+  /* wider than the column and centred on it: the face is ~450px tall at 1440 (capped at 840px of canvas) */
+  width: min(142%, 840px);
+  left: 50%;
+  transform: translateX(-50%);
   aspect-ratio: 1 / 0.773;
 }
 /* the canvas reaches past the stage box (tall hair, tilt) — it is transparent there and ignores the pointer */
@@ -348,7 +350,7 @@
 .heroTag {
   position: absolute;
   left: 50%;
-  bottom: 4px;
+  bottom: 11%;
   z-index: 1;
   transform: translateX(-50%);
   display: inline-flex;
@@ -767,8 +769,7 @@
     color: var(--c-muted);
   }
   .stage {
-    width: 124%;
-    margin-left: -12%;
+    width: 150%;
   }
   .hero {
     grid-template-columns: minmax(0, 1fr) minmax(0, 300px);
@@ -846,8 +847,7 @@
     max-width: none;
   }
   .stage {
-    width: 118%;
-    margin-left: -9%;
+    width: 156%;
   }
 
   /* steps: compact rows */

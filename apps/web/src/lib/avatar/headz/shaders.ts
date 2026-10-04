@@ -128,6 +128,9 @@ export interface SkinUniforms {
   uShadow: { value: THREE.Vector4 };
   uLiner: { value: THREE.Vector4 };
   uScalp: { value: THREE.Vector4 };
+  /** hair footprint on the head (distance to the hair per direction) + [top coverage weight, eye line y] */
+  uFoot: { value: THREE.Texture | null };
+  uScalpP: { value: THREE.Vector2 };
   /** eye centres (for age lines) + nose tip (freckles) */
   uEyeC: { value: THREE.Vector3[] };
   uNose: { value: THREE.Vector3 };
@@ -144,6 +147,8 @@ export function skinUniforms(): SkinUniforms {
     uShadow: { value: new THREE.Vector4(0.5, 0.4, 0.6, 0) },
     uLiner: { value: new THREE.Vector4(0.12, 0.08, 0.07, 0.3) },
     uScalp: { value: new THREE.Vector4(0.1, 0.08, 0.06, 0) },
+    uFoot: { value: null },
+    uScalpP: { value: new THREE.Vector2(0, 0) },
     uEyeC: { value: [new THREE.Vector3(0.29, -0.09, 0.4), new THREE.Vector3(-0.29, -0.09, 0.4)] },
     uNose: { value: new THREE.Vector3(0, -0.42, 0.89) },
     uMouth: { value: new THREE.Vector4(0, -0.64, 0.57, 0.26) },
@@ -159,6 +164,8 @@ uniform vec4 uLip;
 uniform vec4 uShadow;
 uniform vec4 uLiner;
 uniform vec4 uScalp;
+uniform sampler2D uFoot;
+uniform vec2 uScalpP;
 uniform vec3 uEyeC[2];
 uniform vec3 uNose;
 uniform vec4 uMouth;
@@ -166,17 +173,48 @@ varying vec3 vHeadP;
 varying vec4 vFx;
 varying float vCover;
 float skHash(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+// Scalp mask, evaluated per pixel from the hair footprint texture (a per-vertex mask can't be sharper than a triangle)
+float scalpMask(vec3 P) {
+  float r = max(length(P), 1e-4);
+  vec2 uv = vec2(atan(P.x, P.z) / 6.2831853 + 0.5, asin(clamp(P.y / r, -1.0, 1.0)) / 3.14159265 + 0.5);
+  float d = (texture2D(uFoot, uv).r - 0.5) * 0.8; // signed distance to the hair: < 0 under it
+  // long feather at the sides/back, a hair's breadth at the forehead (it stays skin right up to the hairline)
+  float F = 0.012 + 0.16 * (1.0 - smoothstep(0.12, 0.42, P.z));
+  // at the front the tint stays hidden under the hair (the forehead keeps its exact skin tone up to the hairline)
+  d += 0.07 * smoothstep(0.12, 0.42, P.z);
+  float foot = 1.0 - smoothstep(0.0, F, d);
+  // cropped sides / sideburns / nape, only for hair that covers the top of the head
+  float back = 1.0 - smoothstep(0.1, 0.32, P.z);
+  float lateral = smoothstep(0.55, 0.72, abs(P.x)) * (1.0 - smoothstep(0.1, 0.34, P.z));
+  // hairline at the nape: low in the middle, rising to the ear at the sides
+  float sd = clamp(abs(P.x) / 0.65, 0.0, 1.0);
+  float yN = uScalpP.y - 0.4 - 0.32 * (1.0 - sd * sd);
+  float nape = smoothstep(yN - 0.14, yN, P.y);
+  float ext = max(back, lateral) * nape * uScalpP.x;
+  // ears are skin
+  float ear = smoothstep(0.74, 0.82, abs(P.x)) * (1.0 - smoothstep(0.0, 0.2, P.z))
+    * smoothstep(uScalpP.y - 0.55, uScalpP.y - 0.35, P.y) * (1.0 - smoothstep(uScalpP.y + 0.1, uScalpP.y + 0.3, P.y));
+  return max(foot, ext) * (1.0 - ear);
+}
 vec3 skinFx(vec3 c) {
   vec3 P = vHeadP;
   float lips = smoothstep(0.28, 0.62, vFx.x);
   float lid = vFx.y;
   float cheek = smoothstep(0.2, 0.8, vFx.z);
   float front = smoothstep(0.0, 0.3, P.z);
-  // scalp under the hair
-  c *= 1.0 - uScalp.a * vCover;
+  // scalp under / around the hair: hair-coloured stubble that feathers into the skin tone
+  {
+    float m = uScalp.a * scalpMask(P);
+    float n = skHash(floor(P * 220.0));
+    // stubble: fine grain through the whole zone, coarser dither in the soft fringe (never at the forehead hairline)
+    float side = 1.0 - smoothstep(0.2, 0.4, P.z);
+    m = clamp(m * (1.0 - 0.18 * side * (1.0 - n)) + (n - 0.5) * 0.4 * (1.0 - abs(2.0 * m - 1.0)) * side, 0.0, 1.0);
+    vec3 tint = mix(uScalp.rgb, mix(uScalp.rgb, c, 0.45), 1.0 - m);        // paler toward the skin
+    c = mix(c, tint, m);
+  }
   // natural lips (a touch rosier than the skin) and the dark mouth cavity behind them
   c = mix(c, c * vec3(1.0, 0.72, 0.72), 0.5 * lips);
-  float cav = smoothstep(uMouth.z - 0.1, uMouth.z - 0.2, P.z)
+  float cav = smoothstep(uMouth.z - 0.1, uMouth.z - 0.2, P.z) * smoothstep(0.0, 0.12, P.z)
     * smoothstep(uMouth.w * 1.15, uMouth.w * 0.7, abs(P.x - uMouth.x))
     * smoothstep(0.16, 0.09, abs(P.y - uMouth.y));
   c = mix(c, vec3(0.3, 0.07, 0.08), cav);

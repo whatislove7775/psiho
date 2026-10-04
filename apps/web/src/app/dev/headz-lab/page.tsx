@@ -61,7 +61,7 @@ function Lab() {
         /* ignore */
       }
       const one = normalizeAvatar({ ...DEFAULT_AVATAR, ...q, ...extra, version: 4 });
-      const jobs: { label: string; cfg: AvatarConfig; expr: Record<string, number>; look?: [number, number]; hands?: number; track?: Record<string, number> }[] = [];
+      const jobs: { label: string; cfg: AvatarConfig; expr: Record<string, number>; look?: [number, number]; hands?: number; track?: Record<string, number>; yaw?: number }[] = [];
       if (mode === "bases") {
         for (const b of CATALOG.bases) jobs.push({ label: b.id, cfg: normalizeAvatar({ ...q, ...extra, version: 4, base: b.id }), expr: q.jaw ? { jawOpen: Number(q.jaw) } : {} });
       } else if (mode === "parts") {
@@ -113,7 +113,10 @@ function Lab() {
         for (const [l, x, y] of pts) jobs.push({ label: `cursor ${l}`, cfg: one, expr: {}, look: [x, y] });
       } else {
         const only = sp.get("only")?.split(",");
-        for (const [l, e] of EXPR) if (!only || only.includes(l)) jobs.push({ label: l, cfg: one, expr: e });
+        // &yaws=0,0.5,1,1.5,3.14 → the same config seen from several angles (front, 30°, 60°, 90°, behind)
+        const yaws = q.yaws?.split(",").map(Number);
+        if (yaws) for (const y of yaws) jobs.push({ label: `yaw ${Math.round((y * 180) / Math.PI)}°`, cfg: one, expr: {}, yaw: y });
+        else for (const [l, e] of EXPR) if (!only || only.includes(l)) jobs.push({ label: l, cfg: one, expr: e });
       }
       const out: { label: string; src: string }[] = [];
       for (const j of jobs) {
@@ -150,7 +153,7 @@ function Lab() {
         } else {
           r.stop();
           r.setExpression(j.expr);
-          await r.renderOnceAsync(yaw, pitch);
+          await r.renderOnceAsync(j.yaw ?? yaw, pitch);
         }
         out.push({ label: j.label, src: canvas.toDataURL("image/png") });
         if (alive) setImgs([...out]);
