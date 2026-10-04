@@ -318,8 +318,9 @@
 }
 /* the canvas reaches past the stage box (tall hair, tilt) — it is transparent there and ignores the pointer */
 .stage[data-fade] .stageCanvas {
-  -webkit-mask-image: linear-gradient(to bottom, #000 80%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 80%, transparent 100%);
+  /* the fade starts well below the chin and eases out so there is no visible line */
+  -webkit-mask-image: linear-gradient(to bottom, #000 87%, rgba(0, 0, 0, 0.8) 91%, rgba(0, 0, 0, 0.4) 95.5%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 87%, rgba(0, 0, 0, 0.8) 91%, rgba(0, 0, 0, 0.4) 95.5%, transparent 100%);
 }
 
 .stageCanvas {

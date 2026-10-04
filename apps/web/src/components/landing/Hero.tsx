@@ -1,6 +1,6 @@
 "use client";
 
-import { t as tt, translatedList } from "@/lib/i18n";
+import { getLocale, t as tt } from "@/lib/i18n";
 import { lp } from "@/lib/i18n";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -8,26 +8,19 @@ import { ArrowRight, RefreshCw } from "lucide-react";
 import { AvatarView, type AvatarViewHandle } from "@/components/avatar/AvatarView";
 import { randomAvatar } from "@/lib/avatar/schema";
 import { hasLongHair } from "@/lib/avatar/headz/hairReach";
+import { randomAlias, randomSeed } from "@/lib/avatar/randomIdentity";
 import { Button } from "@/ui";
 import s from "./landing.module.css";
 
-/** Sample identities: what a client looks like to a specialist. */
-const PRESETS = [
-  { seed: "aprosop-kit", get alias() { return tt("тихий-кит-4821"); } },
-  { seed: "aprosop-sova-7", get alias() { return tt("смелая-сова-1937"); } },
-  { seed: "aprosop-lis-2", get alias() { return tt("рыжий-лис-5520"); } },
-  { seed: "aprosop-ezh-11", get alias() { return tt("сонный-ёж-0342"); } },
-  { seed: "g2", get alias() { return tt("светлый-дуб-2208"); } },
-];
+/** What the server renders (and the first client render, so hydration matches); a random identity replaces it on mount. */
+const DEFAULT_IDENTITY = { seed: "aprosop-kit", get alias() { return tt("тихий-кит-4821"); } };
 
-const EXTRA_ALIASES = translatedList([
-  "добрый-лось-2710",
-  "ясная-луна-6604",
-  "тёплый-чай-1185",
-  "лёгкий-ветер-9053",
-  "мудрая-рысь-3378",
-  "синий-клён-4410",
-]);
+/** A truly random face and alias. Faces with a very long hanging tail make the head look small, so re-roll most of those. */
+function randomIdentity(): { seed: string; alias: string } {
+  let seed = randomSeed();
+  for (let i = 0; i < 3 && hasLongHair(randomAvatar(seed)); i++) seed = randomSeed();
+  return { seed, alias: randomAlias(getLocale()) };
+}
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
@@ -91,14 +84,17 @@ function scriptedIdle(get: () => LookApi | null) {
 }
 
 export function Hero() {
-  const [index, setIndex] = useState(0);
-  const [extra, setExtra] = useState<{ seed: string; alias: string } | null>(null);
-  const shuffles = useRef(0);
+  const [identity, setIdentity] = useState<{ seed: string; alias: string }>(DEFAULT_IDENTITY);
   const stageRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<AvatarViewHandle>(null);
 
-  const current = extra ?? PRESETS[index];
+  const current = identity;
   const config = useMemo(() => randomAvatar(current.seed), [current.seed]);
+
+  // Every visit starts with a different face (random, not a fixed script).
+  useEffect(() => {
+    setIdentity(randomIdentity());
+  }, []);
 
   // Desktop (fine pointer with hover): the head follows the cursor anywhere on the page.
   // Touch devices: the canvas ignores touches entirely (so scrolling is never hijacked) and the
@@ -136,21 +132,7 @@ export function Hero() {
     };
   }, []);
 
-  // First walk through the presets, then generate fresh random faces.
-  const shuffle = () => {
-    if (!extra && index < PRESETS.length - 1) {
-      setIndex(index + 1);
-      return;
-    }
-    shuffles.current += 1;
-    // long hanging hair is rarer here: it makes the head look smaller, so re-roll most of those faces
-    let seed = `aprosop-shuffle-${Date.now()}`;
-    for (let i = 0; i < 3 && hasLongHair(randomAvatar(seed)); i++) seed = `aprosop-shuffle-${Date.now()}-${i}`;
-    setExtra({
-      seed,
-      alias: EXTRA_ALIASES[(shuffles.current - 1) % EXTRA_ALIASES.length],
-    });
-  };
+  const shuffle = () => setIdentity(randomIdentity());
 
   return (
     <section className={`${s.wrap} ${s.hero}`} aria-labelledby="hero-title">
