@@ -8,6 +8,7 @@
   --c-panel: #17171f;
   --c-raised: #21212b;
   --c-raised-2: #2b2b37;
+  --c-hover: rgba(244, 244, 248, 0.09); /* quiet buttons/cards: no plate at rest, a clear one on hover */
   --c-line: rgba(255, 255, 255, 0.07);
   --c-line-strong: rgba(255, 255, 255, 0.13);
 
@@ -133,6 +134,7 @@
   --c-panel: #ffffff;
   --c-raised: #f5f5fb;
   --c-raised-2: #ebebf5;
+  --c-hover: rgba(14, 14, 22, 0.075);
   --c-line: rgba(20, 20, 60, 0.08);
   --c-line-strong: rgba(20, 20, 60, 0.14);
 

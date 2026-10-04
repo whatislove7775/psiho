@@ -83,12 +83,13 @@
   box-shadow: var(--focus), var(--shadow-primary);
 }
 .secondary {
-  --btn-bg: var(--c-raised);
-  --btn-bg-hover: var(--c-raised-2);
+  /* no plate at rest (it merged with the page); a clearly visible one on hover */
+  --btn-bg: transparent;
+  --btn-bg-hover: var(--c-hover);
 }
 .ghost {
   --btn-bg: transparent;
-  --btn-bg-hover: var(--c-raised);
+  --btn-bg-hover: var(--c-hover);
 }
 .danger {
   --btn-bg: var(--c-danger-soft);

@@ -206,12 +206,12 @@ details + .byline {
   gap: 14px;
   padding: 12px 14px 12px 12px;
   border-radius: 18px;
-  background: var(--c-raised);
+  background: transparent;
   min-width: 0;
   transition: background var(--dur) var(--ease);
 }
 .practice:hover {
-  background: var(--c-raised-2);
+  background: var(--c-hover);
 }
 .practiceIcon {
   width: 52px;

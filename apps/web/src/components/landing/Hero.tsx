@@ -7,6 +7,7 @@ import Link from "next/link";
 import { ArrowRight, RefreshCw } from "lucide-react";
 import { AvatarView, type AvatarViewHandle } from "@/components/avatar/AvatarView";
 import { randomAvatar } from "@/lib/avatar/schema";
+import { hasLongHair } from "@/lib/avatar/headz/hairReach";
 import { Button } from "@/ui";
 import s from "./landing.module.css";
 
@@ -16,6 +17,7 @@ const PRESETS = [
   { seed: "aprosop-sova-7", get alias() { return tt("смелая-сова-1937"); } },
   { seed: "aprosop-lis-2", get alias() { return tt("рыжий-лис-5520"); } },
   { seed: "aprosop-ezh-11", get alias() { return tt("сонный-ёж-0342"); } },
+  { seed: "g2", get alias() { return tt("светлый-дуб-2208"); } },
 ];
 
 const EXTRA_ALIASES = translatedList([
@@ -141,8 +143,11 @@ export function Hero() {
       return;
     }
     shuffles.current += 1;
+    // long hanging hair is rarer here: it makes the head look smaller, so re-roll most of those faces
+    let seed = `aprosop-shuffle-${Date.now()}`;
+    for (let i = 0; i < 3 && hasLongHair(randomAvatar(seed)); i++) seed = `aprosop-shuffle-${Date.now()}-${i}`;
     setExtra({
-      seed: `aprosop-shuffle-${Date.now()}`,
+      seed,
       alias: EXTRA_ALIASES[(shuffles.current - 1) % EXTRA_ALIASES.length],
     });
   };
@@ -175,7 +180,7 @@ export function Hero() {
       </div>
 
       <figure className={s.heroFigure}>
-        <div ref={stageRef} className={s.stage}>
+        <div ref={stageRef} className={s.stage} data-fade={hasLongHair(config) || undefined}>
           <div className={s.stageCanvas}>
             <AvatarView ref={viewRef} config={config} framing="portrait" interactive={false} deferLoad />
           </div>

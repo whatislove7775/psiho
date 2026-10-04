@@ -2195,6 +2195,7 @@ const en: Record<string, string> = {
   "смелая-сова-1937": "brave-owl-1937",
   "рыжий-лис-5520": "red-fox-5520",
   "сонный-ёж-0342": "sleepy-hedgehog-0342",
+  "светлый-дуб-2208": "bright-oak-2208",
   "Психолог онлайн,": "Psychologist online,",
   "и никто не узнает,": "and nobody will know",
   "кто вы": "who you are",

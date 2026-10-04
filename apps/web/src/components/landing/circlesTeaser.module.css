@@ -38,9 +38,9 @@
   inset: 0;
 }
 .canvas {
-  left: -8%;
-  top: -6%;
-  width: 116%;
+  left: -20%;
+  top: -10%;
+  width: 140%;
   height: 150%;
   z-index: 0;
 }
