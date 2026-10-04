@@ -1,9 +1,11 @@
 /* Public content pages (/articles, /practices and their detail pages). */
 
-.main {
+/* `main.main`: .wrap (landing.module.css) sets `padding: 0 32px` and, depending on CSS order, wiped the vertical
+   padding here, so the last block sat right on the footer line. */
+main.main {
   flex: 1;
   padding-top: var(--s-4);
-  padding-bottom: var(--s-16);
+  padding-bottom: calc(var(--s-16) + var(--s-8));
 }
 
 /* ── Breadcrumbs ─────────────────────────────────────────────────────────── */
