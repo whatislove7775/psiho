@@ -27,7 +27,7 @@ import type { AvatarRendererApi, FaceResult, Framing, RendererOptions } from "..
 import { headzBase, headzRimQ, resolvePart } from "./catalog";
 import type { HeadzBase, HeadzSlot } from "./types";
 import { deformFace, deformedEye, frameOf, placePart, radiusAt, radiusMap, transferMorphs, type RadiusMap } from "./deform";
-import { GazeTracker, combineEyes, gazeOf, gazeWeights, withLidFollow, type Weights } from "./gaze";
+import { GazeTracker, LID_GAIN, applyLids, combineEyes, gazeOf, gazeWeights, type LidGain, type Weights } from "./gaze";
 import { eyeUniforms, hairUniforms, patchEye, patchFade, patchHair, patchSkin, skinUniforms } from "./shaders";
 import { EyeRig, irisUniforms, makeCorneaMaterial, makeIrisMaterial, makeScleraMaterial, springStep, type EyeSpec } from "./eyes";
 import { nextSeed, rng, smoothNoise } from "./idleNoise";
@@ -126,8 +126,7 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const WITH_NECK = false;
 /** eye mesh roles of the sources — replaced by the rigid EyeRig */
 const EYE_ROLES = new Set(["iris", "pupil", "eyeWhite"]);
-/** eyeLook* on the FACE (lids, skin around the eyes) only follows the gaze a little */
-const LID_FOLLOW = 0.3;
+
 
 /** Extra options for heads drawn by a shared HeadzStage (one WebGL context for many heads). */
 export interface SharedOptions {
@@ -158,6 +157,8 @@ export class HeadzRenderer implements AvatarRendererApi {
   private opts: Required<Omit<RendererOptions, "background">> & { background: string | null };
   /** use the light static face (thumbnails: no expressions, a fraction of the download) */
   private lod: boolean;
+  /** how far the lids follow the gaze for the current base (calibrated per character group) */
+  private lidGain: LidGain = LID_GAIN;
 
   private cfg: AvatarConfig | null = null;
   private faceKey = "";
@@ -907,6 +908,7 @@ export class HeadzRenderer implements AvatarRendererApi {
     const same = { sx: avg("sx"), sy: avg("sy"), sz: avg("sz"), r: avg("r"), iris: specs[0].iris };
     for (const sp of specs) Object.assign(sp, same);
     this.eyeRig.place(specs);
+    this.irisU.uAngle.value = specs[0].iris;
     const e0 = base.eyes.L;
     this.irisU.uPupil.value = Math.min(0.5, Math.max(0.36, e0.pupil / Math.max(e0.iris, 1)));
   }
@@ -1021,7 +1023,7 @@ export class HeadzRenderer implements AvatarRendererApi {
         raw[n] = score;
       }
       // both eyes share one gaze; lids agree unless it's a real wink
-      this.targets = combineEyes(raw) as Partial<Record<Shape, number>>;
+      this.targets = combineEyes(raw, false) as Partial<Record<Shape, number>>;
       const now = performance.now();
       this.trackGaze.update(raw, now / 1000);
       this.lastTrack = now;
@@ -1154,8 +1156,8 @@ export class HeadzRenderer implements AvatarRendererApi {
     // still frames: the same conjugate gaze + lid follow as live
     const g = gazeOf(w);
     this.eyeRig.snap(g.h, g.v);
-    Object.assign(w, scaled(gazeWeights(g.h, g.v), this.eyeRig.group.visible ? LID_FOLLOW : 1));
-    withLidFollow(w, g.v);
+    if (this.eyeRig.group.visible) applyLids(w, g.h, g.v, this.lidGain);
+    else Object.assign(w, gazeWeights(g.h, g.v));
     for (const [k, v] of Object.entries(w)) {
       const i = SHAPE_INDEX.get(k);
       if (i !== undefined) this.current[i] = v ?? 0;
@@ -1279,8 +1281,9 @@ export class HeadzRenderer implements AvatarRendererApi {
     // the eyeballs rotate rigidly (critically damped); the face only follows with the lids
     this.eyeRig.update(h, v, dt);
     const eg = this.eyeRig.group.visible ? this.eyeRig.gaze : { h, v };
-    Object.assign(target, scaled(gazeWeights(eg.h, eg.v), this.eyeRig.group.visible ? LID_FOLLOW : 1));
-    if (!tracking) withLidFollow(target, v);
+    // lids: a pure function of the (eased) shared gaze, closed from there by any blink
+    if (this.eyeRig.group.visible) applyLids(target, eg.h, eg.v, this.lidGain);
+    else Object.assign(target, gazeWeights(eg.h, eg.v));
     // pupils breathe a little and widen when the eyes open wide
     this.eyeU.uDilate.value = 0.06 * Math.sin(t * 0.37) + 0.04 * Math.sin(t * 1.13) + 0.25 * ((this.current[20] + this.current[21]) / 2);
     this.irisU.uDilate.value = this.eyeU.uDilate.value;

@@ -51,3 +51,9 @@ test("One-Euro smooths jitter but follows a jump", () => {
   for (let i = 0; i < 10; i++) out = f.filter(0.9, 1 / 30);
   assert.ok(out > 0.8);
 });
+
+import { INSET } from "../headz/eyes.ts";
+
+test("the eyeball sits inside the socket so lids and skin win the depth test", () => {
+  assert.ok(INSET < 1 && INSET > 0.85);
+});

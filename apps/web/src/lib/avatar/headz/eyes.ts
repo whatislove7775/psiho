@@ -77,10 +77,12 @@ export interface IrisUniforms {
   /** pupil radius as a fraction of the iris radius */
   uPupil: { value: number };
   uDilate: { value: number };
+  /** iris angular radius (radians) — the iris is a cap on the eyeball, measured from the gaze axis */
+  uAngle: { value: number };
 }
 
 export function irisUniforms(): IrisUniforms {
-  return { uIrisColor: { value: new THREE.Color("#5C3B22") }, uIrisStyle: { value: 0 }, uPupil: { value: 0.4 }, uDilate: { value: 0 } };
+  return { uIrisColor: { value: new THREE.Color("#5C3B22") }, uIrisStyle: { value: 0 }, uPupil: { value: 0.4 }, uDilate: { value: 0 }, uAngle: { value: 0.55 } };
 }
 
 const IRIS_FRAG = /* glsl */ `
@@ -88,12 +90,12 @@ uniform vec3 uIrisColor;
 uniform float uIrisStyle;
 uniform float uPupil;
 uniform float uDilate;
-varying vec2 vIrisUv;
+uniform float uAngle;
+varying vec3 vIrisP;
 float irHash(float n) { return fract(sin(n) * 43758.5453); }
 vec3 irisColor() {
-  vec2 q = vIrisUv * 2.0 - 1.0;
-  float t = length(q);
-  float phi = atan(q.y, q.x);
+  float t = acos(clamp(vIrisP.z / max(1e-5, length(vIrisP)), -1.0, 1.0)) / uAngle; // 0 centre … 1 iris rim
+  float phi = atan(vIrisP.y, vIrisP.x);
   float tp = clamp(uPupil * (1.0 + uDilate), 0.18, 0.62);
   vec3 base = uIrisColor;
   vec3 warm = mix(base, vec3(1.0, 0.84, 0.52), 0.38) * 1.3;
@@ -121,33 +123,64 @@ vec3 irisColor() {
 }
 `;
 
+/**
+ * Lid shadow: the eyeball is darker under the upper lid (and a touch under the lower one), measured from
+ * the eyeball centre in view space — so it reads as sitting INSIDE the lids, not pasted over them.
+ */
+const LID_SHADOW_VERT = /* glsl */ `
+varying float vLidY;
+`;
+const LID_SHADOW_VERT_MAIN = /* glsl */ `
+ { vec4 c0 = modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+   vec4 p0 = modelViewMatrix * vec4(position, 1.0);
+   vLidY = (p0.y - c0.y) / max(1e-5, length(modelViewMatrix[1].xyz)); }
+`;
+const LID_SHADOW_FRAG = /* glsl */ `
+varying float vLidY;
+float lidShade() { return mix(1.0, 0.5, smoothstep(0.3, 0.92, vLidY)) * mix(1.0, 0.82, smoothstep(-0.45, -0.9, vLidY)); }
+`;
+
 export function makeIrisMaterial(u: IrisUniforms) {
-  const m = new THREE.MeshPhysicalMaterial({ roughness: 0.55, specularIntensity: 0.25 });
+  const m = new THREE.MeshPhysicalMaterial({
+    roughness: 0.55, specularIntensity: 0.25,
+    // laid over the sclera: wins the depth test by a bias, fades out at its edge
+    transparent: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
+  });
   m.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, u);
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", "#include <common>\nvarying vec2 vIrisUv;")
-      .replace("#include <begin_vertex>", "#include <begin_vertex>\n vIrisUv = uv;");
+      .replace("#include <common>", `#include <common>\nvarying vec3 vIrisP;${LID_SHADOW_VERT}`)
+      .replace("#include <begin_vertex>", `#include <begin_vertex>\n vIrisP = position;${LID_SHADOW_VERT_MAIN}`);
     shader.fragmentShader = shader.fragmentShader
-      .replace("#include <common>", `#include <common>\n${IRIS_FRAG}`)
-      .replace("#include <color_fragment>", "#include <color_fragment>\n diffuseColor.rgb = irisColor();");
+      .replace("#include <common>", `#include <common>\n${IRIS_FRAG}${LID_SHADOW_FRAG}`)
+      .replace(
+        "#include <color_fragment>",
+        `#include <color_fragment>
+ diffuseColor.rgb = irisColor() * lidShade();
+ { float tr = acos(clamp(vIrisP.z / max(1e-5, length(vIrisP)), -1.0, 1.0)) / uAngle;
+   diffuseColor.a = 1.0 - smoothstep(0.985, 1.045, tr); }`,
+      );
   };
-  m.customProgramCacheKey = () => "headz-iris";
+  m.customProgramCacheKey = () => "headz-iris2";
   return m;
 }
 
 /** Sclera: warm white, a touch pink toward the back, soft darkening where it curves away under the lids. */
 export function makeScleraMaterial() {
-  const m = new THREE.MeshPhysicalMaterial({ color: "#f1ece6", roughness: 0.3, clearcoat: 0.5, clearcoatRoughness: 0.12 });
+  const m = new THREE.MeshPhysicalMaterial({
+    color: "#f1ece6", roughness: 0.3, clearcoat: 0.5, clearcoatRoughness: 0.12,
+    // pushed back in depth: where the ball meets the lid skin the skin always wins (no dotted z-fight line)
+    polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2,
+  });
   m.onBeforeCompile = (shader) => {
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", "#include <common>\nvarying vec3 vEyeLocal;")
-      .replace("#include <begin_vertex>", "#include <begin_vertex>\n vEyeLocal = position;");
+      .replace("#include <common>", `#include <common>\nvarying vec3 vEyeLocal;${LID_SHADOW_VERT}`)
+      .replace("#include <begin_vertex>", `#include <begin_vertex>\n vEyeLocal = position;${LID_SHADOW_VERT_MAIN}`);
     shader.fragmentShader = shader.fragmentShader
-      .replace("#include <common>", "#include <common>\nvarying vec3 vEyeLocal;")
+      .replace("#include <common>", `#include <common>\nvarying vec3 vEyeLocal;${LID_SHADOW_FRAG}`)
       .replace(
         "#include <color_fragment>",
-        "#include <color_fragment>\n diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.93, 0.78, 0.76), smoothstep(0.55, -0.2, vEyeLocal.z));",
+        "#include <color_fragment>\n diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.93, 0.78, 0.76), smoothstep(0.55, -0.2, vEyeLocal.z)) * lidShade();",
       )
       .replace(
         "#include <normal_fragment_maps>",
@@ -171,6 +204,9 @@ export function makeCorneaMaterial() {
     transparent: true,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: 1,
+    polygonOffsetUnits: 1,
   });
 }
 
@@ -179,22 +215,20 @@ export function makeCorneaMaterial() {
 /** Unit eyeball looking along +Z: sclera with an iris hole, concave iris disc, bulging cornea cap. */
 export function eyeGeometries(irisAngle: number) {
   const toZ = (g: THREE.BufferGeometry) => g.rotateX(Math.PI / 2); // +Y pole → +Z
-  const sclera = toZ(new THREE.SphereGeometry(1, 48, 32, 0, Math.PI * 2, irisAngle, Math.PI - irisAngle));
-  const R = Math.sin(irisAngle);
-  const z0 = Math.cos(irisAngle);
-  const iris = new THREE.CircleGeometry(R * 1.015, 64, 0, Math.PI * 2);
-  const p = iris.attributes.position;
-  for (let i = 0; i < p.count; i++) {
-    const r = Math.hypot(p.getX(i), p.getY(i)) / R;
-    p.setZ(i, z0 - 0.012 - 0.06 * (1 - r * r) * R); // concave: centre sits deeper
-  }
-  iris.computeVertexNormals();
-  const cornea = toZ(new THREE.SphereGeometry(1, 40, 12, 0, Math.PI * 2, 0, irisAngle * 1.22));
-  // bulge: push the cap forward, most at the centre
+  // sclera: a COMPLETE sphere — the iris is laid over it, so there is no hole whose polygon edge could show
+  const sclera = toZ(new THREE.SphereGeometry(1, 72, 44));
+  // iris: a cap hugging the sphere, a hair above it, extending a little past the rim; its edge is faded
+  // in the shader (smooth limbus instead of a polygon edge, and no z-fight with the sclera: it wins by offset)
+  const iris = toZ(new THREE.SphereGeometry(1.004, 96, 24, 0, Math.PI * 2, 0, irisAngle * 1.05));
+  // cornea: a clear cap a little larger than the iris; the bulge fades smoothly to nothing at its rim
+  const capAngle = irisAngle * 1.25;
+  const cornea = toZ(new THREE.SphereGeometry(1, 64, 20, 0, Math.PI * 2, 0, capAngle));
   const c = cornea.attributes.position;
+  const zEdge = Math.cos(capAngle);
   for (let i = 0; i < c.count; i++) {
-    const z = c.getZ(i);
-    c.setZ(i, z + 0.07 * Math.max(0, (z - z0 * 0.97) / (1 - z0 * 0.97 + 1e-6)));
+    const t = (c.getZ(i) - zEdge) / (1 - zEdge + 1e-6); // 0 at the rim … 1 at the pole
+    const s = t * t * (3 - 2 * t);
+    c.setXYZ(i, c.getX(i) * (1 + 0.012 * s), c.getY(i) * (1 + 0.012 * s), c.getZ(i) + 0.035 * s);
   }
   cornea.computeVertexNormals();
   return { sclera, iris, cornea };
@@ -212,6 +246,9 @@ export interface EyeSpec {
   /** iris angular radius (radians) */
   iris: number;
 }
+
+/** Eyeball radius relative to the fitted socket sphere (keeps it under the lid line at extreme gaze). */
+export const INSET = 0.95;
 
 /** The two eyes: containers placed in the head, pivots rotated by the gaze. */
 export class EyeRig {
@@ -249,6 +286,7 @@ export class EyeRig {
         const sclera = new THREE.Mesh(g.sclera, this.mats.sclera);
         const iris = new THREE.Mesh(g.iris, this.mats.iris);
         const cornea = new THREE.Mesh(g.cornea, this.mats.cornea);
+        iris.renderOrder = 2;
         cornea.renderOrder = 3;
         for (const m of [sclera, iris, cornea]) {
           m.frustumCulled = false;
@@ -260,7 +298,8 @@ export class EyeRig {
     specs.forEach((e, i) => {
       const c = this.containers[i];
       c.position.set(...e.c);
-      c.scale.set(e.r * e.sx, e.r * e.sy, e.r * e.sz);
+      // inset: the eyeball sits a little inside the socket so the lids/skin always win the depth test
+      c.scale.set(e.r * e.sx * INSET, e.r * e.sy * INSET, e.r * e.sz * INSET);
     });
     this.group.visible = true;
   }

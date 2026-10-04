@@ -44,7 +44,7 @@ const SYMMETRY = 0.25;
  * near-equal lid values averaged, and the upper lids following the gaze
  * (lower when looking down, lifted a little when looking up).
  */
-export function combineEyes(w: Weights): Weights {
+export function combineEyes(w: Weights, lids = true): Weights {
   const out: Weights = { ...w };
   const { h, v } = gazeOf(w);
   Object.assign(out, gazeWeights(h, v));
@@ -52,7 +52,64 @@ export function combineEyes(w: Weights): Weights {
     const x = w[a] ?? 0, y = w[b] ?? 0;
     if (Math.abs(x - y) < SYMMETRY) out[a] = out[b] = (x + y) / 2;
   }
-  return withLidFollow(out, v);
+  return lids ? withLidFollow(out, v) : out;
+}
+
+// ── eyelids follow the gaze ─────────────────────────────────────────────────
+
+/**
+ * How far the eyelids follow the eyeball. The eyeballs are rigid and rotate on their own;
+ * the lids are the FACE mesh, driven by its authored eyeLook* morphs (they lift/lower the lid
+ * skin and stretch it toward the gaze). Everything is a pure function of the shared gaze.
+ */
+export interface LidGain {
+  /** eyeLookUp/Down weight per unit of vertical gaze */
+  vertical: number;
+  /** eyeLookIn/Out weight per unit of horizontal gaze */
+  horizontal: number;
+  /** extra upper-lid close on downward gaze (0..1 at v = −1) */
+  downClose: number;
+  /** extra upper-lid lift (eyeWide) on upward gaze (0..1 at v = +1) */
+  upLift: number;
+}
+export const LID_GAIN: LidGain = { vertical: 1, horizontal: 0.6, downClose: 0.18, upLift: 0.1 };
+
+/** The lids' share of a shared gaze: eyeLook* lid morphs + upper-lid close / lift. Bounded in [0, 1]. */
+export function lidWeights(h: number, v: number, gain: LidGain = LID_GAIN): Weights {
+  const hh = clamp(h, -1, 1), vv = clamp(v, -1, 1);
+  const r = Math.max(0, hh) * gain.horizontal, l = Math.max(0, -hh) * gain.horizontal;
+  const u = Math.max(0, vv) * gain.vertical, d = Math.max(0, -vv) * gain.vertical;
+  const c = (x: number) => clamp(x, 0, 1);
+  return {
+    eyeLookOutLeft: c(r), eyeLookInRight: c(r),
+    eyeLookInLeft: c(l), eyeLookOutRight: c(l),
+    eyeLookUpLeft: c(u), eyeLookUpRight: c(u),
+    eyeLookDownLeft: c(d), eyeLookDownRight: c(d),
+    // consumed by applyLids (not morph names)
+    lidClose: c(Math.max(0, -vv) * gain.downClose),
+    lidLift: c(Math.max(0, vv) * gain.upLift),
+  };
+}
+
+/**
+ * In place: sets the lid-follow morphs for the shared gaze and merges them with the blink / wide
+ * the expression asks for — a blink closes the lid FROM its followed position (never opens it).
+ */
+export function applyLids(w: Weights, h: number, v: number, gain: LidGain = LID_GAIN): Weights {
+  const f = lidWeights(h, v, gain);
+  const close = f.lidClose ?? 0, lift = f.lidLift ?? 0;
+  delete f.lidClose;
+  delete f.lidLift;
+  Object.assign(w, f);
+  for (const s of ["Left", "Right"]) {
+    const b = clamp(w[`eyeBlink${s}`] ?? 0, 0, 1);
+    const blink = 1 - (1 - b) * (1 - close); // follow first, the blink closes the rest
+    w[`eyeBlink${s}`] = blink;
+    w[`eyeWide${s}`] = clamp((w[`eyeWide${s}`] ?? 0) + lift * (1 - blink), 0, 1);
+    // a closing lid takes the look-up lift with it, or the opened skin would fight the blink
+    for (const k of ["Up", "Down"]) w[`eyeLook${k}${s}`] = (w[`eyeLook${k}${s}`] ?? 0) * (1 - 0.6 * blink);
+  }
+  return w;
 }
 
 /** Upper lids track the vertical gaze (as in real faces): down → lids lower, up → lids lift. */

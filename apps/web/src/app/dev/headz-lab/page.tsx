@@ -42,6 +42,8 @@ function Lab() {
   const pitch = Number(sp.get("pitch") ?? 0);
   const bg = sp.get("bg") ?? "#e9e4f0";
   const [imgs, setImgs] = useState<{ label: string; src: string }[]>([]);
+  // &crop=2.4 → close-up of the eye region (scaled around the eyes, half-height tiles)
+  const crop = Number(sp.get("crop") ?? 0);
 
   useEffect(() => {
     let alive = true;
@@ -90,7 +92,12 @@ function Lab() {
         const bases = (sp.get("bases") ?? "woman-light,man-medium,girl-dark,oldman-light").split(",");
         for (const b of bases)
           for (const [l, h, v] of dirs)
-            jobs.push({ label: `${b} ${l}`, cfg: normalizeAvatar({ ...one, base: b, hair: undefined }), expr: gazeWeights(h, v) as Record<string, number> });
+            jobs.push({
+              label: `${b} ${l}`,
+              cfg: normalizeAvatar({ ...one, base: b, hair: q.hair ?? "none", beard: "none" }),
+              // &blink=0.6 → eyes closing while looking there (lids must close from their followed position)
+              expr: { ...(gazeWeights(h, v) as Record<string, number>), ...(q.blink ? { eyeBlinkLeft: Number(q.blink), eyeBlinkRight: Number(q.blink) } : {}) },
+            });
       } else if (mode === "track") {
         const T: [string, Record<string, number>][] = [
           ["raw: L out .8, R still", { eyeLookOutLeft: 0.8, eyeLookInRight: 0.05 }],
@@ -162,8 +169,20 @@ function Lab() {
     <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: 6, background: "#1b1b1f" }}>
       {imgs.map((i) => (
         <figure key={i.label} style={{ margin: 0, color: "#aaa", fontSize: 11, textAlign: "center" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={i.src} width={size} height={size} alt="" style={{ borderRadius: 10 }} />
+          <div style={crop ? { width: size, height: size * 0.5, overflow: "hidden", borderRadius: 10 } : undefined}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={i.src}
+              width={size}
+              height={size}
+              alt=""
+              style={
+                crop
+                  ? { transform: `scale(${crop})`, transformOrigin: `50% ${sp.get("cy") ?? 50}%`, marginTop: -size * (Number(sp.get("cy") ?? 50) / 100) + size * 0.25 }
+                  : { borderRadius: 10 }
+              }
+            />
+          </div>
           <figcaption>{i.label}</figcaption>
         </figure>
       ))}

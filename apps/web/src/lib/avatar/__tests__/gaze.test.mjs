@@ -98,3 +98,48 @@ test("looking back at the camera from a side look centres within ~100 ms", () =>
   feed(g, t, 0.4, () => frame(0, 0));
   assert.equal(g.h, 0);
 });
+
+import { LID_GAIN, applyLids, lidWeights } from "../headz/gaze.ts";
+
+test("lid weights are a deterministic, bounded, symmetric function of the shared gaze", () => {
+  const dirs = [];
+  for (let h = -1.5; h <= 1.5; h += 0.25) for (let v = -1.5; v <= 1.5; v += 0.25) dirs.push([h, v]);
+  for (const [h, v] of dirs) {
+    const a = lidWeights(h, v), b = lidWeights(h, v);
+    assert.deepEqual(a, b); // pure
+    for (const [k, x] of Object.entries(a)) assert.ok(x >= 0 && x <= 1, `${k}=${x} for ${h},${v}`);
+    // both eyes get the same vertical lid motion; horizontal is the mirror (out on one = in on the other)
+    assert.equal(a.eyeLookUpLeft, a.eyeLookUpRight);
+    assert.equal(a.eyeLookDownLeft, a.eyeLookDownRight);
+    assert.equal(a.eyeLookOutLeft, a.eyeLookInRight);
+    assert.equal(a.eyeLookInLeft, a.eyeLookOutRight);
+    // up and down never both active
+    assert.ok(a.eyeLookUpLeft === 0 || a.eyeLookDownLeft === 0);
+  }
+  const c = lidWeights(0, 0);
+  assert.ok(Object.values(c).every((x) => x === 0)); // neutral: lids untouched
+  assert.ok(lidWeights(0, 1).eyeLookUpLeft === LID_GAIN.vertical);
+  assert.ok(lidWeights(0, -1).lidClose > 0 && lidWeights(0, 1).lidLift > 0);
+});
+
+test("a blink closes the lid from its followed position and stays bounded", () => {
+  for (const [h, v] of [[0, 0], [0.8, 0.8], [0, -1], [-1, 1]]) {
+    let prev = -1;
+    for (let b = 0; b <= 1.0001; b += 0.1) {
+      const w = applyLids({ eyeBlinkLeft: b, eyeBlinkRight: b }, h, v);
+      assert.ok(w.eyeBlinkLeft >= b - 1e-9 && w.eyeBlinkLeft <= 1); // never opens the lid further than the blink asks
+      assert.ok(w.eyeBlinkLeft >= prev - 1e-9); // monotonic in the blink
+      prev = w.eyeBlinkLeft;
+      for (const x of Object.values(w)) assert.ok(x >= 0 && x <= 1);
+    }
+    assert.equal(applyLids({ eyeBlinkLeft: 1, eyeBlinkRight: 1 }, h, v).eyeBlinkLeft, 1); // fully closed stays closed
+  }
+  // looking down already lowers the lid; the blink continues from there
+  const d = applyLids({}, 0, -1);
+  assert.ok(d.eyeBlinkLeft > 0 && d.eyeBlinkLeft < 0.5);
+  const dd = applyLids({ eyeBlinkLeft: 0.5, eyeBlinkRight: 0.5 }, 0, -1);
+  assert.ok(dd.eyeBlinkLeft > 0.5);
+  // looking up lifts the upper lid; a closed lid is not lifted
+  assert.ok(applyLids({}, 0, 1).eyeWideLeft > 0);
+  assert.equal(applyLids({ eyeBlinkLeft: 1, eyeBlinkRight: 1 }, 0, 1).eyeWideLeft, 0);
+});
