@@ -110,8 +110,10 @@ export function footprint(hair: HairSurface[]): Footprint {
         let any = 0, all = 1;
         for (let de = -1; de <= 1; de++)
           for (let da = -1; da <= 1; da++) {
-            const ee = e + de;
-            const v = ee < 0 || ee >= EL ? 0 : src[ee * AZ + ((a + da + AZ) % AZ)];
+            // The poles have no uncovered row beyond them. Treating that row as
+            // empty creates a false rim at the crown and pulls the hair inward.
+            const ee = Math.max(0, Math.min(EL - 1, e + de));
+            const v = src[ee * AZ + ((a + da + AZ) % AZ)];
             any |= v;
             all &= v;
           }
@@ -185,24 +187,28 @@ export class SkinIndex {
     const c = this.cell;
     return `${Math.floor(x / c)},${Math.floor(y / c)},${Math.floor(z / c)}`;
   }
-  /** index of the nearest skin point within ~2 cells, or −1 */
+  /** index of the nearest skin point within ~4 cells, or −1 */
   nearest(x: number, y: number, z: number): number {
     const c = this.cell;
     const gx = Math.floor(x / c), gy = Math.floor(y / c), gz = Math.floor(z / c);
     let best = Infinity, bi = -1;
-    for (let dx = -2; dx <= 2; dx++)
-      for (let dy = -2; dy <= 2; dy++)
-        for (let dz = -2; dz <= 2; dz++) {
-          const a = this.grid.get(`${gx + dx},${gy + dy},${gz + dz}`);
-          if (!a) continue;
-          for (const i of a) {
-            const d = (this.pos[i * 3] - x) ** 2 + (this.pos[i * 3 + 1] - y) ** 2 + (this.pos[i * 3 + 2] - z) ** 2;
-            if (d < best) {
-              best = d;
-              bi = i;
+    // Keep the small, common lookup fast; widen only for rims that stand off the scalp.
+    for (const reach of [2, 4]) {
+      for (let dx = -reach; dx <= reach; dx++)
+        for (let dy = -reach; dy <= reach; dy++)
+          for (let dz = -reach; dz <= reach; dz++) {
+            const a = this.grid.get(`${gx + dx},${gy + dy},${gz + dz}`);
+            if (!a) continue;
+            for (const i of a) {
+              const d = (this.pos[i * 3] - x) ** 2 + (this.pos[i * 3 + 1] - y) ** 2 + (this.pos[i * 3 + 2] - z) ** 2;
+              if (d < best) {
+                best = d;
+                bi = i;
+              }
             }
           }
-        }
+      if (bi >= 0) break;
+    }
     return bi;
   }
   /** signed height of a point above its nearest skin point along the skin normal (NaN if none near) */
@@ -218,7 +224,7 @@ export class SkinIndex {
  * In place: lay the hair's lower rim (the thick lip of a cap) onto the skin. Within ~14 mm of the footprint's
  * boundary, vertices that are close above the skin sink to a hair's breadth above it.
  */
-export function taperHair(hair: Float32Array, fp: Footprint, skin: SkinIndex, band = 0.12, rim = 0.14, clearance = 0.004) {
+export function taperHair(hair: Float32Array, fp: Footprint, skin: SkinIndex, band = 0.24, rim = 0.14, clearance = 0.004) {
   for (let i = 0; i < hair.length; i += 3) {
     const x = hair[i], y = hair[i + 1], z = hair[i + 2];
     const [e, a] = cellOf(x, y, z);
@@ -228,7 +234,9 @@ export function taperHair(hair: Float32Array, fp: Footprint, skin: SkinIndex, ba
     const h = skin.height(x, y, z);
     if (!h || h.along < 0.002 || h.along > band) continue;
     const near = smooth(band, band * 0.6, h.along); // strands that stand off the head are left alone
-    const to = Math.max(clearance, h.along * (1 - 0.9 * edge * near));
+    // The authored cap rim can sit ~0.16 units off the skull. Seat its edge fully;
+    // leaving a fixed 10% gap still makes a visible floating lip in profile.
+    const to = h.along + (clearance - h.along) * edge * near;
     const d = to - h.along;
     hair[i] = x + h.n[0] * d;
     hair[i + 1] = y + h.n[1] * d;

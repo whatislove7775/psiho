@@ -28,7 +28,7 @@ export function Brand() {
   );
 }
 
-/** Public header: logo, four short links, theme switch and one call to action. On phones: logo, CTA, menu. */
+/** Public header: logo, four short links, language, theme and one call to action. On phones: logo, language, CTA, menu. */
 export function SiteHeader({ links = true }: { links?: boolean }) {
   const status = useAuth((st) => st.status);
   const user = useAuth((st) => st.user);
@@ -72,7 +72,7 @@ export function SiteHeader({ links = true }: { links?: boolean }) {
           </nav>
         )}
         <div className={s.headerActions}>
-          <LanguageToggle className={s.headerTheme} />
+          <LanguageToggle />
           <ThemeToggle className={s.headerTheme} />
           {authed ? (
             <Button href={homeFor(user.role)} variant="primary" size="sm" className={s.headerCta}>
