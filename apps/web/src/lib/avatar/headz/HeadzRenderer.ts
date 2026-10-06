@@ -14,7 +14,7 @@
  *  - beards / moustaches / masks / piercings get the face's jaw + mouth morphs;
  *  - face-shape sliders deform face + parts; brow style / lash length;
  *  - procedural eyes (iris colour + style for every base, wet cornea);
- *  - skin details and make-up; hair-coloured scalp under the hair; two-tone hair;
+ *  - skin details and make-up; fitted hair rims; two-tone hair;
  *  - floating head, no neck (WITH_NECK=false);
  *  - conjugate gaze, lids following the gaze, micro-saccades, natural blinks.
  */
@@ -27,7 +27,7 @@ import type { AvatarRendererApi, FaceResult, Framing, RendererOptions } from "..
 import { headzBase, headzRimQ, resolvePart } from "./catalog";
 import type { HeadzBase, HeadzSlot } from "./types";
 import { deformFace, deformedEye, frameOf, placePart, radiusAt, radiusMap, transferMorphs, type RadiusMap } from "./deform";
-import { AZ as FOOT_AZ, EL as FOOT_EL, SkinIndex, footprint, footprintBytes, taperHair, topWeight, type HairSurface } from "./scalp";
+import { SkinIndex, footprint, taperHair, type HairSurface } from "./scalp";
 import { GazeTracker, LID_GAIN, applyLids, combineEyes, gazeOf, gazeWeights, type LidGain, type Weights } from "./gaze";
 import { eyeUniforms, hairUniforms, patchEye, patchFade, patchHair, patchSkin, skinUniforms } from "./shaders";
 import { EyeRig, irisUniforms, makeCorneaMaterial, makeIrisMaterial, makeScleraMaterial, springStep, type EyeSpec } from "./eyes";
@@ -186,7 +186,6 @@ export class HeadzRenderer implements AvatarRendererApi {
   /** tracked gaze: filtered, held only through a blink, relaxes to the centre when input is missing (gaze.ts) */
   private trackGaze = new GazeTracker();
   private skinU = skinUniforms();
-  private footTex: THREE.DataTexture | null = null;
   private hairU = hairUniforms();
   private beardU = hairUniforms();
   // restylable materials
@@ -284,11 +283,6 @@ export class HeadzRenderer implements AvatarRendererApi {
     this.root.add(this.headPivot);
     this.scene.add(this.root);
     this.head.add(this.eyeRig.group);
-    // no hair yet: the footprint reads "far from any hair" everywhere
-    this.footTex = this.makeFootTex();
-    (this.footTex.image.data as Uint8Array).fill(255);
-    this.footTex.needsUpdate = true;
-    this.skinU.uFoot.value = this.footTex;
     patchEye(this.mats.eye, this.eyeU);
     patchHair(this.mats.hair, this.hairU);
     patchHair(this.mats.beard, this.beardU);
@@ -571,7 +565,7 @@ export class HeadzRenderer implements AvatarRendererApi {
     if (group) this.head.add(group);
     this.parts[slot] = { key, group, owned, driven };
     this.shapeKey = "";
-    if (slot === "hair") this.scalpCover();
+    if (slot === "hair") this.seatHair();
   }
 
   private dropGroup(g: THREE.Group) {
@@ -690,22 +684,8 @@ export class HeadzRenderer implements AvatarRendererApi {
     geo.setAttribute("aCover", new THREE.BufferAttribute(new Float32Array(n), 1));
   }
 
-  /**
-   * Scalp under the hair (see scalp.ts): the hair's footprint on the head, feathered into the skin tone, plus
-   * cropped sides / sideburns / nape for hair that covers the top. Per base + hair pair; no hair → no mask.
-   * Also lays the hair's thick lower rim onto the skin.
-   */
-  private makeFootTex() {
-    const t = new THREE.DataTexture(new Uint8Array(FOOT_EL * FOOT_AZ), FOOT_AZ, FOOT_EL, THREE.RedFormat, THREE.UnsignedByteType);
-    t.magFilter = t.minFilter = THREE.LinearFilter;
-    t.wrapS = THREE.RepeatWrapping;
-    t.wrapT = THREE.ClampToEdgeWrapping;
-    t.generateMipmaps = false;
-    t.unpackAlignment = 1;
-    return t;
-  }
-
-  private scalpCover() {
+  /** Seat the hair rim on the scalp geometrically, without painting hair colour onto skin. */
+  private seatHair() {
     const hair = this.parts.hair?.owned ?? [];
     const skinOwned = this.owned.filter(isSkin);
     if (!skinOwned.length) return;
@@ -726,12 +706,6 @@ export class HeadzRenderer implements AvatarRendererApi {
       const idx = new SkinIndex(sk.pos, sk.nrm);
       for (const o of hair) taperHair(o.rest, fp, idx);
     }
-    // the mask itself is evaluated per pixel in the skin shader from this footprint texture
-    const tex = this.footTex ?? (this.footTex = this.makeFootTex());
-    (tex.image.data as Uint8Array).set(footprintBytes(fp));
-    tex.needsUpdate = true;
-    this.skinU.uFoot.value = tex;
-    this.skinU.uScalpP.value.set(topWeight(fp), this.base?.eyes?.L?.c[1] ?? 0);
     this.shapeKey = "";
   }
 
@@ -1000,10 +974,6 @@ export class HeadzRenderer implements AvatarRendererApi {
     // a subtle lash line for everyone; eyeliner makes it bolder
     const liner = new THREE.Color("#1d1512").lerp(skin, 0.35 - 0.35 * c.makeup.liner);
     S.uLiner.value.set(liner.r, liner.g, liner.b, 0.28 + 0.62 * c.makeup.liner);
-    // scalp: the chosen hair colour, a little darker and desaturated (stubble), only where hair exists
-    const hsl = hair.getHSL({ h: 0, s: 0, l: 0 });
-    const stubble = new THREE.Color().setHSL(hsl.h, hsl.s * 0.82, hsl.l * 0.86);
-    S.uScalp.value.set(stubble.r, stubble.g, stubble.b, this.parts.hair?.owned.length ? 1 : 0);
     // accessory colours
     for (const m of this.partMats) {
       const pm = m as THREE.MeshPhysicalMaterial;
