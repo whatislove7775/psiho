@@ -24,10 +24,11 @@ import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.j
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { normalizeAvatar, type AvatarConfig, type BrowStyle } from "../schema";
 import type { AvatarRendererApi, FaceResult, Framing, RendererOptions } from "../kit/types";
-import { headzBase, headzRimQ, resolvePart } from "./catalog";
+import { headzBase, resolvePart } from "./catalog";
 import type { HeadzBase, HeadzSlot } from "./types";
 import { deformFace, deformedEye, frameOf, placePart, radiusAt, radiusMap, transferMorphs, type RadiusMap } from "./deform";
 import { SkinIndex, footprint, taperHair, type HairSurface } from "./scalp";
+import { headwearEnvelope, headwearBytes, HAT_EL, HAT_AZ, tuckHair } from "./headwearFit";
 import { GazeTracker, LID_GAIN, applyLids, combineEyes, gazeOf, gazeWeights, type LidGain, type Weights } from "./gaze";
 import { eyeUniforms, hairUniforms, patchEye, patchFade, patchHair, patchSkin, skinUniforms } from "./shaders";
 import { EyeRig, irisUniforms, makeCorneaMaterial, makeIrisMaterial, makeScleraMaterial, springStep, type EyeSpec } from "./eyes";
@@ -172,10 +173,8 @@ export class HeadzRenderer implements AvatarRendererApi {
   private extras: PartState = { key: "", group: null, owned: [], driven: [] };
   private neck: THREE.Mesh | null = null;
   private shapeKey = "";
+  private accessoryBounds = { top: 0, width: 0, front: 0 };
   private loading: Promise<void> = Promise.resolve();
-  /** hair is clipped above the hat rim (plane in head space, copied to world space every frame) */
-  private hatPlaneLocal: THREE.Plane | null = null;
-  private hatPlane = new THREE.Plane();
 
   private eyeU = eyeUniforms();
   private irisU = irisUniforms();
@@ -187,6 +186,7 @@ export class HeadzRenderer implements AvatarRendererApi {
   private trackGaze = new GazeTracker();
   private skinU = skinUniforms();
   private hairU = hairUniforms();
+  private hatTexture: THREE.DataTexture | null = null;
   private beardU = hairUniforms();
   // restylable materials
   private mats = {
@@ -352,21 +352,6 @@ export class HeadzRenderer implements AvatarRendererApi {
     }
     await Promise.all(SLOTS.map((s) => this.setPart(s, c[s] === "none" ? null : c[s])));
     this.setExtras(this.lod ? "" : c.acc.piercings.join(","));
-    const rim = headzRimQ(c.base, c.headwear);
-    if (rim) {
-      // keep hair where y ≤ rim(z) + margin; rim(z) runs from the front (z = +0.7) to the back (z = −0.7)
-      const [yf, yb] = rim;
-      const b = (yf - yb) / 1.4;
-      const a = (yf + yb) / 2 + 0.06;
-      const n = new THREE.Vector3(0, -1, b);
-      const len = n.length();
-      this.hatPlaneLocal = new THREE.Plane(n.divideScalar(len), a / len);
-      this.mats.hair.clippingPlanes = [this.hatPlane];
-    } else {
-      this.hatPlaneLocal = null;
-      this.mats.hair.clippingPlanes = [];
-    }
-    this.mats.hair.needsUpdate = true;
     this.applyRig();
   }
 
@@ -834,12 +819,39 @@ export class HeadzRenderer implements AvatarRendererApi {
     this.shapeKey = key;
     const f = frameOf(base);
     const all = [...this.owned, ...SLOTS.flatMap((s) => this.parts[s]?.owned ?? []), ...this.extras.owned];
+    const hats = (this.parts.headwear?.owned ?? []).map((o) => {
+      const pos = o.rest.slice();
+      deformFace(pos, c.face, f);
+      return { pos, index: o.mesh.geometry.index?.array ?? null };
+    });
+    const envelope = hats.length ? headwearEnvelope(hats) : null;
+    this.hairU.uHat.value = envelope ? 1 : 0;
+    if (envelope) {
+      if (!this.hatTexture) {
+        this.hatTexture = new THREE.DataTexture(new Uint8Array(HAT_EL * HAT_AZ), HAT_AZ, HAT_EL, THREE.RedFormat);
+        this.hatTexture.magFilter = this.hatTexture.minFilter = THREE.NearestFilter;
+        this.hatTexture.wrapS = THREE.RepeatWrapping;
+        this.hatTexture.unpackAlignment = 1;
+      }
+      (this.hatTexture.image.data as Uint8Array).set(headwearBytes(envelope));
+      this.hatTexture.needsUpdate = true;
+      this.hairU.uHatEnvelope.value = this.hatTexture;
+    }
+    const bounds = { top: 0, width: 0, front: 0 };
     const v = new THREE.Vector3();
     for (const o of all) {
       const p = o.rest.slice();
       if (o.role === "brows") browStyle(p, BROW_SHAPES[c.brows.style], c.brows.thickness);
       if (o.role === "lashes") lashLength(p, f, c.eyes.lashes);
       deformFace(p, c.face, f, { brows: o.role === "brows" });
+      if (o.role === "hair" && envelope) tuckHair(p, envelope);
+      if (o.role === "hair" || o.role === "headwear") for (let i = 0; i < p.length; i += 3) {
+        // Long tails are intentionally faded; only the head-level silhouette affects framing.
+        if (p[i + 1] < -1) continue;
+        bounds.top = Math.max(bounds.top, p[i + 1] + 0.15);
+        bounds.width = Math.max(bounds.width, Math.abs(p[i]) * 2 + 0.25);
+        bounds.front = Math.max(bounds.front, p[i + 2]);
+      }
       const head = o.mesh.geometry.getAttribute("aHead") as THREE.BufferAttribute;
       (head.array as Float32Array).set(p);
       head.needsUpdate = true;
@@ -853,6 +865,8 @@ export class HeadzRenderer implements AvatarRendererApi {
       }
       pos.needsUpdate = true;
     }
+    this.accessoryBounds = bounds;
+    this.fitCamera();
     // eye shader + skin details follow the reshaped face
     (["L", "R"] as const).forEach((k, i) => {
       const e = base.eyes?.[k];
@@ -1054,8 +1068,11 @@ export class HeadzRenderer implements AvatarRendererApi {
     const aspect = this.camera.aspect || 1;
     this.camera.fov = f.fov;
     const half = Math.tan(THREE.MathUtils.degToRad(f.fov / 2));
-    const d = Math.max((f.top - f.bottom) / 2 / half, f.width / 2 / (half * aspect));
-    const cy = (f.top + f.bottom) / 2;
+    const top = Math.max(f.top, this.accessoryBounds.top);
+    const width = Math.max(f.width, this.accessoryBounds.width);
+    const hatDepth = this.parts.headwear?.owned.length ? this.accessoryBounds.front : 0;
+    const d = Math.max((top - f.bottom) / 2 / half, width / 2 / (half * aspect)) + hatDepth;
+    const cy = (top + f.bottom) / 2;
     this.camera.position.set(0, cy + 0.08, d);
     this.camera.lookAt(0, cy, 0);
     this.camera.updateProjectionMatrix();
@@ -1200,6 +1217,7 @@ export class HeadzRenderer implements AvatarRendererApi {
   dispose() {
     this.stop();
     this.bgTexture?.dispose();
+    this.hatTexture?.dispose();
     Object.values(this.mats).forEach((m) => m.dispose());
     this.faceMats.forEach((f) => f.mat.dispose());
     this.partMats.forEach((m) => m.dispose());
@@ -1318,10 +1336,7 @@ export class HeadzRenderer implements AvatarRendererApi {
   }
 
   private applyRig() {
-    if (this.hatPlaneLocal) {
-      this.head.updateMatrixWorld(true);
-      this.hatPlane.copy(this.hatPlaneLocal).applyMatrix4(this.head.matrixWorld);
-    }
+
     for (const d of this.allDriven()) {
       const inf = d.mesh.morphTargetInfluences!;
       for (const [idx, s] of d.slots) inf[idx] = this.current[s];

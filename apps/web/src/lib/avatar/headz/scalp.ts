@@ -35,6 +35,8 @@ const CELL = Math.PI / EL;
 export interface Footprint {
   /** 1 where hair covers the direction */
   cover: Uint8Array;
+  /** Inner radius of the hair shell in each angular cell. */
+  radius: Float32Array;
   /** distance (head units) from an uncovered cell to the nearest covered one; 0 inside */
   outside: Float32Array;
   /** distance (head units) from a covered cell to the nearest uncovered one; 0 outside */
@@ -76,9 +78,11 @@ export interface HairSurface {
 /** Where the hair is, seen from the head centre (triangles are rasterised, not just their vertices). */
 export function footprint(hair: HairSurface[]): Footprint {
   let raw = new Uint8Array(EL * AZ);
+  const radius = new Float32Array(EL * AZ).fill(Infinity);
   const mark = (x: number, y: number, z: number) => {
     const [e, a] = cellOf(x, y, z);
     raw[e * AZ + a] = 1;
+    radius[e * AZ + a] = Math.min(radius[e * AZ + a], Math.hypot(x, y, z));
   };
   for (const h of hair) {
     const p = h.pos;
@@ -137,7 +141,7 @@ export function footprint(hair: HairSurface[]): Footprint {
       tot++;
       cov += cover[e * AZ + a];
     }
-  return { cover, outside, inside, topCover: tot ? cov / tot : 0 };
+  return { cover, radius, outside, inside, topCover: tot ? cov / tot : 0 };
 }
 
 export interface ScalpFrame {
@@ -212,11 +216,11 @@ export class SkinIndex {
     return bi;
   }
   /** signed height of a point above its nearest skin point along the skin normal (NaN if none near) */
-  height(x: number, y: number, z: number): { along: number; n: [number, number, number] } | null {
+  height(x: number, y: number, z: number): { along: number; n: [number, number, number]; p: [number, number, number] } | null {
     const i = this.nearest(x, y, z);
     if (i < 0) return null;
     const nx = this.nrm[i * 3], ny = this.nrm[i * 3 + 1], nz = this.nrm[i * 3 + 2];
-    return { along: (x - this.pos[i * 3]) * nx + (y - this.pos[i * 3 + 1]) * ny + (z - this.pos[i * 3 + 2]) * nz, n: [nx, ny, nz] };
+    return { along: (x - this.pos[i * 3]) * nx + (y - this.pos[i * 3 + 1]) * ny + (z - this.pos[i * 3 + 2]) * nz, n: [nx, ny, nz], p: [this.pos[i * 3], this.pos[i * 3 + 1], this.pos[i * 3 + 2]] };
   }
 }
 
@@ -232,15 +236,24 @@ export function taperHair(hair: Float32Array, fp: Footprint, skin: SkinIndex, ba
     const edge = smooth(rim, 0.0, dep);
     if (edge <= 0) continue;
     const h = skin.height(x, y, z);
-    if (!h || h.along < 0.002 || h.along > band) continue;
-    const near = smooth(band, band * 0.6, h.along); // strands that stand off the head are left alone
-    // The authored cap rim can sit ~0.16 units off the skull. Seat its edge fully;
-    // leaving a fixed 10% gap still makes a visible floating lip in profile.
-    const to = h.along + (clearance - h.along) * edge * near;
-    const d = to - h.along;
-    hair[i] = x + h.n[0] * d;
-    hair[i + 1] = y + h.n[1] * d;
-    hair[i + 2] = z + h.n[2] * d;
+    if (!h) continue;
+    const r = Math.hypot(x, y, z);
+    if (r < 1e-6) continue;
+    const normalDot = (x * h.n[0] + y * h.n[1] + z * h.n[2]) / r;
+    if (normalDot < 0.3) continue;
+    const skinR = (h.p[0] * h.n[0] + h.p[1] * h.n[1] + h.p[2] * h.n[2]) / normalDot;
+    let innerR = Infinity;
+    for (let de = -1; de <= 1; de++) for (let da = -1; da <= 1; da++) {
+      const ee = Math.max(0, Math.min(EL - 1, e + de));
+      innerR = Math.min(innerR, fp.radius[ee * AZ + (a + da + AZ) % AZ]);
+    }
+    const gap = innerR - skinR - clearance;
+    if (!Number.isFinite(gap) || gap <= 0 || gap > band) continue;
+    const near = smooth(band, band * 0.6, gap);
+    // Translate the inner AND outer shell by the same radial amount. Moving
+    // each vertex separately collapses the rim thickness and tears triangles.
+    const k = Math.max(0.01, r - gap * edge * near) / r;
+    hair[i] *= k; hair[i + 1] *= k; hair[i + 2] *= k;
   }
 }
 

@@ -138,6 +138,18 @@ export function placePart(
     const sk = skin();
     seatOnSkin(pos, heights, sk.pos, sk.nrm);
   }
+  if (slot === "headwear" && dstMap) {
+    // Keep the crown shell outside the skull, including cross-base hats.
+    // Brims and hanging details below the eye line keep their authored shape.
+    for (let i = 0; i < pos.length; i += 3) {
+      if (pos[i + 1] < 0.05) continue;
+      const r = Math.hypot(pos[i], pos[i + 1], pos[i + 2]);
+      const want = radiusAt(dstMap, pos[i], pos[i + 1], pos[i + 2]) + 0.05;
+      if (r < 0.3 || r >= want) continue;
+      const k = want / r;
+      pos[i] *= k; pos[i + 1] *= k; pos[i + 2] *= k;
+    }
+  }
   if (slot === "hair") for (let i = 0; i < pos.length; i++) pos[i] *= 1.006;
 }
 

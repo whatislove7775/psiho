@@ -253,10 +253,12 @@ export function patchFade(mat: THREE.MeshPhysicalMaterial, from: number, to: num
 export interface HairUniforms {
   uTip: { value: THREE.Vector4 };
   uStreak: { value: number };
+  uHat: { value: number };
+  uHatEnvelope: { value: THREE.Texture | null };
 }
 
 export function hairUniforms(): HairUniforms {
-  return { uTip: { value: new THREE.Vector4(1, 1, 1, 0) }, uStreak: { value: 0 } };
+  return { uTip: { value: new THREE.Vector4(1, 1, 1, 0) }, uStreak: { value: 0 }, uHat: { value: 0 }, uHatEnvelope: { value: null } };
 }
 
 export function patchHair(mat: THREE.MeshPhysicalMaterial, u: HairUniforms) {
@@ -264,10 +266,17 @@ export function patchHair(mat: THREE.MeshPhysicalMaterial, u: HairUniforms) {
     Object.assign(shader.uniforms, u as unknown as Uniforms);
     patchHeadPos(shader, "attribute float aTip;\nvarying float vTip;", " vTip = aTip;");
     shader.fragmentShader = shader.fragmentShader
-      .replace("#include <common>", `#include <common>\nuniform vec4 uTip;\nuniform float uStreak;\nvarying vec3 vHeadP;\nvarying float vTip;`)
+      .replace("#include <common>", `#include <common>\nuniform vec4 uTip;\nuniform float uStreak;\nuniform float uHat;\nuniform sampler2D uHatEnvelope;\nvarying vec3 vHeadP;\nvarying float vTip;`)
       .replace(
         "#include <color_fragment>",
         `#include <color_fragment>
+ // Hide the hair volume covered by the actual hat; exposed ends remain visible.
+ if (uHat > 0.5) {
+   float r = max(length(vHeadP), 0.0001);
+   vec2 uv = vec2(atan(vHeadP.x, vHeadP.z) / 6.2831853 + 0.5, asin(clamp(vHeadP.y / r, -1.0, 1.0)) / 3.14159265 + 0.5);
+   float h = texture2D(uHatEnvelope, uv).r * 4.0;
+   if (h > 0.0) discard;
+ }
  float streak = uStreak > 0.5 ? smoothstep(0.35, 0.85, 0.5 + 0.5 * sin(atan(vHeadP.x, vHeadP.z) * 26.0 + vHeadP.y * 3.0)) * 0.85 : 0.0;
  float k = uStreak > 0.5 ? streak * smoothstep(0.0, 0.4, vTip + 0.25) : smoothstep(0.15, 0.85, vTip);
  diffuseColor.rgb = mix(diffuseColor.rgb, uTip.rgb, uTip.a * k);`,

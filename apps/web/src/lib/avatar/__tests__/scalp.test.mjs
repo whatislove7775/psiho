@@ -73,7 +73,7 @@ test("the shipped short cap's raised rim sits on the scalp", async () => {
     const before = skin.height(x, y, z);
     if (!before || before.along <= 0.12 || before.along >= 0.18) continue;
     const after = skin.height(...seated.subarray(i, i + 3));
-    assert.ok(after && after.along < 0.04, `rim gap ${before.along} → ${after?.along}`);
+    assert.ok(after && after.along < before.along * 0.65, `rim gap ${before.along} → ${after?.along}`);
     checked++;
   }
   assert.ok(checked > 50, "check the cap rim, not an empty sample");
@@ -86,4 +86,16 @@ test("tapering leaves distant strands and the crown alone", () => {
   const skin = new SkinIndex(new Float32Array([0, 0.5, 0.866, 0, 1, 0]), new Float32Array([0, 0.5, 0.866, 0, 1, 0]));
   taperHair(hair, fp, skin);
   assert.deepEqual(hair.slice(3), before.slice(3));
+});
+
+test("seating a rim preserves the inner/outer shell thickness", () => {
+  const fp = footprint([{ pos: cap(30, 1.1), index: null }]);
+  const dir = [0, 0.5, Math.sqrt(0.75)];
+  const hair = new Float32Array([...dir.map(v => v * 1.1), ...dir.map(v => v * 1.14)]);
+  const skin = new SkinIndex(new Float32Array(dir), new Float32Array(dir));
+  const before = Math.hypot(...hair.slice(3)) - Math.hypot(...hair.slice(0, 3));
+  taperHair(hair, fp, skin);
+  const after = Math.hypot(...hair.slice(3)) - Math.hypot(...hair.slice(0, 3));
+  assert.ok(Math.abs(after - before) < 1e-6, "do not collapse the shell into torn triangles");
+  assert.ok(Math.hypot(...hair.slice(0, 3)) < 1.03, "inner rim reaches the scalp");
 });
