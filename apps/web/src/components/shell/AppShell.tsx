@@ -64,6 +64,7 @@ export const NAV: Record<Role, { items: NavItem[]; cta: { label: string; href: s
       { href: "/app/specialists", get label() { return tt("Специалисты"); }, icon: Users, tab: true },
       { href: "/app/dialogs", get label() { return tt("Диалоги"); }, icon: MessagesSquare, tab: true, unread: true },
       // H2: групповые «Круги» (группы поддержки с психологом)
+      { href: "/app/couples", get label() { return tt("Встречи для пары"); }, icon: CirclesIcon },
       { href: "/app/circles", get label() { return tt("Круги"); }, icon: CirclesIcon },
       // «Полезное»: статьи (первыми) и практики — одна страница с вкладками
       { href: "/app/articles", get label() { return tt("Полезное"); }, icon: BookOpen, tab: true, also: ["/app/practices"] },
@@ -78,6 +79,7 @@ export const NAV: Record<Role, { items: NavItem[]; cta: { label: string; href: s
       { href: "/pro", get label() { return tt("Сводка"); }, icon: LayoutGrid, tab: true },
       { href: "/pro/dialogs", get label() { return tt("Диалоги"); }, icon: MessagesSquare, tab: true, unread: true },
       { href: "/pro/schedule", get label() { return tt("Расписание"); }, icon: CalendarClock, tab: true },
+      { href: "/pro/couples", get label() { return tt("Встречи для пары"); }, icon: CirclesIcon },
       { href: "/pro/circles", get label() { return tt("Круги"); }, icon: CirclesIcon },
       { href: "/pro/articles", get label() { return tt("Мои статьи"); }, icon: BookOpen },
       { href: "/pro/profile", get label() { return tt("Профиль"); }, icon: UserRound, tab: true, get group() { return tt("Кабинет"); } },
@@ -196,7 +198,7 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
   }, [status, user, role]);
 
   useEffect(() => {
-    if (status === "guest") router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+    if (status === "guest") router.replace(`/login?next=${encodeURIComponent(pathname)}${pathname === "/app/couples/invite" ? window.location.hash : ""}`);
     else if (status === "authed" && user && user.role !== role) router.replace(homeFor(user.role));
   }, [status, user, role, router, pathname]);
 

@@ -33,6 +33,7 @@ class Circle(models.Model):
         BREAKUP = "breakup", "Расставание"
         GRIEF = "grief", "Горе и утрата"
         PARENTING = "parenting", "Родительство"
+        RELATIONSHIPS = "relationships", "Отношения"
         SELF_ESTEEM = "self_esteem", "Самооценка"
         LONELINESS = "loneliness", "Одиночество"
         RELOCATION = "relocation", "Переезд и эмиграция"
@@ -69,6 +70,9 @@ class Circle(models.Model):
     MIN_CAPACITY = 5
     MAX_CAPACITY = 12
 
+    kind = models.CharField(max_length=8, default="group", choices=[("group", "Группа"), ("couple", "Пара")], db_index=True)
+    booked_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="couple_bookings")
+    partner_invite_hash = models.CharField(max_length=64, blank=True, default="")
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     host = models.ForeignKey("users.PsychologistProfile", on_delete=models.CASCADE, related_name="circles")
     topic = models.CharField(max_length=20, choices=Topic.choices, db_index=True)
@@ -113,7 +117,7 @@ class Circle(models.Model):
 
     @property
     def is_public(self) -> bool:
-        return self.status in self.PUBLIC
+        return self.kind == "group" and self.status in self.PUBLIC
 
     @property
     def active_cohost(self):

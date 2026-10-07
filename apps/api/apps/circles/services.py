@@ -226,6 +226,8 @@ def _create_charges(membership: Membership, now=None) -> list[Charge]:
 
 def join(circle: Circle, user) -> tuple[Membership, bool]:
     """Записаться. Возвращает (участие, попал_в_лист_ожидания). InsufficientFunds — не хватает денег."""
+    if circle.kind == "couple" and circle.booked_by_id != user.pk:
+        raise CircleError("Встреча для пары доступна только по приглашению.", "private", 403)
     if getattr(user, "role", "") != "client":
         raise CircleError("Записаться в круг можно из кабинета клиента.", "not_client", 403)
     with transaction.atomic():
@@ -481,6 +483,8 @@ def _share_with_cohost(circle: Circle, ref) -> None:
 # ── Ко-терапевт ──────────────────────────────────────────────────────
 
 def invite_cohost(circle: Circle, profile, share_percent: int | None = None) -> Circle:
+    if circle.kind == "couple":
+        raise CircleError("В консультации для пары участвует один психолог.")
     from apps.users.models import PsychologistProfile
 
     if circle.status in (S.FINISHED, S.CANCELLED):

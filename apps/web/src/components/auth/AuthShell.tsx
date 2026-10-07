@@ -62,5 +62,9 @@ export function AuthLinks({ links }: { links: { href: string; label: string; pre
 /** Only allow same-site relative redirects from ?next=. */
 export function safeNext(next: string | null | undefined): string | null {
   if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return null;
+  // Keep invitation tokens in the URL fragment even while signing in, never in ?next= logs.
+  if (next === "/app/couples/invite" && typeof window !== "undefined" && /^#[A-Za-z0-9_-]{32,64}$/.test(window.location.hash)) {
+    return next + window.location.hash;
+  }
   return next;
 }

@@ -46,6 +46,10 @@ class AvailabilitySettings(models.Model):
     intro_enabled = models.BooleanField(default=False)
     intro_price_rub = models.PositiveIntegerField(default=0)
 
+    couples_enabled = models.BooleanField(default=False)
+    couples_minutes = models.PositiveSmallIntegerField(default=80)
+    couples_price_rub = models.PositiveIntegerField(default=5000)
+
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

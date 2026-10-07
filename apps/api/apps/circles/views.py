@@ -45,7 +45,7 @@ class ChatThrottle(UserRateThrottle):
 
 
 def _public_circle(pk) -> Circle:
-    return get_object_or_404(Circle.objects.select_related("host", "host__user"), pk=pk, status__in=Circle.PUBLIC)
+    return get_object_or_404(Circle.objects.select_related("host", "host__user"), pk=pk, kind="group", status__in=Circle.PUBLIC)
 
 
 # ── Публично и для клиентов ───────────────────────────────────────────
@@ -57,7 +57,7 @@ class CircleListView(APIView):
 
     def get(self, request):
         svc.maybe_sweep()
-        qs = Circle.objects.select_related("host", "host__user").filter(status__in=[S.RECRUITING, S.RUNNING])
+        qs = Circle.objects.select_related("host", "host__user").filter(kind="group", status__in=[S.RECRUITING, S.RUNNING])
         topic = request.query_params.get("topic")
         if topic in Circle.Topic.values:
             qs = qs.filter(topic=topic)
@@ -66,7 +66,7 @@ class CircleListView(APIView):
         # сначала те, куда можно записаться, потом по ближайшей встрече
         items.sort(key=lambda x: (x["status"] != "recruiting", x["next_meeting_at"] or "9999"))
         counts = dict(
-            Circle.objects.filter(status__in=[S.RECRUITING, S.RUNNING]).values_list("topic").annotate(n=Count("id"))
+            Circle.objects.filter(kind="group", status__in=[S.RECRUITING, S.RUNNING]).values_list("topic").annotate(n=Count("id"))
         )
         topics = [{"id": v, "label": label, "count": counts.get(v, 0)} for v, label in Circle.Topic.choices]
         return Response({"results": items, "topics": topics})
@@ -81,7 +81,7 @@ class MyCirclesView(APIView):
         svc.maybe_sweep()
         now = timezone.now()
         rows = []
-        for m in Membership.objects.filter(user=request.user, status__in=[M.ACTIVE, M.WAITLIST]).select_related(
+        for m in Membership.objects.filter(user=request.user, status__in=[M.ACTIVE, M.WAITLIST], circle__kind="couple" if request.query_params.get("session_format") == "couple" else "group").select_related(
                 "circle", "circle__host"):
             card = P.circle_card(m.circle, now)
             nxt = svc.active_meetings(m.circle).filter(status__in=["scheduled", "live"]).filter(
@@ -102,7 +102,9 @@ class CircleDetailView(APIView):
         is_host = request.user.is_authenticated and (
             c.host.user_id == request.user.pk or (c.cohost_id is not None and c.cohost.user_id == request.user.pk))
         is_member = request.user.is_authenticated and c.memberships.filter(user=request.user).exists()
-        if not c.is_public and c.status != S.CANCELLED and not is_host:
+        if c.kind == "couple" and not (is_host or is_member):
+            return Response({"detail": "Встреча не найдена."}, status=404)
+        if c.kind == "group" and not c.is_public and c.status != S.CANCELLED and not is_host:
             return Response({"detail": "Круг не найден."}, status=404)
         if c.status == S.CANCELLED and not (is_host or is_member):
             return Response({"detail": "Круг не найден."}, status=404)
@@ -140,7 +142,14 @@ class LeaveView(APIView):
         m = Membership.objects.filter(circle=c, user=request.user, status__in=[M.ACTIVE, M.WAITLIST]).first()
         if m is None:
             return Response({"detail": "Вы не записаны в этот круг."}, status=400)
-        svc.leave(m)
+        if c.kind == "couple":
+            from .couples import cancel
+            try:
+                cancel(c, request.user)
+            except svc.CircleError as e:
+                return err(e)
+        else:
+            svc.leave(m)
         c.refresh_from_db()
         return Response(P.circle_detail(c, request.user))
 
@@ -246,7 +255,7 @@ class MeetingJoinView(APIView):
             "role": role,
             "self": {"id": peer, "name": name, "tone": tone},
             "circle": {"id": str(c.id), "title": c.title, "topic": c.topic, "topic_label": c.get_topic_display(),
-                       "allow_real_faces": c.allow_real_faces},
+                       "allow_real_faces": c.allow_real_faces, "kind": c.kind},
             "meeting": P.meeting_payload(meeting),
             "host": P.host_payload(c),
             "cohost": P.cohost_payload(c),
@@ -325,7 +334,7 @@ class ProCirclesView(APIView):
     def get(self, request):
         svc.maybe_sweep()
         qs = Circle.objects.select_related("host", "host__user", "cohost").filter(
-            Q(host__user=request.user) | Q(cohost__user=request.user, cohost_status=Circle.CohostStatus.ACCEPTED))
+            Q(host__user=request.user) | Q(cohost__user=request.user, cohost_status=Circle.CohostStatus.ACCEPTED)).filter(kind="couple" if request.query_params.get("session_format") == "couple" else "group")
         invites = Circle.objects.select_related("host", "host__user", "cohost").filter(
             cohost__user=request.user, cohost_status=Circle.CohostStatus.INVITED).exclude(
             status__in=[S.FINISHED, S.CANCELLED])

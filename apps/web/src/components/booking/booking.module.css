@@ -296,7 +296,9 @@
   text-align: left;
   font: inherit;
   cursor: pointer;
-  transition: background var(--dur), border-color var(--dur);
+  transition:
+    background var(--dur),
+    border-color var(--dur);
 }
 .durOpt span {
   white-space: nowrap;
@@ -342,7 +344,10 @@
   font-weight: 550;
   text-align: left;
   cursor: pointer;
-  transition: background var(--dur), color var(--dur), border-color var(--dur);
+  transition:
+    background var(--dur),
+    color var(--dur),
+    border-color var(--dur);
 }
 .introOpt svg {
   flex: none;
@@ -382,4 +387,15 @@
     flex: none;
     min-width: 88px;
   }
+}
+
+.formats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.formats button {
+  flex: 1 1 120px;
+  min-height: 44px;
+  white-space: normal;
 }

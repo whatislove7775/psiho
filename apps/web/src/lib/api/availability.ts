@@ -33,6 +33,9 @@ export interface AvailabilitySettings {
   hourly_rate_rub: number;
   prices: DurationPrice[];
   /** H1: «Знакомство, 15 минут» — off by default */
+  couples_enabled: boolean;
+  couples_minutes: number;
+  couples_price_rub: number;
   intro_enabled: boolean;
   intro_price_rub: number;
   intro_minutes: number;
@@ -60,6 +63,9 @@ export type AvailabilityUpdate = Partial<
     | "horizon_days"
     | "start_step_minutes"
     | "hourly_rate_rub"
+    | "couples_enabled"
+    | "couples_minutes"
+    | "couples_price_rub"
     | "intro_enabled"
     | "intro_price_rub"
     | "templates"
@@ -90,11 +96,13 @@ export interface TimeOff {
 
 export interface AvailableStarts {
   duration_minutes: number;
+  format?: "individual" | "couple";
   price_rub: number;
   durations: DurationPrice[];
   horizon_until: string;
   starts: string[];
   intro?: IntroInfo;
+  couples?: { enabled: boolean; minutes: number; price_rub: number; free_cancel_hours: number; late_cancel_penalty_percent: number };
 }
 
 /** «Знакомство, 15 минут»: a specialist may offer one short first call per client (own price, may be free). */
@@ -115,6 +123,7 @@ export interface BookingInfo {
   max_duration: number;
   durations: DurationPrice[];
   intro?: IntroInfo;
+  couples?: { enabled: boolean; minutes: number; price_rub: number; free_cancel_hours: number; late_cancel_penalty_percent: number };
 }
 
 export const availabilityApi = {
@@ -133,9 +142,9 @@ export const availabilityApi = {
     api<TimeOff>("/psychologist/availability/time-off/", { method: "POST", body }),
   removeTimeOff: (id: number) => api<void>(`/psychologist/availability/time-off/${id}/`, { method: "DELETE" }),
   /** Free start times for a duration; dates are in the specialist's zone, times come back in UTC. */
-  starts: (psychologistId: number, duration: number, from?: string, to?: string) =>
+  starts: (psychologistId: number, duration: number, from?: string, to?: string, format?: "couple") =>
     api<AvailableStarts>(`/psychologists/${psychologistId}/available-starts/`, {
-      query: { duration, from, to },
+      query: { duration, from, to, session_format: format },
       auth: false,
     }),
 };

@@ -1,9 +1,15 @@
 from django.urls import path
 
 from . import views as v
+from . import couples as pairs
 
 # /api/v1/circles/
 urlpatterns = [
+    path("couples/book/", pairs.BookView.as_view()),
+    path("couples/invitation/preview/", pairs.PreviewView.as_view()),
+    path("couples/invitation/accept/", pairs.AcceptView.as_view()),
+    path("couples/<uuid:pk>/invite/", pairs.InviteView.as_view()),
+    path("couples/<uuid:pk>/cancel/", pairs.CancelView.as_view()),
     path("", v.CircleListView.as_view(), name="circles"),
     path("mine/", v.MyCirclesView.as_view(), name="my_circles"),
     path("pro/", v.ProCirclesView.as_view(), name="pro_circles"),

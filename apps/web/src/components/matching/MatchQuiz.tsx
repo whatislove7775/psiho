@@ -296,7 +296,7 @@ export function MatchQuiz({ mode }: { mode: "app" | "public" }) {
               <span className={s.rowLabel}>
                 {tt("Бывают\u00a0ли у\u00a0вас мысли причинить себе вред или\u00a0что\u00a0не\u00a0хочется жить?")}
               </span>
-              <p className={s.qHint}>{tt("Спрашиваем, чтобы вовремя подсказать, где помогут прямо сейчас. Ответ никуда не\u00a0сохраняется.")}</p>
+              <p className={s.qHint}>{tt("Спрашиваем, чтобы вовремя подсказать, где помогут прямо сейчас. Ответ не\u00a0сохраняется в\u00a0браузере или на\u00a0сервере.")}</p>
               <Segmented<string>
                 ariaLabel={tt("Мысли о\u00a0самоповреждении")}
                 value={answers.safety}
@@ -450,13 +450,9 @@ function ResultCard({
         </span>
         <div className={s.cardBody}>
           <div className={s.nameRow}>
-            {linkable ? (
-              <Link href={`/app/specialists/${p.id}`} className={s.name}>
-                {p.display_name}
-              </Link>
-            ) : (
-              <span className={s.name}>{p.display_name}</span>
-            )}
+            <Link href={linkable ? `/app/specialists/${p.id}` : `/specialists/${p.id}`} className={s.name}>
+              {p.display_name}
+            </Link>
             <RatingPill rating={p.rating} count={p.reviews_count} compact />
             <IntroChip psy={p} />
           </div>
@@ -574,7 +570,7 @@ function PrivacyNote({ onForget, compact }: { onForget: () => void; compact?: bo
     <p className={s.privacy} data-compact={compact || undefined}>
       <ShieldCheck size={16} strokeWidth={1.8} aria-hidden />
       <span>
-        {tt("Ответы не\u00a0сохраняются на\u00a0сервере: мы\u00a0считаем подбор и\u00a0сразу их\u00a0забываем. Чтобы вы\u00a0могли вернуться, они хранятся только в\u00a0этом браузере.")}{" "}
+        {tt("Ответы не\u00a0сохраняются на\u00a0сервере: мы\u00a0считаем подбор и\u00a0сразу их\u00a0забываем. Чтобы вы\u00a0могли вернуться, они хранятся только в\u00a0этом браузере до 24\u00a0часов. Ответ о\u00a0самоповреждении не\u00a0сохраняется.")}{" "}
         <button type="button" className={s.link} onClick={onForget}>
           <Trash2 size={13} strokeWidth={1.8} aria-hidden />{" "}{tt("Стереть ответы")}
         </button>

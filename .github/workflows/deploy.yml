@@ -100,6 +100,7 @@ jobs:
           python manage.py makemigrations --check --dry-run
           if find apps config -name 'tests.py' -o -name 'test_*.py' -o -type d -name tests | grep -q .; then
             python manage.py test --noinput
+            python -m pytest
           else
             echo "::notice title=No tests::В apps/api не найдено тестов — пропускаю manage.py test"
           fi

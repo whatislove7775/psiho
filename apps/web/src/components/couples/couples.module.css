@@ -1,0 +1,34 @@
+.page {
+  display: grid;
+  gap: 24px;
+}
+.stack {
+  display: grid;
+  gap: 16px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 16px;
+}
+.card {
+  display: grid;
+  gap: 12px;
+}
+.card h2,
+.card p {
+  margin: 0;
+}
+.note {
+  color: var(--c-muted);
+  line-height: 1.6;
+}
+.link {
+  overflow-wrap: anywhere;
+  width: 100%;
+}

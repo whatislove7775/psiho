@@ -278,7 +278,7 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
   }, [call.status, stopAvatar, stopReal]);
 
   const elapsed = useElapsed(joinedAt);
-  const backHref = info ? (isHost ? `/pro/circles/${info.circle.id}` : `/app/circles/${info.circle.id}`) : "/app/circles";
+  const backHref = info?.circle.kind === "couple" ? `${isHost ? "/pro" : "/app"}/couples/${info.circle.id}` : info ? (isHost ? `/pro/circles/${info.circle.id}` : `/app/circles/${info.circle.id}`) : "/app/circles";
 
   // ── screens ──────────────────────────────────────────────────────
   if (error) {
@@ -350,7 +350,7 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
         <header className={s.top}>
           <Button variant="ghost" iconOnly aria-label={tt("Назад")} href={backHref} icon={<ArrowLeft size={20} />} />
           <div className={s.topTitle}>
-            <b>{info.circle.title}</b>
+            <b>{info.circle.kind === "couple" ? tt("Консультация для пары") : info.circle.title}</b>
             <small>
               {tj("Встреча {index}, {v}", { index: info.meeting.index, v: info.circle.topic_label.toLowerCase() })}
             </small>
@@ -453,7 +453,7 @@ export function GroupRoom({ meetingId }: { meetingId: string }) {
     <div className={s.root}>
       <header className={s.top}>
         <div className={s.topTitle}>
-          <b>{info.circle.title}</b>
+          <b>{info.circle.kind === "couple" ? tt("Консультация для пары") : info.circle.title}</b>
           <small>
             {inRoom} {inRoom === 1 ? tt("участник") : inRoom < 5 ? tt("участника") : tt("участников")}
             {call.rooms.rooms.length ? tt(` в «{roomName}»`, { roomName: roomName(call.rooms, call.myRoom) }) : tt(" в комнате")}

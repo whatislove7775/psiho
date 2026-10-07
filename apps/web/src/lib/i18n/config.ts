@@ -44,7 +44,7 @@ export function isLocale(x: unknown): x is Locale {
  * Public pages (SEO) carry the language in the URL: /en/articles. Russian keeps the old URLs without a prefix.
  * Cabinets (/app, /pro, /room, /admin…) have no prefix — their language comes from the cookie.
  */
-const PUBLIC_RE = /^\/(?:$|articles(?:\/|$)|practices(?:\/|$)|legal(?:\/|$)|business\/?$|start\/?$|login\/?$|recover\/?$|join\/?$|match\/?$)/;
+const PUBLIC_RE = /^\/(?:$|articles(?:\/|$)|practices(?:\/|$)|legal(?:\/|$)|business\/?$|start\/?$|login\/?$|recover\/?$|join\/?$|match\/?$|specialists(?:\/|$)|couples(?:\/|$))/;
 
 export function isPublicPath(path: string): boolean {
   return PUBLIC_RE.test(path);

@@ -17,13 +17,13 @@ import s from "./landing.module.css";
 type State = { kind: "loading" } | { kind: "ready"; items: PsychologistPublic[] } | { kind: "hidden" };
 
 /** Specialists: a horizontal scroller of compact cards (a grid row on desktop). */
-export function Specialists() {
+export function Specialists({ all = false }: { all?: boolean }) {
   const [state, setState] = useState<State>({ kind: "loading" });
   const authed = useAuth((st) => st.status === "authed" && st.user?.role === "client");
   // Profiles live in the client cabinet: guests start anonymously first and land right on the profile.
   const hrefFor = (id: string | number) => {
     const profile = `/app/specialists/${id}`;
-    return authed ? profile : `/start?next=${encodeURIComponent(profile)}`;
+    return authed ? profile : lp(`/specialists/${id}`);
   };
 
   useEffect(() => {
@@ -32,16 +32,16 @@ export function Specialists() {
       .list()
       .then((items) => {
         if (!alive) return;
-        const list = Array.isArray(items) ? items.slice(0, 8) : [];
+        const list = Array.isArray(items) ? all ? items : items.slice(0, 8) : [];
         setState(list.length ? { kind: "ready", items: list } : { kind: "hidden" });
       })
       .catch(() => alive && setState({ kind: "hidden" }));
     return () => {
       alive = false;
     };
-  }, []);
+  }, [all]);
 
-  if (state.kind === "hidden") return null;
+  if (state.kind === "hidden") return all ? <section className={`${s.wrap} ${s.section}`}><h1>{t("Специалисты")}</h1><p>{t("Список специалистов сейчас недоступен. Попробуйте обновить страницу чуть позже.")}</p></section> : null;
 
   return (
     <section id="specialists" className={`${s.wrap} ${s.section}`} aria-labelledby="specialists-title">

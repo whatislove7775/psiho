@@ -152,3 +152,24 @@
   font-size: 0.85em;
   white-space: nowrap;
 }
+
+/* Public profiles must fit the same phone widths as the cabinet. */
+@media (max-width: 640px) {
+  .heroText,
+  .ctaRow {
+    width: 100%;
+  }
+  .name,
+  .bio {
+    overflow-wrap: anywhere;
+  }
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 16px;
+  }
+  .facts dd {
+    white-space: normal;
+  }
+}

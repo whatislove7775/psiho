@@ -8,6 +8,7 @@ export type CircleTopic =
   | "breakup"
   | "grief"
   | "parenting"
+  | "relationships"
   | "self_esteem"
   | "loneliness"
   | "relocation";
@@ -23,6 +24,7 @@ export const TOPIC_LABEL: Record<CircleTopic, string> = {
   get breakup() { return t("Расставание"); },
   get grief() { return t("Горе и\u00a0утрата"); },
   get parenting() { return t("Родительство"); },
+  get relationships() { return t("Отношения"); },
   get self_esteem() { return t("Самооценка"); },
   get loneliness() { return t("Одиночество"); },
   get relocation() { return t("Переезд и\u00a0эмиграция"); },
@@ -35,6 +37,7 @@ export const TOPIC_TONE: Record<CircleTopic, Tone> = {
   breakup: "coral",
   grief: "cyan",
   parenting: "mint",
+  relationships: "mint",
   self_esteem: "coral",
   loneliness: "cyan",
   relocation: "sun",
@@ -90,6 +93,7 @@ export interface CircleMeeting {
 }
 
 export interface CircleCard {
+  kind: "group" | "couple";
   id: string;
   topic: CircleTopic;
   topic_label: string;
@@ -132,6 +136,8 @@ export interface MyCircleState {
 }
 
 export interface CircleDetail extends CircleCard {
+  is_organizer: boolean;
+  couple_cancel_terms?: LeaveTerms | null;
   description: string;
   rules: string[];
   allow_real_faces: boolean;
@@ -221,7 +227,7 @@ export interface MeetingJoin {
   room_id: string;
   role: CircleRole;
   self: { id: string; name: string; tone: string };
-  circle: { id: string; title: string; topic: CircleTopic; topic_label: string; allow_real_faces: boolean };
+  circle: { id: string; title: string; topic: CircleTopic; topic_label: string; allow_real_faces: boolean; kind: "group" | "couple" };
   meeting: CircleMeeting;
   host: CircleHost;
   cohost: CircleHost | null;

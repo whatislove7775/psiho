@@ -69,6 +69,7 @@ def circle_card(c: Circle, now=None) -> dict:
     count = len(meetings)
     return {
         "id": str(c.id),
+        "kind": c.kind,
         "topic": c.topic,
         "topic_label": c.get_topic_display(),
         "title": c.title,
@@ -134,6 +135,10 @@ def circle_detail(c: Circle, user=None, now=None) -> dict:
             me = Membership.objects.filter(circle=c, user=user).first()
             if me is not None and me.status == M.ACTIVE:
                 role = "member"
+    data["is_organizer"] = bool(user is not None and user.is_authenticated and c.booked_by_id == user.pk)
+    if c.kind == "couple":
+        payer = c.memberships.filter(user_id=c.booked_by_id).first()
+        data["couple_cancel_terms"] = svc.leave_terms(payer) if payer else None
     data["my_role"] = role
     data["me"] = my_state(c, me)
     return data

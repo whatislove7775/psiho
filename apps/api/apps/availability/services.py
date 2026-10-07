@@ -151,6 +151,7 @@ def set_rate_from_legacy(profile) -> None:
 
 
 def booking_info(profile, client=None) -> dict:
+    from apps.billing import conf as billing_conf
     s = get_settings(profile)
     durations = allowed_durations(s)
     return {
@@ -159,6 +160,9 @@ def booking_info(profile, client=None) -> dict:
         "max_duration": durations[-1],
         "durations": [{"minutes": d, "price_rub": engine.round_price(s.hourly_rate_rub, d)} for d in durations],
         "intro": intro_info(profile, client),
+        "couples": {"enabled": s.couples_enabled, "minutes": s.couples_minutes, "price_rub": s.couples_price_rub,
+                   "free_cancel_hours": billing_conf.free_cancel_hours(),
+                   "late_cancel_penalty_percent": billing_conf.late_cancel_penalty_percent()},
     }
 
 
@@ -219,17 +223,22 @@ def local_today(profile=None, now: datetime | None = None) -> date:
     return (now or timezone.now()).astimezone(tz).date()
 
 
-def starts_for(profile, duration: int, first: date, last: date, now: datetime | None = None) -> list[datetime]:
+def starts_for(profile, duration: int, first: date, last: date, now: datetime | None = None, *, couples=False) -> list[datetime]:
     from apps.sessions.models import ConsultationSession
 
     now = now or timezone.now()
     av = load(profile, first, last, intro=duration == engine.INTRO_MINUTES)
+    if couples:
+        s = get_settings(profile)
+        av.durations = (s.couples_minutes,) if s.couples_enabled else ()
     pad = timedelta(days=1, minutes=MAX_BOOKED_MINUTES + 120)
     busy = busy_intervals(
         ConsultationSession.objects.filter(psychologist_profile=profile),
         engine.to_utc(engine.local_dt(first, 0, av.tz)) - pad,
         engine.to_utc(engine.local_dt(last, engine.DAY_MINUTES, av.tz)) + pad,
     )
+    busy += meeting_busy(profile, engine.to_utc(engine.local_dt(first, 0, av.tz)) - pad,
+                         engine.to_utc(engine.local_dt(last, engine.DAY_MINUTES, av.tz)) + pad)
     return engine.available_starts(av, duration, first, last, busy, now)
 
 
@@ -247,14 +256,17 @@ def next_start(profile, now: datetime | None = None) -> datetime | None:
     return None
 
 
-def check_bookable(profile, start: datetime, duration: int, client=None, now: datetime | None = None) -> str | None:
+def check_bookable(profile, start: datetime, duration: int, client=None, now: datetime | None = None, *, couples=False) -> str | None:
     """None, если время можно забронировать, иначе понятный текст ошибки."""
     from apps.sessions.models import ConsultationSession
 
     now = now or timezone.now()
     s = get_settings(profile)
     durations = allowed_durations(s)
-    if duration == engine.INTRO_MINUTES:
+    if couples:
+        if not s.couples_enabled or duration != s.couples_minutes:
+            return "Специалист сейчас не проводит консультации для пары в этом формате."
+    elif duration == engine.INTRO_MINUTES:
         if not s.intro_enabled:
             return "Специалист сейчас не проводит знакомства. Выберите обычный созвон."
         if client is not None and intro_used(client, profile):
@@ -270,7 +282,7 @@ def check_bookable(profile, start: datetime, duration: int, client=None, now: da
     local_date = start.astimezone(tz).date()
     if local_date > local_today(profile, now) + timedelta(days=s.horizon_days):
         return f"Специалист открывает запись на {s.horizon_days} {plural(s.horizon_days, 'день', 'дня', 'дней')} вперёд."
-    if start not in starts_for(profile, duration, local_date, local_date, now):
+    if start not in starts_for(profile, duration, local_date, local_date, now, couples=couples):
         busy = busy_intervals(
             ConsultationSession.objects.filter(psychologist_profile=profile),
             start - timedelta(minutes=s.buffer_minutes),
@@ -283,6 +295,7 @@ def check_bookable(profile, start: datetime, duration: int, client=None, now: da
         own = busy_intervals(
             ConsultationSession.objects.filter(client=client), start, start + timedelta(minutes=duration)
         )
+        own += meeting_busy(None, start, start + timedelta(minutes=duration), client=client)
         if own:
             return "У вас уже есть созвон в это время."
     return None
@@ -361,3 +374,16 @@ def replace_default_template(profile, rules: list[dict]) -> None:
         )
         for r in rules
     ])
+
+
+def meeting_busy(profile, start, end, *, client=None):
+    from django.db.models import Q
+    from apps.circles.models import Meeting, Circle, Membership
+    qs = Meeting.objects.filter(status__in=["scheduled", "live"],
+                                circle__status__in=[Circle.Status.RECRUITING, Circle.Status.RUNNING],
+                                starts_at__lt=end, starts_at__gt=start - timedelta(minutes=240))
+    if client is not None:
+        qs = qs.filter(circle__memberships__user=client, circle__memberships__status=Membership.Status.ACTIVE)
+    else:
+        qs = qs.filter(Q(circle__host=profile) | Q(circle__cohost=profile, circle__cohost_status="accepted"))
+    return [(m.starts_at, m.ends_at) for m in qs.select_related("circle") if m.ends_at > start]

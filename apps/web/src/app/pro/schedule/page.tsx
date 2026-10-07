@@ -21,7 +21,7 @@ import {
 import { WeekTimeline } from "@/components/pro/availability/WeekTimeline";
 import { RangesEditor } from "@/components/pro/availability/RangesEditor";
 import { OverridesCalendar } from "@/components/pro/availability/OverridesCalendar";
-import { IntroCard, PriceCard, SessionRules, utcOffset, zoneName, type RulesDraft } from "@/components/pro/availability/BookingRules";
+import { CouplesCard, IntroCard, PriceCard, SessionRules, utcOffset, zoneName, type RulesDraft } from "@/components/pro/availability/BookingRules";
 import { availabilityApi, durationLabel, type AvailabilitySettings } from "@/lib/api/availability";
 import { plural, WEEKDAYS, WEEKDAYS_SHORT } from "@/lib/format";
 import s from "@/components/pro/pro.module.css";
@@ -62,6 +62,9 @@ function fromServer(a: AvailabilitySettings): Draft {
       horizon_days: a.horizon_days,
       start_step_minutes: a.start_step_minutes,
       hourly_rate_rub: a.hourly_rate_rub,
+      couples_enabled: !!a.couples_enabled,
+      couples_minutes: a.couples_minutes ?? 80,
+      couples_price_rub: a.couples_price_rub ?? 5000,
       intro_enabled: !!a.intro_enabled,
       intro_price_rub: a.intro_price_rub ?? 0,
     },
@@ -170,9 +173,11 @@ export default function SchedulePage() {
   const introMax = server?.intro_max_price_rub ?? 3000;
   const introError =
     draft && draft.rules.intro_enabled && draft.rules.intro_price_rub > introMax ? tt(`Не\u00a0больше {introMax} ₽`, { introMax }) : null;
+  const coupleError = draft?.rules.couples_enabled && (!Number.isFinite(draft.rules.couples_price_rub) || draft.rules.couples_price_rub < 500 || draft.rules.couples_price_rub > 60000);
   const hasErrors =
     allErrors ||
     !!priceError ||
+    !!coupleError ||
     !!introError ||
     (draft?.templates.some((t) => t.valid_from && t.valid_until && t.valid_until < t.valid_from) ?? false);
   const dirty = !!draft && !!saved && keyOf(draft) !== keyOf(saved);
@@ -424,6 +429,7 @@ export default function SchedulePage() {
                 error={priceError}
                 onChange={(p) => edit((d) => Object.assign(d.rules, p))}
               />
+              <CouplesCard draft={draft.rules} onChange={(p) => edit((d) => Object.assign(d.rules, p))} />
               <IntroCard
                 draft={draft.rules}
                 maxPrice={introMax}

@@ -198,17 +198,19 @@ class AvailableStartsView(APIView):
             return Response(
                 {"detail": "Неверные параметры: duration — минуты, from и to — даты YYYY-MM-DD."}, status=400
             )
-        if not services.accepts_duration(s, duration):
+        couples = request.query_params.get("session_format") == "couple"
+        if (couples and (not s.couples_enabled or duration != s.couples_minutes)) or (not couples and not services.accepts_duration(s, duration)):
             detail = (
                 "Специалист сейчас не проводит знакомства." if duration == engine.INTRO_MINUTES
                 else f"Специалист проводит созвоны длительностью {services.human_list(durations)} минут."
             )
             return Response({"detail": detail}, status=400)
         horizon_until = today + timedelta(days=s.horizon_days)
-        starts = services.starts_for(profile, duration, max(first, today), min(last, horizon_until))
+        starts = services.starts_for(profile, duration, max(first, today), min(last, horizon_until), couples=couples)
         return Response({
             "duration_minutes": duration,
-            "price_rub": services.price_for(profile, duration),
+            "price_rub": s.couples_price_rub if couples else services.price_for(profile, duration),
+            "format": "couple" if couples else "individual",
             "durations": [{"minutes": d, "price_rub": services.price_for(profile, d)} for d in durations],
             "horizon_until": horizon_until.isoformat(),
             "starts": [_iso(x) for x in starts],

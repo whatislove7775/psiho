@@ -17,6 +17,9 @@ export type RulesDraft = Pick<
   | "horizon_days"
   | "start_step_minutes"
   | "hourly_rate_rub"
+  | "couples_enabled"
+  | "couples_minutes"
+  | "couples_price_rub"
   | "intro_enabled"
   | "intro_price_rub"
 >;
@@ -300,4 +303,73 @@ export function IntroCard({
 
 function uniq(xs: number[]) {
   return Array.from(new Set(xs)).sort((a, b) => a - b);
+}
+
+export function CouplesCard({
+  draft,
+  onChange,
+}: {
+  draft: RulesDraft;
+  onChange: (p: Partial<RulesDraft>) => void;
+}) {
+  return (
+    <Card>
+      <CardHead
+        title={t("Консультации для пары")}
+        sub={t(
+          "Два клиента и один психолог. Включайте формат, если работаете с парами.",
+        )}
+      />
+      <Segmented<string>
+        ariaLabel={t("Консультации для пары")}
+        value={draft.couples_enabled ? "on" : "off"}
+        options={[
+          { value: "off", label: t("Выключены") },
+          { value: "on", label: t("Принимаю пары") },
+        ]}
+        onChange={(v) => onChange({ couples_enabled: v === "on" })}
+      />
+      {draft.couples_enabled && (
+        <>
+          <Field label={t("Длительность встречи")} htmlFor="couples-length">
+            <Select
+              id="couples-length"
+              aria-label={t("Длительность встречи")}
+              value={String(draft.couples_minutes)}
+              onChange={(v) => onChange({ couples_minutes: Number(v) })}
+              options={[60, 80, 90, 120].map((v) => ({
+                value: String(v),
+                label: durationLabel(v),
+              }))}
+            />
+          </Field>
+          <Field
+            error={
+              !Number.isInteger(draft.couples_price_rub) ||
+              draft.couples_price_rub < 500 ||
+              draft.couples_price_rub > 60000
+                ? t("Укажите цену от 500 до 60 000 ₽.")
+                : undefined
+            }
+            htmlFor="couples-price"
+            label={t("Цена за всю встречу, ₽")}
+            hint={t(
+              "Один партнёр оплачивает встречу целиком. Второй принимает приглашение бесплатно.",
+            )}
+          >
+            <Input
+              id="couples-price"
+              type="number"
+              min={500}
+              max={60000}
+              value={draft.couples_price_rub}
+              onChange={(e) =>
+                onChange({ couples_price_rub: Number(e.target.value) })
+              }
+            />
+          </Field>
+        </>
+      )}
+    </Card>
+  );
 }

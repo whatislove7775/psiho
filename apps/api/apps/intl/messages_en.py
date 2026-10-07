@@ -8,6 +8,26 @@ import re
 from django.utils import translation
 
 EN: dict[str, str] = {
+    "Консультация для пары": "Couples consultation",
+    "Отношения": "Relationships",
+    "Записать пару можно из кабинета клиента.": "Book a couples consultation from a client account.",
+    "Специалист сейчас не принимает.": "This specialist is not accepting bookings at the moment.",
+    "Закрытая встреча двух партнёров с психологом. Каждый входит со своего аккаунта. Личные диалоги остаются отдельными.": "A private meeting for two partners and a psychologist. Each partner joins with their own account. Personal conversations remain separate.",
+    "Участвуйте добровольно.\nНе записывайте разговор.\nНе передавайте приглашение посторонним.": "Participate voluntarily.\nDo not record the conversation.\nDo not share your invitation with anyone else.",
+    "Пригласить партнёра может тот, кто записал пару.": "Only the partner who booked the consultation can send an invitation.",
+    "Приглашение для этой встречи уже недоступно.": "An invitation is no longer available for this meeting.",
+    "Партнёр уже принял приглашение.": "Your partner has already accepted the invitation.",
+    "Приглашение недействительно или уже принято.": "This invitation is invalid or has already been accepted.",
+    "Приглашение должен принять партнёр со своего аккаунта клиента.": "Your partner must accept the invitation using their own client account.",
+    "Встреча уже заполнена.": "This meeting is already full.",
+    "У вас уже есть встреча в это время.": "You already have a meeting at this time.",
+    "Встреча не найдена.": "Meeting not found.",
+    "Встреча уже началась. Можно выйти из комнаты; для отмены обратитесь в поддержку.": "The meeting has already started. You can leave the room; contact support to cancel.",
+    "На балансе не хватает денег для встречи. Пополните баланс и запишитесь снова.": "Your balance is insufficient for this meeting. Add funds and book again.",
+    "Подтвердите добровольное участие в общей встрече.": "Confirm your voluntary participation in the shared meeting.",
+    "Для консультации пары нельзя добавить второго ведущего.": "You cannot add a second host to a couples consultation.",
+    "Цена или длительность встречи изменились. Обновите карточку специалиста и подтвердите новые условия.": "The price or meeting length has changed. Refresh the specialist profile and confirm the new terms.",
+    "Специалист сейчас не проводит консультации для пары в этом формате.": "This specialist is not currently offering couples consultations in this format.",
     # circles
     "Встреч для записи больше нет.": "There are no more meetings to sign up for.",
     "Круг отменён. Деньги за встречи, которые не состоялись, вернулись на баланс.": "The circle has been cancelled. Money for meetings that didn't take place has been returned to your balance.",

@@ -147,15 +147,24 @@ export function loadQuiz(): SavedQuiz | null {
     if (!raw) return null;
     const v = JSON.parse(raw) as SavedQuiz;
     if (!v || typeof v !== "object" || !v.answers) return null;
-    return { answers: { ...EMPTY_ANSWERS, ...v.answers }, done: !!v.done, savedAt: Number(v.savedAt) || 0 };
+    const savedAt = Number(v.savedAt) || 0;
+    if (!savedAt || Date.now() - savedAt > 24 * 60 * 60 * 1000 || savedAt > Date.now()) {
+      clearQuiz();
+      return null;
+    }
+    const { safety: _safety, ...safeAnswers } = v.answers;
+    const answers = { ...EMPTY_ANSWERS, ...safeAnswers, safety: "no" as const };
+    saveQuiz(answers, !!v.done, savedAt);
+    return { answers, done: !!v.done, savedAt };
   } catch {
     return null;
   }
 }
 
-export function saveQuiz(answers: MatchAnswers, done: boolean) {
+export function saveQuiz(answers: MatchAnswers, done: boolean, savedAt = Date.now()) {
   try {
-    window.localStorage.setItem(KEY, JSON.stringify({ answers, done, savedAt: Date.now() }));
+    const { safety: _safety, ...safeAnswers } = answers;
+    window.localStorage.setItem(KEY, JSON.stringify({ answers: safeAnswers, done, savedAt }));
   } catch {
     /* private mode — the quiz still works, it just won't be remembered */
   }
