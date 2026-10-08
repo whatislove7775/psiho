@@ -6,6 +6,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle,
+  ChevronLeft,
+  ChevronRight,
   CalendarDays,
   Clock,
   Handshake,
@@ -81,6 +83,8 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
       setMinutes(couple.minutes);
     }
   }, [couple?.enabled, couple?.minutes]);
+  const [dayOffset, setDayOffset] = useState<number | null>(null);
+  const [showAllTimes, setShowAllTimes] = useState(false);
   const [dayKey, setDayKey] = useState<string | null>(null);
   const [slot, setSlot] = useState<Slot | null>(null);
   const [confirm, setConfirm] = useState(false);
@@ -162,7 +166,31 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
   }, [today, res.data, usable]);
 
   const firstFree = days.find((d) => byDay.has(d.key))?.key ?? null;
-  const activeDay = dayKey && byDay.has(dayKey) ? dayKey : firstFree;
+  const activeDay =
+    dayKey && days.some((d) => d.key === dayKey) ? dayKey : firstFree;
+  const pageStart = Math.min(
+    dayOffset ??
+      Math.floor(
+        Math.max(
+          0,
+          days.findIndex((d) => d.key === activeDay),
+        ) / 5,
+      ) * 5,
+    Math.floor((days.length - 1) / 5) * 5,
+  );
+  const visibleDays = days.slice(pageStart, pageStart + 5);
+  const navigateDays = (offset: number) => {
+    const next = days.slice(offset, offset + 5);
+    setDayOffset(offset);
+    setDayKey(next.find((d) => byDay.has(d.key))?.key ?? next[0]?.key ?? null);
+    setSlot(null);
+    setShowAllTimes(false);
+  };
+  useEffect(() => {
+    setDayOffset(null);
+    setDayKey(null);
+    setShowAllTimes(false);
+  }, [minutes, pair, psy.id]);
   const times = activeDay ? (byDay.get(activeDay) ?? []) : [];
   const chosen =
     slot && times.some((t) => t.start === slot.start) ? slot : null;
@@ -348,18 +376,44 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
                   "Загляните через пару дней или\u00a0выберите другого специалиста.",
                 )}
           </span>
-          <Button size="sm" variant="secondary" href="/app/specialists">
+          <Button
+            size="sm"
+            variant="secondary"
+            href={user ? "/app/specialists" : lp("/specialists")}
+          >
             {tt("Другие специалисты")}
           </Button>
         </div>
       ) : (
         <>
           <div className={s.block}>
-            <div className={s.label}>
-              {activeDay ? monthOf(activeDay) : tt("День")}
+            <div className={s.dateHead}>
+              <div className={s.label}>
+                {visibleDays[0] ? monthOf(visibleDays[0].key) : tt("День")}
+              </div>
+              <div className={s.dateNav}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  iconOnly
+                  aria-label={tt("Предыдущие даты")}
+                  disabled={pageStart === 0}
+                  onClick={() => navigateDays(Math.max(0, pageStart - 5))}
+                  icon={<ChevronLeft size={18} />}
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  iconOnly
+                  aria-label={tt("Следующие даты")}
+                  disabled={pageStart + 5 >= days.length}
+                  onClick={() => navigateDays(pageStart + 5)}
+                  icon={<ChevronRight size={18} />}
+                />
+              </div>
             </div>
             <div className={s.days} role="group" aria-label={tt("День")}>
-              {days.map((d) => {
+              {visibleDays.map((d) => {
                 const n = byDay.get(d.key)?.length ?? 0;
                 return (
                   <button
@@ -371,6 +425,7 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
                     onClick={() => {
                       setDayKey(d.key);
                       setSlot(null);
+                      setShowAllTimes(false);
                     }}
                     aria-label={`${day(d.date)}, ${n ? `${n} ${plural(n, "окно", "окна", "окон")}` : tt("нет окон")}`}
                   >
@@ -386,12 +441,12 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
           </div>
 
           <div className={s.block}>
-            <div className={s.label}>
+            <div className={s.label} role="status" aria-live="polite">
               {activeDay && dayLabel(new Date(`${activeDay}T12:00:00`))},{" "}
               {times.length} {plural(times.length, "окно", "окна", "окон")}
             </div>
             <div className={s.times} role="group" aria-label={tt("Время")}>
-              {times.map((t) => (
+              {(showAllTimes ? times : times.slice(0, 8)).map((t) => (
                 <button
                   key={t.start}
                   type="button"
@@ -403,6 +458,25 @@ export function BookingPanel({ psy }: { psy: PsychologistPublic }) {
                 </button>
               ))}
             </div>
+            {times.length === 0 && (
+              <p className={s.label}>
+                {tt(
+                  "В этот день свободного времени нет. Выберите другую дату.",
+                )}
+              </p>
+            )}
+            {times.length > 8 && (
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-expanded={showAllTimes}
+                onClick={() => setShowAllTimes((v) => !v)}
+              >
+                {showAllTimes
+                  ? tt("Скрыть дополнительные окна")
+                  : tt("Показать все окна ({count})", { count: times.length })}
+              </Button>
+            )}
           </div>
         </>
       )}

@@ -3,14 +3,20 @@
 import { t, tj } from "@/lib/i18n";
 import { ageLabel, tenureShort } from "@/lib/specialistFacts";
 import { useParams } from "next/navigation";
-import { ArrowLeft, BadgeCheck, MessageCircle, UserX } from "lucide-react";
+import {
+  ArrowLeft,
+  BadgeCheck,
+  MessageCircle,
+  UserX,
+  Expand,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useToast } from "@/ui";
 import { dialogsApi } from "@/lib/api/dialogs";
 import { countryList } from "@/components/i18n/CountryChips";
 import { useApprox } from "@/lib/i18n/currency";
-import { Badge, Button, Card, EmptyState, Skeleton } from "@/ui";
+import { Badge, Button, Card, EmptyState, Skeleton, Modal } from "@/ui";
 import { WithRail } from "@/components/shell/AppShell";
 import { SpecialistPhoto } from "@/components/avatar/SpecialistPhoto";
 import { ApiError } from "@/lib/api/client";
@@ -44,6 +50,9 @@ export function SpecialistProfile({
   const router = useRouter();
   const toast = useToast();
   const [starting, setStarting] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
+  const [photoFailed, setPhotoFailed] = useState(false);
+  const [bioExpanded, setBioExpanded] = useState(false);
   const approx = useApprox();
   const id = Number(params?.id);
   const psy = useLoad(async () => {
@@ -113,15 +122,43 @@ export function SpecialistProfile({
         <Card as="article" className={s.hero}>
           {p ? (
             <>
-              <SpecialistPhoto
-                url={p.photo_url}
-                name={p.display_name}
-                size={168}
-                rounded={false}
-                alt={t(`Фото: {display_name}`, {
-                  display_name: p.display_name,
-                })}
-              />
+              {p.photo_url ? (
+                <button
+                  type="button"
+                  className={s.photoButton}
+                  onClick={() => {
+                    setPhotoFailed(false);
+                    setPhotoOpen(true);
+                  }}
+                  aria-label={t("Увеличить фото специалиста")}
+                >
+                  <SpecialistPhoto
+                    url={p.photo_url}
+                    name={p.display_name}
+                    size={128}
+                    rounded={false}
+                    alt={t(`Фото: {display_name}`, {
+                      display_name: p.display_name,
+                    })}
+                  />
+                  <span className={s.photoHint}>
+                    <Expand size={16} aria-hidden /> {t("Увеличить фото")}
+                  </span>
+                </button>
+              ) : (
+                <>
+                  {" "}
+                  <SpecialistPhoto
+                    url={p.photo_url}
+                    name={p.display_name}
+                    size={128}
+                    rounded={false}
+                    alt={t(`Фото: {display_name}`, {
+                      display_name: p.display_name,
+                    })}
+                  />
+                </>
+              )}
               <div className={s.heroText}>
                 <div className={s.trust}>
                   {p.verified_credentials ? (
@@ -140,93 +177,86 @@ export function SpecialistProfile({
                   <IntroChip psy={p} withPrice />
                 </div>
                 <h1 className={s.name}>{p.display_name}</h1>
-                <p className={s.bio}>{typo(p.bio)}</p>
-                <dl className={s.facts}>
-                  <div>
-                    <dt>{t("Опыт")}</dt>
-                    <dd>{yearsLabel(p.experience_years)}</dd>
-                  </div>
-                  {ageLabel(p.age) && (
-                    <div>
-                      <dt>{t("Возраст")}</dt>
-                      <dd>{ageLabel(p.age)}</dd>
-                    </div>
-                  )}
-                  {tenureShort(p.on_service_since) && (
-                    <div>
-                      <dt>{t("На\u00a0сервисе")}</dt>
-                      <dd>{tenureShort(p.on_service_since)}</dd>
-                    </div>
-                  )}
-                  <div>
-                    <dt>{t("Созвон")}</dt>
-                    <dd>
-                      {p.booking &&
-                      p.booking.min_duration !== p.booking.max_duration
-                        ? `${durationLabel(p.booking.min_duration)} – ${durationLabel(p.booking.max_duration)}`
-                        : durationLabel(p.booking?.min_duration ?? 50)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>{t("Стоимость")}</dt>
-                    <dd>
-                      {p.booking
-                        ? t(`{rub} за\u00a0час`, {
-                            rub: rub(p.booking.hourly_rate_rub),
-                          })
-                        : rub(p.session_rate_rub)}
-                      {approx?.(
-                        p.booking?.hourly_rate_rub ?? p.session_rate_rub,
-                      ) && (
-                        <small className={s.approx}>
-                          {" "}
-                          {approx(
-                            p.booking?.hourly_rate_rub ?? p.session_rate_rub,
-                          )}
-                        </small>
-                      )}
-                    </dd>
-                  </div>
-                </dl>
-                <div className={s.ctaRow}>
-                  <Button
-                    variant="primary"
-                    loading={starting}
-                    icon={<MessageCircle size={18} strokeWidth={1.8} />}
-                    onClick={async () => {
-                      if (!user) {
-                        router.push(
-                          `${lp("/start")}?next=${encodeURIComponent(`/app/specialists/${p.id}`)}`,
-                        );
-                        return;
-                      }
-                      setStarting(true);
-                      try {
-                        const d = await dialogsApi.startWithSpecialist(p.id);
-                        router.push(
-                          `/app/dialogs?d=${encodeURIComponent(d.id)}`,
-                        );
-                      } catch (e) {
-                        toast(
-                          e instanceof ApiError
-                            ? e.message
-                            : t("Не\u00a0получилось начать диалог"),
-                          { error: true },
-                        );
-                        setStarting(false);
-                      }
-                    }}
-                  >
-                    {t("Начать диалог")}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    href="#booking"
-                    className={s.jump}
-                  >
-                    {t("Выбрать время")}
-                  </Button>
+              </div>
+              <dl className={s.facts}>
+                <div>
+                  <dt>{t("Опыт")}</dt>
+                  <dd>{yearsLabel(p.experience_years)}</dd>
                 </div>
+                {ageLabel(p.age) && (
+                  <div>
+                    <dt>{t("Возраст")}</dt>
+                    <dd>{ageLabel(p.age)}</dd>
+                  </div>
+                )}
+                {tenureShort(p.on_service_since) && (
+                  <div>
+                    <dt>{t("На\u00a0сервисе")}</dt>
+                    <dd>{tenureShort(p.on_service_since)}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt>{t("Созвон")}</dt>
+                  <dd>
+                    {p.booking &&
+                    p.booking.min_duration !== p.booking.max_duration
+                      ? `${durationLabel(p.booking.min_duration)} – ${durationLabel(p.booking.max_duration)}`
+                      : durationLabel(p.booking?.min_duration ?? 50)}
+                  </dd>
+                </div>
+                <div>
+                  <dt>{t("Стоимость")}</dt>
+                  <dd>
+                    {p.booking
+                      ? t(`{rub} за\u00a0час`, {
+                          rub: rub(p.booking.hourly_rate_rub),
+                        })
+                      : rub(p.session_rate_rub)}
+                    {approx?.(
+                      p.booking?.hourly_rate_rub ?? p.session_rate_rub,
+                    ) && (
+                      <small className={s.approx}>
+                        {" "}
+                        {approx(
+                          p.booking?.hourly_rate_rub ?? p.session_rate_rub,
+                        )}
+                      </small>
+                    )}
+                  </dd>
+                </div>
+              </dl>
+              <div className={s.ctaRow}>
+                <Button
+                  variant="primary"
+                  loading={starting}
+                  icon={<MessageCircle size={18} strokeWidth={1.8} />}
+                  onClick={async () => {
+                    if (!user) {
+                      router.push(
+                        `${lp("/start")}?next=${encodeURIComponent(`/app/specialists/${p.id}`)}`,
+                      );
+                      return;
+                    }
+                    setStarting(true);
+                    try {
+                      const d = await dialogsApi.startWithSpecialist(p.id);
+                      router.push(`/app/dialogs?d=${encodeURIComponent(d.id)}`);
+                    } catch (e) {
+                      toast(
+                        e instanceof ApiError
+                          ? e.message
+                          : t("Не\u00a0получилось начать диалог"),
+                        { error: true },
+                      );
+                      setStarting(false);
+                    }
+                  }}
+                >
+                  {t("Начать диалог")}
+                </Button>
+                <Button variant="secondary" href="#booking" className={s.jump}>
+                  {t("Выбрать время")}
+                </Button>
               </div>
             </>
           ) : (
@@ -244,6 +274,30 @@ export function SpecialistProfile({
 
         {p && (
           <Card as="section" className={s.details}>
+            {p.bio && (
+              <div className={s.section}>
+                <h2>{t("О специалисте")}</h2>
+                <p
+                  id="specialist-bio"
+                  className={`${s.bio} ${p.bio.length > 280 && !bioExpanded ? s.bioCollapsed : ""}`}
+                >
+                  {typo(p.bio)}
+                </p>
+                {p.bio.length > 280 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    aria-expanded={bioExpanded}
+                    aria-controls="specialist-bio"
+                    onClick={() => setBioExpanded((v) => !v)}
+                  >
+                    {bioExpanded
+                      ? t("Свернуть описание")
+                      : t("Читать полностью")}
+                  </Button>
+                )}
+              </div>
+            )}
             {p.approach && (
               <div className={s.section}>
                 <h2>{t("Подход")}</h2>
@@ -286,6 +340,25 @@ export function SpecialistProfile({
         {p && <PublicCredentials psychologistId={p.id} />}
         {p && <ReviewsSection psychologistId={p.id} name={p.display_name} />}
       </WithRail>
+      <Modal
+        open={photoOpen && !!p?.photo_url}
+        onClose={() => setPhotoOpen(false)}
+        title={p?.display_name}
+        width={840}
+      >
+        {photoFailed ? (
+          <p role="alert">{t("Не удалось загрузить фото.")}</p>
+        ) : (
+          p?.photo_url && (
+            <img
+              className={s.fullPhoto}
+              src={p.photo_url}
+              alt={t("Фото: {display_name}", { display_name: p.display_name })}
+              onError={() => setPhotoFailed(true)}
+            />
+          )
+        )}
+      </Modal>
     </>
   );
 }
