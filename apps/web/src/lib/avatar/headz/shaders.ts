@@ -310,7 +310,7 @@ export function patchHair(mat: THREE.MeshPhysicalMaterial, u: HairUniforms) {
     Object.assign(shader.uniforms, u as unknown as Uniforms);
     patchHeadPos(shader, "attribute float aTip;\nvarying float vTip;", " vTip = aTip;");
     shader.fragmentShader = shader.fragmentShader
-      .replace("#include <common>", `#include <common>\nuniform vec4 uTip;\nuniform float uStreak;\nuniform float uHat;\nuniform sampler2D uHatEnvelope;\nvarying vec3 vHeadP;\nvarying float vTip;\n${SURFACE_FRAG}\nfloat hairFiber() {\n float flow = atan(vHeadP.x, vHeadP.z) * 115.0 + vHeadP.y * 32.0 + surfaceNoise(vHeadP * 5.0) * 3.0;\n float detail = 1.0 - smoothstep(0.6, 2.6, fwidth(flow));\n return (sin(flow) * 0.65 + sin(flow * 1.73 + 1.4) * 0.35) * detail;\n}`)
+      .replace("#include <common>", `#include <common>\nuniform vec4 uTip;\nuniform float uStreak;\nuniform float uHat;\nuniform sampler2D uHatEnvelope;\nvarying vec3 vHeadP;\nvarying float vTip;\n${SURFACE_FRAG}\n// Strand direction is sculpted into each mesh. These assets have no strand UVs\n// or tangents: a head-space sinusoid would cut across swept locks and curls.\n// Keep only subtle, isotropic finish variation; authored normals define the flow.\nfloat hairFinish() {\n return (surfaceNoise(vHeadP * 48.0) - 0.5) * surfaceDetail(vHeadP, 48.0);\n}`)
       .replace(
         "#include <color_fragment>",
         `#include <color_fragment>
@@ -323,12 +323,11 @@ export function patchHair(mat: THREE.MeshPhysicalMaterial, u: HairUniforms) {
  }
  float streak = uStreak > 0.5 ? smoothstep(0.35, 0.85, 0.5 + 0.5 * sin(atan(vHeadP.x, vHeadP.z) * 26.0 + vHeadP.y * 3.0)) * 0.85 : 0.0;
  float k = uStreak > 0.5 ? streak * smoothstep(0.0, 0.4, vTip + 0.25) : smoothstep(0.15, 0.85, vTip);
- diffuseColor.rgb = mix(diffuseColor.rgb, uTip.rgb, uTip.a * k);\n diffuseColor.rgb *= 1.0 + hairFiber() * 0.045;`,
+ diffuseColor.rgb = mix(diffuseColor.rgb, uTip.rgb, uTip.a * k);\n diffuseColor.rgb *= 1.0 + hairFinish() * 0.025;`,
       )
-      .replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>\n roughnessFactor = clamp(roughnessFactor + hairFiber() * 0.065, 0.45, 0.85);`)
-      .replace("#include <normal_fragment_maps>", `#include <normal_fragment_maps>\n normal = surfaceNormal(normal, hairFiber() * 0.00045);`);
+      .replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>\n roughnessFactor = clamp(roughnessFactor + hairFinish() * 0.04, 0.45, 0.85);`);
   };
-  mat.customProgramCacheKey = () => "headz-hair-surface-v2";
+  mat.customProgramCacheKey = () => "headz-hair-surface-v3";
 }
 
 
