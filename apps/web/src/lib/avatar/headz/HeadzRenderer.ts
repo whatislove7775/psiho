@@ -33,6 +33,7 @@ import { GazeTracker, LID_GAIN, applyLids, combineEyes, gazeOf, gazeWeights, typ
 import { eyeUniforms, hairUniforms, patchEye, patchFade, patchFabric, patchHair, patchSkin, skinUniforms } from "./shaders";
 import { EyeRig, irisUniforms, makeCorneaMaterial, makeIrisMaterial, makeScleraMaterial, springStep, MAX_YAW, MAX_PITCH, type EyeSpec } from "./eyes";
 import { nextSeed, rng, smoothNoise } from "./idleNoise";
+import { hairFlow } from "./hairFlow";
 
 const loader = new GLTFLoader();
 loader.setMeshoptDecoder(MeshoptDecoder);
@@ -510,6 +511,16 @@ export class HeadzRenderer implements AvatarRendererApi {
       rest[i + 2] = v.z;
     }
     mesh.geometry.setAttribute("aHead", new THREE.BufferAttribute(rest.slice(), 3));
+    if (mesh.material === this.mats.hair || mesh.material === this.mats.beard) {
+      const normals = new Float32Array(rest.length);
+      const na = mesh.geometry.attributes.normal;
+      const normalMatrix = new THREE.Matrix3().getNormalMatrix(mesh.matrix);
+      for (let i = 0; i < na.count; i++) {
+        v.fromBufferAttribute(na, i).applyMatrix3(normalMatrix).normalize();
+        normals.set([v.x, v.y, v.z], i * 3);
+      }
+      mesh.geometry.setAttribute("aHairFlow", new THREE.BufferAttribute(hairFlow(rest, normals, mesh.geometry.index?.array ?? null), 4));
+    }
     return { mesh, role, rest, toLocal: mesh.matrix.clone().invert() };
   }
 

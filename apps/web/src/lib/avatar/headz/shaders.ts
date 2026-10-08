@@ -308,9 +308,30 @@ export function hairUniforms(): HairUniforms {
 export function patchHair(mat: THREE.MeshPhysicalMaterial, u: HairUniforms) {
   mat.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, u as unknown as Uniforms);
-    patchHeadPos(shader, "attribute float aTip;\nvarying float vTip;", " vTip = aTip;");
+    patchHeadPos(shader, "attribute float aTip;\nattribute vec4 aHairFlow;\nvarying float vTip;\nvarying vec4 vHairFlow;", " vTip = aTip; vHairFlow = aHairFlow;");
     shader.fragmentShader = shader.fragmentShader
-      .replace("#include <common>", `#include <common>\nuniform vec4 uTip;\nuniform float uStreak;\nuniform float uHat;\nuniform sampler2D uHatEnvelope;\nvarying vec3 vHeadP;\nvarying float vTip;\n${SURFACE_FRAG}\n// Strand direction is sculpted into each mesh. These assets have no strand UVs\n// or tangents: a head-space sinusoid would cut across swept locks and curls.\n// Keep only subtle, isotropic finish variation; authored normals define the flow.\nfloat hairFinish() {\n return (surfaceNoise(vHeadP * 48.0) - 0.5) * surfaceDetail(vHeadP, 48.0);\n}`)
+      .replace("#include <common>", `#include <common>
+uniform vec4 uTip;
+uniform float uStreak;
+uniform float uHat;
+uniform sampler2D uHatEnvelope;
+varying vec3 vHeadP;
+varying float vTip;
+varying vec4 vHairFlow;
+${SURFACE_FRAG}
+// Line-integral noise is elongated along the local strand tangent. Unlike a
+// sinusoidal phase, it cannot turn changing curvature into crosswise scratches.
+float hairFiber() {
+ float axisLength = length(vHairFlow.xyz);
+ vec3 tangent = vHairFlow.xyz / max(axisLength, 0.0001);
+ float grain = 0.0;
+ for (int i = -4; i <= 4; i++) {
+   grain += surfaceNoise(vHeadP * 220.0 + tangent * float(i));
+ }
+ return (grain / 9.0 - 0.5) * 3.0 * smoothstep(0.1, 0.65, vHairFlow.w)
+   * smoothstep(0.2, 0.7, axisLength) * surfaceDetail(vHeadP, 100.0);
+}
+`)
       .replace(
         "#include <color_fragment>",
         `#include <color_fragment>
@@ -323,11 +344,12 @@ export function patchHair(mat: THREE.MeshPhysicalMaterial, u: HairUniforms) {
  }
  float streak = uStreak > 0.5 ? smoothstep(0.35, 0.85, 0.5 + 0.5 * sin(atan(vHeadP.x, vHeadP.z) * 26.0 + vHeadP.y * 3.0)) * 0.85 : 0.0;
  float k = uStreak > 0.5 ? streak * smoothstep(0.0, 0.4, vTip + 0.25) : smoothstep(0.15, 0.85, vTip);
- diffuseColor.rgb = mix(diffuseColor.rgb, uTip.rgb, uTip.a * k);\n diffuseColor.rgb *= 1.0 + hairFinish() * 0.025;`,
+ diffuseColor.rgb = mix(diffuseColor.rgb, uTip.rgb, uTip.a * k);\n diffuseColor.rgb *= 1.0 + hairFiber() * 0.22;`,
       )
-      .replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>\n roughnessFactor = clamp(roughnessFactor + hairFinish() * 0.04, 0.45, 0.85);`);
+      .replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>\n roughnessFactor = clamp(roughnessFactor + hairFiber() * 0.055, 0.45, 0.85);`)
+      .replace("#include <normal_fragment_maps>", `#include <normal_fragment_maps>\n normal = surfaceNormal(normal, hairFiber() * 0.00035);`);
   };
-  mat.customProgramCacheKey = () => "headz-hair-surface-v3";
+  mat.customProgramCacheKey = () => "headz-hair-flow-v4";
 }
 
 
