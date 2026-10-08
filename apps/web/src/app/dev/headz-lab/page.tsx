@@ -64,6 +64,9 @@ function Lab() {
       const jobs: { label: string; cfg: AvatarConfig; expr: Record<string, number>; look?: [number, number]; hands?: number; track?: Record<string, number>; yaw?: number }[] = [];
       if (mode === "bases") {
         for (const b of CATALOG.bases) jobs.push({ label: b.id, cfg: normalizeAvatar({ ...q, ...extra, version: 4, base: b.id }), expr: q.jaw ? { jawOpen: Number(q.jaw) } : {} });
+      } else if (mode === "hat-hair") {
+        for (const o of headzOptionsAll(one.base, "hair"))
+          jobs.push({ label: o.qid, cfg: { ...one, hair: o.qid }, expr: {} });
       } else if (mode === "parts") {
         const slot = (sp.get("slot") ?? "hair") as HeadzSlot;
         jobs.push({ label: "none", cfg: { ...one, [slot]: "none" }, expr: {} });

@@ -74,21 +74,6 @@
 .sceneOrb {
   position: relative;
   aspect-ratio: 0.85;
-  transition: transform 1400ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-.scene[data-stage="0"] .sceneOrb:first-child,
-.scene[data-stage="1"] .sceneOrb:first-child {
-  transform: translateX(-6%) rotate(-2deg);
-}
-.scene[data-stage="0"] .sceneOrb:last-child,
-.scene[data-stage="1"] .sceneOrb:last-child {
-  transform: translateX(6%) rotate(2deg);
-}
-.scene[data-stage="4"] .sceneOrb:first-child {
-  transform: translateX(6%) rotate(1deg);
-}
-.scene[data-stage="4"] .sceneOrb:last-child {
-  transform: translateX(-6%) rotate(-1deg);
 }
 .sceneAvatar {
   width: 100%;
@@ -130,28 +115,10 @@
   margin-top: -28px;
 }
 .scene[data-moving="true"] .hearts span {
-  animation: heartFloat 1800ms ease-in-out infinite alternate;
+  animation: heartFloat 2200ms ease-in-out 2 alternate;
 }
 .scene[data-moving="true"] .hearts span:nth-child(2) {
   animation-delay: 300ms;
-}
-.sceneControl {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border: 0;
-  border-radius: 50%;
-  color: var(--c-muted);
-  background: transparent;
-  cursor: pointer;
-}
-.sceneControl:focus-visible {
-  outline: 2px solid var(--c-primary-ink);
-  outline-offset: 2px;
 }
 @keyframes bubbleIn {
   from {

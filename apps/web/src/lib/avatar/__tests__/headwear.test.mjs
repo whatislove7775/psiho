@@ -18,6 +18,7 @@ for (const [base, hat, hair] of [
   ['man-medium','boy.cap','002'], ['man-dark','boy.cap','005'],
   ['woman-medium','hat','005'], ['oldwoman-medium','hat-grey','1'],
   ['boy-medium','cap','6'], ['oldman-light','cap-green-white','4'],
+  ['oldman-dark','hat-yellow','oldwoman.7'],
 ]) test(`${base} ${hat}: hair remains behind the real hat surface`, async () => {
   const hats = await parts(base, 'headwear', hat), hairs = await parts(base, 'hair', hair);
   const envelope = headwearEnvelope(hats), group = new THREE.Group();

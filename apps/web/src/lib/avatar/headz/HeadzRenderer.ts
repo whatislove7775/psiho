@@ -28,7 +28,7 @@ import { headzBase, resolvePart } from "./catalog";
 import type { HeadzBase, HeadzSlot } from "./types";
 import { deformFace, deformedEye, frameOf, placePart, radiusAt, radiusMap, transferMorphs, type RadiusMap } from "./deform";
 import { SkinIndex, footprint, taperHair, type HairSurface } from "./scalp";
-import { headwearEnvelope, headwearBytes, HAT_EL, HAT_AZ, tuckHair } from "./headwearFit";
+import { headwearEnvelope, tuckHair } from "./headwearFit";
 import { GazeTracker, LID_GAIN, applyLids, combineEyes, gazeOf, gazeWeights, type LidGain, type Weights } from "./gaze";
 import { eyeUniforms, hairUniforms, patchEye, patchFade, patchFabric, patchHair, patchSkin, skinUniforms } from "./shaders";
 import { EyeRig, irisUniforms, makeCorneaMaterial, makeIrisMaterial, makeScleraMaterial, springStep, MAX_YAW, MAX_PITCH, type EyeSpec } from "./eyes";
@@ -187,7 +187,6 @@ export class HeadzRenderer implements AvatarRendererApi {
   private trackGaze = new GazeTracker();
   private skinU = skinUniforms();
   private hairU = hairUniforms();
-  private hatTexture: THREE.DataTexture | null = null;
   private beardU = hairUniforms();
   // restylable materials
   private mats = {
@@ -873,18 +872,6 @@ export class HeadzRenderer implements AvatarRendererApi {
       return { pos, index: o.mesh.geometry.index?.array ?? null };
     });
     const envelope = hats.length ? headwearEnvelope(hats) : null;
-    this.hairU.uHat.value = envelope ? 1 : 0;
-    if (envelope) {
-      if (!this.hatTexture) {
-        this.hatTexture = new THREE.DataTexture(new Uint8Array(HAT_EL * HAT_AZ), HAT_AZ, HAT_EL, THREE.RedFormat);
-        this.hatTexture.magFilter = this.hatTexture.minFilter = THREE.NearestFilter;
-        this.hatTexture.wrapS = THREE.RepeatWrapping;
-        this.hatTexture.unpackAlignment = 1;
-      }
-      (this.hatTexture.image.data as Uint8Array).set(headwearBytes(envelope));
-      this.hatTexture.needsUpdate = true;
-      this.hairU.uHatEnvelope.value = this.hatTexture;
-    }
     const bounds = { top: 0, width: 0, front: 0 };
     const v = new THREE.Vector3();
     for (const o of all) {
@@ -1265,7 +1252,6 @@ export class HeadzRenderer implements AvatarRendererApi {
   dispose() {
     this.stop();
     this.bgTexture?.dispose();
-    this.hatTexture?.dispose();
     Object.values(this.mats).forEach((m) => m.dispose());
     this.faceMats.forEach((f) => f.mat.dispose());
     this.partMats.forEach((m) => m.dispose());

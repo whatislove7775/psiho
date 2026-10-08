@@ -808,46 +808,63 @@
     margin-bottom: 20px;
   }
 
-  /* hero: the square avatar window first, then the text */
+  /* A compact first screen: promise, face, explanation, then clear actions. */
   .hero {
     grid-template-columns: minmax(0, 1fr);
-    gap: 24px;
-    padding-block: 16px 16px;
+    gap: 16px;
+    padding-block: 24px 32px;
+  }
+  .heroText {
+    display: contents;
   }
   .heroTitle {
-    font-size: 38px;
+    order: 0;
+    font-size: clamp(30px, 5.3vw, 38px);
   }
-  .heroLead {
-    margin-top: 16px;
-    font-size: var(--t-17);
-  }
-  .heroActions {
-    margin-top: 24px;
-    width: 100%;
-  }
-  .heroActions {
-    flex-wrap: nowrap;
-  }
-  .heroActions > :first-child {
-    flex: 1 1 auto;
-  }
-  .heroActions > .heroSecondary {
-    padding: 0 16px;
-  }
-  .heroQuiz {
-    margin-top: 16px;
-    font-size: var(--t-13);
-  }
-  .heroLineWrap {
+  .heroLine {
     white-space: normal;
   }
   .heroFigure {
-    order: -1;
-    justify-self: stretch;
+    order: 1;
+    justify-self: center;
+    width: min(100%, 280px);
     max-width: none;
+    margin-block: 16px 8px;
   }
   .stage {
-    width: 156%;
+    width: 128%;
+  }
+  .heroTag {
+    bottom: 0;
+  }
+  .heroLead {
+    order: 2;
+    margin: 0;
+    font-size: var(--t-17);
+    max-width: 42ch;
+  }
+  .heroActions {
+    order: 3;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+    margin-top: 4px;
+    width: 100%;
+  }
+  .heroActions > * {
+    min-width: 0;
+    width: 100%;
+    white-space: normal;
+    text-align: center;
+  }
+  .heroQuiz {
+    order: 4;
+    flex-wrap: wrap;
+    margin-top: 0;
+    font-size: var(--t-13);
+  }
+  .heroQuiz svg {
+    flex-shrink: 0;
   }
 
   /* steps: compact rows */
@@ -955,7 +972,7 @@
 
 @media (max-width: 380px) {
   .heroTitle {
-    font-size: 34px;
+    font-size: 30px;
   }
   .headerCta {
     padding: 0 12px;
