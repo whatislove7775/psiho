@@ -194,6 +194,7 @@ export class HeadzRenderer implements AvatarRendererApi {
     eye: new THREE.MeshPhysicalMaterial({ roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.025, ior: 1.38, specularIntensity: 0.7, side: THREE.DoubleSide }),
     brows: new THREE.MeshStandardMaterial({ roughness: 0.85 }),
     lashes: new THREE.MeshStandardMaterial({ color: "#2a1f1b", roughness: 0.75, side: THREE.DoubleSide }),
+    mouthInterior: new THREE.MeshBasicMaterial({ color: "#38131b" }),
     teeth: new THREE.MeshPhysicalMaterial({ color: "#f5f0e6", roughness: 0.35, clearcoat: 0.5 }),
     gums: new THREE.MeshStandardMaterial({ color: "#d9636a", roughness: 0.55 }),
     hair: new THREE.MeshPhysicalMaterial({ roughness: 0.55, sheen: 0.7, sheenRoughness: 0.4, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
@@ -343,6 +344,7 @@ export class HeadzRenderer implements AvatarRendererApi {
       this.map = map;
       this.head.add(g);
       for (const o of owned) if (isSkin(o)) this.skinFx(o);
+      this.buildMouthInterior(base, g);
       this.adoptEyes(base);
       this.buildNeck(base);
       this.shapeKey = "";
@@ -637,6 +639,24 @@ export class HeadzRenderer implements AvatarRendererApi {
     ow.mesh.morphTargetDictionary = dict;
     ow.mesh.morphTargetInfluences = new Array(attrs.length).fill(0);
     return this.drive(ow.mesh);
+  }
+
+  /** Close the open rear of the authored oral cavity. Some bases have lips and
+   * teeth but no back wall: from below, the hair/background is visible through
+   * the head. This inset volume stays behind the teeth and follows mouth morphs. */
+  private buildMouthInterior(base: HeadzBase, group: THREE.Group) {
+    const f = frameOf(base);
+    const geo = new THREE.SphereGeometry(1, 24, 16);
+    geo.scale(f.mouthHalf * 1.3, 0.28, 0.12);
+    geo.translate(f.mouth[0], f.mouth[1] - 0.035, f.mouth[2] - 0.46);
+    const mesh = new THREE.Mesh(geo, this.mats.mouthInterior);
+    mesh.name = "mouthInterior";
+    mesh.frustumCulled = false;
+    const owned = this.own(mesh, "mouthInterior");
+    const driven = this.follow(owned);
+    if (driven) this.driven.push(driven);
+    this.owned.push(owned);
+    group.add(mesh);
   }
 
   /** Per-vertex make-up / blush regions from the face's own morphs: x lips, y upper lid, z cheeks. */
