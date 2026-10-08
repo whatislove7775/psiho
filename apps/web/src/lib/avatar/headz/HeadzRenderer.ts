@@ -31,7 +31,7 @@ import { SkinIndex, footprint, taperHair, type HairSurface } from "./scalp";
 import { headwearEnvelope, headwearBytes, HAT_EL, HAT_AZ, tuckHair } from "./headwearFit";
 import { GazeTracker, LID_GAIN, applyLids, combineEyes, gazeOf, gazeWeights, type LidGain, type Weights } from "./gaze";
 import { eyeUniforms, hairUniforms, patchEye, patchFade, patchHair, patchSkin, skinUniforms } from "./shaders";
-import { EyeRig, irisUniforms, makeCorneaMaterial, makeIrisMaterial, makeScleraMaterial, springStep, type EyeSpec } from "./eyes";
+import { EyeRig, irisUniforms, makeCorneaMaterial, makeIrisMaterial, makeScleraMaterial, springStep, MAX_YAW, MAX_PITCH, type EyeSpec } from "./eyes";
 import { nextSeed, rng, smoothNoise } from "./idleNoise";
 
 const loader = new GLTFLoader();
@@ -218,7 +218,7 @@ export class HeadzRenderer implements AvatarRendererApi {
   private headCurrent = new THREE.Quaternion();
   private lastTrack = -1e9;
   private look = { yaw: 0, pitch: 0 };
-  private idle = { nextBlink: 1.5, blinkT: -1, double: false, glanceAt: 2, gx: 0, gy: 0, gvx: 0, gvy: 0, tx: 0, ty: 0 };
+  private idle = { nextBlink: 1.5, blinkT: -1, double: false, blinkDuration: 0.22, glanceAt: 2, gx: 0, gy: 0, gvx: 0, gvy: 0, tx: 0, ty: 0 };
   /** idle head orientation (yaw / pitch / roll + velocities): critically damped springs toward the target */
   private headSpring = { live: false, x: [0, 0], y: [0, 0], z: [0, 0] };
   /** the stage owns the WebGL renderer + environment (don't dispose them) */
@@ -229,6 +229,7 @@ export class HeadzRenderer implements AvatarRendererApi {
   /** per-head seed / phase so heads on one stage don't sway / blink in sync (all idle motion derives from it) */
   private seed: number;
   private phase: number;
+  private idleTime = 0;
   private rand: () => number;
 
   constructor(canvas: HTMLCanvasElement | null, opts: RendererOptions & SharedOptions = {}) {
@@ -240,7 +241,8 @@ export class HeadzRenderer implements AvatarRendererApi {
     this.seed = opts.seed ?? nextSeed();
     this.rand = rng(this.seed);
     this.phase = this.rand() * 100;
-    this.idle.nextBlink = 0.5 + this.rand() * 3;
+    this.idle.nextBlink = this.phase + 0.5 + this.rand() * 3;
+    this.idle.glanceAt = this.phase + 0.8 + this.rand() * 2;
     this.opts = {
       background: opts.background ?? null,
       framing: opts.framing ?? "portrait",
@@ -1253,45 +1255,60 @@ export class HeadzRenderer implements AvatarRendererApi {
   private animate(dt: number) {
     const now = performance.now();
     const tracking = now - this.lastTrack < 800;
-    const t = this.clock.elapsedTime + this.phase;
+    if (!tracking && this.opts.idle) this.idleTime += dt;
+    const t = (tracking ? this.clock.elapsedTime : this.idleTime) + this.phase;
     const I = this.idle;
     const S = this.seed;
     const target: Weights = tracking ? { ...this.targets } : { ...this.manual };
     // fixational drift of both eyes: smooth low-frequency noise (random jumps every few hundred ms
     // read as trembling eyes, especially on many small heads at once)
-    const sx = smoothNoise(t, S + 1, 0.23) * 0.022, sy = smoothNoise(t, S + 2, 0.19) * 0.014;
+    const drifting = tracking || this.opts.idle;
+    const sx = drifting ? smoothNoise(t, S + 1, 0.23) * (tracking ? 0.022 : 0.012) : 0, sy = drifting ? smoothNoise(t, S + 2, 0.19) * (tracking ? 0.014 : 0.008) : 0;
     if (tracking) this.trackGaze.tick(now / 1000);
     let gaze = tracking ? { h: this.trackGaze.h, v: this.trackGaze.v } : gazeOf(target);
     if (!tracking && this.opts.idle) {
       // natural blinks: every 2–6 s, sometimes a double blink
       if (I.blinkT < 0 && t > I.nextBlink) {
         I.blinkT = 0;
-        I.double = this.rand() < 0.15;
+        I.double = this.rand() < 0.1;
+        I.blinkDuration = 0.18 + this.rand() * 0.09;
         I.nextBlink = t + 2 + this.rand() * 4;
       }
       if (I.blinkT >= 0) {
         I.blinkT += dt;
         const bt = I.blinkT;
-        const one = (x: number) => (x < 0 ? 0 : x < 0.07 ? x / 0.07 : x < 0.22 ? 1 - (x - 0.07) / 0.15 : 0);
+        const one = (x: number) => {
+          const u = x / I.blinkDuration;
+          if (u < 0 || u > 1) return 0;
+          // Fast closure, slower reopening, with eased endpoints.
+          const a = u < 0.28 ? u / 0.28 : (1 - u) / 0.72;
+          return a * a * (3 - 2 * a);
+        };
         const b = Math.max(one(bt), I.double ? one(bt - 0.3) : 0);
-        if (bt > (I.double ? 0.52 : 0.22)) I.blinkT = -1;
+        if (bt > I.blinkDuration + (I.double ? 0.3 : 0)) I.blinkT = -1;
         target.eyeBlinkLeft = Math.max(target.eyeBlinkLeft ?? 0, b);
         target.eyeBlinkRight = Math.max(target.eyeBlinkRight ?? 0, b);
       }
       if (t > I.glanceAt) {
-        I.glanceAt = t + 1.8 + this.rand() * 3;
-        // no random glances while following a pointer — keep eye contact with it
+        I.glanceAt = t + 0.8 + this.rand() * 2.7;
+        // Mostly maintain attention, with brief small shifts even when looking at a partner.
         const following = Math.abs(this.look.yaw) + Math.abs(this.look.pitch) > 0.02;
-        I.tx = following ? 0 : (this.rand() * 2 - 1) * 0.35;
-        I.ty = following ? 0 : (this.rand() * 2 - 1) * 0.2;
+        const resting = this.rand() < 0.65;
+        I.tx = resting ? 0 : (this.rand() * 2 - 1) * (following ? 0.1 : 0.24);
+        I.ty = resting ? 0 : (this.rand() * 2 - 1) * (following ? 0.07 : 0.13);
       }
-      // a glance only picks a new TARGET; the gaze eases there on a critically damped spring (~0.3 s)
-      [I.gx, I.gvx] = springStep(I.gx, I.gvx, I.tx, 14, dt);
-      [I.gy, I.gvy] = springStep(I.gy, I.gvy, I.ty, 14, dt);
+      // A fixation holds still; a short, critically damped saccade moves to the next one.
+      [I.gx, I.gvx] = springStep(I.gx, I.gvx, I.tx, 32, dt);
+      [I.gy, I.gvy] = springStep(I.gy, I.gvy, I.ty, 32, dt);
       // Head: +yaw turns toward screen right; pitch < 0 (pointer above) must tilt the face UP, i.e. a
       // negative rotation about X (a positive one would swing the face down toward the floor).
       // Gaze: +gx = toward screen right = the avatar's own left (+X): left eye looks out, right eye in.
-      gaze = { h: gaze.h + I.gx + this.look.yaw * 1.5, v: gaze.v + I.gy - this.look.pitch * 1.5 };
+      // Eyes acquire the target first; their rotation relaxes as the slower head catches up.
+      const head = new THREE.Euler().setFromQuaternion(this.headCurrent, "YXZ");
+      gaze = {
+        h: gaze.h + I.gx + this.look.yaw * 0.75 + (this.look.yaw - head.y) / MAX_YAW,
+        v: gaze.v + I.gy - this.look.pitch * 0.75 - (this.look.pitch - head.x) / MAX_PITCH,
+      };
       // idle sway (+ the slow roll of the 3D float): smooth seeded noise, no per-frame randomness
       const roll = smoothNoise(t, S + 5, 0.035) * 0.025 + (this.float ? smoothNoise(t, S + 7, 0.1) * 0.03 : 0);
       this.headTarget.setFromEuler(
@@ -1310,7 +1327,7 @@ export class HeadzRenderer implements AvatarRendererApi {
     this.eyeU.uDilate.value = 0.06 * Math.sin(t * 0.37) + 0.04 * Math.sin(t * 1.13) + 0.25 * ((this.current[20] + this.current[21]) / 2);
     this.irisU.uDilate.value = this.eyeU.uDilate.value;
     // Tracked input is already One-Euro filtered (FaceTracker), so it is followed almost directly.
-    const k = 1 - Math.exp(-dt * (tracking ? TRACK_RATE : 14));
+    const k = 1 - Math.exp(-dt * (tracking ? TRACK_RATE : 6));
     const kb = 1 - Math.exp(-dt * (tracking ? TRACK_RATE : 40));
     const ke = 1 - Math.exp(-dt * 30); // eyes: fast, saccade-like
     for (let i = 0; i < SHAPES.length; i++) {
@@ -1335,7 +1352,7 @@ export class HeadzRenderer implements AvatarRendererApi {
         H.live = true;
       }
       const e = new THREE.Euler().setFromQuaternion(this.headTarget, "YXZ");
-      const w = this.turnRate * 2;
+      const w = this.turnRate;
       H.x = springStep(H.x[0], H.x[1], e.x, w, dt);
       H.y = springStep(H.y[0], H.y[1], e.y, w, dt);
       H.z = springStep(H.z[0], H.z[1], e.z, w, dt);
@@ -1343,7 +1360,7 @@ export class HeadzRenderer implements AvatarRendererApi {
     }
     this.headPivot.quaternion.copy(this.headCurrent);
     // breathing: a slow, slightly uneven rise and fall of the whole head; float: a slow smooth drift
-    if ((this.bob || this.float) && !tracking)
+    if ((this.bob || this.float) && !tracking && this.opts.idle)
       this.root.position.y = this.bob * (Math.sin(t * 1.25) + 0.25 * Math.sin(t * 0.53 + 1)) + this.float * smoothNoise(t, S + 6, 0.13);
     this.applyRig();
     for (const a of this.addons) a.tick(dt); // add-on hook (hands)
