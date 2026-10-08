@@ -3,7 +3,7 @@ import { SiteHeader } from "@/components/landing/SiteHeader";
 import { SiteFooter } from "@/components/landing/SiteFooter";
 import { CoupleScene } from "@/components/couples/CoupleScene";
 import { CoupleSpecialists } from "@/components/couples/CoupleSpecialists";
-import { Card, Button } from "@/ui";
+import { Button } from "@/ui";
 import l from "@/components/landing/landing.module.css";
 import s from "@/components/couples/couples.module.css";
 export function generateMetadata() {
@@ -37,7 +37,7 @@ export default function Page() {
           </div>
           <CoupleScene />
         </section>
-        <Card className={s.stack}>
+        <section className={s.how}>
           <h2>{t("Как проходит встреча для пары")}</h2>
           <ol className={s.steps}>
             <li>
@@ -79,21 +79,26 @@ export default function Page() {
               "Личные диалоги партнёров не объединяются. Мы не записываем созвоны. Если вы вместе в одной комнате, используйте наушники или одно устройство для звука, чтобы избежать эха.",
             )}
           </p>
-        </Card>
+        </section>
         <section id="couple-specialists" className={s.specialistsSection}>
           <CoupleSpecialists />
         </section>
-        <Card className={s.stack}>
-          <h2>{t("Участие должно быть добровольным")}</h2>
-          <p>
-            {t(
-              "Если вы боитесь партнёра или не можете свободно отказаться, сначала обратитесь к специалисту индивидуально. Не пересылайте приглашение под давлением.",
-            )}
-          </p>
-          <Button href={lp("/specialists")} variant="secondary">
-            {t("Выбрать индивидуальную консультацию")}
-          </Button>
-        </Card>
+        <aside className={s.consent}>
+          <span className={s.consentMark} aria-hidden>
+            ♡
+          </span>
+          <div>
+            <h2>{t("Вместе — по собственному желанию")}</h2>
+            <p>
+              {t(
+                "Если рядом с партнёром страшно или трудно отказаться, начните с личной встречи. Приглашение не обязывает участвовать.",
+              )}
+            </p>
+            <a href={lp("/specialists")}>
+              {t("Выбрать индивидуальную консультацию")}
+            </a>
+          </div>
+        </aside>
       </main>
       <SiteFooter />
     </div>

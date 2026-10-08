@@ -15,16 +15,16 @@ export function CoupleSpecialists() {
       {data.error && <ErrorBlock message={data.error} onRetry={data.reload} />}
       {data.loading && !data.data && <Skeleton height={180} />}
       {list?.length === 0 && (
-        <Card>
+        <div className={s.emptySpecialists}>
           <p>
             {t(
               "Пока никто из специалистов не открыл запись для пары. Можно обсудить этот формат со специалистом в личном диалоге.",
             )}
           </p>
-          <Button href={lp("/specialists")} variant="secondary">
+          <Button href={lp("/specialists")} variant="ghost">
             {t("Посмотреть специалистов")}
           </Button>
-        </Card>
+        </div>
       )}
       <div className={s.list}>
         {list?.map((p) => (

@@ -141,8 +141,8 @@ export function Hero() {
           {/* three fixed lines; spaces between the line spans keep the text readable for bots/copy */}
           <span className={s.heroLine}>{tt("Психолог онлайн,")}</span>{" "}
           <span className={s.heroAccent}>
-            <span className={`${s.heroLine} ${s.heroLineWrap}`}>{tt("сохраняя лицо")}</span>{" "}
-            <span className={s.heroLine}>{tt("и имя в тайне")}</span>
+            <span className={`${s.heroLine} ${s.heroLineWrap}`}>{tt("и\u00a0никто не\u00a0узнает,")}</span>{" "}
+            <span className={s.heroLine}>{tt("кто вы")}</span>
           </span>
         </h1>
         <p className={s.heroLead}>{tt("Без\u00a0почты и\u00a0телефона. Вместо имени псевдоним, вместо лица 3D-аватар с\u00a0вашей мимикой.")}</p>

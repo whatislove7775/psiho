@@ -3260,6 +3260,16 @@ const en: Record<string, string> = {
   "Встретьтесь втроём": "Meet as three",
   "Вы, партнёр и психолог — в общей комнате. Личные диалоги остаются отдельными.": "You, your partner and a psychologist share a room. Personal conversations stay separate.",
   "Выберите психолога": "Choose a psychologist",
+  "Ты меня не слышишь…": "You don’t hear me…",
+  "Мне тоже непросто…": "It’s hard for me too…",
+  "Давай поговорим?": "Shall we talk?",
+  "Я хочу тебя понять.": "I want to understand you.",
+  "Мы рядом.": "We’re here for each other.",
+  "Два аватара: от ссоры к разговору и примирению": "Two avatars: from an argument to conversation and reconciliation",
+  "Продолжить анимацию": "Resume animation",
+  "Приостановить анимацию": "Pause animation",
+  "Вместе — по собственному желанию": "Together — by choice",
+  "Если рядом с партнёром страшно или трудно отказаться, начните с личной встречи. Приглашение не обязывает участвовать.": "If you feel afraid around your partner or find it hard to say no, start with an individual session. An invitation does not oblige you to join.",
 };
 
 export default en;
