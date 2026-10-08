@@ -3221,6 +3221,7 @@ const en: Record<string, string> = {
   "сохраняя лицо": "keeping your face",
   "и имя в тайне": "and name private",
   "Подобрать психолога": "Find a psychologist",
+  "Подобрать специалиста": "Find a specialist",
   "Хотите прийти вдвоём?": "Want to attend together?",
   "Список специалистов сейчас недоступен. Попробуйте обновить страницу чуть позже.": "The specialist list is currently unavailable. Try refreshing the page later.",
   "Спрашиваем, чтобы вовремя подсказать, где помогут прямо сейчас. Ответ не сохраняется в браузере или на сервере.": "We ask so we can suggest where to get immediate help. This answer is not saved in your browser or on the server.",

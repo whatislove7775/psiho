@@ -808,63 +808,46 @@
     margin-bottom: 20px;
   }
 
-  /* A compact first screen: promise, face, explanation, then clear actions. */
+  /* hero: the square avatar window first, then the text */
   .hero {
     grid-template-columns: minmax(0, 1fr);
-    gap: 16px;
-    padding-block: 24px 32px;
-  }
-  .heroText {
-    display: contents;
+    gap: 24px;
+    padding-block: 16px 16px;
   }
   .heroTitle {
-    order: 0;
-    font-size: clamp(30px, 5.3vw, 38px);
+    font-size: 38px;
   }
-  .heroLine {
+  .heroLead {
+    margin-top: 16px;
+    font-size: var(--t-17);
+  }
+  .heroActions {
+    margin-top: 24px;
+    width: 100%;
+  }
+  .heroActions {
+    flex-wrap: nowrap;
+  }
+  .heroActions > :first-child {
+    flex: 1 1 auto;
+  }
+  .heroActions > .heroSecondary {
+    padding: 0 16px;
+  }
+  .heroQuiz {
+    margin-top: 16px;
+    font-size: var(--t-13);
+  }
+  .heroLineWrap {
     white-space: normal;
   }
   .heroFigure {
-    order: 1;
-    justify-self: center;
-    width: min(100%, 280px);
+    order: -1;
+    justify-self: stretch;
     max-width: none;
-    margin-block: 16px 8px;
   }
   .stage {
-    width: 128%;
-  }
-  .heroTag {
-    bottom: 0;
-  }
-  .heroLead {
-    order: 2;
-    margin: 0;
-    font-size: var(--t-17);
-    max-width: 42ch;
-  }
-  .heroActions {
-    order: 3;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 4px;
-    margin-top: 4px;
-    width: 100%;
-  }
-  .heroActions > * {
-    min-width: 0;
-    width: 100%;
-    white-space: normal;
-    text-align: center;
-  }
-  .heroQuiz {
-    order: 4;
-    flex-wrap: wrap;
-    margin-top: 0;
-    font-size: var(--t-13);
-  }
-  .heroQuiz svg {
-    flex-shrink: 0;
+    width: 156%;
   }
 
   /* steps: compact rows */
@@ -972,7 +955,7 @@
 
 @media (max-width: 380px) {
   .heroTitle {
-    font-size: 30px;
+    font-size: 34px;
   }
   .headerCta {
     padding: 0 12px;

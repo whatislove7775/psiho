@@ -148,7 +148,7 @@ export function Hero() {
         <p className={s.heroLead}>{tt("Без\u00a0почты и\u00a0телефона. Вместо имени псевдоним, вместо лица 3D-аватар с\u00a0вашей мимикой.")}</p>
         <div className={s.heroActions}>
           <Button href={lp("/match")} variant="primary" size="lg">
-            {tt("Подобрать психолога")}
+            {tt("Подобрать специалиста")}
           </Button>
           <Button href={lp("/specialists")} variant="ghost" size="lg" className={s.heroSecondary}>
             {tt("Посмотреть специалистов")}
