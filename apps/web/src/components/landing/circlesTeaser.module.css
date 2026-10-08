@@ -32,7 +32,7 @@
   pointer-events: none;
 }
 
-/* one WebGL canvas for all five heads (transparent, under the labels); overhangs so hair can fall */
+/* one WebGL canvas for all seven heads (transparent, under the labels); overhangs so hair can fall */
 .stage {
   position: absolute;
   inset: 0;
@@ -78,7 +78,7 @@
 /* ── seats ─────────────────────────────────────────────────────────── */
 .seat {
   position: absolute;
-  width: 20%;
+  width: 22%;
   aspect-ratio: 1;
   translate: -50% -50%;
   z-index: 2;
@@ -186,7 +186,7 @@
     max-width: 420px;
   }
   .seat {
-    width: 21%;
+    width: 23%;
   }
   .center {
     width: 31%;
