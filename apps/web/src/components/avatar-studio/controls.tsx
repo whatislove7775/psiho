@@ -1,20 +1,43 @@
 "use client";
 
 import { t as tt } from "@/lib/i18n";
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
-import { Ban, Pipette } from "lucide-react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { Ban, ChevronLeft, ChevronRight, Pipette } from "lucide-react";
 import { Skeleton } from "@/ui";
 import type { AvatarConfig } from "@/lib/avatar/schema";
 import type { Framing } from "@/lib/avatar/kit/types";
 import { cachedThumb, requestThumb, thumbKey } from "./thumbQueue";
-import { curveGradient, findBase, locateOnCurve, sameColor, shadeAt, type CurveMode } from "./color";
+import {
+  curveGradient,
+  findBase,
+  locateOnCurve,
+  sameColor,
+  shadeAt,
+  type CurveMode,
+} from "./color";
 import s from "./AvatarStudio.module.css";
 
-const cx = (...c: unknown[]) => c.filter((x) => typeof x === "string" && x).join(" ");
+const cx = (...c: unknown[]) =>
+  c.filter((x) => typeof x === "string" && x).join(" ");
 
 // ── Section ───────────────────────────────────────────────────────────────────
 
-export function Section({ title, children, aside }: { title: string; children: ReactNode; aside?: ReactNode }) {
+export function Section({
+  title,
+  children,
+  aside,
+}: {
+  title: string;
+  children: ReactNode;
+  aside?: ReactNode;
+}) {
   const id = useId();
   return (
     <section className={s.section} aria-labelledby={id}>
@@ -57,7 +80,9 @@ export function ColorControl({
 }) {
   // The swatch the slider is anchored to. Stays put while the slider moves;
   // re-derived when the value jumps elsewhere (undo, shuffle, custom colour).
-  const [base, setBase] = useState<string | null>(() => (value ? findBase(palette, value, mode) ?? value : null));
+  const [base, setBase] = useState<string | null>(() =>
+    value ? (findBase(palette, value, mode) ?? value) : null,
+  );
   useEffect(() => {
     if (!value) return;
     if (base && locateOnCurve(base, value, mode).off < 7) return;
@@ -65,9 +90,13 @@ export function ColorControl({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
-  const isCustom = !!value && !!base && !palette.some((p) => sameColor(p, base));
+  const isCustom =
+    !!value && !!base && !palette.some((p) => sameColor(p, base));
   const t = value && base ? locateOnCurve(base, value, mode).t : 0.5;
-  const gradient = useMemo(() => (base ? curveGradient(base, mode) : undefined), [base, mode]);
+  const gradient = useMemo(
+    () => (base ? curveGradient(base, mode) : undefined),
+    [base, mode],
+  );
   const sliderId = useId();
 
   return (
@@ -94,14 +123,16 @@ export function ColorControl({
               className={s.swatch}
               style={{ ["--sw" as string]: p }}
               aria-pressed={selected}
-              aria-label={tt(`Оттенок {v} из\u00a0{length}`, { v: i + 1, length: palette.length })}
+              aria-label={tt(`Оттенок {v} из\u00a0{length}`, {
+                v: i + 1,
+                length: palette.length,
+              })}
               title={p}
               onClick={() => {
                 setBase(p);
                 onChange(p);
               }}
-            >
-            </button>
+            ></button>
           );
         })}
         <label
@@ -138,9 +169,23 @@ export function ColorControl({
             step={1}
             value={Math.round(t * 1000)}
             className={s.shade}
-            style={{ ["--track" as string]: gradient, ["--thumb" as string]: value }}
-            aria-valuetext={t < 0.47 ? tt("Темнее") : t > 0.53 ? tt("Светлее") : tt("Исходный оттенок")}
-            onChange={(e) => onChange(shadeAt(base, Number(e.target.value) / 1000, mode), "shade")}
+            style={{
+              ["--track" as string]: gradient,
+              ["--thumb" as string]: value,
+            }}
+            aria-valuetext={
+              t < 0.47
+                ? tt("Темнее")
+                : t > 0.53
+                  ? tt("Светлее")
+                  : tt("Исходный оттенок")
+            }
+            onChange={(e) =>
+              onChange(
+                shadeAt(base, Number(e.target.value) / 1000, mode),
+                "shade",
+              )
+            }
           />
         </div>
       )}
@@ -211,8 +256,12 @@ export function SignedSlider({
 }) {
   const id = useId();
   const pct = (value + 1) * 50;
-  const lo = Math.min(50, pct), hi = Math.max(50, pct);
-  const text = value === 0 ? tt("Как есть") : `${value < 0 ? min : max} ${Math.round(Math.abs(value) * 100)}%`;
+  const lo = Math.min(50, pct),
+    hi = Math.max(50, pct);
+  const text =
+    value === 0
+      ? tt("Как есть")
+      : `${value < 0 ? min : max} ${Math.round(Math.abs(value) * 100)}%`;
   return (
     <div className={s.signed}>
       <label htmlFor={id} className={s.rangeLabel}>
@@ -267,12 +316,58 @@ export function OptionGrid<T extends string>({
   render?: TileRender;
   ariaLabel: string;
 }) {
+  const pageSize = 8;
+  const pageCount = Math.max(1, Math.ceil(options.length / pageSize));
+  const [page, setPage] = useState(() =>
+    Math.max(0, Math.floor(options.indexOf(value) / pageSize)),
+  );
+  const optionsKey = options.join("|");
+  useEffect(() => {
+    setPage(Math.max(0, Math.floor(options.indexOf(value) / pageSize)));
+    // The key tracks membership, not array identity (rebuilt on each config update).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, optionsKey]);
+  const currentPage = Math.min(page, pageCount - 1);
   return (
-    <div className={s.tiles} role="group" aria-label={ariaLabel}>
-      {options.map((o) => (
-        <OptionTile key={o} label={labels[o]} selected={o === value} config={preview(o)} render={render} onClick={() => onSelect(o)} />
-      ))}
-    </div>
+    <>
+      <div className={s.tiles} role="group" aria-label={ariaLabel}>
+        {options
+          .slice(currentPage * pageSize, (currentPage + 1) * pageSize)
+          .map((o) => (
+            <OptionTile
+              key={o}
+              label={labels[o]}
+              selected={o === value}
+              config={preview(o)}
+              render={render}
+              onClick={() => onSelect(o)}
+            />
+          ))}
+      </div>
+      {pageCount > 1 && (
+        <div className={s.optionPages}>
+          <button
+            type="button"
+            aria-label={tt("Предыдущие варианты")}
+            disabled={currentPage === 0}
+            onClick={() => setPage(currentPage - 1)}
+          >
+            <ChevronLeft size={18} aria-hidden />
+          </button>
+          <span aria-live="polite">
+            {currentPage + 1} / {pageCount}
+          </span>
+          <button
+            type="button"
+            aria-label={tt("Следующие варианты")}
+            disabled={currentPage === pageCount - 1}
+            onClick={() => setPage(currentPage + 1)}
+          >
+            <ChevronRight size={18} aria-hidden />
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -313,7 +408,10 @@ function OptionTile({
       setVisible(true);
       return;
     }
-    const io = new IntersectionObserver((entries) => setVisible(entries.some((e) => e.isIntersecting)), { rootMargin: "120px" });
+    const io = new IntersectionObserver(
+      (entries) => setVisible(entries.some((e) => e.isIntersecting)),
+      { rootMargin: "120px" },
+    );
     io.observe(el);
     return () => io.disconnect();
   }, []);
@@ -336,7 +434,13 @@ function OptionTile({
   }, [key, visible]);
 
   return (
-    <button ref={ref} type="button" className={s.tile} aria-pressed={selected} onClick={onClick}>
+    <button
+      ref={ref}
+      type="button"
+      className={s.tile}
+      aria-pressed={selected}
+      onClick={onClick}
+    >
       <span className={s.tileArt} data-stale={(stale && !!src) || undefined}>
         {src ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -348,7 +452,10 @@ function OptionTile({
             draggable={false}
             style={
               render?.zoom
-                ? { transform: `scale(${render.zoom.scale})`, transformOrigin: `${render.zoom.x}% ${render.zoom.y}%` }
+                ? {
+                    transform: `scale(${render.zoom.scale})`,
+                    transformOrigin: `${render.zoom.x}% ${render.zoom.y}%`,
+                  }
                 : undefined
             }
           />

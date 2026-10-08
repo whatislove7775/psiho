@@ -350,7 +350,7 @@
 .heroTag {
   position: absolute;
   left: 50%;
-  bottom: 11%;
+  bottom: 6%;
   z-index: 1;
   transform: translateX(-50%);
   display: inline-flex;

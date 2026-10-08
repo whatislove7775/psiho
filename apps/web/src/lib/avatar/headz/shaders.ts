@@ -27,6 +27,37 @@ function patchHeadPos(shader: THREE.WebGLProgramParametersWithUniforms, extraDec
     .replace("#include <begin_vertex>", `#include <begin_vertex>\n vHeadP = aHead;\n${extraMain}`);
 }
 
+// Surface detail is anchored to rest-pose head space, not screen coordinates or time.
+// Screen-space derivatives fade subpixel detail out in thumbnails and perturb the
+// deformed surface normal (including expressions), without changing the silhouette.
+const SURFACE_FRAG = /* glsl */ `
+float surfaceHash(vec3 p) {
+  p = fract(p * 0.1031);
+  p += dot(p, p.yzx + 33.33);
+  return fract((p.x + p.y) * p.z);
+}
+float surfaceNoise(vec3 p) {
+  vec3 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(mix(surfaceHash(i), surfaceHash(i + vec3(1,0,0)), f.x),
+        mix(surfaceHash(i + vec3(0,1,0)), surfaceHash(i + vec3(1,1,0)), f.x), f.y),
+    mix(mix(surfaceHash(i + vec3(0,0,1)), surfaceHash(i + vec3(1,0,1)), f.x),
+        mix(surfaceHash(i + vec3(0,1,1)), surfaceHash(i + vec3(1,1,1)), f.x), f.y), f.z);
+}
+float surfaceDetail(vec3 p, float frequency) {
+  float footprint = max(length(dFdx(p)), length(dFdy(p))) * frequency;
+  return 1.0 - smoothstep(0.35, 1.4, footprint);
+}
+vec3 surfaceNormal(vec3 n, float height) {
+  vec3 dx = dFdx(-vViewPosition), dy = dFdy(-vViewPosition);
+  vec3 rx = cross(dy, n), ry = cross(n, dx);
+  float det = dot(dx, rx);
+  vec3 gradient = sign(det) * (dFdx(height) * rx + dFdy(height) * ry);
+  return normalize(max(abs(det), 1e-10) * n - gradient);
+}
+`;
+
 // ── eyes ──────────────────────────────────────────────────────────────────
 
 export interface EyeUniforms {
@@ -162,6 +193,7 @@ uniform vec4 uMouth;
 varying vec3 vHeadP;
 varying vec4 vFx;
 varying float vCover;
+${SURFACE_FRAG}
 float skHash(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
 vec3 skinFx(vec3 c) {
   vec3 P = vHeadP;
@@ -169,6 +201,9 @@ vec3 skinFx(vec3 c) {
   float lid = vFx.y;
   float cheek = smoothstep(0.2, 0.8, vFx.z);
   float front = smoothstep(0.0, 0.3, P.z);
+  // Subtle warm/cool variation without changing the chosen skin tone.
+  float tone = surfaceNoise(P * 7.0) - 0.5;
+  c *= vec3(1.0 + tone * 0.045, 1.0 + tone * 0.026, 1.0 + tone * 0.02);
   // natural lips (a touch rosier than the skin) and the dark mouth cavity behind them
   c = mix(c, c * vec3(1.0, 0.72, 0.72), 0.5 * lips);
   float cav = smoothstep(uMouth.z - 0.1, uMouth.z - 0.2, P.z) * smoothstep(0.0, 0.12, P.z)
@@ -228,9 +263,18 @@ export function patchSkin(mat: THREE.MeshPhysicalMaterial, u: SkinUniforms) {
     patchHeadPos(shader, "attribute vec4 aFx;\nattribute float aCover;\nvarying vec4 vFx;\nvarying float vCover;", " vFx = aFx; vCover = aCover;");
     shader.fragmentShader = shader.fragmentShader
       .replace("#include <common>", `#include <common>\n${SKIN_FRAG}`)
-      .replace("#include <color_fragment>", `#include <color_fragment>\n diffuseColor.rgb = skinFx(diffuseColor.rgb);`);
+      .replace("#include <color_fragment>", `#include <color_fragment>\n diffuseColor.rgb = skinFx(diffuseColor.rgb);`)
+      .replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>
+ float skinLip = smoothstep(0.28, 0.62, vFx.x);
+ float skinOil = max(smoothstep(0.15, 0.55, vHeadP.z) * exp(-pow(vHeadP.x / 0.23, 2.0)), skinLip);
+ roughnessFactor = clamp(roughnessFactor + (surfaceNoise(vHeadP * 32.0) - 0.5) * 0.09 - skinOil * 0.1, 0.38, 0.8);`)
+      .replace("#include <normal_fragment_maps>", `#include <normal_fragment_maps>
+ float skinDetail = surfaceDetail(vHeadP, 140.0);
+ float pores = surfaceNoise(vHeadP * 140.0);
+ float skinHeight = (pores - 0.5) * 0.0007 * skinDetail * (1.0 - smoothstep(0.12, 0.55, vFx.y));
+ normal = surfaceNormal(normal, skinHeight);`);
   };
-  mat.customProgramCacheKey = () => "headz-skin";
+  mat.customProgramCacheKey = () => "headz-skin-surface-v2";
 }
 
 // ── fade (neck) ───────────────────────────────────────────────────────────
@@ -266,7 +310,7 @@ export function patchHair(mat: THREE.MeshPhysicalMaterial, u: HairUniforms) {
     Object.assign(shader.uniforms, u as unknown as Uniforms);
     patchHeadPos(shader, "attribute float aTip;\nvarying float vTip;", " vTip = aTip;");
     shader.fragmentShader = shader.fragmentShader
-      .replace("#include <common>", `#include <common>\nuniform vec4 uTip;\nuniform float uStreak;\nuniform float uHat;\nuniform sampler2D uHatEnvelope;\nvarying vec3 vHeadP;\nvarying float vTip;`)
+      .replace("#include <common>", `#include <common>\nuniform vec4 uTip;\nuniform float uStreak;\nuniform float uHat;\nuniform sampler2D uHatEnvelope;\nvarying vec3 vHeadP;\nvarying float vTip;\n${SURFACE_FRAG}\nfloat hairFiber() {\n float flow = atan(vHeadP.x, vHeadP.z) * 115.0 + vHeadP.y * 32.0 + surfaceNoise(vHeadP * 5.0) * 3.0;\n float detail = 1.0 - smoothstep(0.6, 2.6, fwidth(flow));\n return (sin(flow) * 0.65 + sin(flow * 1.73 + 1.4) * 0.35) * detail;\n}`)
       .replace(
         "#include <color_fragment>",
         `#include <color_fragment>
@@ -279,8 +323,27 @@ export function patchHair(mat: THREE.MeshPhysicalMaterial, u: HairUniforms) {
  }
  float streak = uStreak > 0.5 ? smoothstep(0.35, 0.85, 0.5 + 0.5 * sin(atan(vHeadP.x, vHeadP.z) * 26.0 + vHeadP.y * 3.0)) * 0.85 : 0.0;
  float k = uStreak > 0.5 ? streak * smoothstep(0.0, 0.4, vTip + 0.25) : smoothstep(0.15, 0.85, vTip);
- diffuseColor.rgb = mix(diffuseColor.rgb, uTip.rgb, uTip.a * k);`,
-      );
+ diffuseColor.rgb = mix(diffuseColor.rgb, uTip.rgb, uTip.a * k);\n diffuseColor.rgb *= 1.0 + hairFiber() * 0.045;`,
+      )
+      .replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>\n roughnessFactor = clamp(roughnessFactor + hairFiber() * 0.065, 0.45, 0.85);`)
+      .replace("#include <normal_fragment_maps>", `#include <normal_fragment_maps>\n normal = surfaceNormal(normal, hairFiber() * 0.00045);`);
   };
-  mat.customProgramCacheKey = () => "headz-hair";
+  mat.customProgramCacheKey = () => "headz-hair-surface-v2";
+}
+
+
+/** Woven fabric for nonmetallic headwear and masks; source maps remain intact. */
+export function patchFabric(mat: THREE.MeshPhysicalMaterial) {
+  mat.onBeforeCompile = (shader) => {
+    patchHeadPos(shader);
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", `#include <common>\n varying vec3 vHeadP;\n${SURFACE_FRAG}`)
+      .replace("#include <color_fragment>", `#include <color_fragment>
+ float fabricDetail = surfaceDetail(vHeadP, 120.0);
+ float weave = (sin(vHeadP.x * 750.0) * sin(vHeadP.y * 750.0) + sin(vHeadP.z * 750.0) * 0.3) * fabricDetail;
+ diffuseColor.rgb *= 1.0 + (surfaceNoise(vHeadP * 38.0) - 0.5) * 0.05 + weave * 0.025;`)
+      .replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>\n roughnessFactor = clamp(roughnessFactor + (surfaceNoise(vHeadP * 38.0) - 0.5) * 0.06, 0.68, 0.95);`)
+      .replace("#include <normal_fragment_maps>", `#include <normal_fragment_maps>\n normal = surfaceNormal(normal, weave * 0.0003);`);
+  };
+  mat.customProgramCacheKey = () => "headz-fabric-surface-v1";
 }

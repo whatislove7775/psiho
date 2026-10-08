@@ -23,9 +23,16 @@
   height: clamp(440px, calc(100vh - 210px), 760px);
   border-radius: var(--r-panel);
   overflow: hidden;
-  background:
-    radial-gradient(60% 46% at 50% 40%, color-mix(in srgb, var(--glow, var(--c-primary)) 26%, transparent), transparent 100%),
-    radial-gradient(46% 10% at 50% 100%, color-mix(in srgb, var(--c-text) 7%, transparent), transparent 100%),
+  background: radial-gradient(
+      60% 46% at 50% 40%,
+      color-mix(in srgb, var(--glow, var(--c-primary)) 26%, transparent),
+      transparent 100%
+    ),
+    radial-gradient(
+      46% 10% at 50% 100%,
+      color-mix(in srgb, var(--c-text) 7%, transparent),
+      transparent 100%
+    ),
     var(--c-panel);
   transition: background var(--dur) var(--ease);
   cursor: grab;
@@ -84,7 +91,13 @@
   overflow-x: auto;
   scrollbar-width: none;
   padding: var(--s-3) var(--s-4) 0;
-  mask-image: linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 24px), transparent 100%);
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 16px,
+    #000 calc(100% - 24px),
+    transparent 100%
+  );
   scroll-padding-inline: var(--s-6);
 }
 .tabs::-webkit-scrollbar {
@@ -202,7 +215,9 @@
   place-items: center;
   background: var(--sw);
   box-shadow: inset 0 0 0 1px var(--c-line-strong);
-  transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+  transition:
+    transform var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
 }
 .swatch:hover {
   transform: scale(1.06);
@@ -230,15 +245,32 @@
 .swatchCustom {
   cursor: pointer;
   color: #fff;
-  background: conic-gradient(from 90deg, #ff6b6b, #ffd166, #7ae582, #4cc9f0, #5a67f2, #d16ba5, #ff6b6b);
+  background: conic-gradient(
+    from 90deg,
+    #ff6b6b,
+    #ffd166,
+    #7ae582,
+    #4cc9f0,
+    #5a67f2,
+    #d16ba5,
+    #ff6b6b
+  );
 }
 .swatchCustom svg {
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45));
 }
 .swatchCustom[data-selected] {
-  background:
-    radial-gradient(circle, var(--sw) 0 11px, transparent 11.5px),
-    conic-gradient(from 90deg, #ff6b6b, #ffd166, #7ae582, #4cc9f0, #5a67f2, #d16ba5, #ff6b6b);
+  background: radial-gradient(circle, var(--sw) 0 11px, transparent 11.5px),
+    conic-gradient(
+      from 90deg,
+      #ff6b6b,
+      #ffd166,
+      #7ae582,
+      #4cc9f0,
+      #5a67f2,
+      #d16ba5,
+      #ff6b6b
+    );
 }
 .swatchCustom:focus-within {
   box-shadow:
@@ -349,12 +381,20 @@
 .unit::-webkit-slider-runnable-track {
   height: 6px;
   border-radius: var(--r-pill);
-  background: linear-gradient(90deg, var(--c-primary) var(--fill), var(--c-raised-2) var(--fill));
+  background: linear-gradient(
+    90deg,
+    var(--c-primary) var(--fill),
+    var(--c-raised-2) var(--fill)
+  );
 }
 .unit::-moz-range-track {
   height: 6px;
   border-radius: var(--r-pill);
-  background: linear-gradient(90deg, var(--c-primary) var(--fill), var(--c-raised-2) var(--fill));
+  background: linear-gradient(
+    90deg,
+    var(--c-primary) var(--fill),
+    var(--c-raised-2) var(--fill)
+  );
 }
 .unit::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -416,7 +456,9 @@
   border-radius: 20px;
   overflow: hidden;
   background: var(--c-raised);
-  transition: box-shadow var(--dur) var(--ease), background var(--dur) var(--ease);
+  transition:
+    box-shadow var(--dur) var(--ease),
+    background var(--dur) var(--ease);
 }
 .tileArt > * {
   position: absolute;
@@ -619,14 +661,30 @@
   gap: 2px;
 }
 .unit[data-signed]::-webkit-slider-runnable-track {
-  background:
-    linear-gradient(90deg, transparent var(--lo), var(--c-primary) var(--lo), var(--c-primary) var(--hi), transparent var(--hi)),
-    linear-gradient(90deg, transparent calc(50% - 1px), var(--c-muted) calc(50% - 1px), var(--c-muted) calc(50% + 1px), transparent calc(50% + 1px)),
+  background: linear-gradient(
+      90deg,
+      transparent var(--lo),
+      var(--c-primary) var(--lo),
+      var(--c-primary) var(--hi),
+      transparent var(--hi)
+    ),
+    linear-gradient(
+      90deg,
+      transparent calc(50% - 1px),
+      var(--c-muted) calc(50% - 1px),
+      var(--c-muted) calc(50% + 1px),
+      transparent calc(50% + 1px)
+    ),
     var(--c-line-strong);
 }
 .unit[data-signed]::-moz-range-track {
-  background:
-    linear-gradient(90deg, transparent var(--lo), var(--c-primary) var(--lo), var(--c-primary) var(--hi), transparent var(--hi)),
+  background: linear-gradient(
+      90deg,
+      transparent var(--lo),
+      var(--c-primary) var(--lo),
+      var(--c-primary) var(--hi),
+      transparent var(--hi)
+    ),
     var(--c-line-strong);
 }
 .chips {
@@ -642,7 +700,9 @@
   color: var(--c-muted);
   font-size: var(--t-13);
   font-weight: 550;
-  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+  transition:
+    background var(--dur) var(--ease),
+    color var(--dur) var(--ease);
 }
 .chip:hover {
   color: var(--c-text);
@@ -677,4 +737,193 @@
 .note {
   font-size: var(--t-13);
   color: var(--c-muted);
+}
+
+/* Compact workspace: all categories visible, preview and save always within reach. */
+.studio {
+  --studio-height: clamp(540px, calc(100dvh - 160px), 760px);
+  gap: 24px;
+}
+.previewCol {
+  top: 24px;
+}
+.stage {
+  height: calc(var(--studio-height) - 52px);
+}
+.editor {
+  height: var(--studio-height);
+  overflow: hidden;
+}
+.tabsWrap {
+  position: static;
+  padding: 12px;
+  flex: none;
+}
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  padding: 0;
+  overflow: visible;
+  mask-image: none;
+}
+.tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 8px 4px;
+  border-radius: 12px;
+  font-size: var(--t-13);
+  white-space: normal;
+}
+.tab[aria-selected="true"] {
+  background: var(--c-primary-soft);
+}
+.tab[aria-selected="true"]::after {
+  display: none;
+}
+.tab:focus-visible {
+  outline: 2px solid var(--c-primary-ink);
+  outline-offset: 2px;
+}
+.panel {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 0 24px 20px;
+}
+.saveBar {
+  position: static;
+  flex: none;
+  margin: 0;
+  border-radius: 0;
+  border-width: 1px 0 0;
+  box-shadow: none;
+  padding: 12px 16px;
+  backdrop-filter: none;
+  background: var(--c-panel);
+}
+.swatch {
+  width: 44px;
+  height: 44px;
+}
+.tiles {
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+}
+.advanced {
+  border-top: 1px solid var(--c-line);
+  padding-top: 16px;
+  margin-bottom: 20px;
+}
+.advanced summary {
+  display: list-item;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--c-primary-ink);
+  padding: 12px 0;
+}
+.advanced summary:focus-visible {
+  outline: 2px solid var(--c-primary-ink);
+  outline-offset: 3px;
+}
+@media (max-width: 860px) {
+  .studio {
+    --pv-h: clamp(160px, 24svh, 220px);
+    gap: 12px;
+  }
+  .previewCol {
+    margin: 0;
+    padding: 0 0 8px;
+    top: 60px;
+    gap: 8px;
+  }
+  .stage {
+    height: var(--pv-h);
+  }
+  .tools {
+    position: static;
+    min-height: 40px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .tools > button {
+    min-height: 40px;
+  }
+  .editor {
+    height: auto;
+    overflow: visible;
+  }
+  .tabsWrap {
+    position: sticky;
+    top: calc(60px + var(--pv-h) + 56px);
+    padding: 8px;
+  }
+  .tab {
+    gap: 4px;
+    flex-direction: column;
+    font-size: var(--t-12);
+    min-height: 52px;
+    padding: 6px 2px;
+  }
+  .panel {
+    overflow: visible;
+    padding: 0 16px 20px;
+  }
+  .saveBar,
+  .saveBar[data-idle] {
+    position: sticky;
+    bottom: calc(84px + env(safe-area-inset-bottom));
+    padding: 10px;
+    border-radius: 16px;
+    margin: 8px;
+    box-shadow: var(--shadow-float);
+    z-index: 6;
+  }
+  .swatchRow {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+  .tiles {
+    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  }
+}
+
+.optionPages {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+  color: var(--c-muted);
+  font-size: var(--t-13);
+}
+.optionPages button {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--c-line);
+  border-radius: 50%;
+  background: var(--c-raised);
+  color: var(--c-text);
+}
+.optionPages button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.optionPages button:focus-visible {
+  outline: 2px solid var(--c-primary-ink);
+  outline-offset: 2px;
+}
+@media (max-width: 860px) {
+  .tools {
+    flex-wrap: nowrap;
+  }
+  .tools > button {
+    font-size: 12px;
+    padding-inline: 6px;
+  }
 }

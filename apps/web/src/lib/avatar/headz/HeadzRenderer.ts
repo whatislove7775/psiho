@@ -30,7 +30,7 @@ import { deformFace, deformedEye, frameOf, placePart, radiusAt, radiusMap, trans
 import { SkinIndex, footprint, taperHair, type HairSurface } from "./scalp";
 import { headwearEnvelope, headwearBytes, HAT_EL, HAT_AZ, tuckHair } from "./headwearFit";
 import { GazeTracker, LID_GAIN, applyLids, combineEyes, gazeOf, gazeWeights, type LidGain, type Weights } from "./gaze";
-import { eyeUniforms, hairUniforms, patchEye, patchFade, patchHair, patchSkin, skinUniforms } from "./shaders";
+import { eyeUniforms, hairUniforms, patchEye, patchFade, patchFabric, patchHair, patchSkin, skinUniforms } from "./shaders";
 import { EyeRig, irisUniforms, makeCorneaMaterial, makeIrisMaterial, makeScleraMaterial, springStep, MAX_YAW, MAX_PITCH, type EyeSpec } from "./eyes";
 import { nextSeed, rng, smoothNoise } from "./idleNoise";
 
@@ -197,8 +197,8 @@ export class HeadzRenderer implements AvatarRendererApi {
     mouthInterior: new THREE.MeshBasicMaterial({ color: "#38131b" }),
     teeth: new THREE.MeshPhysicalMaterial({ color: "#f5f0e6", roughness: 0.35, clearcoat: 0.5 }),
     gums: new THREE.MeshStandardMaterial({ color: "#d9636a", roughness: 0.55 }),
-    hair: new THREE.MeshPhysicalMaterial({ roughness: 0.55, sheen: 0.7, sheenRoughness: 0.4, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
-    beard: new THREE.MeshPhysicalMaterial({ roughness: 0.6, sheen: 0.6, sheenRoughness: 0.45, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
+    hair: new THREE.MeshPhysicalMaterial({ roughness: 0.62, sheen: 0.3, sheenRoughness: 0.55, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
+    beard: new THREE.MeshPhysicalMaterial({ roughness: 0.68, sheen: 0.25, sheenRoughness: 0.6, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
     metal: new THREE.MeshPhysicalMaterial({ color: "#d9d9de", metalness: 1, roughness: 0.22, clearcoat: 0.6 }),
     neck: new THREE.MeshPhysicalMaterial({ roughness: 0.55, sheen: 0.4, sheenRoughness: 0.55, transparent: true }),
   };
@@ -398,10 +398,11 @@ export class HeadzRenderer implements AvatarRendererApi {
         const m = new THREE.MeshPhysicalMaterial({
           color: srcMat.map ? 0xffffff : srcMat.color,
           map: srcMat.map ?? null,
-          roughness: 0.5,
-          sheen: 0.45,
-          sheenRoughness: 0.55,
-          clearcoat: role === "mouth" ? 0.12 : 0.04,
+          roughness: 0.62,
+          specularIntensity: 0.45,
+          sheen: 0.12,
+          sheenRoughness: 0.7,
+          clearcoat: role === "mouth" ? 0.1 : 0.02,
           clearcoatRoughness: 0.6,
         });
         m.name = role;
@@ -431,7 +432,15 @@ export class HeadzRenderer implements AvatarRendererApi {
           color: srcMat.color,
           map: srcMat.map ?? null,
           roughness: srcMat.roughness,
+          roughnessMap: srcMat.roughnessMap,
+          normalMap: srcMat.normalMap,
+          normalScale: srcMat.normalScale.clone(),
+          bumpMap: srcMat.bumpMap,
+          bumpScale: srcMat.bumpScale,
           metalness: srcMat.metalness,
+          metalnessMap: srcMat.metalnessMap,
+          aoMap: srcMat.aoMap,
+          aoMapIntensity: srcMat.aoMapIntensity,
           transparent: srcMat.transparent,
           opacity: srcMat.opacity,
           side: kind === "face" ? THREE.FrontSide : THREE.DoubleSide,
@@ -440,6 +449,12 @@ export class HeadzRenderer implements AvatarRendererApi {
           sheen: role.startsWith("headwear") || role.startsWith("mask") ? 0.6 : 0,
           sheenRoughness: 0.5,
         });
+        if ((kind === "headwear" || kind === "mask") && srcMat.metalness < 0.3 && !srcMat.transparent) {
+          m.roughness = Math.max(m.roughness, 0.8);
+          m.sheen = 0.2;
+          m.sheenRoughness = 0.75;
+          patchFabric(m);
+        }
         if (role === "glassLens") {
           m.transparent = true;
           m.opacity = Math.min(m.opacity, 0.35);
