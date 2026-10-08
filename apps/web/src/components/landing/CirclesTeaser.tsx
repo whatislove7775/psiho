@@ -3,7 +3,7 @@
 /**
  * Landing teaser for «Круги»: a ring of anonymous live 3D heads around a psychologist (a bigger head).
  *
- * All ten heads are real-time HEADZ avatars drawn by one HeadzStage (ONE canvas / WebGL context,
+ * All five heads are real-time HEADZ avatars drawn by one HeadzStage (ONE canvas / WebGL context,
  * lazy: nothing loads until the ring is near the viewport; paused off-screen / in a hidden tab;
  * 30 fps on phones). No discs behind the heads, no hands.
  *
@@ -25,20 +25,10 @@ import s from "@/components/landing/landing.module.css";
 import t from "./circlesTeaser.module.css";
 import { t as tt } from "@/lib/i18n";
 
-const SEATS = [
-  "Лиса",
-  "Сова",
-  "Кит",
-  "Ёж",
-  "Выдра",
-  "Панда",
-  "Енот",
-  "Белка",
-  "Бобр",
-];
+const SEATS = ["Лиса", "Сова", "Кит", "Ёж"];
 
 /** Who speaks next (not strictly around the circle, like a real conversation). */
-const TALK = [2, 6, 0, 4, 7, 1, 5, 3, 8];
+const TALK = [2, 0, 3, 1];
 const REACTIONS = [Heart, ThumbsUp, Sparkles];
 const CUE_MS = 1600;
 const TALK_MS = 4200;

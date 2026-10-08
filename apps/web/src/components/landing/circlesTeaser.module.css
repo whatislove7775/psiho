@@ -32,7 +32,7 @@
   pointer-events: none;
 }
 
-/* one WebGL canvas for all ten heads (transparent, under the labels); overhangs so hair can fall */
+/* one WebGL canvas for all five heads (transparent, under the labels); overhangs so hair can fall */
 .stage {
   position: absolute;
   inset: 0;
