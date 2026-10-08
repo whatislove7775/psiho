@@ -286,6 +286,12 @@ export function randomAvatar(seed: string | number = Math.random(), rich = false
     eyeColor: chance(0.4) ? one(EYE_COLORS) : null,
     skin: null,
   };
+  // Oversized wide-brim women's hats overwhelm the face in automatic previews.
+  // Keep the draw above so excluding them does not change the seeded identity.
+  if ((group === "woman" && cfg.headwear === "hat") ||
+      (group === "oldwoman" && String(cfg.headwear).startsWith("hat-"))) {
+    cfg.headwear = "none";
+  }
   if (rich) {
     const r = (a: number) => Math.round((rnd() * 2 - 1) * a * 100) / 100;
     const feminine = group === "woman" || group === "oldwoman";

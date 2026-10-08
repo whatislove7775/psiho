@@ -150,9 +150,6 @@ export function Hero() {
           <Button href={lp("/match")} variant="primary" size="lg">
             {tt("Подобрать специалиста")}
           </Button>
-          <Button href={lp("/specialists")} variant="ghost" size="lg" className={s.heroSecondary}>
-            {tt("Посмотреть специалистов")}
-          </Button>
         </div>
         {/* H1: public matching quiz, works without login */}
         <Link href={lp("/couples")} className={s.heroQuiz}>
